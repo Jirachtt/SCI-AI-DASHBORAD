@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import { dashboardSummary } from '../data/mockData';
-import { CreditCard, DollarSign, Users, ChevronRight, GraduationCap, BookOpen, TrendingUp, Lock, BarChart3, Microscope } from 'lucide-react';
+import { getDashboardInsights } from '../services/geminiService';
+import { CreditCard, DollarSign, Users, ChevronRight, GraduationCap, BookOpen, TrendingUp, Lock, BarChart3, Microscope, Sparkles, Settings2 } from 'lucide-react';
 
 const topics = [
     {
@@ -65,7 +66,16 @@ const topics = [
 
 export default function DashboardHome() {
     const { user } = useAuth();
-    const sci = dashboardSummary.scienceFaculty;
+    const sci = dashboardSummary.faculties.find(f => f.name === 'คณะวิทยาศาสตร์');
+    const [insights, setInsights] = useState(null);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [cardOrder, setCardOrder] = useState([0, 1, 2, 3]);
+    const dragItem = useRef(null);
+    const dragOverItem = useRef(null);
+
+    useEffect(() => {
+        getDashboardInsights().then(data => setInsights(data));
+    }, []);
 
     // Science faculty sub-card data for each stat card
     const scienceSubData = [
@@ -164,13 +174,97 @@ export default function DashboardHome() {
                 </p>
             </div>
 
-            {/* Quick Stats */}
+            {/* Proactive AI Insights */}
+            {insights && (
+                <div style={{
+                    background: 'linear-gradient(145deg, rgba(29, 29, 44, 0.8), rgba(20, 20, 30, 0.9))',
+                    border: '1px solid rgba(0, 255, 136, 0.3)',
+                    borderRadius: 16,
+                    padding: '24px',
+                    marginBottom: 32,
+                    boxShadow: '0 8px 32px rgba(0, 255, 136, 0.1)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}>
+                    <div style={{
+                        position: 'absolute', top: -50, right: -50, width: 150, height: 150,
+                        background: 'radial-gradient(circle, rgba(0,255,136,0.2) 0%, rgba(0,0,0,0) 70%)',
+                        borderRadius: '50%'
+                    }} />
+                    <h3 style={{
+                        color: '#00ff88', fontSize: '1.2rem', fontWeight: 600,
+                        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16
+                    }}>
+                        <Sparkles size={20} /> AI Daily Insights
+                    </h3>
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {insights.map((insight, idx) => (
+                            <li key={idx} style={{
+                                display: 'flex', alignItems: 'flex-start', gap: 12,
+                                color: '#e5e7eb', fontSize: '0.95rem', lineHeight: 1.5
+                            }}>
+                                <div style={{
+                                    minWidth: 8, height: 8, borderRadius: '50%',
+                                    background: '#00ff88', marginTop: 6, boxShadow: '0 0 10px #00ff88'
+                                }} />
+                                <span>{insight}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            {/* Quick Stats Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-secondary)' }}>📊 ภาพรวมสถิติ</h3>
+                <button
+                    onClick={() => setIsEditMode(!isEditMode)}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        background: isEditMode ? '#00a651' : 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: isEditMode ? 'white' : '#9ca3af',
+                        padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
+                        fontSize: '0.9rem', transition: 'all 0.2s',
+                        boxShadow: isEditMode ? '0 4px 12px rgba(0, 166, 81, 0.3)' : 'none'
+                    }}
+                >
+                    <Settings2 size={16} /> {isEditMode ? 'บันทึก Canvas' : 'จัดเรียง Widget'}
+                </button>
+            </div>
+
+            {/* Quick Stats Grid (Draggable Canvas) */}
             <div className="stats-grid">
-                {statCards.map((card, i) => {
-                    const sciData = scienceSubData[i];
+                {cardOrder.map((orderIdx, displayIdx) => {
+                    const card = statCards[orderIdx];
+                    const sciData = scienceSubData[orderIdx];
 
                     return (
-                        <div key={i} style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div
+                            key={orderIdx}
+                            draggable={isEditMode}
+                            onDragStart={() => { dragItem.current = displayIdx; }}
+                            onDragEnter={() => { dragOverItem.current = displayIdx; }}
+                            onDragEnd={() => {
+                                const newOrder = [...cardOrder];
+                                const draggedItem = newOrder[dragItem.current];
+                                newOrder.splice(dragItem.current, 1);
+                                newOrder.splice(dragOverItem.current, 0, draggedItem);
+                                setCardOrder(newOrder);
+                                dragItem.current = null;
+                                dragOverItem.current = null;
+                            }}
+                            onDragOver={(e) => e.preventDefault()}
+                            style={{
+                                display: 'flex', flexDirection: 'column',
+                                cursor: isEditMode ? 'grab' : 'default',
+                                opacity: 1,
+                                border: isEditMode ? '2px dashed rgba(0, 166, 81, 0.4)' : '2px dashed transparent',
+                                borderRadius: 18,
+                                transition: 'border 0.3s, box-shadow 0.3s',
+                                boxShadow: isEditMode ? '0 0 15px rgba(0, 166, 81, 0.15)' : 'none'
+                            }}
+                        >
                             {/* Main Stat Card */}
                             <div className="stat-card animate-in" style={{
                                 marginBottom: 0,

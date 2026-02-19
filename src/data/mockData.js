@@ -114,14 +114,44 @@ export const dashboardSummary = {
     graduationRate: 89.5,
     currentSemester: '1/2568',
     academicYear: '2568',
-    // ข้อมูลเฉพาะคณะวิทยาศาสตร์
-    scienceFaculty: {
-        totalStudents: 1591,
-        totalCourses: 156,
-        avgGPA: 3.18,
-        graduationRate: 91.2,
-        label: 'คณะวิทยาศาสตร์'
-    }
+    // ข้อมูลประสิทธิภาพแยกตามคณะ (สำหรับเปรียบเทียบ Radar Chart)
+    faculties: [
+        {
+            name: 'คณะวิทยาศาสตร์',
+            totalStudents: 1591,
+            totalCourses: 156,
+            avgGPA: 3.18,
+            graduationRate: 91.2
+        },
+        {
+            name: 'คณะบริหารธุรกิจ',
+            totalStudents: 4387,
+            totalCourses: 210,
+            avgGPA: 2.95,
+            graduationRate: 85.4
+        },
+        {
+            name: 'วิศวกรรมและอุตสาหกรรมเกษตร',
+            totalStudents: 801,
+            totalCourses: 125,
+            avgGPA: 2.88,
+            graduationRate: 82.5
+        },
+        {
+            name: 'คณะศิลปศาสตร์',
+            totalStudents: 1220,
+            totalCourses: 88,
+            avgGPA: 3.35,
+            graduationRate: 94.1
+        },
+        {
+            name: 'คณะสถาปัตยกรรมศาสตร์ฯ',
+            totalStudents: 431,
+            totalCourses: 65,
+            avgGPA: 3.05,
+            graduationRate: 88.0
+        }
+    ]
 };
 
 // ==================== ข้อมูลสถิตินิสิตปัจจุบัน ====================
