@@ -4,7 +4,7 @@ import {
     tuitionData, financialData, studentLifeData, dashboardSummary
 } from '../data/mockData';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyCtNnhoMGNoVZeXgCYy80L2pg_gGu5anao';
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 // Models to try in order (fallback chain)
 const MODELS = [
