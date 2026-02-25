@@ -158,19 +158,24 @@ export function AuthProvider({ children }) {
             const result = await signInWithPopup(auth, googleProvider);
             const user = result.user;
 
-            // Check if user document exists
-            const userDocRef = doc(db, "users", user.uid);
-            const userDoc = await getDoc(userDocRef);
+            // Try to save user document to Firestore (non-blocking)
+            try {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userDocRef);
 
-            if (!userDoc.exists()) {
-                await setDoc(userDocRef, {
-                    name: user.displayName,
-                    email: user.email,
-                    role: 'student',
-                    roleLabel: 'นักศึกษา (Student)',
-                    avatar: user.photoURL || '👤',
-                    createdAt: serverTimestamp()
-                });
+                if (!userDoc.exists()) {
+                    await setDoc(userDocRef, {
+                        name: user.displayName,
+                        email: user.email,
+                        role: 'student',
+                        roleLabel: 'นักศึกษา (Student)',
+                        avatar: user.photoURL || '👤',
+                        createdAt: serverTimestamp()
+                    });
+                }
+            } catch (firestoreError) {
+                console.warn('Firestore save skipped (permissions):', firestoreError.message);
+                // Login still succeeds even if Firestore write fails
             }
 
             return { success: true };
