@@ -377,6 +377,126 @@ body {
   text-decoration: underline;
 }
 
+/* ==================== ADMIN MODAL ==================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 32px;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--border-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.modal-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.modal-header h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 12px;
+  color: var(--text-primary);
+}
+
+.modal-header p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.admin-code-form .input-group {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.admin-code-form .input-group input {
+  flex: 1;
+  padding: 12px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: all 0.3s ease;
+}
+
+.admin-code-form .input-group input:focus {
+  outline: none;
+  border-color: var(--mju-green);
+  box-shadow: 0 0 0 3px rgba(0, 104, 56, 0.15);
+}
+
+.admin-code-form .input-group button {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, var(--mju-green), var(--mju-green-light));
+  border: none;
+  border-radius: var(--border-radius-sm);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.admin-code-form .input-group button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 104, 56, 0.35);
+}
+
+.admin-code-form .input-group button:active {
+  transform: translateY(0);
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.2s ease;
+}
+
+.text-btn:hover {
+  color: var(--mju-green-light) !important;
+}
 
 
 .demo-accounts {

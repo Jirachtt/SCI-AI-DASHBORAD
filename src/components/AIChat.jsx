@@ -682,6 +682,7 @@ export default function AIChat() {
         try {
             const aiText = await sendMessageToGemini(query);
             const parsedAI = parseAIResponse(aiText);
+
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
             console.error('[AIChat] Gemini API error. Fallback to local mock data:', error);
