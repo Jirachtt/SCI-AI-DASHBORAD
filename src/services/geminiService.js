@@ -191,7 +191,7 @@ export async function sendMessageToGemini(userMessage) {
             temperature: 0.7,
             topP: 0.9,
             topK: 40,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 8192,
         },
         safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
