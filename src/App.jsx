@@ -11,6 +11,9 @@ import FinancialPage from './pages/FinancialPage';
 import StudentLifePage from './pages/StudentLifePage';
 import StudentListPage from './pages/StudentListPage';
 import GraduationCheckPage from './pages/GraduationCheckPage';
+import HRDashboardPage from './pages/HRDashboardPage';
+import ResearchDashboardPage from './pages/ResearchDashboardPage';
+import StrategicDashboardPage from './pages/StrategicDashboardPage';
 import './index.css';
 
 function ProtectedRoute({ children }) {
@@ -41,6 +44,9 @@ function AppRoutes() {
         <Route path="student-life" element={<StudentLifePage />} />
         <Route path="students" element={<StudentListPage />} />
         <Route path="graduation" element={<GraduationCheckPage />} />
+        <Route path="hr" element={<HRDashboardPage />} />
+        <Route path="research" element={<ResearchDashboardPage />} />
+        <Route path="strategic" element={<StrategicDashboardPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

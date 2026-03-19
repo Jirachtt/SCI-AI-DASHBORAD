@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { studentStatsData } from '../data/mockData';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText, BarChart3, Microscope } from 'lucide-react';
 import { Doughnut, Line, Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
@@ -14,10 +15,26 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 export default function StudentStatsPage() {
     const { user } = useAuth();
+    const [selectedFaculty, setSelectedFaculty] = useState('all');
+    const [selectedLevel, setSelectedLevel] = useState('all');
+    const [filtersApplied, setFiltersApplied] = useState(false);
 
     if (!canAccess(user?.role, 'student_stats')) return <AccessDenied />;
 
     const { current, byFaculty, trend, scienceFaculty } = studentStatsData;
+
+    // Apply filters
+    const filteredFaculty = selectedFaculty === 'all'
+        ? byFaculty
+        : byFaculty.filter(f => f.name === selectedFaculty);
+
+    const filteredTotal = filteredFaculty.reduce((sum, f) => {
+        if (selectedLevel === 'all') return sum + f.bachelor + f.master + f.doctoral;
+        if (selectedLevel === 'bachelor') return sum + f.bachelor;
+        if (selectedLevel === 'master') return sum + f.master;
+        if (selectedLevel === 'doctoral') return sum + f.doctoral;
+        return sum;
+    }, 0);
 
     // Doughnut chart for student levels
     const doughnutData = {
@@ -193,12 +210,44 @@ export default function StudentStatsPage() {
 
             <div className="section-header">
                 <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #7B68EE, #5B4FCF)' }}>
-                    📊
+                    <BarChart3 size={22} color="#fff" />
                 </div>
                 <div>
                     <h2>สถิตินิสิตปัจจุบัน</h2>
                     <p>Current Student Statistics — อ้างอิง มหาวิทยาลัยแม่โจ้</p>
                 </div>
+            </div>
+
+            {/* Knowledge Dynamic Dashboard — Filter Bar */}
+            <div className="filter-bar">
+                <label>ตัวกรอง:</label>
+                <select value={selectedFaculty} onChange={(e) => setSelectedFaculty(e.target.value)}>
+                    <option value="all">ทุกคณะ</option>
+                    {byFaculty.map((f, i) => (
+                        <option key={i} value={f.name}>{f.name}</option>
+                    ))}
+                </select>
+                <select value={selectedLevel} onChange={(e) => setSelectedLevel(e.target.value)}>
+                    <option value="all">ทุกระดับ</option>
+                    <option value="bachelor">ปริญญาตรี</option>
+                    <option value="master">ปริญญาโท</option>
+                    <option value="doctoral">ปริญญาเอก</option>
+                </select>
+                <button className="filter-apply-btn" onClick={() => setFiltersApplied(true)}>
+                    <Filter size={14} /> Apply Filters
+                </button>
+                <button className="filter-reset-btn" onClick={() => {
+                    setSelectedFaculty('all');
+                    setSelectedLevel('all');
+                    setFiltersApplied(false);
+                }}>
+                    <RotateCcw size={12} /> Reset
+                </button>
+                {(selectedFaculty !== 'all' || selectedLevel !== 'all') && (
+                    <span style={{ fontSize: '0.78rem', color: '#00a651', fontWeight: 600, marginLeft: 'auto' }}>
+                        ผลลัพธ์: {filteredTotal.toLocaleString()} คน
+                    </span>
+                )}
             </div>
 
             {/* Summary Stats */}
@@ -207,7 +256,9 @@ export default function StudentStatsPage() {
                     <div key={i} className="stat-card animate-in">
                         <div className="stat-card-header">
                             <div className="stat-card-icon" style={{ background: `linear-gradient(135deg, ${item.color}, ${item.color}cc)` }}>
-                                <span style={{ fontSize: '20px' }}>{item.icon}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {i === 0 ? <GraduationCap size={20} color="#fff" /> : i === 1 ? <BookOpen size={20} color="#fff" /> : i === 2 ? <Award size={20} color="#fff" /> : <FileText size={20} color="#fff" />}
+                                </span>
                             </div>
                             {i === 0 && <span className="stat-card-trend up">+{growthYoY}%</span>}
                         </div>
@@ -247,7 +298,7 @@ export default function StudentStatsPage() {
             {/* Faculty Table */}
             <div className="data-table-container animate-in" style={{ marginTop: 32 }}>
                 <div className="data-table-header">
-                    <span className="data-table-title">🏫 จำนวนนิสิตแยกตามคณะ</span>
+                    <span className="data-table-title">จำนวนนิสิตแยกตามคณะ</span>
                 </div>
                 <table className="data-table">
                     <thead>
@@ -288,7 +339,7 @@ export default function StudentStatsPage() {
             <div style={{ marginTop: 48, paddingTop: 32, borderTop: '2px solid rgba(0, 166, 81, 0.2)' }}>
                 <div className="section-header">
                     <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
-                        🔬
+                        <Microscope size={22} color="#fff" />
                     </div>
                     <div>
                         <h2>คณะวิทยาศาสตร์</h2>
@@ -326,7 +377,9 @@ export default function StudentStatsPage() {
                             }} />
                             <div className="stat-card-header">
                                 <div className="stat-card-icon" style={{ background: `linear-gradient(135deg, ${item.color}, ${item.color}cc)` }}>
-                                    <span style={{ fontSize: '20px' }}>{item.icon}</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {i === 0 ? <GraduationCap size={20} color="#fff" /> : i === 1 ? <BookOpen size={20} color="#fff" /> : i === 2 ? <Award size={20} color="#fff" /> : <FileText size={20} color="#fff" />}
+                                    </span>
                                 </div>
                                 {item.count > 0 && (
                                     <span style={{
@@ -379,7 +432,7 @@ export default function StudentStatsPage() {
                     <div className="chart-card animate-in">
                         <div className="chart-card-header">
                             <div>
-                                <div className="chart-card-title">👨‍🏫 บุคลากรคณะวิทยาศาสตร์</div>
+                                <div className="chart-card-title">บุคลากรคณะวิทยาศาสตร์</div>
                                 <div className="chart-card-subtitle">รวม {scienceFaculty.personnel.total} คน (ชาย {scienceFaculty.personnel.male} / หญิง {scienceFaculty.personnel.female})</div>
                             </div>
                         </div>
@@ -453,7 +506,7 @@ export default function StudentStatsPage() {
                     <div className="chart-card animate-in">
                         <div className="chart-card-header">
                             <div>
-                                <div className="chart-card-title">🌏 สัญชาตินิสิต คณะวิทยาศาสตร์</div>
+                                <div className="chart-card-title">สัญชาตินิสิต คณะวิทยาศาสตร์</div>
                                 <div className="chart-card-subtitle">จำแนกตามสัญชาติ</div>
                             </div>
                         </div>
@@ -472,7 +525,7 @@ export default function StudentStatsPage() {
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     fontSize: 20
                                                 }}>
-                                                    {i === 0 ? '🇹🇭' : '🌐'}
+                                                    {i === 0 ? 'TH' : 'INT'}
                                                 </div>
                                                 <div>
                                                     <div style={{ color: '#e5e7eb', fontWeight: 600, fontSize: 14 }}>{n.nationality}</div>

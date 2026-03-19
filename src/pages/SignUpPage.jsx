@@ -37,10 +37,10 @@ export default function SignUpPage() {
 
     const getAvatar = (roleValue) => {
         switch (roleValue) {
-            case 'dean': return '👨‍💼';
-            case 'chair': return '👩‍🏫';
-            case 'staff': return '👨‍💻';
-            default: return '👤';
+            case 'dean': return 'D';
+            case 'chair': return 'C';
+            case 'staff': return 'S';
+            default: return 'U';
         }
     };
 
@@ -91,7 +91,7 @@ export default function SignUpPage() {
                         <p>ระบบสารสนเทศมหาวิทยาลัยแม่โจ้</p>
                     </div>
 
-                    {error && <div className="login-error">⚠️ {error}</div>}
+                    {error && <div className="login-error">{error}</div>}
 
                     <form className="login-form" onSubmit={handleSubmit}>
                         <div className="form-group">

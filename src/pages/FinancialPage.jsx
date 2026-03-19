@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { financialData } from '../data/mockData';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, DollarSign } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
@@ -65,7 +65,7 @@ export default function FinancialPage() {
 
             <div className="section-header">
                 <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #C5A028, #9a7d1e)' }}>
-                    🏦
+                    <DollarSign size={22} color="#fff" />
                 </div>
                 <div>
                     <h2>การเงินและงานทะเบียน</h2>
@@ -97,7 +97,7 @@ export default function FinancialPage() {
 
             {/* Scholarship */}
             <div className="info-box animate-in">
-                <h3>🎓 ทุนการศึกษา</h3>
+                <h3>ทุนการศึกษา</h3>
                 <div className="info-item">
                     <span className="info-item-label">ชื่อทุน</span>
                     <span className="info-item-value">{financialData.scholarship.name}</span>
@@ -159,7 +159,7 @@ export default function FinancialPage() {
             {/* Requests Table */}
             <div className="data-table-container animate-in" style={{ marginTop: showDetail ? 0 : 24 }}>
                 <div className="data-table-header">
-                    <span className="data-table-title">📄 สถานะคำร้อง</span>
+                    <span className="data-table-title">สถานะคำร้อง</span>
                 </div>
                 <table className="data-table">
                     <thead>
@@ -178,7 +178,7 @@ export default function FinancialPage() {
                                 <td>{req.date}</td>
                                 <td>
                                     <span className={`status-badge ${req.status === 'อนุมัติแล้ว' ? 'approved' :
-                                            req.status === 'รออนุมัติ' ? 'pending' : 'docs-needed'
+                                        req.status === 'รออนุมัติ' ? 'pending' : 'docs-needed'
                                         }`}>
                                         {req.status}
                                     </span>
@@ -193,7 +193,7 @@ export default function FinancialPage() {
             {showDetail && (
                 <div className="data-table-container animate-in">
                     <div className="data-table-header">
-                        <span className="data-table-title">💳 ประวัติการชำระเงิน</span>
+                        <span className="data-table-title">ประวัติการชำระเงิน</span>
                     </div>
                     <table className="data-table">
                         <thead>

@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { scienceFacultyBudgetData } from '../data/mockData';
-import { ArrowLeft, TrendingUp, TrendingDown, ArrowUpRight, Sparkles, Download, BarChart3 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, ArrowUpRight, Sparkles, Download, BarChart3, Wallet, DollarSign } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement,
@@ -126,7 +126,7 @@ export default function BudgetForecastPage() {
                     label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() || '-'} ล้านบาท`,
                     afterBody: (items) => {
                         const idx = items[0]?.dataIndex;
-                        return idx !== undefined && yearly[idx]?.type === 'forecast' ? '\n⚡ ข้อมูลพยากรณ์' : '';
+                        return idx !== undefined && yearly[idx]?.type === 'forecast' ? '\n* ข้อมูลพยากรณ์' : '';
                     }
                 }
             }
@@ -151,25 +151,25 @@ export default function BudgetForecastPage() {
     /* ── Summary Cards Data ── */
     const statCards = [
         {
-            icon: '💰', label: `งบประมาณปี ${latestYear.year}`,
+            Icon: Wallet, label: `งบประมาณปี ${latestYear.year}`,
             value: `฿${(latestYear.revenue).toLocaleString()}`, sub: `↗ ${revenueGrowth > 0 ? '+' : ''}${revenueGrowth}% จากปีก่อน`,
             gradient: 'linear-gradient(135deg, #2E86AB, #1a6a8c)',
             valueColor: '#fff',
         },
         {
-            icon: '📉', label: 'ใช้จ่ายจริง (ถึงปัจจุบัน)',
+            Icon: TrendingDown, label: 'ใช้จ่ายจริง (ถึงปัจจุบัน)',
             value: `฿${latestYear.expense.toLocaleString()}`, sub: `${usagePercent}% ของงบประมาณ`,
             gradient: 'linear-gradient(135deg, #E91E63, #c2185b)',
             valueColor: '#fff',
         },
         {
-            icon: '💎', label: 'คงเหลือ',
+            Icon: DollarSign, label: 'คงเหลือ',
             value: `฿${latestYear.surplus.toLocaleString()}`, sub: 'เพียงพอสำหรับไตรมาสที่เหลือ',
             gradient: 'linear-gradient(135deg, #006838, #004d29)',
             valueColor: '#4CAF50',
         },
         {
-            icon: '🔮', label: `พยากรณ์รายรับ ${yearly[yearly.length - 1].year}`,
+            Icon: TrendingUp, label: `พยากรณ์รายรับ ${yearly[yearly.length - 1].year}`,
             value: `฿${yearly[yearly.length - 1].revenue.toLocaleString()}`,
             sub: 'คาดการณ์ Linear Regression',
             gradient: 'linear-gradient(135deg, #C5A028, #9a7d1e)',
@@ -210,8 +210,8 @@ export default function BudgetForecastPage() {
                 {statCards.map((sc, i) => (
                     <div key={i} style={{ ...card, position: 'relative', overflow: 'hidden' }}>
                         <div style={{ position: 'absolute', top: 0, right: 0, width: '60px', height: '60px', background: sc.gradient, borderRadius: '0 16px 0 40px', opacity: 0.25 }} />
-                        <div style={{ fontSize: '0.82rem', color: '#9ca3af', fontWeight: 600, marginBottom: '6px' }}>
-                            {sc.icon} {sc.label}
+                        <div style={{ fontSize: '0.82rem', color: '#9ca3af', fontWeight: 600, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <sc.Icon size={15} /> {sc.label}
                         </div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 800, color: sc.valueColor, marginBottom: '4px' }}>
                             {sc.value}
@@ -225,7 +225,7 @@ export default function BudgetForecastPage() {
             <div style={{ ...card, marginBottom: '24px', padding: 0, overflow: 'hidden' }}>
                 <div style={{ padding: '20px 24px 0' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>
-                        📊 แนวโน้มงบประมาณและการใช้จ่าย (2560 – ปัจจุบัน)
+                        แนวโน้มงบประมาณและการใช้จ่าย (2560 – ปัจจุบัน)
                     </h3>
                     <p style={{ color: '#6b7280', fontSize: '0.82rem', margin: '4px 0 0' }}>
                         ย้อนหลัง + พยากรณ์ 2 ปี (* = พยากรณ์ด้วย Linear Regression)
@@ -239,7 +239,7 @@ export default function BudgetForecastPage() {
             {/* ── Yearly Detail Table ── */}
             <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: '24px' }}>
                 <div style={{ padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>📋 รายละเอียดงบประมาณรายปี</h3>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>รายละเอียดงบประมาณรายปี</h3>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -292,7 +292,7 @@ export default function BudgetForecastPage() {
                                                 background: statusColor(y.type) + '18',
                                                 border: `1px solid ${statusColor(y.type)}30`,
                                             }}>
-                                                {y.type === 'actual' ? 'ข้อมูลจริง' : '⚡ พยากรณ์'}
+                                                {y.type === 'actual' ? 'ข้อมูลจริง' : '* พยากรณ์'}
                                             </span>
                                         </td>
                                     </tr>
@@ -308,7 +308,7 @@ export default function BudgetForecastPage() {
                 {/* Revenue */}
                 <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
                     <div style={{ padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>💰 โครงสร้างรายรับ ปี {latestYear.year}</h3>
+                        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>โครงสร้างรายรับ ปี {latestYear.year}</h3>
                     </div>
                     <div style={{ padding: '12px 0' }}>
                         {latestYear.revenueBreakdown.map((item, i) => {
@@ -336,7 +336,7 @@ export default function BudgetForecastPage() {
                 {/* Expense */}
                 <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
                     <div style={{ padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>📊 โครงสร้างรายจ่าย ปี {latestYear.year}</h3>
+                        <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>โครงสร้างรายจ่าย ปี {latestYear.year}</h3>
                     </div>
                     <div style={{ padding: '12px 0' }}>
                         {latestYear.expenseBreakdown.map((item, i) => {

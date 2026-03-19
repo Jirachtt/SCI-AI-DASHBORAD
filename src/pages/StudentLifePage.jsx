@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { studentLifeData } from '../data/mockData';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Users } from 'lucide-react';
 import { Doughnut, Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
@@ -82,7 +82,7 @@ export default function StudentLifePage() {
 
             <div className="section-header">
                 <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #A23B72, #7B2D8E)' }}>
-                    🎯
+                    <Users size={22} color="#fff" />
                 </div>
                 <div>
                     <h2>กิจกรรมและพฤติกรรม</h2>
@@ -156,7 +156,7 @@ export default function StudentLifePage() {
             {/* Library */}
             <div className="data-table-container animate-in" style={{ marginTop: 8 }}>
                 <div className="data-table-header">
-                    <span className="data-table-title">📖 สถานะห้องสมุด</span>
+                    <span className="data-table-title">สถานะห้องสมุด</span>
                 </div>
                 <table className="data-table">
                     <thead>
@@ -176,7 +176,7 @@ export default function StudentLifePage() {
                                 <td>{book.dueDate}</td>
                                 <td>
                                     <span className={`status-badge ${book.status === 'เกินกำหนด' ? 'overdue' :
-                                            book.status === 'ใกล้กำหนด' ? 'due-soon' : 'normal'
+                                        book.status === 'ใกล้กำหนด' ? 'due-soon' : 'normal'
                                         }`}>
                                         {book.status}
                                     </span>

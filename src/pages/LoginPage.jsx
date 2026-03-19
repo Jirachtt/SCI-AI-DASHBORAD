@@ -57,7 +57,7 @@ export default function LoginPage() {
                         <p>ระบบสารสนเทศมหาวิทยาลัยแม่โจ้</p>
                     </div>
 
-                    {error && <div className="login-error">⚠️ {error}</div>}
+                    {error && <div className="login-error">{error}</div>}
 
                     <form className="login-form" onSubmit={handleSubmit}>
                         <div className="form-group">

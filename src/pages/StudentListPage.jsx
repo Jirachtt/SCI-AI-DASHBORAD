@@ -86,7 +86,7 @@ export default function StudentListPage() {
     const yearStats = [1, 2, 3, 4].map(y => ({
         year: y,
         count: students.filter(s => s.year === y).length,
-        icon: ['📘', '📗', '📙', '📕'][y - 1],
+        icon: [`Y1`, `Y2`, `Y3`, `Y4`][y - 1],
         gradient: [
             'linear-gradient(135deg, #2E86AB, #1a6a8c)',
             'linear-gradient(135deg, #006838, #004d29)',
@@ -294,7 +294,7 @@ export default function StudentListPage() {
                                 borderColor: showAll ? '#006838' : 'rgba(255,255,255,0.12)',
                                 fontWeight: 600, fontSize: '0.82rem',
                             }}>
-                            {showAll ? '📋 แบ่งหน้า' : '📄 แสดงทั้งหมด'}
+                            {showAll ? 'แบ่งหน้า' : 'แสดงทั้งหมด'}
                         </button>
                         {!showAll && totalPages > 1 && (
                             <>

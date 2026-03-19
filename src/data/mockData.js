@@ -160,10 +160,10 @@ export const studentStatsData = {
     current: {
         total: 19821,
         byLevel: [
-            { level: 'ปริญญาตรี', count: 19062, color: '#006838', icon: '🎓' },
-            { level: 'ปริญญาโท', count: 450, color: '#2E86AB', icon: '📘' },
-            { level: 'ปริญญาเอก', count: 236, color: '#A23B72', icon: '🏅' },
-            { level: 'ประกาศนียบัตร', count: 73, color: '#C5A028', icon: '📜' }
+            { level: 'ปริญญาตรี', count: 19062, color: '#006838', icon: 'BSc' },
+            { level: 'ปริญญาโท', count: 450, color: '#2E86AB', icon: 'MSc' },
+            { level: 'ปริญญาเอก', count: 236, color: '#A23B72', icon: 'PhD' },
+            { level: 'ประกาศนียบัตร', count: 73, color: '#C5A028', icon: 'Cert' }
         ]
     },
     byFaculty: [
@@ -202,10 +202,10 @@ export const studentStatsData = {
         name: 'คณะวิทยาศาสตร์',
         total: 1591,
         byLevel: [
-            { level: 'ปริญญาตรี', count: 1572, color: '#006838', icon: '🎓' },
-            { level: 'ปริญญาโท', count: 15, color: '#2E86AB', icon: '📘' },
-            { level: 'ปริญญาเอก', count: 4, color: '#A23B72', icon: '🏅' },
-            { level: 'ประกาศนียบัตร', count: 0, color: '#C5A028', icon: '📜' }
+            { level: 'ปริญญาตรี', count: 1572, color: '#006838', icon: 'BSc' },
+            { level: 'ปริญญาโท', count: 15, color: '#2E86AB', icon: 'MSc' },
+            { level: 'ปริญญาเอก', count: 4, color: '#A23B72', icon: 'PhD' },
+            { level: 'ประกาศนียบัตร', count: 0, color: '#C5A028', icon: 'Cert' }
         ],
         // จำนวนนิสิตแยกตามรหัสนักศึกษา (ปีที่เข้าศึกษา)
         byEnrollmentYear: [

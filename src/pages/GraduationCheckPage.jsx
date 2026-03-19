@@ -150,7 +150,7 @@ export default function GraduationCheckPage() {
             {/* ── Activity Detail Breakdown ── */}
             <div style={{ ...cardStyle, marginBottom: '28px' }}>
                 <div style={headerStyle}>
-                    <span style={labelStyle}>📊 รายละเอียดการเข้าร่วมกิจกรรม (เกณฑ์หลักสูตร 4 ปี)</span>
+                    <span style={labelStyle}>รายละเอียดการเข้าร่วมกิจกรรม (เกณฑ์หลักสูตร 4 ปี)</span>
                 </div>
 
                 {/* Table-like layout */}

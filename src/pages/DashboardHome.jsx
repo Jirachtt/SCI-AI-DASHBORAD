@@ -4,63 +4,67 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import { dashboardSummary } from '../data/mockData';
 import { getDashboardInsights } from '../services/geminiService';
-import { CreditCard, DollarSign, Users, ChevronRight, GraduationCap, BookOpen, TrendingUp, Lock, BarChart3, Microscope, Sparkles, Settings2 } from 'lucide-react';
+import {
+    CreditCard, DollarSign, Users, ChevronRight, GraduationCap, BookOpen,
+    TrendingUp, Lock, BarChart3, Sparkles, Settings2, Target,
+    UserCheck, LineChart, Microscope, Wallet, FileBarChart2, ArrowUpRight
+} from 'lucide-react';
 
 const topics = [
     {
-        id: 'tuition',
-        title: 'ค่าธรรมเนียมการศึกษา',
-        subtitle: 'Tuition Fees',
-        description: 'ข้อมูลค่าเทอม ค่าธรรมเนียมแรกเข้า และค่าใช้จ่ายตลอดหลักสูตร ระบบเหมาจ่าย (Flat Rate)',
-        icon: '💰',
-        bgColor: 'linear-gradient(135deg, #006838, #00a651)',
-        path: '/dashboard/tuition',
-        section: 'tuition',
-        stats: '16,000 - 19,000 ฿/เทอม'
+        id: 'hr',
+        title: 'บุคลากร (HR)',
+        subtitle: 'HR & Faculty Profile',
+        description: 'จำนวนบุคลากร ตำแหน่งทางวิชาการ ความหลากหลาย อัตราส่วนนักศึกษา:อาจารย์',
+        Icon: Users,
+        bgColor: 'linear-gradient(135deg, #2E86AB, #1a5276)',
+        path: '/dashboard/hr',
+        section: 'hr_overview',
+        stats: '113 คน (คณะวิทย์)'
     },
     {
         id: 'student-stats',
-        title: 'สถิตินิสิตปัจจุบัน',
-        subtitle: 'Current Student Statistics',
-        description: 'จำนวนนิสิตแยกตามระดับ ป.ตรี ป.โท ป.เอก แนวโน้มและพยากรณ์จำนวนนิสิต',
-        icon: '📊',
+        title: 'นักศึกษา (Student)',
+        subtitle: 'Student Lifecycle & Outcomes',
+        description: 'สถิตินิสิตปัจจุบัน การรับเข้า สำเร็จการศึกษา กิจกรรม/พฤติกรรม',
+        Icon: GraduationCap,
         bgColor: 'linear-gradient(135deg, #7B68EE, #5B4FCF)',
         path: '/dashboard/student-stats',
         section: 'student_stats',
         stats: '19,821 คน (อ้างอิง MJU)'
     },
     {
-        id: 'budget-forecast',
-        title: 'พยากรณ์งบประมาณ',
-        subtitle: 'Budget Forecast',
-        description: 'รายรับ-รายจ่ายมหาวิทยาลัยย้อนหลัง 4 ปี พร้อมพยากรณ์ 2 ปีข้างหน้า',
-        icon: '📈',
-        bgColor: 'linear-gradient(135deg, #E91E63, #C2185B)',
-        path: '/dashboard/budget-forecast',
-        section: 'budget_forecast',
-        stats: '~1,920 ล้านบาท/ปี'
+        id: 'research',
+        title: 'การวิจัย (Research)',
+        subtitle: 'Research & Innovation',
+        description: 'ผลงานตีพิมพ์ งบวิจัย สิทธิบัตร นวัตกรรม Benchmarking กับมหาวิทยาลัยอื่น',
+        Icon: Microscope,
+        bgColor: 'linear-gradient(135deg, #006838, #00a651)',
+        path: '/dashboard/research',
+        section: 'research_overview',
+        stats: '1,284 publications'
     },
     {
         id: 'financial',
-        title: 'การเงินและงานทะเบียน',
-        subtitle: 'Financial & Administrative',
-        description: 'สถานะค่าเทอม ทุนการศึกษา คำร้องต่างๆ และประวัติการเงิน',
-        icon: '🏦',
+        title: 'การเงิน (Finance)',
+        subtitle: 'Financial Viability',
+        description: 'รายรับ-รายจ่าย ค่าธรรมเนียม งบประมาณคณะ พยากรณ์งบประมาณ AI',
+        Icon: Wallet,
         bgColor: 'linear-gradient(135deg, #C5A028, #9a7d1e)',
         path: '/dashboard/financial',
         section: 'financial',
-        stats: 'ค้างชำระ 18,500 ฿'
+        stats: '~1,920 ล้านบาท/ปี'
     },
     {
-        id: 'student-life',
-        title: 'กิจกรรมและพฤติกรรม',
-        subtitle: 'Student Life & Activity',
-        description: 'ชั่วโมงกิจกรรม สถานะห้องสมุด และคะแนนความประพฤติ',
-        icon: '🎯',
+        id: 'strategic',
+        title: 'ยุทธศาสตร์ (OKR)',
+        subtitle: 'Strategic & OKR Monitoring',
+        description: 'เป้าหมายยุทธศาสตร์ OKR Monitoring ประสิทธิภาพ 5 ด้าน',
+        Icon: Target,
         bgColor: 'linear-gradient(135deg, #A23B72, #7B2D8E)',
-        path: '/dashboard/student-life',
-        section: 'student_life',
-        stats: '38/60 ชั่วโมง'
+        path: '/dashboard/strategic',
+        section: 'strategic_overview',
+        stats: 'OKR Progress'
     }
 ];
 
@@ -69,6 +73,7 @@ export default function DashboardHome() {
     const sci = dashboardSummary.faculties.find(f => f.name === 'คณะวิทยาศาสตร์');
     const [insights, setInsights] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [showForecast, setShowForecast] = useState(false);
     const [cardOrder, setCardOrder] = useState([0, 1, 2, 3]);
     const dragItem = useRef(null);
     const dragOverItem = useRef(null);
@@ -77,12 +82,9 @@ export default function DashboardHome() {
         getDashboardInsights().then(data => setInsights(data));
     }, []);
 
-    // Science faculty sub-card data for each stat card
     const scienceSubData = [
         {
-            key: 'students',
-            value: sci.totalStudents.toLocaleString(),
-            label: 'นักศึกษาคณะวิทยาศาสตร์',
+            key: 'students', value: sci.totalStudents.toLocaleString(), label: 'นักศึกษาคณะวิทยาศาสตร์',
             pct: ((sci.totalStudents / dashboardSummary.totalStudents) * 100).toFixed(1),
             color: '#006838',
             details: [
@@ -92,9 +94,7 @@ export default function DashboardHome() {
             ]
         },
         {
-            key: 'courses',
-            value: sci.totalCourses,
-            label: 'รายวิชาคณะวิทยาศาสตร์',
+            key: 'courses', value: sci.totalCourses, label: 'รายวิชาคณะวิทยาศาสตร์',
             pct: ((sci.totalCourses / dashboardSummary.totalCourses) * 100).toFixed(1),
             color: '#2E86AB',
             details: [
@@ -104,11 +104,8 @@ export default function DashboardHome() {
             ]
         },
         {
-            key: 'gpa',
-            value: sci.avgGPA,
-            label: 'GPA คณะวิทยาศาสตร์',
-            pct: null,
-            color: '#C5A028',
+            key: 'gpa', value: sci.avgGPA, label: 'GPA คณะวิทยาศาสตร์',
+            pct: null, color: '#C5A028',
             comparison: { label: 'สูงกว่ามหาวิทยาลัย', diff: '+0.06' },
             details: [
                 { label: 'เกรดเฉลี่ย ป.ตรี', value: '3.15', color: '#00a651' },
@@ -117,11 +114,8 @@ export default function DashboardHome() {
             ]
         },
         {
-            key: 'graduation',
-            value: sci.graduationRate + '%',
-            label: 'อัตราสำเร็จ คณะวิทยาศาสตร์',
-            pct: null,
-            color: '#A23B72',
+            key: 'graduation', value: sci.graduationRate + '%', label: 'อัตราสำเร็จ คณะวิทยาศาสตร์',
+            pct: null, color: '#A23B72',
             comparison: { label: 'สูงกว่ามหาวิทยาลัย', diff: '+1.7%' },
             details: [
                 { label: 'สำเร็จ ป.ตรี', value: '90.8%', color: '#00a651' },
@@ -132,81 +126,168 @@ export default function DashboardHome() {
     ];
 
     const statCards = [
-        {
-            icon: <GraduationCap size={22} />,
-            gradient: 'linear-gradient(135deg, #006838, #00a651)',
-            value: dashboardSummary.totalStudents.toLocaleString(),
-            label: 'นักศึกษาทั้งหมด',
-            trend: '+3.2%',
-        },
-        {
-            icon: <BookOpen size={22} />,
-            gradient: 'linear-gradient(135deg, #2E86AB, #1a5276)',
-            value: dashboardSummary.totalCourses,
-            label: 'รายวิชาเปิดสอน',
-            trend: null,
-        },
-        {
-            icon: <TrendingUp size={22} />,
-            gradient: 'linear-gradient(135deg, #C5A028, #9a7d1e)',
-            value: dashboardSummary.avgGPA,
-            label: 'เกรดเฉลี่ยรวม (GPA)',
-            trend: null,
-        },
-        {
-            icon: <Users size={22} />,
-            gradient: 'linear-gradient(135deg, #A23B72, #7B2D8E)',
-            value: dashboardSummary.graduationRate + '%',
-            label: 'อัตราสำเร็จการศึกษา',
-            trend: '+1.5%',
-        }
+        { icon: <GraduationCap size={22} />, gradient: 'linear-gradient(135deg, #006838, #00a651)', value: dashboardSummary.totalStudents.toLocaleString(), label: 'นักศึกษาทั้งหมด', trend: '+3.2%' },
+        { icon: <BookOpen size={22} />, gradient: 'linear-gradient(135deg, #2E86AB, #1a5276)', value: dashboardSummary.totalCourses, label: 'รายวิชาเปิดสอน', trend: null },
+        { icon: <TrendingUp size={22} />, gradient: 'linear-gradient(135deg, #C5A028, #9a7d1e)', value: dashboardSummary.avgGPA, label: 'เกรดเฉลี่ยรวม (GPA)', trend: null },
+        { icon: <Users size={22} />, gradient: 'linear-gradient(135deg, #A23B72, #7B2D8E)', value: dashboardSummary.graduationRate + '%', label: 'อัตราสำเร็จการศึกษา', trend: '+1.5%' }
+    ];
+
+    // Forecast data with lucide icons instead of emojis
+    const forecasts = [
+        { label: 'นักศึกษาปี 2569', actual: '19,821', forecast: '22,500', trend: '+13.5%', color: '#006838', FcIcon: GraduationCap },
+        { label: 'งบประมาณปี 2569 (ล้าน฿)', actual: '1,920', forecast: '2,035', trend: '+6.0%', color: '#C5A028', FcIcon: Wallet },
+        { label: 'ผลงาน Scopus ปี 2569', actual: '78', forecast: '92', trend: '+17.9%', color: '#2E86AB', FcIcon: FileBarChart2 },
+        { label: 'อัตราสำเร็จการศึกษา', actual: '89.5%', forecast: '92.1%', trend: '+2.6%', color: '#A23B72', FcIcon: TrendingUp },
     ];
 
     return (
         <div>
             {/* Welcome Section */}
-            <div style={{ marginBottom: 32 }}>
-                <h2 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8 }}>
-                    สวัสดี, {user?.name} 👋
-                </h2>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
-                    ยินดีต้อนรับสู่ระบบ MJU Dashboard — ข้อมูลสรุปสำหรับ{user?.roleLabel}
-                </p>
+            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                    <h2 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8 }}>
+                        สวัสดี, {user?.name}
+                    </h2>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
+                        ยินดีต้อนรับสู่ Science AI Dashboard — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้
+                    </p>
+                </div>
+
+                {/* Forecasting Button — clean professional style */}
+                <button
+                    onClick={() => setShowForecast(!showForecast)}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        background: showForecast
+                            ? 'linear-gradient(135deg, #006838, #00a651)'
+                            : 'rgba(255,255,255,0.04)',
+                        border: showForecast ? 'none' : '1px solid rgba(255,255,255,0.12)',
+                        color: showForecast ? '#fff' : '#ccc',
+                        padding: '10px 22px', borderRadius: 12, cursor: 'pointer',
+                        fontSize: '0.88rem', fontWeight: 600,
+                        boxShadow: showForecast ? '0 6px 20px rgba(0,104,56,0.35)' : 'none',
+                        transition: 'all 0.3s ease',
+                    }}
+                >
+                    <LineChart size={18} />
+                    Predictive Analytics
+                </button>
             </div>
 
-            {/* Proactive AI Insights */}
+            {/* Forecast Panel (Toggle) */}
+            {showForecast && (
+                <div style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 16, padding: '24px', marginBottom: 28,
+                    animation: 'slideDown 0.4s ease',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                        <div>
+                            <h3 style={{ color: '#fff', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <LineChart size={18} color="#00a651" /> Predictive Analytics
+                            </h3>
+                            <p style={{ color: '#6b7280', fontSize: '0.78rem', marginTop: 4 }}>
+                                Linear Regression จากข้อมูลย้อนหลัง 4 ปี — พยากรณ์ล่วงหน้า 2 ปี
+                            </p>
+                        </div>
+                        <span style={{ fontSize: '0.7rem', color: '#9ca3af', background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: 8 }}>
+                            Forecast FY2569
+                        </span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                        {forecasts.map((fc, i) => {
+                            const FcIcon = fc.FcIcon;
+                            return (
+                                <div key={i} style={{
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid rgba(255,255,255,0.06)',
+                                    borderRadius: 14, padding: '18px',
+                                    transition: 'transform 0.2s, border-color 0.2s',
+                                }}
+                                    onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = `${fc.color}44`; }}
+                                    onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                                        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${fc.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <FcIcon size={18} color={fc.color} />
+                                        </div>
+                                        <span style={{
+                                            fontSize: '0.72rem', fontWeight: 600, padding: '3px 10px', borderRadius: 20,
+                                            background: `${fc.color}15`, color: fc.color,
+                                            display: 'flex', alignItems: 'center', gap: 3,
+                                        }}>
+                                            <ArrowUpRight size={12} />{fc.trend}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: 6 }}>{fc.label}</div>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.68rem', color: '#6b7280' }}>Actual</span>
+                                            <div style={{ fontSize: '0.9rem', color: '#ccc', fontWeight: 500 }}>{fc.actual}</div>
+                                        </div>
+                                        <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.08)' }} />
+                                        <div>
+                                            <span style={{ fontSize: '0.68rem', color: fc.color }}>Forecast</span>
+                                            <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff' }}>{fc.forecast}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+                        <Link to="/dashboard/budget" style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '8px 16px', borderRadius: 10,
+                            background: 'rgba(255,255,255,0.04)', color: '#ccc',
+                            fontSize: '0.8rem', fontWeight: 500, textDecoration: 'none',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            transition: 'background 0.2s',
+                        }}
+                            onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                            onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                        >
+                            <Wallet size={14} /> รายละเอียดพยากรณ์งบประมาณ <ChevronRight size={14} />
+                        </Link>
+                        <Link to="/dashboard/student-stats" style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '8px 16px', borderRadius: 10,
+                            background: 'rgba(255,255,255,0.04)', color: '#ccc',
+                            fontSize: '0.8rem', fontWeight: 500, textDecoration: 'none',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            transition: 'background 0.2s',
+                        }}
+                            onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                            onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                        >
+                            <GraduationCap size={14} /> พยากรณ์จำนวนนักศึกษา <ChevronRight size={14} />
+                        </Link>
+                    </div>
+                </div>
+            )}
+
+            {/* Daily Insights */}
             {insights && (
                 <div style={{
-                    background: 'linear-gradient(145deg, rgba(29, 29, 44, 0.8), rgba(20, 20, 30, 0.9))',
-                    border: '1px solid rgba(0, 255, 136, 0.3)',
-                    borderRadius: 16,
-                    padding: '24px',
-                    marginBottom: 32,
-                    boxShadow: '0 8px 32px rgba(0, 255, 136, 0.1)',
-                    position: 'relative',
-                    overflow: 'hidden'
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderLeft: '3px solid #006838',
+                    borderRadius: 12, padding: '20px 24px', marginBottom: 28,
                 }}>
-                    <div style={{
-                        position: 'absolute', top: -50, right: -50, width: 150, height: 150,
-                        background: 'radial-gradient(circle, rgba(0,255,136,0.2) 0%, rgba(0,0,0,0) 70%)',
-                        borderRadius: '50%'
-                    }} />
                     <h3 style={{
-                        color: '#00ff88', fontSize: '1.2rem', fontWeight: 600,
-                        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16
+                        color: '#e5e7eb', fontSize: '0.92rem', fontWeight: 600,
+                        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14
                     }}>
-                        <Sparkles size={20} /> AI Daily Insights
+                        <Sparkles size={16} color="#00a651" /> Daily Insights
                     </h3>
-                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {insights.map((insight, idx) => (
                             <li key={idx} style={{
-                                display: 'flex', alignItems: 'flex-start', gap: 12,
-                                color: '#e5e7eb', fontSize: '0.95rem', lineHeight: 1.5
+                                display: 'flex', alignItems: 'flex-start', gap: 10,
+                                color: '#9ca3af', fontSize: '0.85rem', lineHeight: 1.5
                             }}>
-                                <div style={{
-                                    minWidth: 8, height: 8, borderRadius: '50%',
-                                    background: '#00ff88', marginTop: 6, boxShadow: '0 0 10px #00ff88'
-                                }} />
+                                <span style={{ color: '#006838', marginTop: 2 }}>—</span>
                                 <span>{insight}</span>
                             </li>
                         ))}
@@ -216,7 +297,9 @@ export default function DashboardHome() {
 
             {/* Quick Stats Toolbar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-secondary)' }}>📊 ภาพรวมสถิติ</h3>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <BarChart3 size={18} color="#9ca3af" /> ภาพรวมสถิติ
+                </h3>
                 <button
                     onClick={() => setIsEditMode(!isEditMode)}
                     style={{
@@ -225,23 +308,21 @@ export default function DashboardHome() {
                         border: '1px solid rgba(255,255,255,0.1)',
                         color: isEditMode ? 'white' : '#9ca3af',
                         padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
-                        fontSize: '0.9rem', transition: 'all 0.2s',
+                        fontSize: '0.82rem', transition: 'all 0.2s',
                         boxShadow: isEditMode ? '0 4px 12px rgba(0, 166, 81, 0.3)' : 'none'
                     }}
                 >
-                    <Settings2 size={16} /> {isEditMode ? 'บันทึก Canvas' : 'จัดเรียง Widget'}
+                    <Settings2 size={15} /> {isEditMode ? 'บันทึก' : 'จัดเรียง'}
                 </button>
             </div>
 
-            {/* Quick Stats Grid (Draggable Canvas) */}
+            {/* Quick Stats Grid */}
             <div className="stats-grid">
                 {cardOrder.map((orderIdx, displayIdx) => {
                     const card = statCards[orderIdx];
                     const sciData = scienceSubData[orderIdx];
-
                     return (
-                        <div
-                            key={orderIdx}
+                        <div key={orderIdx}
                             draggable={isEditMode}
                             onDragStart={() => { dragItem.current = displayIdx; }}
                             onDragEnter={() => { dragOverItem.current = displayIdx; }}
@@ -258,83 +339,38 @@ export default function DashboardHome() {
                             style={{
                                 display: 'flex', flexDirection: 'column',
                                 cursor: isEditMode ? 'grab' : 'default',
-                                opacity: 1,
                                 border: isEditMode ? '2px dashed rgba(0, 166, 81, 0.4)' : '2px dashed transparent',
-                                borderRadius: 18,
-                                transition: 'border 0.3s, box-shadow 0.3s',
+                                borderRadius: 18, transition: 'border 0.3s',
                                 boxShadow: isEditMode ? '0 0 15px rgba(0, 166, 81, 0.15)' : 'none'
                             }}
                         >
-                            {/* Main Stat Card */}
-                            <div className="stat-card animate-in" style={{
-                                marginBottom: 0,
-                                borderBottomLeftRadius: 0,
-                                borderBottomRightRadius: 0,
-                                borderBottom: 'none',
-                                position: 'relative',
-                                zIndex: 2
-                            }}>
+                            <div className="stat-card animate-in" style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: 'none', position: 'relative', zIndex: 2 }}>
                                 <div className="stat-card-header">
-                                    <div className="stat-card-icon" style={{ background: card.gradient }}>
-                                        {card.icon}
-                                    </div>
+                                    <div className="stat-card-icon" style={{ background: card.gradient }}>{card.icon}</div>
                                     {card.trend && <span className="stat-card-trend up">{card.trend}</span>}
                                 </div>
                                 <div className="stat-card-value">{card.value}</div>
                                 <div className="stat-card-label">{card.label}</div>
                             </div>
-
-                            {/* Science Faculty Inline Sub-card (Always Visible) */}
                             <div style={{
-                                background: 'rgba(0, 0, 0, 0.2)',
-                                backdropFilter: 'blur(10px)',
-                                border: '1px solid var(--border-color)',
-                                borderTop: '1px dashed rgba(255, 255, 255, 0.1)',
-                                borderBottomLeftRadius: 16,
-                                borderBottomRightRadius: 16,
-                                padding: '16px 20px',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 12
+                                background: 'rgba(0, 0, 0, 0.2)', backdropFilter: 'blur(10px)',
+                                border: '1px solid var(--border-color)', borderTop: '1px dashed rgba(255, 255, 255, 0.1)',
+                                borderBottomLeftRadius: 16, borderBottomRightRadius: 16,
+                                padding: '16px 20px', position: 'relative', display: 'flex', flexDirection: 'column', gap: 12
                             }}>
-                                {/* Decorative side line */}
-                                <div style={{
-                                    position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
-                                    background: sciData.color
-                                }} />
-
-                                {/* Header */}
+                                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: sciData.color }} />
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <div style={{
-                                            width: 24, height: 24, borderRadius: 6,
-                                            background: `${sciData.color}20`,
-                                            color: sciData.color,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: 12
-                                        }}>🔬</div>
-                                        <span style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>
-                                            {sciData.label}
-                                        </span>
+                                        <div style={{ width: 24, height: 24, borderRadius: 6, background: `${sciData.color}20`, color: sciData.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Microscope size={12} />
+                                        </div>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{sciData.label}</span>
                                     </div>
-                                    <div style={{ fontSize: 18, fontWeight: 700, color: sciData.color }}>
-                                        {sciData.value}
-                                    </div>
+                                    <div style={{ fontSize: 16, fontWeight: 700, color: sciData.color }}>{sciData.value}</div>
                                 </div>
-
-                                {/* Detail breakdown */}
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     {sciData.details.map((d, j) => (
-                                        <div key={j} style={{
-                                            flex: 1,
-                                            background: 'rgba(255, 255, 255, 0.03)',
-                                            borderRadius: 8,
-                                            padding: '8px',
-                                            textAlign: 'center',
-                                            border: '1px solid rgba(255, 255, 255, 0.05)'
-                                        }}>
+                                        <div key={j} style={{ flex: 1, background: 'rgba(255, 255, 255, 0.03)', borderRadius: 8, padding: '8px', textAlign: 'center', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
                                             <div style={{ fontSize: 13, fontWeight: 700, color: d.color }}>{d.value}</div>
                                             <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 2 }}>{d.label}</div>
                                         </div>
@@ -346,32 +382,29 @@ export default function DashboardHome() {
                 })}
             </div>
 
-            {/* Topic Cards */}
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 20, color: 'var(--text-secondary)' }}>
-                📋 หมวดข้อมูลหลัก
+            {/* Topic Cards — 5 Data Domains */}
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 20, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FileBarChart2 size={18} color="#9ca3af" /> หมวดข้อมูลหลัก 5 ด้าน
             </h3>
             <div className="topic-cards-grid">
                 {topics.map((topic) => {
                     const hasAccess = canAccess(user?.role, topic.section);
+                    const TopicIcon = topic.Icon;
                     return (
-                        <Link
-                            key={topic.id}
-                            to={hasAccess ? topic.path : '#'}
+                        <Link key={topic.id} to={hasAccess ? topic.path : '#'}
                             className="topic-card animate-in"
                             onClick={(e) => !hasAccess && e.preventDefault()}
                             style={{ opacity: hasAccess ? 1 : 0.5 }}
                         >
                             <div className="topic-card-icon" style={{ background: topic.bgColor }}>
-                                {topic.icon}
+                                <TopicIcon size={22} color="#fff" />
                             </div>
                             <h3>{topic.title}</h3>
                             <p>{topic.description}</p>
                             <div className="topic-card-footer">
                                 <span>{topic.stats}</span>
                                 {hasAccess ? (
-                                    <span className="view-more">
-                                        ดูรายละเอียด <ChevronRight size={14} />
-                                    </span>
+                                    <span className="view-more">ดูรายละเอียด <ChevronRight size={14} /></span>
                                 ) : (
                                     <span style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                         <Lock size={12} /> ไม่มีสิทธิ์

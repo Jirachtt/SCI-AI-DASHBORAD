@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { tuitionData } from '../data/mockData';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CreditCard } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
@@ -94,7 +94,7 @@ export default function TuitionPage() {
 
             <div className="section-header">
                 <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
-                    💰
+                    <CreditCard size={22} color="#fff" />
                 </div>
                 <div>
                     <h2>ค่าธรรมเนียมการศึกษา</h2>
@@ -126,7 +126,7 @@ export default function TuitionPage() {
 
             {/* Note */}
             <div className="info-box">
-                <h3>📌 หมายเหตุ</h3>
+                <h3>หมายเหตุ</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.7 }}>
                     สาขาคอมพิวเตอร์มักจะมีค่าบำรุงห้องปฏิบัติการ (Lab) รวมอยู่ด้วย ทำให้สูงกว่าสาขาวิทย์ทั่วไปเล็กน้อย
                     ค่าธรรมเนียมแรกเข้า (ปี 1 เทอม 1) บวกเพิ่มประมาณ 2,000 - 3,000 บาท (ค่าขึ้นทะเบียนนักศึกษา, ค่าบัตร ฯลฯ)
@@ -166,7 +166,7 @@ export default function TuitionPage() {
             {showDetail && (
                 <div className="data-table-container animate-in">
                     <div className="data-table-header">
-                        <span className="data-table-title">📋 ประวัติค่าเทอมแต่ละเทอม</span>
+                        <span className="data-table-title">ประวัติค่าเทอมแต่ละเทอม</span>
                     </div>
                     <table className="data-table">
                         <thead>

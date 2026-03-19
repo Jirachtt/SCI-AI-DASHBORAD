@@ -5,39 +5,46 @@ const ACCESS_LEVELS = {
     dean: {
         label: 'ผจก.คณะ',
         level: 1,
+        dataRows: 1000000,
         color: '#C5A028',
         sections: [
             'dashboard', 'tuition', 'tuition_detail',
             'financial', 'financial_detail', 'financial_faculty', 'student_life',
             'student_life_detail', 'faculty_budget', 'staff_management', 'reports',
             'budget_planning', 'student_list', 'graduation_check',
-            'student_stats', 'budget_forecast'
+            'student_stats', 'budget_forecast',
+            'hr_overview', 'research_overview', 'strategic_overview'
         ]
     },
     chair: {
         label: 'ประธานหลักสูตร',
         level: 2,
+        dataRows: 500000,
         color: '#2E86AB',
         sections: [
             'dashboard', 'tuition', 'tuition_detail',
             'financial', 'financial_detail', 'student_life', 'student_life_detail', 'reports',
             'budget_planning', 'student_list', 'graduation_check',
-            'student_stats', 'budget_forecast'
+            'student_stats', 'budget_forecast',
+            'hr_overview', 'research_overview', 'strategic_overview'
         ]
     },
     staff: {
         label: 'Staff',
         level: 3,
+        dataRows: 300000,
         color: '#006838',
         sections: [
             'dashboard', 'tuition',
             'financial', 'student_life', 'student_life_detail',
-            'graduation_check', 'student_stats', 'budget_forecast'
+            'graduation_check', 'student_stats', 'budget_forecast',
+            'hr_overview', 'research_overview'
         ]
     },
     general: {
         label: 'ทั่วไป',
         level: 4,
+        dataRows: 100000,
         color: '#7B68EE',
         sections: [
             'dashboard', 'tuition', 'student_life',
@@ -47,6 +54,7 @@ const ACCESS_LEVELS = {
     student: {
         label: 'นักศึกษา',
         level: 4,
+        dataRows: 100000,
         color: '#E91E63',
         sections: [
             'dashboard', 'tuition', 'student_life',
@@ -68,6 +76,11 @@ export function getRoleInfo(role) {
 export function getRoleBadgeColor(role) {
     const info = ACCESS_LEVELS[role];
     return info ? info.color : '#888';
+}
+
+export function getDataRowLimit(role) {
+    const info = ACCESS_LEVELS[role];
+    return info ? info.dataRows : 100000;
 }
 
 export default ACCESS_LEVELS;
