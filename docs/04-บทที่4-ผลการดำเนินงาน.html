@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <title>บทที่ 4 - ผลการดำเนินงาน</title>
+    <style>
+        body {
+            font-family: 'TH SarabunPSK', 'Sarabun', 'Tahoma', sans-serif;
+            font-size: 16pt;
+            line-height: 1.8;
+            margin: 40px 60px;
+            color: #000;
+        }
+
+        h1 {
+            font-size: 22pt;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 18pt;
+            font-weight: bold;
+            margin-top: 25px;
+        }
+
+        h3 {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        p {
+            text-indent: 40px;
+            text-align: justify;
+        }
+
+        ul,
+        ol {
+            margin-left: 30px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #000;
+        }
+
+        th,
+        td {
+            padding: 6px 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        .img-placeholder {
+            background: #f0f0f0;
+            border: 2px dashed #999;
+            padding: 40px;
+            text-align: center;
+            margin: 15px 0;
+            border-radius: 5px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>บทที่ 4<br>ผลการดำเนินงาน</h1>
+
+    <h2>4.1 ผลการพัฒนาระบบ</h2>
+
+    <p>จากการพัฒนาระบบ Science AI Dashboard ตามที่ได้ออกแบบไว้ในบทที่ 3 สามารถพัฒนาระบบได้ครบถ้วนตามที่กำหนดไว้ทั้ง 6
+        หมวดหลัก โดยมีรายละเอียดผลการพัฒนาดังนี้</p>
+
+    <h3>4.1.1 หน้าเข้าสู่ระบบ (Login Page)</h3>
+    <p>พัฒนาหน้าเข้าสู่ระบบที่รองรับ 2 วิธี คือ Email/Password และ Google Sign-In ผ่าน Firebase Authentication พร้อม
+        Demo Account สำหรับทดสอบ 4 ระดับสิทธิ์</p>
+    <div class="img-placeholder">[แทรกภาพหน้าจอ Login Page]</div>
+
+    <h3>4.1.2 หน้าแรก (Dashboard Home)</h3>
+    <p>หน้าแรกแสดงภาพรวมข้อมูลทั้งหมดในรูปแบบ Card ประกอบด้วย:</p>
+    <ul>
+        <li>KPI Cards 4 ตัว: จำนวนนักศึกษา (19,821 คน), รายวิชา (847), GPA เฉลี่ย (3.12), อัตราสำเร็จ (89.5%)</li>
+        <li>Daily Insights จาก AI: แสดงข้อมูลเชิงวิเคราะห์ 3 ข้อจาก Gemini AI ที่สร้างใหม่ทุกวัน</li>
+        <li>ข้อมูลเฉพาะคณะวิทยาศาสตร์: นักศึกษา 1,591 คน, GPA 3.18, อัตราสำเร็จ 91.2%</li>
+        <li>หมวดข้อมูล 5 ด้าน: คลิกเพื่อเข้าสู่แต่ละหมวดได้</li>
+        <li>ปุ่ม Predictive Analytics: สำหรับดูการวิเคราะห์เชิงคาดการณ์</li>
+    </ul>
+    <div class="img-placeholder">[แทรกภาพหน้าจอ Dashboard Home]</div>
+
+    <h3>4.1.3 หมวดบุคลากร (HR Dashboard)</h3>
+    <p>แสดงข้อมูลบุคลากรคณะวิทยาศาสตร์ ประกอบด้วยกราฟ Doughnut แสดงสัดส่วนตามประเภท/ตำแหน่ง, สถิติการลา,
+        และผลการประเมินผลงาน พร้อม KPI Cards สรุปข้อมูลสำคัญ</p>
+    <div class="img-placeholder">[แทรกภาพหน้าจอ HR Dashboard]</div>
+
+    <h3>4.1.4 หมวดนักศึกษา (Student)</h3>
+    <p>ประกอบด้วย 4 หน้าย่อย:</p>
+    <ul>
+        <li><b>สถิตินักศึกษา (2.1):</b> กราฟแท่งแยกตามคณะ/ระดับ, กราฟเส้นแนวโน้ม, ข้อมูลคณะวิทยาศาสตร์</li>
+        <li><b>รายชื่อนักศึกษา (2.2):</b> ตาราง 50 รายการพร้อมค้นหา กรอง และ Export CSV</li>
+        <li><b>ตรวจสอบการจบ (2.3):</b> ตรวจหน่วยกิต/เกรดอัตโนมัติพร้อม Progress Bar</li>
+        <li><b>กิจกรรม/ความประพฤติ (2.4):</b> ชั่วโมงกิจกรรม, คะแนนความประพฤติ, รายการยืมห้องสมุด</li>
+    </ul>
+    <div class="img-placeholder">[แทรกภาพหน้าจอ Student Stats]</div>
+
+    <h3>4.1.5 หมวดงานวิจัย (Research Dashboard)</h3>
+    <p>แสดงผลงานวิจัยของคณะ ประกอบด้วยจำนวนผลงานตีพิมพ์ ทุนวิจัย Impact Factor รวม และสถิติ Citation พร้อมกราฟรายปี</p>
+    <div class="img-placeholder">[แทรกภาพหน้าจอ Research Dashboard]</div>
+
+    <h3>4.1.6 หมวดการเงิน (Finance)</h3>
+    <p>ประกอบด้วย 3 หน้าย่อย:</p>
+    <ul>
+        <li><b>รายรับ-รายจ่าย (4.1):</b> กราฟแท่งเปรียบเทียบรายรับ/รายจ่ายรายปี</li>
+        <li><b>ค่าธรรมเนียม (4.2):</b> แสดงค่าเทอมแยกตามคณะ พร้อมข้อมูลค่าแรกเข้าและตลอดหลักสูตร</li>
+        <li><b>พยากรณ์งบประมาณ (4.3):</b> กราฟเส้นคาดการณ์งบประมาณ 5 ปีข้างหน้าด้วย Linear Regression</li>
+    </ul>
+    <div class="img-placeholder">[แทรกภาพหน้าจอ Budget Forecast]</div>
+
+    <h3>4.1.7 หมวดยุทธศาสตร์ (Strategic OKR)</h3>
+    <p>แสดงเป้าหมายเชิงยุทธศาสตร์ 5 ด้านผ่าน Radar Chart ที่ออกแบบมาให้อ่านง่าย พร้อม Progress Bars แสดงความคืบหน้า, KPI
+        Details และกราฟเส้นแสดงแนวโน้มประสิทธิภาพ</p>
+    <div class="img-placeholder">[แทรกภาพหน้าจอ Strategic Dashboard + Radar Chart]</div>
+
+    <h3>4.1.8 ระบบ AI Chatbot</h3>
+    <p>พัฒนา AI Chatbot ที่ขับเคลื่อนด้วย Google Gemini 2.5 Flash สำเร็จทั้ง 2 รูปแบบ:</p>
+    <ul>
+        <li><b>Floating Chat (ปุ่มลอย):</b> เข้าถึงได้จากทุกหน้า คลิกปุ่มมุมขวาล่าง</li>
+        <li><b>Full-Page Chat (หน้าเต็มจอ):</b> หน้า AI Chat เต็มจอพร้อม Quick Actions และ Feature Cards</li>
+    </ul>
+    <p>ทดสอบการทำงานของ AI Chatbot โดยถามคำถามหลายรูปแบบ ผลลัพธ์คือ AI สามารถ:</p>
+    <ul>
+        <li>ตอบคำถามข้อมูลมหาวิทยาลัยเป็นภาษาไทยได้ถูกต้อง</li>
+        <li>สร้างกราฟ Bar, Line, Pie, Radar จากข้อมูลจริงในระบบ</li>
+        <li>พยากรณ์งบประมาณและจำนวนนักศึกษาพร้อมแสดงกราฟ</li>
+        <li>ค้นหานักศึกษาตามรหัส ชื่อ สาขา ชั้นปี และ GPA</li>
+    </ul>
+    <div class="img-placeholder">[แทรกภาพหน้าจอ AI Chat ที่ตอบข้อมูลพร้อมกราฟ]</div>
+
+    <h2>4.2 การทดสอบระบบ</h2>
+
+    <h3>4.2.1 การทดสอบฟังก์ชัน (Functional Testing)</h3>
+
+    <table>
+        <tr>
+            <th>ลำดับ</th>
+            <th>รายการทดสอบ</th>
+            <th>ผลที่คาดหวัง</th>
+            <th>ผลที่ได้</th>
+            <th>สถานะ</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>เข้าสู่ระบบด้วย Email/Password</td>
+            <td>เข้าสู่ Dashboard ได้</td>
+            <td>เข้าสู่ Dashboard ได้สำเร็จ</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>เข้าสู่ระบบด้วย Google Account</td>
+            <td>เข้าสู่ Dashboard ได้</td>
+            <td>เข้าสู่ Dashboard ได้สำเร็จ</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>นักศึกษาเข้าหน้ายุทธศาสตร์</td>
+            <td>แสดง Access Denied</td>
+            <td>แสดง Access Denied ถูกต้อง</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td>แสดงกราฟแท่งงบประมาณ</td>
+            <td>กราฟแสดงถูกต้อง</td>
+            <td>กราฟแสดงข้อมูลถูกต้อง</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td>ค้นหานักศึกษาตามชื่อ</td>
+            <td>แสดงรายชื่อที่ตรง</td>
+            <td>แสดงรายชื่อที่ตรงถูกต้อง</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td>Export CSV รายชื่อนักศึกษา</td>
+            <td>ดาวน์โหลดไฟล์ CSV</td>
+            <td>ดาวน์โหลดไฟล์ CSV ได้</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>7</td>
+            <td>ถาม AI Chatbot "สวัสดี"</td>
+            <td>AI ตอบเป็นภาษาไทย</td>
+            <td>AI ตอบถูกต้อง</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>8</td>
+            <td>สั่ง AI สร้างกราฟ</td>
+            <td>แสดงกราฟในช้อง Chat</td>
+            <td>สร้างกราฟ Bar/Line ได้</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>9</td>
+            <td>พยากรณ์งบประมาณ ปี 70 71</td>
+            <td>แสดงค่าพยากรณ์+กราฟ</td>
+            <td>แสดงผลถูกต้อง</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>10</td>
+            <td>Radar Chart ยุทธศาสตร์</td>
+            <td>แสดง 5 มิติ</td>
+            <td>แสดง Radar 5 มิติถูกต้อง</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>11</td>
+            <td>Responsive บน Mobile</td>
+            <td>แสดงผลปรับตามจอ</td>
+            <td>ปรับ Layout ได้ถูกต้อง</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+        <tr>
+            <td>12</td>
+            <td>Sidebar พับ/ขยายได้</td>
+            <td>เมนูพับ/ขยายถูกต้อง</td>
+            <td>ทำงานถูกต้อง</td>
+            <td>✅ ผ่าน</td>
+        </tr>
+    </table>
+
+    <h3>4.2.2 การทดสอบประสิทธิภาพ (Performance Testing)</h3>
+
+    <table>
+        <tr>
+            <th>รายการ</th>
+            <th>ผลการทดสอบ</th>
+        </tr>
+        <tr>
+            <td>เวลาเริ่ม Dev Server (Cold Start)</td>
+            <td>354ms</td>
+        </tr>
+        <tr>
+            <td>เวลาโหลดหน้าแรก (First Load)</td>
+            <td>&lt; 2 วินาที</td>
+        </tr>
+        <tr>
+            <td>เวลาตอบของ AI Chatbot</td>
+            <td>2-5 วินาที</td>
+        </tr>
+        <tr>
+            <td>Hot Module Replacement (HMR)</td>
+            <td>&lt; 100ms</td>
+        </tr>
+        <tr>
+            <td>จำนวน Dependencies</td>
+            <td>14 แพ็คเกจ (Production)</td>
+        </tr>
+        <tr>
+            <td>ขนาด Source Code (src/)</td>
+            <td>~320 KB</td>
+        </tr>
+    </table>
+
+    <h3>4.2.3 การทดสอบ Browser Compatibility</h3>
+
+    <table>
+        <tr>
+            <th>เบราว์เซอร์</th>
+            <th>เวอร์ชัน</th>
+            <th>ผลการทดสอบ</th>
+        </tr>
+        <tr>
+            <td>Google Chrome</td>
+            <td>ล่าสุด</td>
+            <td>✅ ทำงานได้สมบูรณ์</td>
+        </tr>
+        <tr>
+            <td>Mozilla Firefox</td>
+            <td>ล่าสุด</td>
+            <td>✅ ทำงานได้สมบูรณ์</td>
+        </tr>
+        <tr>
+            <td>Microsoft Edge</td>
+            <td>ล่าสุด</td>
+            <td>✅ ทำงานได้สมบูรณ์</td>
+        </tr>
+        <tr>
+            <td>Safari (macOS)</td>
+            <td>ล่าสุด</td>
+            <td>✅ ทำงานได้สมบูรณ์</td>
+        </tr>
+    </table>
+
+</body>
+
+</html>

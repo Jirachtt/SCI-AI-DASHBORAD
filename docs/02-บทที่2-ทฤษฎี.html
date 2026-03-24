@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <title>บทที่ 2 - ทฤษฎีและเทคโนโลยีที่เกี่ยวข้อง</title>
+    <style>
+        body {
+            font-family: 'TH SarabunPSK', 'Sarabun', 'Tahoma', sans-serif;
+            font-size: 16pt;
+            line-height: 1.8;
+            margin: 40px 60px;
+            color: #000;
+        }
+
+        h1 {
+            font-size: 22pt;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 18pt;
+            font-weight: bold;
+            margin-top: 25px;
+        }
+
+        h3 {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        p {
+            text-indent: 40px;
+            text-align: justify;
+        }
+
+        ul,
+        ol {
+            margin-left: 30px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 14pt;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>บทที่ 2<br>ทฤษฎีและเทคโนโลยีที่เกี่ยวข้อง</h1>
+
+    <p>ในบทนี้จะกล่าวถึงทฤษฎีและเทคโนโลยีต่างๆ ที่นำมาใช้ในการพัฒนาระบบ Science AI Dashboard โดยครอบคลุมทั้ง Framework,
+        Library, API และแนวคิดการออกแบบที่สำคัญ</p>
+
+    <h2>2.1 React.js Framework</h2>
+    <p>React เป็น JavaScript Library สำหรับสร้าง User Interface (UI) พัฒนาโดย Meta (Facebook) ซึ่งใช้แนวคิด
+        Component-Based Architecture โดยแบ่งหน้าจอออกเป็นส่วนย่อยๆ ที่เรียกว่า Component แต่ละ Component มีหน้าที่เฉพาะ
+        สามารถนำกลับมาใช้ซ้ำได้ (Reusable) และจัดการสถานะข้อมูล (State) ของตัวเองได้อย่างอิสระ</p>
+    <p>ในโครงงานนี้ใช้ React เวอร์ชัน 19.2.0 ซึ่งเป็นเวอร์ชันล่าสุดที่มีประสิทธิภาพสูง รองรับ Concurrent Features, Hooks
+        API (useState, useEffect, useCallback, useRef) และ Context API สำหรับการจัดการ State ข้ามหลาย Component</p>
+    <p>คุณสมบัติสำคัญของ React ที่นำมาใช้:</p>
+    <ul>
+        <li><b>Functional Components:</b> ใช้ฟังก์ชันแทน Class ในการสร้าง Component ทำให้โค้ดกระชับและอ่านง่าย</li>
+        <li><b>React Hooks:</b> ใช้ <code>useState</code> จัดการ State, <code>useEffect</code> จัดการ Side Effects,
+            <code>useCallback</code> ลด re-render, <code>useRef</code> อ้างอิง DOM</li>
+        <li><b>React Router DOM:</b> จัดการ Client-Side Routing ให้เป็น Single Page Application (SPA)</li>
+        <li><b>Context API:</b> ใช้ AuthContext สำหรับจัดการสถานะการเข้าสู่ระบบ (Authentication State)</li>
+    </ul>
+
+    <h2>2.2 Vite Build Tool</h2>
+    <p>Vite เป็น Next-Generation Build Tool สำหรับ Web Development พัฒนาโดย Evan You (ผู้สร้าง Vue.js)
+        ซึ่งมีความเร็วสูงกว่า Webpack แบบดั้งเดิมอย่างมาก เนื่องจากใช้ ES Modules (ESM) ในการโหลดโมดูลแบบ On-Demand
+        แทนการ Bundle ทั้งหมดล่วงหน้า</p>
+    <p>ในโครงงานนี้ใช้ Vite เวอร์ชัน 7.3.1 ซึ่งมีคุณสมบัติที่สำคัญ ได้แก่:</p>
+    <ul>
+        <li><b>Hot Module Replacement (HMR):</b> อัพเดตหน้าจอทันทีเมื่อแก้ไขโค้ด ไม่ต้อง Refresh ทั้งหน้า</li>
+        <li><b>Fast Cold Start:</b> เริ่มต้น Dev Server ได้ภายใน 354ms</li>
+        <li><b>Environment Variables:</b> รองรับไฟล์ <code>.env</code> สำหรับเก็บ API Key โดยใช้ prefix
+            <code>VITE_</code></li>
+        <li><b>Optimized Build:</b> สร้าง Production Bundle ที่มีขนาดเล็กด้วย Rollup</li>
+    </ul>
+
+    <h2>2.3 Google Gemini AI API</h2>
+    <p>Google Gemini เป็น Large Language Model (LLM) ของ Google ที่มีความสามารถในการเข้าใจและสร้างภาษาธรรมชาติ (Natural
+        Language Processing - NLP) รองรับทั้งข้อความ รูปภาพ และเสียง (Multimodal) เป็นตัวขับเคลื่อนหลักของระบบ AI
+        Chatbot ในโครงงานนี้</p>
+    <p>ในโครงงานนี้ใช้โมเดล <b>Gemini 2.5 Flash</b> ซึ่งเป็นโมเดลขนาดกลางที่มีความเร็วสูงและรองรับ Context Window สูงสุด
+        1,048,576 โทเค็น ผ่าน REST API:</p>
+    <ul>
+        <li><b>Endpoint:</b>
+            <code>https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent</code></li>
+        <li><b>System Instruction:</b> กำหนดบทบาทของ AI ให้เป็น "MJU AI Assistant" ตอบเฉพาะข้อมูล Dashboard เป็นภาษาไทย
+        </li>
+        <li><b>Multi-turn Conversation:</b> เก็บประวัติสนทนาไว้ในหน่วยความจำ Browser (สูงสุด 40 รอบสนทนา)</li>
+        <li><b>Chart Generation:</b> AI สามารถสร้างกราฟผ่าน JSON block (<code>json_chart</code>) ที่ส่งกลับมาพร้อมคำตอบ
+        </li>
+        <li><b>Fallback Chain:</b> หากโมเดลหลักล้มเหลว ระบบจะลองโมเดลสำรอง (gemini-2.0-flash, gemini-2.0-flash-lite)
+        </li>
+        <li><b>Rate Limit Retry:</b> ระบบจะลองใหม่อัตโนมัติสูงสุด 3 ครั้ง (Exponential Backoff) เมื่อเจอข้อจำกัด Quota
+        </li>
+    </ul>
+
+    <h2>2.4 Firebase Authentication</h2>
+    <p>Firebase เป็น Backend-as-a-Service (BaaS) ของ Google ที่ให้บริการหลากหลาย ในโครงงานนี้ใช้ Firebase Authentication
+        สำหรับระบบยืนยันตัวตนผู้ใช้ โดยรองรับ 2 วิธีหลัก:</p>
+    <ul>
+        <li><b>Email/Password Authentication:</b> สมัครสมาชิกและเข้าสู่ระบบด้วยอีเมลและรหัสผ่าน</li>
+        <li><b>Google Sign-In (OAuth 2.0):</b> เข้าสู่ระบบด้วยบัญชี Google ซึ่งสะดวกสำหรับนักศึกษาและบุคลากร</li>
+    </ul>
+    <p>ระบบจัดการสถานะการเข้าสู่ระบบผ่าน React Context API (AuthContext) โดยใช้ <code>onAuthStateChanged</code>
+        ตรวจสอบสถานะอัตโนมัติ และเก็บข้อมูล User Profile, Role ไว้ใน Context เพื่อให้ Component ทุกตัวเข้าถึงได้</p>
+
+    <h2>2.5 Chart.js และ Data Visualization</h2>
+    <p>Chart.js เป็น JavaScript Library สำหรับสร้างกราฟแบบ Interactive บน HTML5 Canvas ในโครงงานนี้ใช้ผ่าน
+        react-chartjs-2 ซึ่งเป็น React Wrapper รองรับกราฟ 7 ประเภท:</p>
+    <ul>
+        <li><b>Bar Chart (กราฟแท่ง):</b> แสดงการเปรียบเทียบข้อมูล เช่น งบประมาณรายปี</li>
+        <li><b>Line Chart (กราฟเส้น):</b> แสดงแนวโน้มข้อมูล เช่น จำนวนนักศึกษาตามปี</li>
+        <li><b>Doughnut Chart (กราฟโดนัท):</b> แสดงสัดส่วนข้อมูล เช่น สัดส่วนบุคลากร</li>
+        <li><b>Pie Chart (กราฟวงกลม):</b> แสดงสัดส่วนค่าธรรมเนียมแยกตามคณะ</li>
+        <li><b>Radar Chart (กราฟเรดาร์):</b> แสดงผลเปรียบเทียบหลายมิติ เช่น KPI ยุทธศาสตร์</li>
+        <li><b>Polar Area Chart:</b> แสดงข้อมูลแบบโพลาร์</li>
+        <li><b>Stacked Bar Chart (กราฟแท่งซ้อน):</b> แสดงข้อมูลหลายชุดในกราฟเดียว</li>
+    </ul>
+    <p>นอกจากนี้ยังใช้ <b>chartjs-plugin-zoom</b> สำหรับการซูมเข้า-ออก และแพนกราฟด้วยเมาส์หรือ Touch Gesture</p>
+
+    <h2>2.6 Responsive Web Design</h2>
+    <p>Responsive Web Design
+        เป็นแนวคิดในการออกแบบเว็บไซต์ให้สามารถปรับขนาดและจัดวางองค์ประกอบได้อัตโนมัติตามขนาดหน้าจอของอุปกรณ์ (Desktop,
+        Tablet, Mobile) ในโครงงานนี้ใช้เทคนิค:</p>
+    <ul>
+        <li><b>CSS Grid Layout:</b> จัดวาง Dashboard Card แบบ Grid ที่ปรับตัวตามขนาดจอ</li>
+        <li><b>CSS Flexbox:</b> จัดวางองค์ประกอบภายใน Component แบบยืดหยุ่น</li>
+        <li><b>Media Queries:</b> กำหนดเงื่อนไข CSS ตามขนาดหน้าจอ</li>
+        <li><b>Dark Theme:</b> ใช้โทนสีเข้มเพื่อลดแสงสว่าง เหมาะกับการใช้งานนาน</li>
+    </ul>
+
+    <h2>2.7 Role-Based Access Control (RBAC)</h2>
+    <p>RBAC เป็นวิธีการควบคุมสิทธิ์การเข้าถึงทรัพยากรในระบบโดยกำหนดตามบทบาท (Role) ของผู้ใช้
+        แทนที่จะกำหนดสิทธิ์ให้ผู้ใช้แต่ละคนโดยตรง ในโครงงานนี้กำหนด 4 ระดับสิทธิ์:</p>
+    <ul>
+        <li><b>Dean/Executive (ผู้บริหาร):</b> เข้าถึงข้อมูลทุกหมวด รวมถึงยุทธศาสตร์และ AI Chat</li>
+        <li><b>Lecturer (อาจารย์):</b> เข้าถึงข้อมูลส่วนใหญ่ ยกเว้นข้อมูลยุทธศาสตร์เชิงลึก</li>
+        <li><b>Staff (เจ้าหน้าที่):</b> เข้าถึงข้อมูลที่เกี่ยวข้องกับงานปฏิบัติการ</li>
+        <li><b>Student (นักศึกษา):</b> เข้าถึงเฉพาะข้อมูลส่วนตัวและข้อมูลทั่วไป</li>
+    </ul>
+
+</body>
+
+</html>

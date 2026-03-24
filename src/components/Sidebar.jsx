@@ -6,7 +6,7 @@ import {
     Home, CreditCard, DollarSign, Users, LogOut, Lock, FileText,
     GraduationCap, CheckCircle, BarChart3, ChevronDown, ChevronRight,
     Microscope, Target, UserCheck, BookOpen, Award, TrendingUp,
-    Building2, Globe2
+    Building2, Globe2, MessageCircle
 } from 'lucide-react';
 
 const menuGroups = [
@@ -67,13 +67,22 @@ const menuGroups = [
         items: [
             { path: '/dashboard/strategic', label: '5.1 เป้าหมายยุทธศาสตร์', icon: Target, section: 'strategic_overview' },
         ]
+    },
+    {
+        id: 'ai_chat',
+        label: '6. AI แชทบอท (Chat)',
+        icon: MessageCircle,
+        color: '#00e676',
+        items: [
+            { path: '/dashboard/ai-chat', label: '6.1 แชทกับ AI', icon: MessageCircle, section: 'ai_chat' },
+        ]
     }
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [expandedGroups, setExpandedGroups] = useState({ home: true, student: true, finance: true, hr: true, research: true, strategic: true });
+    const [expandedGroups, setExpandedGroups] = useState({ home: true, student: true, finance: true, hr: true, research: true, strategic: true, ai_chat: true });
 
     const toggleGroup = (groupId) => {
         setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
@@ -156,10 +165,11 @@ export default function Sidebar({ isOpen, onClose }) {
                                 <span style={{
                                     flex: 1,
                                     textAlign: 'left',
-                                    fontSize: '0.78rem',
+                                    fontSize: '0.82rem',
                                     fontWeight: 700,
                                     color: group.color || '#ccc',
-                                    letterSpacing: '0.02em',
+                                    letterSpacing: '0.01em',
+                                    fontFamily: "'Noto Sans Thai', 'Inter', sans-serif",
                                 }}>{group.label}</span>
                                 {isExpanded
                                     ? <ChevronDown size={14} color="#666" />
@@ -186,7 +196,12 @@ export default function Sidebar({ isOpen, onClose }) {
                                                 `nav-item ${isActive && hasAccess ? 'active' : ''} ${!hasAccess ? 'locked' : ''}`
                                             }
                                             onClick={(e) => { if (!hasAccess) e.preventDefault(); onClose(); }}
-                                            style={{ opacity: hasAccess ? 1 : 0.4, fontSize: '0.82rem', padding: '8px 12px' }}
+                                            style={{
+                                                opacity: hasAccess ? 1 : 0.4,
+                                                fontSize: '0.84rem',
+                                                padding: '9px 14px',
+                                                fontFamily: "'Noto Sans Thai', 'Inter', sans-serif",
+                                            }}
                                         >
                                             <Icon size={16} />
                                             <span>{item.label}</span>

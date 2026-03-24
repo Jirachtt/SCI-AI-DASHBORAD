@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <title>บทที่ 3 - การออกแบบและพัฒนาระบบ</title>
+    <style>
+        body {
+            font-family: 'TH SarabunPSK', 'Sarabun', 'Tahoma', sans-serif;
+            font-size: 16pt;
+            line-height: 1.8;
+            margin: 40px 60px;
+            color: #000;
+        }
+
+        h1 {
+            font-size: 22pt;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 18pt;
+            font-weight: bold;
+            margin-top: 25px;
+        }
+
+        h3 {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        p {
+            text-indent: 40px;
+            text-align: justify;
+        }
+
+        ul,
+        ol {
+            margin-left: 30px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 13pt;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12pt;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #000;
+        }
+
+        th,
+        td {
+            padding: 6px 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        .diagram {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 13pt;
+            white-space: pre;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>บทที่ 3<br>การออกแบบและพัฒนาระบบ</h1>
+
+    <h2>3.1 สถาปัตยกรรมของระบบ (System Architecture)</h2>
+
+    <p>ระบบ Science AI Dashboard ออกแบบเป็น Single Page Application (SPA) ที่ทำงานฝั่ง Client (Browser) เป็นหลัก
+        โดยเชื่อมต่อกับบริการภายนอก 2 ส่วน ได้แก่ Firebase Authentication สำหรับระบบยืนยันตัวตน และ Google Gemini API
+        สำหรับ AI Chatbot</p>
+
+    <div class="diagram">
+        ┌────────────────────────────────────────────────────────┐
+        │ Client (Browser) │
+        │ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
+        │ │ React 19 │ │ Chart.js │ │ Router │ │
+        │ │ SPA │ │ Graphs │ │ DOM 7 │ │
+        │ └────┬─────┘ └──────────┘ └──────────┘ │
+        │ │ │
+        │ ┌────┴───────────────────────────────────┐ │
+        │ │ State Management │ │
+        │ │ (AuthContext + Component State) │ │
+        │ └────┬──────────────────┬────────────────┘ │
+        └───────┼──────────────────┼──────────────────────────────┘
+        │ │
+        ┌────▼─────┐ ┌────▼──────────────┐
+        │ Firebase │ │ Google Gemini │
+        │ Auth │ │ API (REST) │
+        │ (Google) │ │ gemini-2.5-flash │
+        └──────────┘ └──────────────────┘
+    </div>
+
+    <p>ส่วนประกอบหลักของสถาปัตยกรรม:</p>
+    <ul>
+        <li><b>Presentation Layer:</b> React Components ที่แสดงผล UI รวมถึง Sidebar, Dashboard Pages, Charts</li>
+        <li><b>Business Logic Layer:</b> Functions สำหรับประมวลผลข้อมูล เช่น การคำนวณ Linear Regression, การ Parse คำถาม
+            AI</li>
+        <li><b>Data Layer:</b> ไฟล์ข้อมูลจำลอง (mockData.js, hrData.js, researchData.js, strategicData.js) และ Firebase
+            Config</li>
+        <li><b>Service Layer:</b> geminiService.js สำหรับเชื่อมต่อ Gemini API และ firebase.js สำหรับ Authentication</li>
+    </ul>
+
+    <h2>3.2 โครงสร้างของโปรเจกต์</h2>
+
+    <pre>
+SCI AI DASHBOARD/
+├── index.html              # หน้า HTML หลัก + Google Fonts
+├── package.json            # รายการ Dependencies ทั้งหมด
+├── vite.config.js          # Vite Configuration
+├── .env                    # Environment Variables (API Keys)
+│
+├── src/
+│   ├── main.jsx            # Entry Point ของแอปพลิเคชัน
+│   ├── App.jsx             # ตั้งค่า Routes ทั้งหมด
+│   ├── index.css           # Stylesheet หลัก (47 KB)
+│   ├── firebase.js         # Firebase Configuration
+│   │
+│   ├── components/         # React Components ที่ใช้ร่วมกัน
+│   │   ├── Sidebar.jsx     # แถบเมนูด้านซ้าย
+│   │   ├── Layout.jsx      # Layout หลัก (Sidebar + Content)
+│   │   ├── AIChat.jsx      # Floating AI Chatbot
+│   │   └── AccessDenied.jsx # หน้าแจ้งไม่มีสิทธิ์เข้าถึง
+│   │
+│   ├── pages/              # หน้าจอทั้งหมด (15 หน้า)
+│   │   ├── LoginPage.jsx           # หน้าเข้าสู่ระบบ
+│   │   ├── SignUpPage.jsx          # หน้าสมัครสมาชิก
+│   │   ├── DashboardHome.jsx       # หน้าแรก (ภาพรวม)
+│   │   ├── HRDashboardPage.jsx     # 1.1 ภาพรวมบุคลากร
+│   │   ├── StudentStatsPage.jsx    # 2.1 สถิตินักศึกษา
+│   │   ├── StudentListPage.jsx     # 2.2 รายชื่อนักศึกษา
+│   │   ├── GraduationCheckPage.jsx # 2.3 ตรวจสอบการจบ
+│   │   ├── StudentLifePage.jsx     # 2.4 กิจกรรม/ความประพฤติ
+│   │   ├── ResearchDashboardPage   # 3.1 ภาพรวมงานวิจัย
+│   │   ├── FacultyBudgetPage.jsx   # 4.1 รายรับ-รายจ่าย
+│   │   ├── TuitionPage.jsx         # 4.2 ค่าธรรมเนียม
+│   │   ├── BudgetForecastPage.jsx  # 4.3 พยากรณ์งบประมาณ
+│   │   ├── FinancialPage.jsx       # การเงินนักศึกษา
+│   │   ├── StrategicDashboardPage  # 5.1 ยุทธศาสตร์ OKR
+│   │   └── AIChatPage.jsx         # 6.1 AI Chat เต็มจอ
+│   │
+│   ├── contexts/
+│   │   └── AuthContext.jsx  # จัดการสถานะ Login ทั้งระบบ
+│   │
+│   ├── data/               # ข้อมูลจำลอง
+│   │   ├── mockData.js     # ข้อมูลนักศึกษา, งบประมาณ, ค่าเทอม
+│   │   ├── hrData.js       # ข้อมูลบุคลากร
+│   │   ├── researchData.js # ข้อมูลงานวิจัย
+│   │   ├── strategicData.js # ข้อมูลยุทธศาสตร์ OKR
+│   │   └── users.js        # ข้อมูล Demo Users
+│   │
+│   ├── services/
+│   │   └── geminiService.js # เชื่อมต่อ Gemini AI API
+│   │
+│   └── utils/
+│       └── accessControl.js # กำหนดสิทธิ์ตาม Role
+</pre>
+
+    <h2>3.3 การออกแบบหน้าจอ (UI/UX Design)</h2>
+
+    <h3>3.3.1 หลักการออกแบบ</h3>
+    <p>ระบบออกแบบโดยยึดหลัก Modern Dashboard Design ดังนี้:</p>
+    <ul>
+        <li><b>Dark Theme:</b> ใช้พื้นหลังสีเข้ม (#0d1117) เพื่อลดความเมื่อยล้าของสายตาและทำให้ข้อมูลกราฟโดดเด่น</li>
+        <li><b>Card-Based Layout:</b> แสดงข้อมูลแต่ละส่วนใน Card ที่มีขอบโค้งมน มี Shadow เพื่อแยกชั้น</li>
+        <li><b>Color Coding:</b> ใช้สีที่สื่อความหมาย เช่น เขียว (#00e676) = บวก/สำเร็จ, แดง (#E91E63) = ลบ/รายจ่าย</li>
+        <li><b>Noto Sans Thai:</b> ใช้ฟอนต์ Noto Sans Thai จาก Google Fonts เพื่อความชัดเจนของตัวอักษรไทย</li>
+        <li><b>Lucide React Icons:</b> ใช้ชุดไอคอน Lucide สำหรับทุก UI Element เพื่อความสม่ำเสมอ</li>
+    </ul>
+
+    <h3>3.3.2 โครงสร้างหน้าจอ</h3>
+    <p>ระบบมีโครงสร้างหน้าจอหลัก ประกอบด้วย:</p>
+    <ul>
+        <li><b>Sidebar (แถบเมนูซ้าย):</b> แบ่งเป็น 6 กลุ่มเมนู พร้อมไอคอนและสีประจำกลุ่ม สามารถพับ/ขยายได้</li>
+        <li><b>Main Content (เนื้อหาหลัก):</b> แสดง Dashboard Page ที่เลือกไว้</li>
+        <li><b>Floating AI Chat:</b> ปุ่มลอยมุมขวาล่างสำหรับเปิด AI Chatbot</li>
+    </ul>
+
+    <h3>3.3.3 รายละเอียดหน้าจอแต่ละหน้า</h3>
+
+    <table>
+        <tr>
+            <th>ลำดับ</th>
+            <th>หน้าจอ</th>
+            <th>องค์ประกอบหลัก</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>หน้าแรก (Dashboard Home)</td>
+            <td>สรุปภาพรวม 4 KPI Cards, Daily Insights จาก AI, หมวดข้อมูล 5 ด้าน, Predictive Analytics</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>ภาพรวมบุคลากร (HR)</td>
+            <td>จำนวนบุคลากร, แยกตามประเภท/ตำแหน่ง, กราฟสัดส่วน, สถิติการลา, ผลประเมิน</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>สถิตินักศึกษา</td>
+            <td>จำนวนตามระดับ/คณะ, กราฟแนวโน้ม, ข้อมูลคณะวิทย์, กราฟแท่ง/เส้น</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td>รายชื่อนักศึกษา</td>
+            <td>ตารางพร้อมค้นหา/กรอง, Export CSV, แสดง GPA/สถานะ</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td>ตรวจสอบการจบ</td>
+            <td>สรุปหน่วยกิต, ตรวจเกรด, แสดง Progress, ผลการตรวจสอบ</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td>กิจกรรม/ความประพฤติ</td>
+            <td>ชั่วโมงกิจกรรม, คะแนนความประพฤติ, รายการยืมหนังสือ</td>
+        </tr>
+        <tr>
+            <td>7</td>
+            <td>ภาพรวมงานวิจัย</td>
+            <td>ผลงานตีพิมพ์, ทุนวิจัย, Impact Factor, สถิติ Citation</td>
+        </tr>
+        <tr>
+            <td>8</td>
+            <td>รายรับ-รายจ่าย</td>
+            <td>กราฟรายรับ/รายจ่ายรายปี, สรุปคงเหลือ, อัตราการเติบโต</td>
+        </tr>
+        <tr>
+            <td>9</td>
+            <td>ค่าธรรมเนียม</td>
+            <td>ค่าเทอมแยกตามคณะ, ค่าแรกเข้า, ตลอดหลักสูตร</td>
+        </tr>
+        <tr>
+            <td>10</td>
+            <td>พยากรณ์งบประมาณ</td>
+            <td>กราฟพยากรณ์ Linear Regression, เปรียบเทียบจริง vs คาดการณ์</td>
+        </tr>
+        <tr>
+            <td>11</td>
+            <td>ยุทธศาสตร์ (OKR)</td>
+            <td>Radar Chart ผลลัพธ์ 5 ด้าน, Progress Bars, KPI Details, แนวโน้มประสิทธิภาพ</td>
+        </tr>
+        <tr>
+            <td>12</td>
+            <td>AI Chat เต็มจอ</td>
+            <td>ถาม-ตอบ AI, Quick Actions, สร้างกราฟ, ค้นหานักศึกษา, สั่งเสียง</td>
+        </tr>
+    </table>
+
+    <h2>3.4 ระบบ AI Chatbot</h2>
+
+    <h3>3.4.1 สถาปัตยกรรม AI Chatbot</h3>
+    <p>ระบบ AI Chatbot ออกแบบให้ทำงานโดยส่งข้อมูลทั้งหมดของ Dashboard (ข้อมูลจำลอง) ไปเป็น System Instruction ให้ Gemini
+        AI ทุกครั้งที่สนทนา ทำให้ AI สามารถตอบคำถามเกี่ยวกับข้อมูลได้อย่างแม่นยำ</p>
+
+    <p>ขั้นตอนการทำงาน:</p>
+    <ol>
+        <li>ผู้ใช้พิมพ์คำถาม (หรือสั่งด้วยเสียงผ่าน Web Speech API)</li>
+        <li>ระบบตรวจจับ Keyword เช่น "กราฟ", "พยากรณ์" เพื่อเตือน AI ให้สร้าง Chart</li>
+        <li>ส่ง Request ไป Gemini API พร้อม System Instruction ที่มีข้อมูล Dashboard ทั้งหมด</li>
+        <li>รับ Response กลับมา แยก Text และ <code>json_chart</code> block</li>
+        <li>แสดงผลข้อความและเรนเดอร์กราฟด้วย Chart.js</li>
+    </ol>
+
+    <h3>3.4.2 ฟีเจอร์ของ AI Chatbot</h3>
+    <ul>
+        <li><b>ถาม-ตอบ AI:</b> สอบถามข้อมูลมหาวิทยาลัยได้ทุกด้าน ตอบเป็นภาษาไทย</li>
+        <li><b>สร้างกราฟอัตโนมัติ:</b> AI สร้างกราฟ Bar, Line, Pie, Radar จากข้อมูลจริง</li>
+        <li><b>พยากรณ์ข้อมูล:</b> คำนวณ Linear Regression และแสดงผลเป็นกราฟเส้น/แท่ง</li>
+        <li><b>ค้นหานักศึกษา:</b> ค้นหาตามรหัส, ชื่อ, สาขา, ชั้นปี, GPA</li>
+        <li><b>สั่งงานด้วยเสียง:</b> ใช้ Web Speech API รับคำสั่งภาษาไทย</li>
+        <li><b>ซูมกราฟ:</b> ขยายกราฟเต็มจอ รองรับ Mouse Wheel Zoom และ Pinch Zoom</li>
+        <li><b>Quick Actions:</b> ปุ่มลัดสำหรับคำสั่งที่ใช้บ่อย</li>
+    </ul>
+
+    <h2>3.5 ระบบควบคุมสิทธิ์การเข้าถึง (Access Control)</h2>
+
+    <p>ระบบ Access Control ใช้ไฟล์ <code>accessControl.js</code> กำหนดสิทธิ์การเข้าถึงแต่ละ Section ตาม Role ของผู้ใช้:
+    </p>
+
+    <table>
+        <tr>
+            <th>Section</th>
+            <th>Dean</th>
+            <th>Lecturer</th>
+            <th>Staff</th>
+            <th>Student</th>
+        </tr>
+        <tr>
+            <td>ภาพรวม (Overview)</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+        </tr>
+        <tr>
+            <td>บุคลากร (HR)</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>❌</td>
+        </tr>
+        <tr>
+            <td>นักศึกษา (Student)</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+        </tr>
+        <tr>
+            <td>งานวิจัย (Research)</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>❌</td>
+            <td>❌</td>
+        </tr>
+        <tr>
+            <td>การเงิน (Finance)</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+        </tr>
+        <tr>
+            <td>ยุทธศาสตร์ (OKR)</td>
+            <td>✅</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>❌</td>
+        </tr>
+        <tr>
+            <td>AI Chat</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>❌</td>
+        </tr>
+    </table>
+
+    <p>หากผู้ใช้พยายามเข้าถึง Section ที่ไม่มีสิทธิ์ ระบบจะแสดงหน้า "Access Denied" พร้อมแจ้งระดับสิทธิ์ที่จำเป็น</p>
+
+</body>
+
+</html>

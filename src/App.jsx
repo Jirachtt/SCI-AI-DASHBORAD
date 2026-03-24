@@ -14,6 +14,7 @@ import GraduationCheckPage from './pages/GraduationCheckPage';
 import HRDashboardPage from './pages/HRDashboardPage';
 import ResearchDashboardPage from './pages/ResearchDashboardPage';
 import StrategicDashboardPage from './pages/StrategicDashboardPage';
+import AIChatPage from './pages/AIChatPage';
 import './index.css';
 
 function ProtectedRoute({ children }) {
@@ -47,6 +48,7 @@ function AppRoutes() {
         <Route path="hr" element={<HRDashboardPage />} />
         <Route path="research" element={<ResearchDashboardPage />} />
         <Route path="strategic" element={<StrategicDashboardPage />} />
+        <Route path="ai-chat" element={<AIChatPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

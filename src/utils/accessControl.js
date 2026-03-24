@@ -13,7 +13,7 @@ const ACCESS_LEVELS = {
             'student_life_detail', 'faculty_budget', 'staff_management', 'reports',
             'budget_planning', 'student_list', 'graduation_check',
             'student_stats', 'budget_forecast',
-            'hr_overview', 'research_overview', 'strategic_overview'
+            'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat'
         ]
     },
     chair: {
@@ -26,7 +26,7 @@ const ACCESS_LEVELS = {
             'financial', 'financial_detail', 'student_life', 'student_life_detail', 'reports',
             'budget_planning', 'student_list', 'graduation_check',
             'student_stats', 'budget_forecast',
-            'hr_overview', 'research_overview', 'strategic_overview'
+            'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat'
         ]
     },
     staff: {
@@ -38,7 +38,7 @@ const ACCESS_LEVELS = {
             'dashboard', 'tuition',
             'financial', 'student_life', 'student_life_detail',
             'graduation_check', 'student_stats', 'budget_forecast',
-            'hr_overview', 'research_overview'
+            'hr_overview', 'research_overview', 'ai_chat'
         ]
     },
     general: {
@@ -48,7 +48,7 @@ const ACCESS_LEVELS = {
         color: '#7B68EE',
         sections: [
             'dashboard', 'tuition', 'student_life',
-            'graduation_check', 'student_stats'
+            'graduation_check', 'student_stats', 'ai_chat'
         ]
     },
     student: {

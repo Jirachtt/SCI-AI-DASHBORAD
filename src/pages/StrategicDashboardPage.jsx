@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { strategicData } from '../data/strategicData';
-import { Bar, Line, Radar } from 'react-chartjs-2';
+import { Bar, Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
     Title, Tooltip, Legend, PointElement, LineElement, Filler,
@@ -40,40 +40,87 @@ export default function StrategicDashboardPage() {
 
     const { strategicGoals, okr, performanceRadar, efficiencyTrend } = strategicData;
 
-    // Radar chart
-    const radarData = {
+    // Horizontal grouped bar chart (executive-friendly)
+    const perfBarData = {
         labels: performanceRadar.categories,
         datasets: [
             {
-                label: 'เป้าหมาย', data: performanceRadar.targetYear,
-                borderColor: '#C5A028', backgroundColor: '#C5A02822',
-                pointBackgroundColor: '#C5A028', borderWidth: 2,
+                label: 'เป้าหมาย',
+                data: performanceRadar.targetYear,
+                backgroundColor: 'rgba(255, 215, 0, 0.85)',
+                borderColor: '#FFD700',
+                borderWidth: 1,
+                borderRadius: 4,
+                barPercentage: 0.7,
+                categoryPercentage: 0.8,
             },
             {
-                label: 'ปีปัจจุบัน', data: performanceRadar.currentYear,
-                borderColor: '#006838', backgroundColor: '#00683822',
-                pointBackgroundColor: '#006838', borderWidth: 2,
+                label: 'ปีปัจจุบัน',
+                data: performanceRadar.currentYear,
+                backgroundColor: 'rgba(0, 230, 118, 0.85)',
+                borderColor: '#00e676',
+                borderWidth: 1,
+                borderRadius: 4,
+                barPercentage: 0.7,
+                categoryPercentage: 0.8,
             },
             {
-                label: 'ปีที่แล้ว', data: performanceRadar.lastYear,
-                borderColor: '#7B68EE', backgroundColor: '#7B68EE22',
-                pointBackgroundColor: '#7B68EE', borderWidth: 2,
+                label: 'ปีที่แล้ว',
+                data: performanceRadar.lastYear,
+                backgroundColor: 'rgba(123, 104, 238, 0.7)',
+                borderColor: '#7B68EE',
+                borderWidth: 1,
+                borderRadius: 4,
+                barPercentage: 0.7,
+                categoryPercentage: 0.8,
             },
         ]
     };
 
-    const radarOptions = {
+    const perfBarOptions = {
+        indexAxis: 'y',
         responsive: true, maintainAspectRatio: false,
         scales: {
-            r: {
-                angleLines: { color: '#ffffff15' },
-                grid: { color: '#ffffff15' },
-                pointLabels: { color: '#ccc', font: { size: 11 } },
-                ticks: { color: '#888', backdropColor: 'transparent', font: { size: 9 } },
-                suggestedMin: 0, suggestedMax: 100,
+            x: {
+                min: 0, max: 100,
+                ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => v + '%' },
+                grid: { color: 'rgba(255,255,255,0.06)' },
+                title: { display: true, text: 'คะแนน (%)', color: '#9ca3af', font: { size: 11 } }
+            },
+            y: {
+                ticks: {
+                    color: '#e5e7eb',
+                    font: { size: 13, weight: 'bold', family: "'Noto Sans Thai', 'Inter', sans-serif" },
+                },
+                grid: { display: false },
             }
         },
-        plugins: { legend: { labels: { color: '#ccc', font: { size: 11 } } } }
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: {
+                    color: '#e5e7eb',
+                    font: { size: 12, weight: '600', family: "'Noto Sans Thai', 'Inter', sans-serif" },
+                    padding: 20,
+                    usePointStyle: true,
+                    pointStyleWidth: 12,
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(13, 17, 23, 0.95)',
+                titleColor: '#fff',
+                bodyColor: '#e5e7eb',
+                titleFont: { size: 13, weight: 'bold' },
+                bodyFont: { size: 12 },
+                padding: 12,
+                borderColor: 'rgba(255,255,255,0.1)',
+                borderWidth: 1,
+                displayColors: true,
+                callbacks: {
+                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.x}%`,
+                }
+            }
+        }
     };
 
     // Efficiency trend
@@ -140,9 +187,9 @@ export default function StrategicDashboardPage() {
             {/* Row 2: Radar + KPI Details */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>ประสิทธิภาพ 5 ด้าน (Radar)</h3>
+                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>📊 ประสิทธิภาพ 5 ด้าน — เปรียบเทียบเป้าหมาย</h3>
                     <div style={{ height: 320 }}>
-                        <Radar data={radarData} options={radarOptions} />
+                        <Bar data={perfBarData} options={perfBarOptions} />
                     </div>
                 </div>
                 <div style={cardStyle}>

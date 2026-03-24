@@ -6,16 +6,29 @@ import {
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
-// Models to try in order (fallback chain)
+// Models to try in order (fallback chain) — verified available via API
 const MODELS = [
-    'gemini-2.0-flash',
     'gemini-2.5-flash',
-    'gemini-2.5-pro',
-    'gemini-1.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
 ];
 
 function getApiUrl(model) {
     return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
+}
+
+// Retry helper for rate-limited requests (429)
+async function fetchWithRetry(url, options, maxRetries = 3) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const response = await fetch(url, options);
+        if (response.status === 429 && attempt < maxRetries) {
+            const waitMs = Math.min(2000 * Math.pow(2, attempt), 10000); // 2s, 4s, 8s
+            console.log(`[Gemini] Rate limited (429). Retrying in ${waitMs}ms... (attempt ${attempt + 1}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+            continue;
+        }
+        return response;
+    }
 }
 
 // Build the system instruction with all dashboard data as context
@@ -209,7 +222,7 @@ export async function sendMessageToGemini(userMessage) {
             console.log(`[Gemini] Trying model: ${model}...`);
             const apiUrl = getApiUrl(model);
 
-            const response = await fetch(apiUrl, {
+            const response = await fetchWithRetry(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody)

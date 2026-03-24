@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <title>บทที่ 5 - สรุปผลและข้อเสนอแนะ</title>
+    <style>
+        body {
+            font-family: 'TH SarabunPSK', 'Sarabun', 'Tahoma', sans-serif;
+            font-size: 16pt;
+            line-height: 1.8;
+            margin: 40px 60px;
+            color: #000;
+        }
+
+        h1 {
+            font-size: 22pt;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 18pt;
+            font-weight: bold;
+            margin-top: 25px;
+        }
+
+        h3 {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        p {
+            text-indent: 40px;
+            text-align: justify;
+        }
+
+        ul,
+        ol {
+            margin-left: 30px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>บทที่ 5<br>สรุปผลและข้อเสนอแนะ</h1>
+
+    <h2>5.1 สรุปผลการดำเนินงาน</h2>
+
+    <p>จากการพัฒนาโครงงาน "Science AI Dashboard: ระบบ Dashboard อัจฉริยะสำหรับคณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้
+        โดยใช้เทคโนโลยี AI" สามารถสรุปผลได้ดังนี้</p>
+
+    <ol>
+        <li><b>ด้านการพัฒนาระบบ:</b> สามารถพัฒนาระบบ Web Application ด้วย React 19 ร่วมกับ Vite 7 ที่ครอบคลุมข้อมูล 6
+            หมวดหลัก ได้แก่ บุคลากร (HR), นักศึกษา (Student), งานวิจัย (Research), การเงิน (Finance), ยุทธศาสตร์ (OKR),
+            และ AI Chatbot รวมทั้งสิ้น 15 หน้าจอ ทั้งหมดสามารถแสดงผลข้อมูลในรูปแบบกราฟ ตาราง และ Card ที่อ่านเข้าใจง่าย
+        </li>
+
+        <li><b>ด้าน AI Chatbot:</b> สามารถพัฒนา AI Chatbot ที่ขับเคลื่อนด้วย Google Gemini 2.5 Flash API ได้สำเร็จ โดย
+            AI สามารถตอบคำถามเกี่ยวกับข้อมูลมหาวิทยาลัยเป็นภาษาไทย, สร้างกราฟ (Bar, Line, Pie, Radar) อัตโนมัติ,
+            พยากรณ์แนวโน้มข้อมูล, ค้นหานักศึกษา และรับคำสั่งด้วยเสียง</li>
+
+        <li><b>ด้าน Data Visualization:</b> สามารถแสดงผลข้อมูลผ่านกราฟ 7 ประเภท (Bar, Line, Doughnut, Pie, Radar, Polar
+            Area, Stacked Bar) โดยใช้ Chart.js พร้อมฟีเจอร์ Zoom และ Pan ที่ช่วยให้ผู้ใช้สำรวจข้อมูลเชิงลึกได้</li>
+
+        <li><b>ด้าน Role-Based Access Control:</b> สามารถพัฒนาระบบควบคุมสิทธิ์ 4 ระดับ (Dean, Lecturer, Staff, Student)
+            ที่ทำงานร่วมกับ Firebase Authentication ได้อย่างมีประสิทธิภาพ</li>
+
+        <li><b>ด้าน Responsive Design:</b> ระบบรองรับการใช้งานบนอุปกรณ์หลากหลายขนาดหน้าจอ ทั้ง Desktop, Tablet และ
+            Mobile โดยใช้ CSS Grid, Flexbox และ Media Queries</li>
+    </ol>
+
+    <h2>5.2 ปัญหาและอุปสรรค</h2>
+
+    <ol>
+        <li><b>API Rate Limit:</b> Google Gemini API เวอร์ชันฟรี (Free Tier) มีข้อจำกัดด้านจำนวน Request ต่อนาที ทำให้
+            AI Chatbot อาจไม่สามารถตอบสนองได้ทันทีเมื่อใช้งานหนัก ได้แก้ไขโดยเพิ่มระบบ Auto-Retry ด้วย Exponential
+            Backoff</li>
+
+        <li><b>โมเดล AI ที่เปลี่ยนแปลง:</b> Google มีการเปลี่ยนแปลงชื่อโมเดล AI อย่างต่อเนื่อง โมเดลบางตัว (เช่น
+            gemini-pro, gemini-1.5-flash) ถูกยกเลิกไป ต้องอัปเดต Model Fallback Chain อยู่เสมอ</li>
+
+        <li><b>ข้อมูลจำลอง:</b> เนื่องจากไม่สามารถเข้าถึงฐานข้อมูลจริงของมหาวิทยาลัยได้ จึงต้องสร้างข้อมูลจำลอง (Mock
+            Data) ที่สมจริง ซึ่งอาจไม่ตรงกับข้อมูลจริงทุกประการ</li>
+
+        <li><b>ขนาดของ System Instruction:</b> การส่งข้อมูล Dashboard ทั้งหมดไปเป็น System Instruction ของ AI ทำให้
+            Request มีขนาดใหญ่ ซึ่งอาจส่งผลต่อความเร็วในการตอบสนองและค่าใช้จ่าย Token</li>
+
+        <li><b>การรองรับภาษาไทยในเสียง:</b> Web Speech API มีความแม่นยำในการรับรู้เสียงภาษาไทยไม่สูงมาก
+            โดยเฉพาะคำศัพท์เฉพาะทาง</li>
+    </ol>
+
+    <h2>5.3 ข้อเสนอแนะ</h2>
+
+    <h3>5.3.1 ข้อเสนอแนะสำหรับการพัฒนาต่อ</h3>
+    <ol>
+        <li><b>เชื่อมต่อฐานข้อมูลจริง:</b> เชื่อมต่อกับ API ของระบบทะเบียน ระบบ ERP หรือ Data Warehouse ของมหาวิทยาลัย
+            เพื่อแสดงข้อมูลที่เป็นปัจจุบัน (Real-time Data)</li>
+        <li><b>เพิ่ม Backend Server:</b> พัฒนา Backend ด้วย NestJS หรือ Express.js เพื่อจัดการ API Key ฝั่ง Server
+            (ปลอดภัยกว่าฝั่ง Client) และรองรับ Caching, Rate Limiting</li>
+        <li><b>พัฒนาระบบรายงาน (Report Generation):</b> เพิ่มฟีเจอร์ Export เป็น PDF หรือ Excel
+            สำหรับรายงานประจำเดือน/ปี</li>
+        <li><b>พัฒนาระบบแจ้งเตือน (Notification):</b> แจ้งเตือนผู้บริหารเมื่อมี KPI ต่ำกว่าเป้า หรือข้อมูลผิดปกติ</li>
+        <li><b>เพิ่ม Machine Learning Models:</b> พัฒนาโมเดลพยากรณ์เฉพาะทาง เช่น Drop-out Prediction, Budget
+            Optimization</li>
+        <li><b>รองรับ Multi-Language:</b> เพิ่มภาษาอังกฤษสำหรับผู้ใช้ต่างประเทศ</li>
+    </ol>
+
+    <h3>5.3.2 ข้อเสนอแนะสำหรับนักศึกษาที่สนใจ</h3>
+    <ol>
+        <li>ศึกษา React Hooks อย่างลึกซึ้ง โดยเฉพาะ useState, useEffect, useCallback เพราะเป็นพื้นฐานของ Modern React
+        </li>
+        <li>เรียนรู้การใช้ AI API (เช่น Gemini, GPT) ในการพัฒนา Application
+            เพราะเป็นทักษะที่มีความต้องการสูงในตลาดแรงงาน</li>
+        <li>ให้ความสำคัญกับ UI/UX Design เพราะ Dashboard ที่สวยงามและใช้งานง่ายจะช่วยเพิ่มคุณค่าให้โครงงาน</li>
+        <li>ใช้ Version Control (Git) ตั้งแต่เริ่มโครงงาน เพื่อติดตามการเปลี่ยนแปลงและสามารถย้อนกลับได้เมื่อเกิดปัญหา
+        </li>
+    </ol>
+
+    <!-- ==================== บรรณานุกรม ==================== -->
+    <div class="page-break"></div>
+    <h1>บรรณานุกรม</h1>
+
+    <ol>
+        <li>React Documentation. (2025). <i>React – A JavaScript library for building user interfaces</i>. Retrieved
+            from https://react.dev/</li>
+        <li>Vite Documentation. (2025). <i>Vite – Next Generation Frontend Tooling</i>. Retrieved from https://vite.dev/
+        </li>
+        <li>Google. (2025). <i>Gemini API Documentation</i>. Retrieved from https://ai.google.dev/docs</li>
+        <li>Google. (2025). <i>Firebase Authentication Documentation</i>. Retrieved from
+            https://firebase.google.com/docs/auth</li>
+        <li>Chart.js Contributors. (2025). <i>Chart.js – Simple yet flexible JavaScript charting</i>. Retrieved from
+            https://www.chartjs.org/</li>
+        <li>React Router Contributors. (2025). <i>React Router Documentation</i>. Retrieved from
+            https://reactrouter.com/</li>
+        <li>Lucide Contributors. (2025). <i>Lucide Icons</i>. Retrieved from https://lucide.dev/</li>
+        <li>Mozilla Developer Network. (2025). <i>Web Speech API</i>. Retrieved from
+            https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API</li>
+        <li>คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้. (2568). <i>รายงานประจำปีคณะวิทยาศาสตร์</i>. เชียงใหม่: มหาวิทยาลัยแม่โจ้.
+        </li>
+        <li>สำนักบริหารและพัฒนาวิชาการ มหาวิทยาลัยแม่โจ้. (2568). <i>คู่มือการพัฒนาโครงงานคอมพิวเตอร์</i>. เชียงใหม่:
+            มหาวิทยาลัยแม่โจ้.</li>
+    </ol>
+
+</body>
+
+</html>
