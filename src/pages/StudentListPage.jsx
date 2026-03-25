@@ -114,6 +114,30 @@ export default function StudentListPage() {
 
     const statusColor = (s) => s === 'ปกติ' ? '#4CAF50' : s === 'กำลังศึกษา' ? '#4CAF50' : s === 'รอพินิจ' ? '#FFC107' : '#ef4444';
 
+    /* ── PDPA Access Control: เฉพาะ admin/dean เท่านั้น ── */
+    if (user?.role !== 'dean' && user?.role !== 'admin') {
+        return (
+            <div className="dashboard-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+                <div style={{ textAlign: 'center', maxWidth: 480 }}>
+                    <div style={{ fontSize: '4rem', marginBottom: 16 }}>🔒</div>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>จำกัดสิทธิ์การเข้าถึง</h2>
+                    <p style={{ color: '#9ca3af', fontSize: '0.9rem', lineHeight: 1.7 }}>
+                        หน้ารายชื่อนักศึกษามีข้อมูลส่วนบุคคล (ชื่อ-นามสกุล, รหัส, ผลการเรียน)<br />
+                        ตาม <strong style={{ color: '#FFC107' }}>พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)</strong><br />
+                        เฉพาะผู้บริหาร (Admin) เท่านั้นที่สามารถเข้าถึงได้
+                    </p>
+                    <div style={{
+                        marginTop: 20, padding: '12px 24px', borderRadius: '10px',
+                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                        fontSize: '0.82rem', color: '#9ca3af'
+                    }}>
+                        🔑 กรุณาเข้าสู่ระบบด้วยรหัสผู้บริหาร
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="dashboard-content">
             {/* ── Header ── */}
