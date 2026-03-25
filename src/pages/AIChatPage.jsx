@@ -11,6 +11,7 @@ import { sendMessageToGemini, resetConversation } from '../services/geminiServic
 import {
     studentStatsData, universityBudgetData, scienceFacultyBudgetData,
 } from '../data/mockData';
+import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, PieController, DoughnutController, RadarController, PolarAreaController, zoomPlugin);
 
@@ -210,31 +211,9 @@ function generateForecastResponse(parsed) {
     return { text: results.join('\n\n') + '\n\n💡 _อ้างอิงจากข้อมูลในระบบเท่านั้น (Linear Regression)_', chart: chartConfig };
 }
 
-// ==================== Student Data ====================
-const MAJORS = ['วิทยาการคอมพิวเตอร์', 'เทคโนโลยีสารสนเทศ', 'คณิตศาสตร์', 'เคมี', 'ฟิสิกส์', 'ชีววิทยา', 'วิทยาการข้อมูล', 'สถิติ'];
-const FIRST_NAMES = ['สมชาย', 'สมหญิง', 'กิตติ', 'ปิยะ', 'วรัญญา', 'จิรา', 'ณัฐ', 'พิมพ์', 'อรุณ', 'ธนา', 'สุภา', 'ชัยวัฒน์', 'นภา', 'วิภา', 'เอก', 'ภูมิ', 'แก้ว', 'ดวง', 'พลอย', 'มาลี'];
-const LAST_NAMES = ['ใจดี', 'สุขสันต์', 'รัตนา', 'ศรีสุข', 'วงศ์ดี', 'จันทร์เพ็ญ', 'แสงทอง', 'มาลัย', 'พงษ์ดี', 'บุญมา', 'ทองดี', 'สมบูรณ์', 'เจริญ', 'รุ่งเรือง', 'สว่าง'];
-
-function seededRandom(seed) {
-    let s = seed;
-    return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
-}
-
-const ALL_STUDENTS = (() => {
-    const rng = seededRandom(42);
-    return Array.from({ length: 50 }, (_, i) => {
-        const year = [1, 2, 3, 4][Math.floor(rng() * 4)];
-        const major = MAJORS[Math.floor(rng() * MAJORS.length)];
-        const gpa = +(1.5 + rng() * 2.5).toFixed(2);
-        const fn = FIRST_NAMES[Math.floor(rng() * FIRST_NAMES.length)];
-        const ln = LAST_NAMES[Math.floor(rng() * LAST_NAMES.length)];
-        return {
-            id: `6${6 - year}01${String(i).padStart(4, '0')}`,
-            name: `${fn} ${ln}`, major, year, gpa,
-            status: gpa < 2.0 ? 'รอพินิจ' : 'ปกติ'
-        };
-    });
-})();
+// ==================== Student Data (Real from MJU) ====================
+const MAJORS = SCIENCE_MAJORS;
+const ALL_STUDENTS = scienceStudentList;
 
 // ==================== Smart Student Search ====================
 function searchStudents(query) {
@@ -694,6 +673,13 @@ export default function AIChatPage() {
         setTyping(true);
 
         try {
+            // Try local response first (forecast, student search)
+            const localResult = tryLocalResponse(userMsg);
+            if (localResult) {
+                setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
+                setTyping(false);
+                return;
+            }
             // If user has uploaded file data, include it in context
             let contextMsg = userMsg;
             if (uploadedFileData) {
