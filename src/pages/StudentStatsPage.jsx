@@ -426,6 +426,159 @@ export default function StudentStatsPage() {
                     </div>
                 </div>
 
+                {/* ==================== NEW: Gender + Ratio + Intake ==================== */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, marginTop: 24 }}>
+                    {/* Gender Distribution */}
+                    <div className="chart-card animate-in">
+                        <div className="chart-card-header">
+                            <div>
+                                <div className="chart-card-title">👫 สัดส่วนเพศนักศึกษา</div>
+                                <div className="chart-card-subtitle">คณะวิทยาศาสตร์ — ข้อมูลจาก MJU Dashboard</div>
+                            </div>
+                        </div>
+                        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                            <div className="chart-container" style={{ height: 200 }}>
+                                <Doughnut data={{
+                                    labels: ['ชาย', 'หญิง'],
+                                    datasets: [{
+                                        data: [scienceFaculty.byGender.male, scienceFaculty.byGender.female],
+                                        backgroundColor: ['#2E86AB', '#E91E63'],
+                                        borderWidth: 0,
+                                        cutout: '65%',
+                                    }]
+                                }} options={{
+                                    responsive: true, maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 14, font: { size: 12 } } },
+                                        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString()} คน (${((ctx.parsed / scienceFaculty.total) * 100).toFixed(1)}%)` } }
+                                    }
+                                }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 24, justifyContent: 'center', width: '100%' }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: 28, fontWeight: 800, color: '#2E86AB' }}>{scienceFaculty.byGender.male}</div>
+                                    <div style={{ fontSize: 11, color: '#9ca3af' }}>ชาย ({scienceFaculty.byGender.malePercent}%)</div>
+                                </div>
+                                <div style={{ width: 1, background: 'rgba(255,255,255,0.1)' }} />
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: 28, fontWeight: 800, color: '#E91E63' }}>{scienceFaculty.byGender.female}</div>
+                                    <div style={{ fontSize: 11, color: '#9ca3af' }}>หญิง ({scienceFaculty.byGender.femalePercent}%)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Student-to-Faculty Ratio */}
+                    <div className="chart-card animate-in">
+                        <div className="chart-card-header">
+                            <div>
+                                <div className="chart-card-title">👨‍🏫 อัตราส่วน นศ. ต่ออาจารย์</div>
+                                <div className="chart-card-subtitle">เปรียบเทียบกับเกณฑ์ สกอ. และมหาวิทยาลัยอื่น</div>
+                            </div>
+                        </div>
+                        <div style={{ padding: '0 20px 20px' }}>
+                            <div style={{
+                                textAlign: 'center', padding: '16px', marginBottom: 16,
+                                background: 'linear-gradient(135deg, rgba(0,104,56,0.15), rgba(0,166,81,0.08))',
+                                border: '1px solid rgba(0,166,81,0.3)', borderRadius: 12
+                            }}>
+                                <div style={{ fontSize: 11, color: '#9ca3af' }}>อัตราส่วน นศ./อาจารย์</div>
+                                <div style={{ fontSize: 36, fontWeight: 800, color: '#00a651' }}>{scienceFaculty.studentFacultyRatio.ratio}:1</div>
+                                <div style={{ fontSize: 11, color: '#9ca3af' }}>({scienceFaculty.studentFacultyRatio.students} นศ. / {scienceFaculty.studentFacultyRatio.academicStaff} อาจารย์)</div>
+                            </div>
+                            <div className="chart-container" style={{ height: 180 }}>
+                                <Bar data={{
+                                    labels: scienceFaculty.studentFacultyRatio.comparison.map(c => c.name),
+                                    datasets: [{
+                                        label: 'อัตราส่วน นศ./อาจารย์',
+                                        data: scienceFaculty.studentFacultyRatio.comparison.map(c => c.ratio),
+                                        backgroundColor: scienceFaculty.studentFacultyRatio.comparison.map(c => c.color + 'cc'),
+                                        borderColor: scienceFaculty.studentFacultyRatio.comparison.map(c => c.color),
+                                        borderWidth: 1, borderRadius: 4,
+                                    }]
+                                }} options={{
+                                    indexAxis: 'y',
+                                    responsive: true, maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: { display: false },
+                                        tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.x}:1` } }
+                                    },
+                                    scales: {
+                                        x: { ticks: { color: '#9ca3af', callback: v => v + ':1' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                                        y: { ticks: { color: '#e5e7eb', font: { size: 11 } }, grid: { display: false } }
+                                    }
+                                }} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* New Student Intake */}
+                <div className="chart-card animate-in" style={{ marginTop: 20 }}>
+                    <div className="chart-card-header">
+                        <div>
+                            <div className="chart-card-title">🎓 จำนวนนักศึกษาใหม่ (Intake) คณะวิทยาศาสตร์</div>
+                            <div className="chart-card-subtitle">ย้อนหลัง 5 ปี — อ้างอิงจาก MJU Dashboard</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, padding: '0 20px 20px' }}>
+                        <div className="chart-container" style={{ height: 260 }}>
+                            <Bar data={{
+                                labels: scienceFaculty.newStudentIntake.map(s => `ปี ${s.year}`),
+                                datasets: [
+                                    {
+                                        label: 'ป.ตรี',
+                                        data: scienceFaculty.newStudentIntake.map(s => s.bachelor),
+                                        backgroundColor: 'rgba(0, 104, 56, 0.8)',
+                                        borderColor: '#006838', borderWidth: 1, borderRadius: 4,
+                                    },
+                                    {
+                                        label: 'ป.โท + ป.เอก',
+                                        data: scienceFaculty.newStudentIntake.map(s => s.master + s.doctoral),
+                                        backgroundColor: 'rgba(46, 134, 171, 0.8)',
+                                        borderColor: '#2E86AB', borderWidth: 1, borderRadius: 4,
+                                    }
+                                ]
+                            }} options={{
+                                responsive: true, maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12, font: { size: 11 } } },
+                                    tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} คน` } }
+                                },
+                                scales: {
+                                    x: { stacked: true, ticks: { color: '#9ca3af' }, grid: { display: false } },
+                                    y: { stacked: true, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                                }
+                            }} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {scienceFaculty.newStudentIntake.map((intake, i) => {
+                                const prev = i > 0 ? scienceFaculty.newStudentIntake[i - 1].total : null;
+                                const growth = prev ? (((intake.total - prev) / prev) * 100).toFixed(1) : null;
+                                return (
+                                    <div key={i} style={{
+                                        background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '10px 14px',
+                                        border: '1px solid rgba(255,255,255,0.06)'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: 12, color: '#9ca3af' }}>ปี {intake.year}</span>
+                                            <span style={{ fontSize: 16, fontWeight: 800, color: '#00a651' }}>{intake.total}</span>
+                                        </div>
+                                        {growth && (
+                                            <span style={{
+                                                fontSize: 10, fontWeight: 600,
+                                                color: parseFloat(growth) >= 0 ? '#00a651' : '#E91E63'
+                                            }}>
+                                                {parseFloat(growth) >= 0 ? '↑' : '↓'} {growth}%
+                                            </span>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
                 {/* Personnel & Nationality Info */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, marginTop: 24 }}>
                     {/* Personnel Card */}

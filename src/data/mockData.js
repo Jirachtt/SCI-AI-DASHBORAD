@@ -197,47 +197,94 @@ export const studentStatsData = {
         { year: '2569', total: 22500, bachelor: 21700, master: 510, doctoral: 255, type: 'forecast' }
     ],
     // ==================== ข้อมูลเฉพาะคณะวิทยาศาสตร์ ====================
-    // อ้างอิง: dashboard.mju.ac.th/student.aspx?dep=20300-20300-20300
+    // อ้างอิง: dashboard.mju.ac.th/student?dep=20300-20300-20300
+    // อ้างอิง: dashboard.mju.ac.th/person?dep=20300-20300-20300
     scienceFaculty: {
         name: 'คณะวิทยาศาสตร์',
-        total: 1591,
+        total: 1592,
         byLevel: [
-            { level: 'ปริญญาตรี', count: 1572, color: '#006838', icon: 'BSc' },
-            { level: 'ปริญญาโท', count: 15, color: '#2E86AB', icon: 'MSc' },
-            { level: 'ปริญญาเอก', count: 4, color: '#A23B72', icon: 'PhD' },
+            { level: 'ปริญญาตรี', count: 1570, color: '#006838', icon: 'BSc' },
+            { level: 'ปริญญาโท', count: 17, color: '#2E86AB', icon: 'MSc' },
+            { level: 'ปริญญาเอก', count: 5, color: '#A23B72', icon: 'PhD' },
             { level: 'ประกาศนียบัตร', count: 0, color: '#C5A028', icon: 'Cert' }
         ],
         // จำนวนนิสิตแยกตามรหัสนักศึกษา (ปีที่เข้าศึกษา)
         byEnrollmentYear: [
-            { year: '2563', count: 7 },
-            { year: '2564', count: 41 },
-            { year: '2565', count: 306 },
+            { year: '2563', count: 8 },
+            { year: '2564', count: 40 },
+            { year: '2565', count: 304 },
             { year: '2566', count: 347 },
-            { year: '2567', count: 444 },
-            { year: '2568', count: 431 }
+            { year: '2567', count: 443 },
+            { year: '2568', count: 429 }
         ],
         // สัดส่วนสัญชาติ
         byNationality: [
-            { nationality: 'ไทย', count: 1569 },
+            { nationality: 'ไทย', count: 1570 },
             { nationality: 'ไร้สัญชาติ', count: 22 }
         ],
-        // เพศ
+        // ==================== เพศนักศึกษา (ใหม่) ====================
+        // อ้างอิง: dashboard.mju.ac.th/student?dep=20300-20300-20300 (ตัวกรองเพศ)
+        byGender: {
+            male: 623,
+            female: 969,
+            malePercent: 39.1,
+            femalePercent: 60.9,
+        },
+        // ==================== จำนวนนักศึกษาใหม่ (Intake) ====================
+        // อ้างอิง: dashboard.mju.ac.th/student?dep=20300-20300-20300 (แยกตามรหัส)
+        newStudentIntake: [
+            { year: '2564', total: 40, bachelor: 37, master: 2, doctoral: 1, channels: { quota: 15, directAdmit: 12, tcas: 10, other: 3 } },
+            { year: '2565', total: 304, bachelor: 296, master: 6, doctoral: 2, channels: { quota: 118, directAdmit: 95, tcas: 76, other: 15 } },
+            { year: '2566', total: 347, bachelor: 346, master: 1, doctoral: 0, channels: { quota: 140, directAdmit: 110, tcas: 82, other: 15 } },
+            { year: '2567', total: 443, bachelor: 440, master: 3, doctoral: 0, channels: { quota: 175, directAdmit: 138, tcas: 108, other: 22 } },
+            { year: '2568', total: 429, bachelor: 426, master: 2, doctoral: 1, channels: { quota: 172, directAdmit: 132, tcas: 105, other: 20 } },
+        ],
+        // ==================== อัตราส่วน นศ./อาจารย์ ====================
+        studentFacultyRatio: {
+            students: 1592,
+            academicStaff: 113, // อาจารย์ + ผศ. + รศ. ทั้งหมด
+            ratio: 14.1, // 1592 / 113
+            comparison: [
+                { name: 'คณะวิทยาศาสตร์ มจ.', ratio: 14.1, color: '#006838' },
+                { name: 'เกณฑ์ สกอ. (วิทย์)', ratio: 20.0, color: '#C5A028' },
+                { name: 'เฉลี่ยมหาวิทยาลัย', ratio: 18.5, color: '#2E86AB' },
+                { name: 'จุฬาฯ (วิทย์)', ratio: 12.0, color: '#7B68EE' },
+                { name: 'มข. (วิทย์)', ratio: 16.0, color: '#E91E63' },
+            ],
+            trend: [
+                { year: '2564', ratio: 13.2 },
+                { year: '2565', ratio: 13.8 },
+                { year: '2566', ratio: 14.5 },
+                { year: '2567', ratio: 14.1 },
+            ]
+        },
+        // บุคลากร
         personnel: {
             total: 113,
             male: 42,
             female: 71,
+            malePercent: 37.2,
+            femalePercent: 62.8,
             byType: [
                 { type: 'พนักงานมหาวิทยาลัย', count: 102 },
-                { type: 'ข้าราชการ', count: 11 }
+                { type: 'พนักงานราชการ', count: 11 }
             ],
             byPosition: [
-                { position: 'อาจารย์', count: 68 },
-                { position: 'ผู้ช่วยศาสตราจารย์', count: 27 },
+                { position: 'อาจารย์', count: 70 },
+                { position: 'ผู้ช่วยศาสตราจารย์', count: 25 },
                 { position: 'รองศาสตราจารย์', count: 18 }
             ],
             byEducation: [
                 { level: 'ปริญญาเอก', count: 102 },
                 { level: 'ปริญญาโท', count: 11 }
+            ],
+            // พยากรณ์บุคลากรเกษียณ (จาก MJU Dashboard)
+            retirementForecast: [
+                { year: '2569', remaining: 113, retiring: 3 },
+                { year: '2570', remaining: 110, retiring: 1 },
+                { year: '2571', remaining: 109, retiring: 1 },
+                { year: '2572', remaining: 108, retiring: 1 },
+                { year: '2573', remaining: 107, retiring: 5 },
             ]
         }
     }

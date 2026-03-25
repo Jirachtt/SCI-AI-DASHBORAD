@@ -97,7 +97,7 @@ export default function StrategicDashboardPage() {
         },
         plugins: {
             legend: {
-                position: 'top',
+                position: 'bottom',
                 labels: {
                     color: '#e5e7eb',
                     font: { size: 12, weight: '600', family: "'Noto Sans Thai', 'Inter', sans-serif" },
@@ -141,7 +141,7 @@ export default function StrategicDashboardPage() {
     const chartOptions = {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-            legend: { labels: { color: '#ccc', font: { size: 11 } } },
+            legend: { position: 'bottom', labels: { color: '#ccc', font: { size: 11 } } },
             tooltip: { backgroundColor: '#1a1a2e', titleColor: '#fff', bodyColor: '#ccc' }
         },
         scales: {

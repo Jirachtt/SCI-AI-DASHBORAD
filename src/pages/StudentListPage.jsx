@@ -2,32 +2,9 @@ import { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Download, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap, Users, AlertTriangle } from 'lucide-react';
 
-/* ────────────── Seed-based Stable Mock Data ────────────── */
-const MAJORS = ['วิทยาการคอมพิวเตอร์', 'เทคโนโลยีสารสนเทศ', 'คณิตศาสตร์', 'เคมี', 'ฟิสิกส์', 'ชีววิทยา', 'วิทยาการข้อมูล', 'สถิติ'];
-const FIRST_NAMES = ['สมชาย', 'สมหญิง', 'กิตติ', 'ปิยะ', 'วรัญญา', 'จิรา', 'ณัฐ', 'พิมพ์', 'อรุณ', 'ธนา', 'สุภา', 'ชัยวัฒน์', 'นภา', 'วิภา', 'เอก', 'ภูมิ', 'แก้ว', 'ดวง', 'พลอย', 'มาลี'];
-const LAST_NAMES = ['ใจดี', 'สุขสันต์', 'รัตนา', 'ศรีสุข', 'วงศ์ดี', 'จันทร์เพ็ญ', 'แสงทอง', 'มาลัย', 'พงษ์ดี', 'บุญมา', 'ทองดี', 'สมบูรณ์', 'เจริญ', 'รุ่งเรือง', 'สว่าง'];
-
-function seededRandom(seed) {
-    let s = seed;
-    return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
-}
-
-const generateStudents = () => {
-    const rng = seededRandom(42);
-    return Array.from({ length: 50 }, (_, i) => {
-        const year = [1, 2, 3, 4][Math.floor(rng() * 4)];
-        const major = MAJORS[Math.floor(rng() * MAJORS.length)];
-        const gpa = +(1.5 + rng() * 2.5).toFixed(2);
-        const fn = FIRST_NAMES[Math.floor(rng() * FIRST_NAMES.length)];
-        const ln = LAST_NAMES[Math.floor(rng() * LAST_NAMES.length)];
-        return {
-            id: `6${6 - year}01${String(i).padStart(4, '0')}`,
-            name: `${fn} ${ln}`,
-            major, year, gpa,
-            status: gpa < 2.0 ? 'รอพินิจ' : 'ปกติ'
-        };
-    });
-};
+/* ────────────── Student Data from MJU Dashboard ────────────── */
+import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
+const MAJORS = SCIENCE_MAJORS;
 
 /* ────────────── Styles ────────────── */
 const card = {
@@ -55,14 +32,14 @@ const modalBox = {
     padding: '32px', width: '95%', maxWidth: '520px', position: 'relative',
 };
 
-const ROWS_PER_PAGE = 15;
+const ROWS_PER_PAGE = 20;
 
 /* ────────────── Component ────────────── */
 export default function StudentListPage() {
     const { user } = useAuth();
     const canManage = user?.role === 'dean' || user?.role === 'admin';
 
-    const [students, setStudents] = useState(generateStudents);
+    const [students, setStudents] = useState(scienceStudentList);
     const [searchTerm, setSearchTerm] = useState('');
     const [yearFilter, setYearFilter] = useState('all');
     const [majorFilter, setMajorFilter] = useState('all');
@@ -98,9 +75,9 @@ export default function StudentListPage() {
     /* ── Export CSV ── */
     const exportCSV = () => {
         const BOM = '\uFEFF';
-        const header = 'รหัสนักศึกษา,ชื่อ-นามสกุล,สาขาวิชา,ชั้นปี,เกรดเฉลี่ย,สถานะ';
+        const header = 'รหัสนักศึกษา,คำนำหน้า,ชื่อ-นามสกุล,สาขาวิชา,ระดับ,ชั้นปี,เกรดเฉลี่ย,สถานะ';
         const rows = filtered.map(s =>
-            `${s.id},${s.name},${s.major},${s.year},${s.gpa.toFixed(2)},${s.status}`
+            `${s.id},${s.prefix || ''},${s.name},${s.major},${s.level || 'ปริญญาตรี'},${s.year},${s.gpa.toFixed(2)},${s.status}`
         );
         const csv = BOM + [header, ...rows].join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -121,18 +98,20 @@ export default function StudentListPage() {
             ...prev,
             {
                 id: newStudent.id,
+                prefix: '',
                 name: newStudent.name,
                 major: newStudent.major,
+                level: 'ปริญญาตรี',
                 year: parseInt(newStudent.year),
                 gpa,
-                status: gpa < 2.0 ? 'รอพินิจ' : 'ปกติ'
+                status: gpa < 2.0 ? 'รอพินิจ' : 'กำลังศึกษา'
             }
         ]);
         setNewStudent({ id: '', name: '', major: MAJORS[0], year: '1', gpa: '' });
         setShowModal(false);
     };
 
-    const statusColor = (s) => s === 'ปกติ' ? '#4CAF50' : s === 'รอพินิจ' ? '#FFC107' : '#ef4444';
+    const statusColor = (s) => s === 'ปกติ' ? '#4CAF50' : s === 'กำลังศึกษา' ? '#4CAF50' : s === 'รอพินิจ' ? '#FFC107' : '#ef4444';
 
     return (
         <div className="dashboard-content">
@@ -144,7 +123,7 @@ export default function StudentListPage() {
                         รายชื่อนักศึกษา
                     </h1>
                     <p style={{ color: '#9ca3af', margin: '4px 0 0', fontSize: '0.9rem' }}>
-                        ข้อมูลนักศึกษาคณะวิทยาศาสตร์ (ปี 1 – ปี 4) • ทั้งหมด <strong style={{ color: '#fff' }}>{students.length}</strong> คน
+                        ข้อมูลจาก MJU Dashboard (ปี 65 – 69) • ทั้งหมด <strong style={{ color: '#fff' }}>{students.length}</strong> คน
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -216,6 +195,7 @@ export default function StudentListPage() {
                                 <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>รหัส</th>
                                 <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ชื่อ-นามสกุล</th>
                                 <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>สาขาวิชา</th>
+                                <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ระดับ</th>
                                 <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ชั้นปี</th>
                                 <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>GPA</th>
                                 <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>สถานะ</th>
@@ -233,16 +213,27 @@ export default function StudentListPage() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                             <div style={{
                                                 width: 32, height: 32, borderRadius: '50%',
-                                                background: 'linear-gradient(135deg, #2E86AB, #1a6a8c)',
+                                                background: s.prefix?.includes('นาย') ? 'linear-gradient(135deg, #2E86AB, #1a6a8c)' : 'linear-gradient(135deg, #E91E63, #c2185b)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 fontSize: '0.75rem', fontWeight: 700, color: '#fff', flexShrink: 0
                                             }}>
                                                 {s.name.charAt(0)}
                                             </div>
-                                            <span style={{ fontWeight: 600 }}>{s.name}</span>
+                                            <div>
+                                                <span style={{ fontWeight: 600 }}>{s.prefix ? `${s.prefix} ` : ''}{s.name}</span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td style={{ padding: '12px 18px', fontSize: '0.88rem' }}>{s.major}</td>
+                                    <td style={{ padding: '12px 18px', textAlign: 'center' }}>
+                                        <span style={{
+                                            padding: '3px 10px', borderRadius: '20px', fontSize: '0.76rem', fontWeight: 600,
+                                            background: s.level === 'ปริญญาตรี' ? 'rgba(0,166,81,0.15)' : s.level === 'ปริญญาโท' ? 'rgba(46,134,171,0.15)' : 'rgba(162,59,114,0.15)',
+                                            color: s.level === 'ปริญญาตรี' ? '#00a651' : s.level === 'ปริญญาโท' ? '#2E86AB' : '#A23B72',
+                                        }}>
+                                            {s.level || 'ป.ตรี'}
+                                        </span>
+                                    </td>
                                     <td style={{ padding: '12px 18px', textAlign: 'center' }}>
                                         <span style={{ padding: '3px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, background: 'rgba(255,255,255,0.08)' }}>
                                             ปี {s.year}
@@ -264,7 +255,7 @@ export default function StudentListPage() {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>
+                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>
                                         <Users size={40} style={{ marginBottom: 12, opacity: 0.3 }} /><br />
                                         ไม่พบข้อมูลนักศึกษาที่ตรงกับเงื่อนไข
                                     </td>
