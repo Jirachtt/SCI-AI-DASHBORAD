@@ -3,6 +3,7 @@ import {
     studentStatsData, universityBudgetData, scienceFacultyBudgetData,
     tuitionData, financialData, studentLifeData, dashboardSummary
 } from '../data/mockData';
+import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
@@ -22,151 +23,160 @@ async function fetchWithRetry(url, options, maxRetries = 3) {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         const response = await fetch(url, options);
         if (response.status === 429 && attempt < maxRetries) {
-            const waitMs = Math.min(2000 * Math.pow(2, attempt), 10000); // 2s, 4s, 8s
-            console.log(`[Gemini] Rate limited (429). Retrying in ${waitMs}ms... (attempt ${attempt + 1}/${maxRetries})`);
-            await new Promise(resolve => setTimeout(resolve, waitMs));
+            const waitMs = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+            console.warn(`[Gemini] Rate-limited (429), retrying in ${Math.round(waitMs)}ms (attempt ${attempt + 1}/${maxRetries})`);
+            await new Promise(r => setTimeout(r, waitMs));
             continue;
         }
         return response;
     }
 }
 
-// Build the system instruction with all dashboard data as context
+// Build the system instruction with all dashboard data + MJU general knowledge
 function buildSystemInstruction() {
-    // Serialize all dashboard data for the AI context
     const budgetActual = universityBudgetData.yearly.filter(y => y.type === 'actual');
     const budgetForecast = universityBudgetData.yearly.filter(y => y.type === 'forecast');
     const sciBudgetActual = scienceFacultyBudgetData.yearly.filter(y => y.type === 'actual');
     const sciBudgetForecast = scienceFacultyBudgetData.yearly.filter(y => y.type === 'forecast');
 
-    return `คุณคือ "MJU AI Assistant" ผู้เชี่ยวชาญด้าน Dashboard ของมหาวิทยาลัยแม่โจ้ (Maejo University - MJU)
-คุณมีหน้าที่ตอบคำถามเกี่ยวกับข้อมูลที่มีอยู่ในระบบ Dashboard เท่านั้น
+    // Build student summary for AI context
+    const majorCounts = {};
+    const yearCounts = {};
+    let statusNormal = 0, statusAtRisk = 0;
+    scienceStudentList.forEach(s => {
+        majorCounts[s.major] = (majorCounts[s.major] || 0) + 1;
+        yearCounts[s.year] = (yearCounts[s.year] || 0) + 1;
+        if (s.status === 'รอพินิจ') statusAtRisk++; else statusNormal++;
+    });
+    const majorSummary = Object.entries(majorCounts).map(([m, c]) => `- สาขา${m}: ${c} คน`).join('\n');
+    const yearSummary = Object.entries(yearCounts).sort().map(([y, c]) => `- ชั้นปี ${y}: ${c} คน`).join('\n');
+    const sampleStudents = scienceStudentList.slice(0, 20).map((s, i) =>
+        `${i + 1}. ${s.id} ${s.name} (${s.major}, ปี${s.year}, GPA ${s.gpa})`
+    ).join('\n');
+
+    return `คุณคือ "MJU AI Assistant" ผู้เชี่ยวชาญด้านมหาวิทยาลัยแม่โจ้ (Maejo University - MJU) ทุกด้าน
+คุณตอบคำถามเกี่ยวกับข้อมูลในระบบ Dashboard และข้อมูลทั่วไปเกี่ยวกับมหาวิทยาลัยแม่โจ้ทุกเรื่อง
 
 ## กฎสำคัญ
 1. ตอบเป็นภาษาไทยเสมอ ยกเว้นคำศัพท์เฉพาะ
-2. ตอบเฉพาะข้อมูลที่มีอยู่ในระบบ Dashboard ด้านล่างเท่านั้น
-3. ถ้าถูกถามเรื่องที่ไม่เกี่ยวข้องกับข้อมูลใน Dashboard หรือไม่มีข้อมูลในระบบ ให้ตอบว่า "ไม่ทราบข้อมูลนี้ในปัจจุบัน ผมตอบได้เฉพาะข้อมูลที่มีใน Dashboard มหาวิทยาลัยแม่โจ้เท่านั้นครับ"
-4. ใช้ emoji ประกอบเพื่อให้อ่านง่าย
-5. ตอบกระชับ ได้ใจความ
+2. ถ้ามีข้อมูลใน Dashboard ให้ใช้ข้อมูลนั้นเป็นหลัก (แม่นยำสุด)
+3. ถ้าถูกถามเรื่องเกี่ยวกับแม่โจ้ที่ไม่มีใน Dashboard ให้ใช้ความรู้ทั่วไปตอบ
+4. ถ้าถูกถามเรื่องอื่นทั่วไป ให้พยายามตอบให้ดีที่สุด แต่ย้ำว่าเชี่ยวชาญเรื่องแม่โจ้มากที่สุด
+5. ใช้ emoji ประกอบเพื่อให้อ่านง่าย ตอบกระชับ ได้ใจความ
 6. **คำสั่งบังคับ: การสร้างกราฟ (MANDATORY Chart Generation)**
-   **เมื่อผู้ใช้ขอ กราฟ, chart, แผนภูมิ, แผนภาพ, แท่ง, เส้น, วงกลม, radar หรือขอดูข้อมูลเป็นกราฟ/รูปภาพ — คุณต้องแนบ \`\`\`json_chart\`\`\` block ท้ายข้อความเสมอ ห้ามตอบเป็นแค่ตัวหนังสือ**
-   รูปแบบ JSON block:
+   เมื่อผู้ใช้ขอ กราฟ, chart, แผนภูมิ, แท่ง, เส้น, วงกลม, radar → ต้องแนบ \`\`\`json_chart\`\`\` block ท้ายข้อความเสมอ ห้ามตอบเป็นแค่ตัวหนังสือ
+   รูปแบบ:
    \`\`\`json_chart
-   {
-     "chartType": "bar",
-     "data": {
-       "labels": ["ปี 65", "ปี 66", "ปี 67"],
-       "datasets": [
-         {
-           "label": "ชื่อข้อมูล",
-           "data": [100, 120, 150],
-           "backgroundColor": ["#00a651", "#7B68EE", "#E91E63"],
-           "borderColor": "#006838"
-         }
-       ]
-     }
-   }
+   {"chartType":"bar","data":{"labels":["A","B"],"datasets":[{"label":"X","data":[10,20],"backgroundColor":["#00a651","#7B68EE"]}]}}
    \`\`\`
-   รองรับ chartType: "bar", "line", "pie", "doughnut", "radar", "polarArea"
-   - พยายามเลือกโทนสีกราฟให้เหมาะสม (เช่น สีเขียว #00a651 สำหรับรายรับ/ภาพรวม, สีแดง #e91e63 สำหรับรายจ่าย, สำน้ำเงิน/ม่วง สำหรับนิสิต)
-   - **⚠️ บังคับ: ถ้าผู้ใช้พูดถึง กราฟ/chart/แท่ง/เส้น/วงกลม → ต้องมี \`\`\`json_chart\`\`\` block เสมอ ไม่มีข้อยกเว้น**
-   - **สำคัญมากสำหรับ Radar Chart:** 
-     1. ต้องมีข้อมูลอย่างน้อย 3 แกน (labels) ขึ้นไปเสมอ เพื่อให้กราฟสามารถวาดเป็นรูปหลายเหลี่ยมได้ (ห้ามสร้างดึงมาแค่ 1-2 ค่า เช่น เอามาแค่ GPA กับ อัตราสำเร็จ จะทำให้กราฟกลายเป็นเส้นตรงดิ่ง) แนะนำให้ดึงข้อมูลอื่่นมาเสริม เช่น จำนวนวิชาทั้งหมด หรือ จำนวนนิสิตที่นำมาแปลงสเกลแล้ว
-     2. ข้อมูลแต่ละแนวแกนต้องมีสเกลใกล้เคียงกันเสมอ (0-100) หากต้องเปรียบเทียบข้อมูลคนละหน่วย (เช่น GPA 0-4 และ อัตราสำเร็จ 0-100%) **ให้คุณแปลงค่าทางคณิตศาสตร์ให้เป็นเปอร์เซ็นต์ (0-100%) ก่อนใส่ข้อมูลลงกราฟเสมอ** (เช่น GPA 3.0 ให้พ่นค่าออกมาเป็น 75) เพื่อไม่ให้กราฟเบี้ยว
+   รองรับ: "bar", "line", "pie", "doughnut", "radar", "polarArea"
+   - Radar: ต้อง ≥3 แกน, ข้อมูลสเกลเดียวกัน (0-100%)
+   - **⚠️ กราฟ/chart/แท่ง/เส้น/วงกลม → ต้องมี json_chart block เสมอ**
+7. **พยากรณ์:** ถ้าผู้ใช้พูด "พยากรณ์"/"คาดการณ์" → คำนวณแนวโน้ม + สร้าง json_chart เสมอ
+8. **เมื่อถูกถามเรื่องนักศึกษา/รายชื่อ** → ใช้ข้อมูลจากส่วน "รายชื่อนักศึกษา" ด้านล่าง
 
-7. **คำสั่งพิเศษ: การพยากรณ์ล่วงหน้า (Forecasting 5 ปี)**
-   หากผู้ใช้ระบุคำว่า "พยากรณ์" หรือ "คาดการณ์แนวโน้ม" ล่วงหน้า (เช่น 5 ปี หรือถึงปี 2573)
-   ให้คุณนำข้อมูลจริงในอดีต (Trend) มาคำนวณแนวโน้มการเติบโต (เช่น % เติบโตเฉลี่ย หรือ Linear Regression อย่างง่ายด้วยตัวคุณเอง)
-   และ **สร้างข้อมูลอนาคตต่อเนื่องไปอีก 5 ปี** รวมเข้ากับข้อมูลเก่า 
-   จากนั้น **ต้องวาด \`\`\`json_chart\`\`\` กลับมาเสมอ** เป็น 'line' หรือ 'bar'
-   - Label ของปีในอนาคต ให้ต่อท้ายด้วยคำว่า "(พยากรณ์)" เสมอ
-   - คุณสามารถแยก dataset 2 ตัว (อดีต vs พยากรณ์) เพื่อให้กราฟแสดงเส้นประหรือสีอ่อนลงสำหรับช่วงพยากรณ์ได้
-   - **⚠️ ต้องมี \`\`\`json_chart\`\`\` block เสมอเมื่อพูดถึงพยากรณ์**
+## ข้อมูลทั่วไปมหาวิทยาลัยแม่โจ้
+
+### ประวัติ
+- ชื่อเต็ม: มหาวิทยาลัยแม่โจ้ (Maejo University) ก่อตั้ง พ.ศ. 2477 (ค.ศ. 1934)
+- เดิมชื่อ "โรงเรียนฝึกหัดครูประถมกสิกรรมภาคเหนือ" → สถาบันเทคโนโลยีการเกษตรแม่โจ้ → มหาวิทยาลัยแม่โจ้ (พ.ศ. 2539)
+- ปรัชญา: "มหาวิทยาลัยแห่งชีวิต" สีประจำ: เขียว-ขาว-เหลือง ต้นไม้: อินทนิล
+- อายุ: 90+ ปี เป็นหนึ่งในมหาวิทยาลัยเก่าแก่ที่สุดของประเทศไทย
+
+### ที่ตั้ง
+- 63 หมู่ 4 ต.หนองหาร อ.สันทราย จ.เชียงใหม่ 50290 (ห่างตัวเมือง ~15 กม.)
+- วิทยาเขต: เชียงใหม่ (หลัก), แพร่ เฉลิมพระเกียรติ, ชุมพร
+- พื้นที่: ~14,000 ไร่ มีฟาร์มเกษตร 7,000+ ไร่
+
+### คณะ/วิทยาลัย (16+ หน่วยงาน)
+1.ผลิตกรรมการเกษตร 2.วิทยาศาสตร์ 3.วิศวกรรมและอุตสาหกรรมเกษตร 4.บริหารธุรกิจ 5.เศรษฐศาสตร์ 6.พัฒนาการท่องเที่ยว 7.ศิลปศาสตร์ 8.สถาปัตยกรรมศาสตร์ 9.สารสนเทศและการสื่อสาร 10.เทคโนโลยีการประมง 11.สัตวศาสตร์และเทคโนโลยี 12.วิทยาลัยพลังงานทดแทน 13.วิทยาลัยนานาชาติ 14.พยาบาลศาสตร์ 15.แม่โจ้-แพร่ 16.แม่โจ้-ชุมพร
+
+### คณะวิทยาศาสตร์ (รายละเอียด)
+- หลักสูตร: วิทยาการคอมพิวเตอร์, IT, เคมี, ชีววิทยา, คณิตศาสตร์, ฟิสิกส์ประยุกต์, สถิติ, วิทยาการข้อมูล, เทคโนโลยีชีวภาพ, เคมีอุตสาหกรรม
+- จุดเด่น: หลักสูตร Data Science ที่ทันสมัย, ห้องปฏิบัติการวิจัยครบครัน
+
+### การรับสมัคร
+- TCAS: Portfolio, โควตา, Admission, Direct Admission
+- ระดับ: ป.ตรี, ป.โท, ป.เอก
+- เว็บสมัคร: admissions.mju.ac.th | เว็บหลัก: www.mju.ac.th
+
+### ความโดดเด่น
+- มหาวิทยาลัยเกษตรชั้นนำของภาคเหนือ
+- ศูนย์วิจัยเกษตรอินทรีย์ชั้นนำ มีพิพิธภัณฑ์วัฒนธรรมเกษตร
+- สิ่งอำนวยความสะดวก: สนามกีฬา, สระว่ายน้ำ, หอพัก, โรงอาหาร
+- เครือข่ายศิษย์เก่าเข้มแข็งทั่วประเทศ
 
 ## ข้อมูลในระบบ Dashboard
 
-### 1. สรุปภาพรวมมหาวิทยาลัย
-- นิสิตคงอยู่ทั้งหมด: ${dashboardSummary.totalStudents.toLocaleString()} คน
-- รายวิชาทั้งหมด: ${dashboardSummary.totalCourses} วิชา
-- GPA เฉลี่ย: ${dashboardSummary.avgGPA}
-- อัตราสำเร็จการศึกษา: ${dashboardSummary.graduationRate}%
-- ภาคเรียนปัจจุบัน: ${dashboardSummary.currentSemester}
-- ปีการศึกษา: ${dashboardSummary.academicYear}
+### 1. สรุปภาพรวม
+- นิสิตคงอยู่: ${dashboardSummary.totalStudents.toLocaleString()} คน, ${dashboardSummary.totalCourses} วิชา
+- GPA เฉลี่ย: ${dashboardSummary.avgGPA}, อัตราสำเร็จ: ${dashboardSummary.graduationRate}%
+- ภาคเรียน: ${dashboardSummary.currentSemester} ปีการศึกษา ${dashboardSummary.academicYear}
 
-### 2. ข้อมูลประสิทธิภาพระดับคณะ
-${dashboardSummary.faculties.map(f => `- ${f.name}: นิสิต ${f.totalStudents.toLocaleString()} คน, ${f.totalCourses} รายวิชา, GPA เฉลี่ย ${f.avgGPA.toFixed(2)}, อัตราสำเร็จการศึกษา ${f.graduationRate}%`).join('\n')}
+### 2. ข้อมูลคณะ
+${dashboardSummary.faculties.map(f => `- ${f.name}: ${f.totalStudents.toLocaleString()} คน, ${f.totalCourses} วิชา, GPA ${f.avgGPA.toFixed(2)}, สำเร็จ ${f.graduationRate}%`).join('\n')}
 
-### 3. สถิตินิสิตปัจจุบัน (แยกตามระดับ)
+### 3. สถิตินิสิตปัจจุบัน
 ${studentStatsData.current.byLevel.map(l => `- ${l.level}: ${l.count.toLocaleString()} คน`).join('\n')}
 - รวม: ${studentStatsData.current.total.toLocaleString()} คน
 
 ### 4. สถิตินิสิตแยกตามคณะ
-${studentStatsData.byFaculty.map(f => `- ${f.name}: ป.ตรี ${f.bachelor} / ป.โท ${f.master} / ป.เอก ${f.doctoral} (รวม ${f.bachelor + f.master + f.doctoral})`).join('\n')}
+${studentStatsData.byFaculty.map(f => `- ${f.name}: ป.ตรี ${f.bachelor} / ป.โท ${f.master} / ป.เอก ${f.doctoral}`).join('\n')}
 
-### 5. แนวโน้มจำนวนนิสิต (ย้อนหลัง + พยากรณ์)
-${studentStatsData.trend.map(t => `- ปี ${t.year} (${t.type === 'actual' ? 'ข้อมูลจริง' : 'พยากรณ์'}): รวม ${t.total.toLocaleString()} คน (ป.ตรี ${t.bachelor.toLocaleString()} / ป.โท ${t.master} / ป.เอก ${t.doctoral})`).join('\n')}
+### 5. แนวโน้มจำนวนนิสิต
+${studentStatsData.trend.map(t => `- ปี ${t.year} (${t.type === 'actual' ? 'จริง' : 'พยากรณ์'}): รวม ${t.total.toLocaleString()} คน`).join('\n')}
 
-### 6. คณะวิทยาศาสตร์ - รายละเอียด
-- จำนวนนิสิตแยกตามระดับ:
-${studentStatsData.scienceFaculty.byLevel.map(l => `  - ${l.level}: ${l.count} คน`).join('\n')}
-- จำนวนนิสิตแยกตามปีที่เข้า:
-${studentStatsData.scienceFaculty.byEnrollmentYear.map(e => `  - ปี ${e.year}: ${e.count} คน`).join('\n')}
+### 6. คณะวิทยาศาสตร์
+- นิสิตแยกตามระดับ: ${studentStatsData.scienceFaculty.byLevel.map(l => `${l.level} ${l.count} คน`).join(', ')}
+- นิสิตแยกตามปีเข้า: ${studentStatsData.scienceFaculty.byEnrollmentYear.map(e => `ปี${e.year} ${e.count}คน`).join(', ')}
 - บุคลากร: ${studentStatsData.scienceFaculty.personnel.total} คน (ชาย ${studentStatsData.scienceFaculty.personnel.male} / หญิง ${studentStatsData.scienceFaculty.personnel.female})
-  - ตามประเภท: ${studentStatsData.scienceFaculty.personnel.byType.map(t => `${t.type} ${t.count} คน`).join(', ')}
-  - ตามตำแหน่ง: ${studentStatsData.scienceFaculty.personnel.byPosition.map(p => `${p.position} ${p.count} คน`).join(', ')}
-  - ตามวุฒิ: ${studentStatsData.scienceFaculty.personnel.byEducation.map(e => `${e.level} ${e.count} คน`).join(', ')}
+  - ตำแหน่ง: ${studentStatsData.scienceFaculty.personnel.byPosition.map(p => `${p.position} ${p.count}`).join(', ')}
+  - วุฒิ: ${studentStatsData.scienceFaculty.personnel.byEducation.map(e => `${e.level} ${e.count}`).join(', ')}
 
 ### 7. งบประมาณมหาวิทยาลัย (ล้านบาท)
-ข้อมูลจริง:
 ${budgetActual.map(y => `- ปี ${y.year}: รายรับ ${y.revenue} / รายจ่าย ${y.expense} / คงเหลือ ${y.surplus}`).join('\n')}
-พยากรณ์:
-${budgetForecast.map(y => `- ปี ${y.year}: รายรับ ${y.revenue} / รายจ่าย ${y.expense} / คงเหลือ ${y.surplus}`).join('\n')}
-- อัตราเติบโตรายรับเฉลี่ย: ${universityBudgetData.summary.avgGrowthRevenue}% ต่อปี
-- อัตราเติบโตรายจ่ายเฉลี่ย: ${universityBudgetData.summary.avgGrowthExpense}% ต่อปี
+พยากรณ์: ${budgetForecast.map(y => `ปี${y.year}: รับ${y.revenue}/จ่าย${y.expense}`).join(', ')}
+- เติบโตรายรับ: ${universityBudgetData.summary.avgGrowthRevenue}%/ปี, รายจ่าย: ${universityBudgetData.summary.avgGrowthExpense}%/ปี
 
 ### 8. งบประมาณคณะวิทยาศาสตร์ (ล้านบาท)
-ข้อมูลจริง:
 ${sciBudgetActual.map(y => `- ปี ${y.year}: รายรับ ${y.revenue} / รายจ่าย ${y.expense} / คงเหลือ ${y.surplus}`).join('\n')}
-พยากรณ์:
-${sciBudgetForecast.map(y => `- ปี ${y.year}: รายรับ ${y.revenue} / รายจ่าย ${y.expense} / คงเหลือ ${y.surplus}`).join('\n')}
-- อัตราเติบโตรายรับเฉลี่ย: ${scienceFacultyBudgetData.summary.avgGrowthRevenue}% ต่อปี
+พยากรณ์: ${sciBudgetForecast.map(y => `ปี${y.year}: รับ${y.revenue}/จ่าย${y.expense}`).join(', ')}
 
 ### 9. ค่าธรรมเนียมการศึกษา
-- ค่าเทอม (เหมาจ่าย): ${tuitionData.flatRate.min.toLocaleString()} - ${tuitionData.flatRate.max.toLocaleString()} บาท/เทอม
-- ค่าแรกเข้า: ${tuitionData.entryFee.min.toLocaleString()} - ${tuitionData.entryFee.max.toLocaleString()} บาท
-- ตลอดหลักสูตร 4 ปี: ${tuitionData.totalCost.min.toLocaleString()} - ${tuitionData.totalCost.max.toLocaleString()} บาท
-- แยกตามคณะ:
-${tuitionData.byFaculty.map(f => `  - ${f.name}: ${f.fee.toLocaleString()} บาท`).join('\n')}
+- ค่าเทอม: ${tuitionData.flatRate.min.toLocaleString()}-${tuitionData.flatRate.max.toLocaleString()} บาท/เทอม
+- ค่าแรกเข้า: ${tuitionData.entryFee.min.toLocaleString()}-${tuitionData.entryFee.max.toLocaleString()} บาท
+- ตลอดหลักสูตร: ${tuitionData.totalCost.min.toLocaleString()}-${tuitionData.totalCost.max.toLocaleString()} บาท
+- แยกตามคณะ: ${tuitionData.byFaculty.map(f => `${f.name} ${f.fee.toLocaleString()}บ.`).join(', ')}
 
 ### 10. ข้อมูลการเงิน
-- ค่าเทอมปัจจุบัน: ${financialData.tuitionStatus.current.amount.toLocaleString()} บาท (${financialData.tuitionStatus.current.status})
-- ครบกำหนด: ${financialData.tuitionStatus.current.dueDate}
-- ยอดชำระแล้วรวม: ${financialData.tuitionStatus.total.totalPaid.toLocaleString()} บาท
-- ยอดคงค้าง: ${financialData.tuitionStatus.total.totalRemaining.toLocaleString()} บาท
-- ทุนการศึกษา: ${financialData.scholarship.name} — ${financialData.scholarship.amount.toLocaleString()} บาท (${financialData.scholarship.status})
+- ค่าเทอม: ${financialData.tuitionStatus.current.amount.toLocaleString()} บาท (${financialData.tuitionStatus.current.status}) กำหนด ${financialData.tuitionStatus.current.dueDate}
+- ชำระแล้ว: ${financialData.tuitionStatus.total.totalPaid.toLocaleString()} บาท คงค้าง: ${financialData.tuitionStatus.total.totalRemaining.toLocaleString()} บาท
+- ทุน: ${financialData.scholarship.name} — ${financialData.scholarship.amount.toLocaleString()} บาท (${financialData.scholarship.status})
 
 ### 11. กิจกรรมนักศึกษา
-- ชั่วโมงกิจกรรมเป้าหมาย: ${studentLifeData.activityHours.target} ชม.
-- ผ่านแล้ว: ${studentLifeData.activityHours.completed} ชม.
-- แยกตามหมวด:
-${studentLifeData.activityHours.categories.map(c => `  - ${c.name}: ${c.hours} ชม.`).join('\n')}
+- เป้าหมาย: ${studentLifeData.activityHours.target} ชม. ผ่านแล้ว: ${studentLifeData.activityHours.completed} ชม.
+- หมวด: ${studentLifeData.activityHours.categories.map(c => `${c.name} ${c.hours}ชม.`).join(', ')}
 
-### 12. คะแนนความประพฤติ
-- คะแนนปัจจุบัน: ${studentLifeData.behaviorScore.score}/${studentLifeData.behaviorScore.maxScore}
-- ประวัติ: ${studentLifeData.behaviorScore.history.map(h => `${h.semester}: ${h.score}`).join(' → ')}
+### 12. ความประพฤติ
+- คะแนน: ${studentLifeData.behaviorScore.score}/${studentLifeData.behaviorScore.maxScore}
 
-### 13. ห้องสมุด (รายการยืมหนังสือ)
-${studentLifeData.library.map(b => `- ${b.title}: สถานะ ${b.status}${b.fine > 0 ? ` (ค่าปรับ ${b.fine} บาท)` : ''}`).join('\n')}
+### 13. รายชื่อนักศึกษาในระบบ (คณะวิทยาศาสตร์)
+จำนวนทั้งหมด: ${scienceStudentList.length} คน
+แยกตามสาขา:
+${majorSummary}
+แยกตามชั้นปี:
+${yearSummary}
+สถานะ: ปกติ ${statusNormal} คน / รอพินิจ ${statusAtRisk} คน
+ตัวอย่างรายชื่อ (20 คนแรก):
+${sampleStudents}
+**ถ้าถูกถามเรื่องนักศึกษา ให้ตอบจากข้อมูลนี้ได้เลย**
 
-### 14. หน้าต่างๆ ที่มีใน Dashboard
-- หน้าแรก: สรุปข้อมูลทั้งหมด
-- ค่าธรรมเนียม: ค่าเทอมแยกตามคณะ
-- สถิตินิสิต: จำนวนนิสิตแยกคณะ/ระดับ
-- งบประมาณคณะ: รายรับ-รายจ่าย พร้อมกราฟพยากรณ์
-- การเงิน: สถานะค่าเทอม/ทุน
-- กิจกรรม: ชั่วโมงกิจกรรม/ความประพฤติ
-- รายชื่อนักศึกษา: ค้นหา/กรอง/Export CSV
-- ตรวจสอบการจบ: ตรวจหน่วยกิต/เกรด`;
+### 14. หน้าต่างๆ ใน Dashboard
+- Overview: สรุปภาพรวม | HR: บุคลากร | สถิตินิสิต: แยกคณะ/ระดับ
+- รายชื่อนักศึกษา: ค้นหา/กรอง/Export (admin only)
+- ตรวจสอบการจบ | กิจกรรม/พฤติกรรม | วิจัย/Scopus
+- รายรับ-รายจ่าย | ค่าธรรมเนียม | พยากรณ์งบ (Linear Regression)
+- ยุทธศาสตร์/OKR | AI Chat: แชทกับ AI + อัปโหลด CSV + สั่งด้วยเสียง`;
 }
 
 // Conversation history for multi-turn chat
@@ -232,7 +242,7 @@ export async function sendMessageToGemini(userMessage) {
                 const errorData = await response.json().catch(() => ({}));
                 console.warn(`[Gemini] Model ${model} failed with status ${response.status}:`, errorData?.error?.message || errorData);
                 lastError = new Error(`${model}: HTTP ${response.status} - ${errorData?.error?.message || 'Unknown error'}`);
-                continue; // Try next model
+                continue;
             }
 
             const data = await response.json();
@@ -241,19 +251,16 @@ export async function sendMessageToGemini(userMessage) {
             if (!aiText) {
                 console.warn(`[Gemini] Model ${model} returned empty response:`, JSON.stringify(data).substring(0, 500));
                 lastError = new Error(`${model}: Empty response`);
-                continue; // Try next model
+                continue;
             }
 
-            // Success!
             console.log(`[Gemini] ✅ Model ${model} responded successfully`);
 
-            // Add AI response to history
             conversationHistory.push({
                 role: 'model',
                 parts: [{ text: aiText }]
             });
 
-            // Keep history manageable (last 20 turns)
             if (conversationHistory.length > 40) {
                 conversationHistory = conversationHistory.slice(-40);
             }
@@ -261,14 +268,12 @@ export async function sendMessageToGemini(userMessage) {
             return aiText;
 
         } catch (error) {
-            // Network error or other issue
             console.warn(`[Gemini] Model ${model} error:`, error.message);
             lastError = error;
-            continue; // Try next model
+            continue;
         }
     }
 
-    // All models failed — remove the failed user message from history
     conversationHistory.pop();
     console.error('[Gemini] ❌ All models failed. Last error:', lastError);
     throw lastError || new Error('All Gemini models failed');
@@ -303,7 +308,7 @@ export async function getDashboardInsights() {
 `;
 
     try {
-        const apiUrl = getApiUrl(MODELS[0]); // Use primary model
+        const apiUrl = getApiUrl(MODELS[0]);
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -327,7 +332,6 @@ export async function getDashboardInsights() {
         console.error("Failed to fetch AI insights", error);
     }
 
-    // Fallback static insights if API fails
     return [
         "ข้อมูลนิสิตปี 2568 คาดว่าจะแตะ 21,200 คน เติบโตขึ้นราว 7%",
         "คณะศิลปศาสตร์มีอัตราสำเร็จการศึกษาสูงกว่าค่าเฉลี่ยมหาวิทยาลัย (94.1%)",
