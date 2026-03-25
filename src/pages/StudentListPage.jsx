@@ -168,11 +168,11 @@ export default function StudentListPage() {
             {/* ══════════ TAB: MJU Dashboard Embed ══════════ */}
             {activeTab === 'mju' && (
                 <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-                    <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                         <div>
-                            <div style={{ fontWeight: 700, fontSize: '1rem' }}>📊 รายชื่อนักศึกษา — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</div>
+                            <div style={{ fontWeight: 700, fontSize: '1rem' }}>📊 ค้นหาข้อมูลนักศึกษา — มหาวิทยาลัยแม่โจ้</div>
                             <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: 4 }}>
-                                ข้อมูลจาก dashboard.mju.ac.th • อัปเดตแบบ Real-time • ค้นหา กรอง และดูรายละเอียดได้ครบ 100%
+                                ข้อมูลจาก dashboard.mju.ac.th • Real-time • <span style={{ color: '#FFC107' }}>⚡ เลือก หน่วยงาน → คณะวิทยาศาสตร์ → กดแสดง เพื่อดูเฉพาะคณะ</span>
                             </div>
                         </div>
                         <a href="https://dashboard.mju.ac.th/studentList.aspx?&yType=3&dep=20300-20300-20300" target="_blank" rel="noopener noreferrer"
