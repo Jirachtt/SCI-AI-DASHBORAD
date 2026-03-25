@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, BarChart3, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw } from 'lucide-react';
+import { MessageCircle, Send, BarChart3, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet } from 'lucide-react';
 import { Chart as ReactChart } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
@@ -481,14 +481,78 @@ function ChatMessage({ msg, onExpand }) {
 
 
 // ==================== Main AIChatPage Component ====================
+// ==================== CSV/File Parser ====================
+function parseCSVContent(text) {
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return null;
+
+    const delimiter = lines[0].includes('\t') ? '\t' : ',';
+    const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
+    const rows = lines.slice(1).map(line => {
+        const vals = line.split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+        return obj;
+    });
+
+    // Auto-detect numeric columns
+    const numericCols = headers.filter(h => {
+        const vals = rows.map(r => parseFloat(r[h])).filter(v => !isNaN(v));
+        return vals.length >= rows.length * 0.5;
+    });
+
+    // Auto-detect label column (first non-numeric column)
+    const labelCol = headers.find(h => !numericCols.includes(h)) || headers[0];
+
+    return { headers, rows, numericCols, labelCol, rowCount: rows.length };
+}
+
+function generateChartFromFile(parsed, fileName) {
+    if (!parsed || parsed.numericCols.length === 0) return null;
+
+    const colors = ['#00a651', '#2E86AB', '#E91E63', '#C5A028', '#7B68EE', '#FF6B6B', '#006838', '#A23B72'];
+    const labels = parsed.rows.map(r => r[parsed.labelCol]);
+    const datasets = parsed.numericCols.slice(0, 6).map((col, i) => ({
+        label: col,
+        data: parsed.rows.map(r => parseFloat(r[col]) || 0),
+        borderColor: colors[i % colors.length],
+        backgroundColor: colors[i % colors.length] + '40',
+        fill: false,
+        tension: 0.4,
+        pointRadius: 4,
+        borderWidth: 2,
+        borderRadius: 6,
+    }));
+
+    const chartType = parsed.numericCols.length <= 2 ? 'bar' : 'line';
+
+    return {
+        chartType,
+        data: { labels, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 8, font: { size: 11 } } },
+                title: { display: true, text: `📁 ${fileName}`, color: '#fff', font: { size: 14 } },
+            },
+            scales: {
+                x: { ticks: { color: '#9ca3af', maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            },
+        },
+    };
+}
+
 export default function AIChatPage() {
     const [expandedChart, setExpandedChart] = useState(null);
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef(null);
+    const fileInputRef = useRef(null);
+    const [uploadedFileData, setUploadedFileData] = useState(null);
     const [messages, setMessages] = useState([
         {
             role: 'bot',
-            text: 'สวัสดีครับ! ผม **MJU AI Assistant** (Powered by Gemini ✨)\n\nพร้อมช่วยตอบคำถามเกี่ยวกับข้อมูลมหาวิทยาลัยแม่โจ้ ถามมาได้เลยครับ!\n\n🔮 **ฟีเจอร์ทั้งหมด:**\n• 💬 แชทสอบถามข้อมูลทั่วไป\n• 📊 สร้างกราฟและพยากรณ์ข้อมูล\n• 🔍 ค้นหานักศึกษา\n• 🎤 สั่งงานด้วยเสียง\n\nลองเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ!',
+            text: 'สวัสดีครับ! ผม **MJU AI Assistant** (Powered by Gemini ✨)\n\nพร้อมช่วยตอบคำถามเกี่ยวกับข้อมูลมหาวิทยาลัยแม่โจ้ ถามมาได้เลยครับ!\n\n🔮 **ฟีเจอร์ทั้งหมด:**\n• 💬 แชทสอบถามข้อมูลทั่วไป\n• 📊 สร้างกราฟและพยากรณ์ข้อมูล\n• 🔍 ค้นหานักศึกษา\n• 🎤 สั่งงานด้วยเสียง\n• 📎 **อัปโหลดไฟล์ CSV** เพื่อวิเคราะห์และสร้างกราฟ\n\nลองเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ!',
             chart: null
         }
     ]);
@@ -537,6 +601,91 @@ export default function AIChatPage() {
         }]);
     }, []);
 
+    // ── File Upload Handler ──
+    const handleFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+
+        const fileName = file.name;
+        const ext = fileName.split('.').pop().toLowerCase();
+
+        if (!['csv', 'txt', 'tsv'].includes(ext)) {
+            setMessages(prev => [...prev, {
+                role: 'bot',
+                text: `⚠️ **รองรับเฉพาะไฟล์ CSV, TSV, TXT**\n\nไฟล์ "${fileName}" ไม่รองรับ กรุณาแปลงเป็นไฟล์ .csv ก่อนอัปโหลด`,
+                chart: null
+            }]);
+            return;
+        }
+
+        setMessages(prev => [...prev, { role: 'user', text: `📎 อัปโหลดไฟล์: **${fileName}**` }]);
+        setTyping(true);
+
+        try {
+            const text = await file.text();
+            const parsed = parseCSVContent(text);
+
+            if (!parsed || parsed.rows.length === 0) {
+                setMessages(prev => [...prev, {
+                    role: 'bot',
+                    text: `⚠️ ไม่สามารถอ่านข้อมูลจากไฟล์ "${fileName}" ได้\n\nตรวจสอบว่าไฟล์มีหัวคอลัมน์ (header row) และข้อมูลอย่างน้อย 1 แถว`,
+                    chart: null
+                }]);
+                return;
+            }
+
+            setUploadedFileData(parsed);
+            const chart = generateChartFromFile(parsed, fileName);
+
+            // Build summary text
+            let summaryText = `📊 **วิเคราะห์ไฟล์: ${fileName}**\n\n`;
+            summaryText += `📋 **ข้อมูล:** ${parsed.rowCount} แถว × ${parsed.headers.length} คอลัมน์\n`;
+            summaryText += `📌 **คอลัมน์:** ${parsed.headers.join(', ')}\n`;
+            summaryText += `📈 **คอลัมน์ตัวเลข:** ${parsed.numericCols.join(', ') || 'ไม่พบ'}\n\n`;
+
+            // Show sample data
+            summaryText += `🔍 **ตัวอย่างข้อมูล (5 แถวแรก):**\n`;
+            parsed.rows.slice(0, 5).forEach((row, i) => {
+                summaryText += `${i + 1}. ${parsed.headers.map(h => `${h}: ${row[h]}`).join(' | ')}\n`;
+            });
+
+            if (parsed.numericCols.length > 0) {
+                summaryText += `\n✅ **สร้างกราฟจากข้อมูลให้แล้ว!**`;
+                summaryText += `\n💡 ลองถาม: "เปรียบเทียบ ${parsed.numericCols[0]} กับข้อมูลในระบบ" เพื่อรวมกับข้อมูล 5 ด้าน`;
+            } else {
+                summaryText += `\n⚠️ ไม่พบคอลัมน์ตัวเลข จึงไม่สามารถสร้างกราฟอัตโนมัติได้`;
+            }
+
+            setMessages(prev => [...prev, { role: 'bot', text: summaryText, chart }]);
+
+            // Also send to Gemini for AI analysis
+            const dataPreview = parsed.rows.slice(0, 15).map(r => Object.values(r).join(', ')).join('\n');
+            const aiPrompt = `ผู้ใช้อัปโหลดไฟล์ "${fileName}" มีข้อมูล ${parsed.rowCount} แถว คอลัมน์: ${parsed.headers.join(', ')}\n\nตัวอย่างข้อมูล:\n${dataPreview}\n\nช่วยวิเคราะห์และสรุปข้อมูลนี้ให้หน่อย จุดที่น่าสนใจ แนวโน้ม และข้อเสนอแนะ`;
+
+            try {
+                const aiText = await sendMessageToGemini(aiPrompt);
+                const parsedAI = parseAIResponse(aiText);
+                setMessages(prev => [...prev, {
+                    role: 'bot',
+                    text: `🤖 **AI วิเคราะห์เพิ่มเติม:**\n\n${parsedAI.text}`,
+                    chart: parsedAI.chart
+                }]);
+            } catch (err) {
+                console.log('AI analysis skipped:', err.message);
+            }
+
+        } catch (err) {
+            setMessages(prev => [...prev, {
+                role: 'bot',
+                text: `❌ อ่านไฟล์ล้มเหลว: ${err.message}`,
+                chart: null
+            }]);
+        } finally {
+            setTyping(false);
+        }
+    };
+
     const handleSend = async () => {
         if (!input.trim() || typing) return;
         const userMsg = input.trim();
@@ -545,7 +694,13 @@ export default function AIChatPage() {
         setTyping(true);
 
         try {
-            const aiText = await sendMessageToGemini(userMsg);
+            // If user has uploaded file data, include it in context
+            let contextMsg = userMsg;
+            if (uploadedFileData) {
+                const preview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
+                contextMsg = `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${preview}]\n\nคำถาม: ${userMsg}`;
+            }
+            const aiText = await sendMessageToGemini(contextMsg);
             const parsedAI = parseAIResponse(aiText);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
@@ -595,8 +750,8 @@ export default function AIChatPage() {
         { icon: Bot, title: 'ถาม-ตอบ AI', desc: 'สอบถามข้อมูลมหาวิทยาลัย, งบประมาณ, นักศึกษา', color: '#00e676' },
         { icon: ChartLine, title: 'พยากรณ์ข้อมูล', desc: 'สร้างกราฟพยากรณ์งบประมาณ/จำนวนนิสิต', color: '#00e5ff' },
         { icon: Search, title: 'ค้นหานักศึกษา', desc: 'ค้นหาตามรหัส, ชื่อ, สาขา, ชั้นปี, GPA', color: '#7B68EE' },
+        { icon: Paperclip, title: 'อัปโหลดไฟล์', desc: 'แนบ CSV เพื่อวิเคราะห์และสร้างกราฟอัตโนมัติ', color: '#C5A028' },
         { icon: AudioLines, title: 'สั่งงานด้วยเสียง', desc: 'กดปุ่มไมค์แล้วพูดคำสั่งเป็นภาษาไทย', color: '#E91E63' },
-        { icon: Zap, title: 'Quick Actions', desc: 'ใช้ปุ่มลัดด้านบนเพื่อดำเนินการทันที', color: '#C5A028' },
         { icon: Maximize2, title: 'ขยาย/ซูมกราฟ', desc: 'คลิก "ขยาย" เพื่อดูกราฟเต็มจอพร้อมซูม', color: '#FF6B6B' },
     ];
 
@@ -657,6 +812,13 @@ export default function AIChatPage() {
 
                     {/* Input Area */}
                     <div className="ai-chat-page-input-wrapper">
+                        {uploadedFileData && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', marginBottom: 6, borderRadius: '8px', background: 'rgba(0,166,81,0.12)', border: '1px solid rgba(0,166,81,0.25)', fontSize: '0.78rem', color: '#00a651' }}>
+                                <FileSpreadsheet size={14} />
+                                <span>📎 ไฟล์ที่โหลด: {uploadedFileData.rowCount} แถว × {uploadedFileData.headers.length} คอลัมน์ — ถามคำถามเกี่ยวกับข้อมูลนี้ได้เลย</span>
+                                <button onClick={() => setUploadedFileData(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 2 }}><X size={14} /></button>
+                            </div>
+                        )}
                         <div className="ai-chat-page-input-area">
                             <button
                                 className={`ai-chat-page-mic ${isListening ? 'listening' : ''}`}
@@ -666,9 +828,25 @@ export default function AIChatPage() {
                             >
                                 {isListening ? <Mic size={20} /> : <MicOff size={20} />}
                             </button>
+                            <button
+                                className="ai-chat-page-mic"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={typing}
+                                title="อัปโหลดไฟล์ CSV เพื่อวิเคราะห์"
+                                style={{ color: '#C5A028' }}
+                            >
+                                <Paperclip size={20} />
+                            </button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileUpload}
+                                accept=".csv,.tsv,.txt"
+                                style={{ display: 'none' }}
+                            />
                             <input
                                 type="text"
-                                placeholder={isListening ? "🎤 กำลังฟัง..." : "พิมพ์คำถามที่นี่... เช่น พยากรณ์งบประมาณ, ค้นหานักศึกษา, สรุปข้อมูล"}
+                                placeholder={isListening ? "🎤 กำลังฟัง..." : "พิมพ์คำถามที่นี่... หรือ 📎 แนบไฟล์ CSV เพื่อวิเคราะห์"}
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
@@ -679,7 +857,7 @@ export default function AIChatPage() {
                             </button>
                         </div>
                         <div className="ai-chat-page-input-hint">
-                            กด Enter เพื่อส่ง • รองรับภาษาไทยและอังกฤษ • AI อาจตอบผิดพลาดได้
+                            กด Enter เพื่อส่ง • 📎 แนบไฟล์ CSV/TSV • 🎤 สั่งด้วยเสียง • AI อาจตอบผิดพลาดได้
                         </div>
                     </div>
                 </div>
