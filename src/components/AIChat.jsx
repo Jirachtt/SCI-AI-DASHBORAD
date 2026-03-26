@@ -332,8 +332,25 @@ function tryLocalResponse(question) {
 
 // ==================== Parse AI Generated Chart ====================
 function parseAIResponse(text) {
-    const regex = /```json_chart\s*([\s\S]*?)\s*```/;
-    const match = text.match(regex);
+    // Try json_chart first, then fall back to json blocks that contain chartType
+    let regex = /```json_chart\s*([\s\S]*?)\s*```/;
+    let match = text.match(regex);
+
+    // Fallback: detect ```json blocks that contain chart data (chartType + data)
+    if (!match) {
+        const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
+        const jsonMatch = text.match(jsonRegex);
+        if (jsonMatch) {
+            try {
+                const parsed = JSON.parse(jsonMatch[1]);
+                if (parsed.chartType && parsed.data) {
+                    match = jsonMatch;
+                    regex = jsonRegex;
+                }
+            } catch (_) { /* not valid chart JSON */ }
+        }
+    }
+
     let chartConfig = null;
     let cleanText = text;
 

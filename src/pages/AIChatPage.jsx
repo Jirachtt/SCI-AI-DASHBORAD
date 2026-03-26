@@ -319,8 +319,25 @@ function tryLocalResponse(question) {
 
 // ==================== Parse AI Generated Chart ====================
 function parseAIResponse(text) {
-    const regex = /```json_chart\s*([\s\S]*?)\s*```/;
-    const match = text.match(regex);
+    // Try json_chart first, then fall back to json blocks that contain chartType
+    let regex = /```json_chart\s*([\s\S]*?)\s*```/;
+    let match = text.match(regex);
+
+    // Fallback: detect ```json blocks that contain chart data (chartType + data)
+    if (!match) {
+        const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
+        const jsonMatch = text.match(jsonRegex);
+        if (jsonMatch) {
+            try {
+                const parsed = JSON.parse(jsonMatch[1]);
+                if (parsed.chartType && parsed.data) {
+                    match = jsonMatch;
+                    regex = jsonRegex;
+                }
+            } catch (_) { /* not valid chart JSON */ }
+        }
+    }
+
     let chartConfig = null;
     let cleanText = text;
 
@@ -534,6 +551,21 @@ export default function AIChatPage() {
     const recognitionRef = useRef(null);
     const fileInputRef = useRef(null);
     const [uploadedFileData, setUploadedFileData] = useState(null);
+    // Dashboard summary data for merge context
+    const dashboardMergeSummary = (() => {
+        const trendActual = studentStatsData.trend.filter(t => t.type === 'actual');
+        const budgetActual = universityBudgetData.yearly.filter(y => y.type === 'actual');
+        return {
+            name: 'ข้อมูล Dashboard',
+            headers: ['ปี', 'จำนวนนิสิต', 'งบรายรับ(ล้าน)', 'งบรายจ่าย(ล้าน)'],
+            rows: trendActual.map(t => ({
+                'ปี': t.year,
+                'จำนวนนิสิต': t.total,
+                'งบรายรับ(ล้าน)': budgetActual.find(b => b.year === t.year)?.revenue || 0,
+                'งบรายจ่าย(ล้าน)': budgetActual.find(b => b.year === t.year)?.expense || 0,
+            }))
+        };
+    })();
     const [messages, setMessages] = useState([
         {
             role: 'bot',
@@ -637,7 +669,10 @@ export default function AIChatPage() {
 
             if (parsed.numericCols.length > 0) {
                 summaryText += `\n✅ **สร้างกราฟจากข้อมูลให้แล้ว!**`;
-                summaryText += `\n💡 ลองถาม: "เปรียบเทียบ ${parsed.numericCols[0]} กับข้อมูลในระบบ" เพื่อรวมกับข้อมูล 5 ด้าน`;
+                summaryText += `\n\n🔗 **รวมกับข้อมูล Dashboard ได้!** ลองถาม:`;
+                summaryText += `\n• "เปรียบเทียบข้อมูลไฟล์กับจำนวนนิสิตในระบบ"`;
+                summaryText += `\n• "รวมข้อมูลไฟล์กับงบประมาณเป็นกราฟ"`;
+                summaryText += `\n• "สร้างกราฟเปรียบเทียบไฟล์กับข้อมูล Dashboard"`;
             } else {
                 summaryText += `\n⚠️ ไม่พบคอลัมน์ตัวเลข จึงไม่สามารถสร้างกราฟอัตโนมัติได้`;
             }
@@ -686,11 +721,12 @@ export default function AIChatPage() {
                 setTyping(false);
                 return;
             }
-            // If user has uploaded file data, include it in context
+            // If user has uploaded file data, include it + dashboard summary in context for merging
             let contextMsg = userMsg;
             if (uploadedFileData) {
-                const preview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
-                contextMsg = `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${preview}]\n\nคำถาม: ${userMsg}`;
+                const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
+                const dashPreview = dashboardMergeSummary.rows.map(r => Object.values(r).join(', ')).join('\n');
+                contextMsg = `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nข้อมูล Dashboard สำหรับเปรียบเทียบ (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}\n\nสามารถรวมข้อมูลไฟล์กับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้ ถ้าผู้ใช้ขอ]\n\nคำถาม: ${userMsg}`;
             }
             const aiText = await sendMessageToGemini(contextMsg);
             const parsedAI = parseAIResponse(aiText);
