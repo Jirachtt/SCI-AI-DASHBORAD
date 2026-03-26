@@ -344,7 +344,12 @@ function parseAIResponse(text) {
 
             const isRadar = rawJson.chartType === 'radar' || rawJson.chartType === 'polarArea';
 
-            if (isRadar) {
+            // Validate radar charts have minimum 3 axes
+            if (isRadar && rawJson.data?.labels?.length < 3) {
+                rawJson.chartType = 'bar';
+            }
+
+            if (isRadar && rawJson.data?.labels?.length >= 3) {
                 // Neon theme for radar
                 const neonColors = [
                     { border: '#00e5ff', fill: 'rgba(0, 229, 255, 0.4)' }, // Cyan
@@ -610,7 +615,14 @@ export default function AIChat() {
         setTyping(true);
 
         try {
-            // ปกติให้ส่งให้ AI ตอบและคำนวณตลอด
+            // Try local response first (forecast, student search) — instant results
+            const localResult = tryLocalResponse(userMsg);
+            if (localResult) {
+                setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
+                setTyping(false);
+                return;
+            }
+            // Otherwise send to Gemini AI
             const aiText = await sendMessageToGemini(userMsg);
             const parsedAI = parseAIResponse(aiText);
 
@@ -620,23 +632,12 @@ export default function AIChat() {
                 chart: parsedAI.chart
             }]);
         } catch (error) {
-            console.error('[AIChat] Gemini API error. Fallback to local mock data:', error);
-            // ตอบเป็น mockdata ก็ต่อเมื่อ AI error หรือ token หมด
-            const localResponse = tryLocalResponse(userMsg);
-
-            if (localResponse) {
-                setMessages(prev => [...prev, {
-                    role: 'bot',
-                    text: `⚠️ **AI ไม่พร้อมใช้งาน (ใช้ข้อมูล Mock Data แทน)**\n\n${localResponse.text}`,
-                    chart: localResponse.chart || null
-                }]);
-            } else {
-                setMessages(prev => [...prev, {
-                    role: 'bot',
-                    text: `❌ **เกิดข้อผิดพลาด** ไม่สามารถเชื่อมต่อกับ AI ได้\n\n🔍 รายละเอียด: ${error.message}\n\n💡 ระบบพยายามใช้ข้อมูล Mock Data แล้วแต่ไม่พบรูปแบบคำถามที่ตรงกัน`,
-                    chart: null
-                }]);
-            }
+            console.error('[AIChat] Gemini API error:', error);
+            setMessages(prev => [...prev, {
+                role: 'bot',
+                text: `❌ **เกิดข้อผิดพลาด** ไม่สามารถเชื่อมต่อกับ AI ได้\n\n🔍 รายละเอียด: ${error.message || 'ไม่ทราบสาเหตุ'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                chart: null
+            }]);
         } finally {
             setTyping(false);
         }
@@ -657,30 +658,24 @@ export default function AIChat() {
         setMessages(prev => [...prev, { role: 'user', text: query }]);
         setTyping(true);
 
-        // ปกติให้ส่งให้ AI ตอบและคำนวณตลอด
         try {
+            // Try local response first (forecast, student search)
+            const localResult = tryLocalResponse(query);
+            if (localResult) {
+                setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
+                setTyping(false);
+                return;
+            }
             const aiText = await sendMessageToGemini(query);
             const parsedAI = parseAIResponse(aiText);
-
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
-            console.error('[AIChat] Gemini API error. Fallback to local mock data:', error);
-            // ตอบเป็น mockdata ก็ต่อเมื่อ AI error หรือ token หมด
-            const localResponse = tryLocalResponse(query);
-
-            if (localResponse) {
-                setMessages(prev => [...prev, {
-                    role: 'bot',
-                    text: `⚠️ **AI ไม่พร้อมใช้งาน (ใช้ข้อมูล Mock Data แทน)**\n\n${localResponse.text}`,
-                    chart: localResponse.chart || null
-                }]);
-            } else {
-                setMessages(prev => [...prev, {
-                    role: 'bot',
-                    text: `❌ **เกิดข้อผิดพลาด** ไม่สามารถเชื่อมต่อกับ AI ได้\n\n🔍 รายละเอียด: ${error.message}\n\n💡 ระบบพยายามใช้ข้อมูล Mock Data แล้วแต่ไม่พบรูปแบบคำถามที่ตรงกัน`,
-                    chart: null
-                }]);
-            }
+            console.error('[AIChat] Gemini API error:', error);
+            setMessages(prev => [...prev, {
+                role: 'bot',
+                text: `❌ **เกิดข้อผิดพลาด** ไม่สามารถเชื่อมต่อกับ AI ได้\n\n🔍 ${error.message || 'ไม่ทราบสาเหตุ'}`,
+                chart: null
+            }]);
         } finally {
             setTyping(false);
         }

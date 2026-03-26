@@ -195,7 +195,8 @@ function generateForecastResponse(parsed) {
                 tooltip: {
                     callbacks: {
                         label: (ctx) => {
-                            const ds = DATASETS[parsed.datasets[0]];
+                            const dsIdx = Math.floor(ctx.datasetIndex / 2);
+                            const ds = DATASETS[parsed.datasets[dsIdx]] || DATASETS[parsed.datasets[0]];
                             return `${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() || '-'} ${ds?.unit || ''}`;
                         }
                     }
@@ -329,7 +330,12 @@ function parseAIResponse(text) {
             cleanText = text.replace(regex, '').trim();
             const isRadar = rawJson.chartType === 'radar' || rawJson.chartType === 'polarArea';
 
-            if (isRadar) {
+            // Validate radar charts have minimum 3 axes
+            if (isRadar && rawJson.data?.labels?.length < 3) {
+                rawJson.chartType = 'bar'; // Fall back to bar chart for insufficient axes
+            }
+
+            if (isRadar && rawJson.data?.labels?.length >= 3) {
                 const neonColors = [
                     { border: '#00e5ff', fill: 'rgba(0, 229, 255, 0.4)' },
                     { border: '#e91e63', fill: 'rgba(233, 30, 99, 0.4)' },
@@ -691,9 +697,15 @@ export default function AIChatPage() {
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
             console.error('[AIChatPage] Gemini API error:', error);
+            const errMsg = error.message || 'ไม่ทราบสาเหตุ';
+            const isTimeout = errMsg.includes('Timeout') || errMsg.includes('หมดเวลา');
+            const isApiKey = errMsg.includes('API key') || errMsg.includes('403');
+            const hint = isTimeout ? '💡 เซิร์ฟเวอร์ตอบช้า — ลองถามคำถามสั้นลง หรือลองใหม่'
+                : isApiKey ? '💡 ตรวจสอบ API Key ใน .env (VITE_GEMINI_API_KEY)'
+                : '💡 ลองถามคำถามใหม่อีกครั้ง';
             setMessages(prev => [...prev, {
                 role: 'bot',
-                text: `❌ **เกิดข้อผิดพลาด** ไม่สามารถเชื่อมต่อกับ AI ได้\n\n🔍 รายละเอียด: ${error.message}\n\n💡 ลองตรวจสอบ API Key หรือลองถามคำถามใหม่อีกครั้ง`,
+                text: `❌ **เกิดข้อผิดพลาด** ไม่สามารถเชื่อมต่อกับ AI ได้\n\n🔍 รายละเอียด: ${errMsg}\n\n${hint}`,
                 chart: null
             }]);
         } finally {
@@ -717,6 +729,13 @@ export default function AIChatPage() {
         setMessages(prev => [...prev, { role: 'user', text: query }]);
         setTyping(true);
         try {
+            // Try local response first (forecast, student search)
+            const localResult = tryLocalResponse(query);
+            if (localResult) {
+                setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
+                setTyping(false);
+                return;
+            }
             const aiText = await sendMessageToGemini(query);
             const parsedAI = parseAIResponse(aiText);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);

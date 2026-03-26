@@ -24,12 +24,14 @@ export default function TuitionPage() {
         datasets: [{
             label: 'ค่าเทอม (บาท/เทอม)',
             data: tuitionData.byFaculty.map(f => f.fee),
-            backgroundColor: tuitionData.byFaculty.map((_, i) =>
-                i % 2 === 0 ? 'rgba(0, 104, 56, 0.7)' : 'rgba(197, 160, 40, 0.7)'
-            ),
-            borderColor: tuitionData.byFaculty.map((_, i) =>
-                i % 2 === 0 ? '#006838' : '#C5A028'
-            ),
+            backgroundColor: tuitionData.byFaculty.map((_, i) => {
+                const colors = ['rgba(0, 104, 56, 0.7)', 'rgba(46, 134, 171, 0.7)', 'rgba(197, 160, 40, 0.7)', 'rgba(162, 59, 114, 0.7)', 'rgba(123, 104, 238, 0.7)', 'rgba(0, 166, 81, 0.7)', 'rgba(241, 143, 1, 0.7)', 'rgba(233, 30, 99, 0.7)'];
+                return colors[i % colors.length];
+            }),
+            borderColor: tuitionData.byFaculty.map((_, i) => {
+                const colors = ['#006838', '#2E86AB', '#C5A028', '#A23B72', '#7B68EE', '#00a651', '#F18F01', '#E91E63'];
+                return colors[i % colors.length];
+            }),
             borderWidth: 1,
             borderRadius: 6,
         }]

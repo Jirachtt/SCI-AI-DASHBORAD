@@ -1452,7 +1452,7 @@ body {
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
-  color: #9ca3af;
+  color: var(--text-secondary);
   font-size: 11px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1460,7 +1460,7 @@ body {
 
 .chat-chart-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: #e5e7eb;
+  color: var(--text-primary);
 }
 
 .chat-chart-toggle-btn.active {
@@ -1908,7 +1908,7 @@ body {
 
 .filter-bar label {
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
@@ -1967,7 +1967,7 @@ body {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  color: #9ca3af;
+  color: var(--text-secondary);
   font-size: 0.78rem;
   font-family: inherit;
   cursor: pointer;
@@ -2026,7 +2026,7 @@ body {
 
 .ai-chat-page-header-left p {
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--text-secondary);
   margin: 2px 0 0;
 }
 
@@ -2038,7 +2038,7 @@ body {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  color: #9ca3af;
+  color: var(--text-secondary);
   font-size: 0.8rem;
   font-weight: 600;
   font-family: inherit;
@@ -2098,7 +2098,7 @@ body {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
-  color: #e5e7eb;
+  color: var(--text-primary);
   font-size: 0.78rem;
   font-family: inherit;
   cursor: pointer;
@@ -2187,7 +2187,7 @@ body {
 .ai-page-msg-bubble.bot {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #e5e7eb;
+  color: var(--text-primary);
   border-radius: 16px 16px 16px 4px;
 }
 
@@ -2214,7 +2214,7 @@ body {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  color: #9ca3af;
+  color: var(--text-secondary);
   font-size: 0.75rem;
   font-family: inherit;
   cursor: pointer;
@@ -2300,7 +2300,7 @@ body {
 }
 
 .ai-chat-page-input-area input::placeholder {
-  color: #666;
+  color: var(--text-muted);
 }
 
 .ai-chat-page-mic {
@@ -2308,7 +2308,7 @@ body {
   border: none;
   cursor: pointer;
   padding: 8px;
-  color: #666;
+  color: var(--text-muted);
   border-radius: 8px;
   transition: all 0.2s;
   display: flex;
@@ -2316,7 +2316,7 @@ body {
 }
 
 .ai-chat-page-mic:hover {
-  color: #9ca3af;
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -2370,7 +2370,7 @@ body {
 .ai-chat-page-sidebar h3 {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #e5e7eb;
+  color: var(--text-primary);
   margin: 0 0 16px;
   display: flex;
   align-items: center;
@@ -2413,13 +2413,13 @@ body {
 .ai-chat-page-feature-title {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #e5e7eb;
+  color: var(--text-primary);
   margin-bottom: 2px;
 }
 
 .ai-chat-page-feature-desc {
   font-size: 0.72rem;
-  color: #666;
+  color: var(--text-muted);
   line-height: 1.4;
 }
 
@@ -2433,7 +2433,7 @@ body {
 .ai-chat-page-tips h4 {
   font-size: 0.78rem;
   font-weight: 700;
-  color: #e5e7eb;
+  color: var(--text-primary);
   margin: 0 0 10px;
 }
 
@@ -2448,7 +2448,7 @@ body {
 
 .ai-chat-page-tips li {
   font-size: 0.72rem;
-  color: #9ca3af;
+  color: var(--text-secondary);
   padding: 5px 8px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 6px;
@@ -2495,7 +2495,7 @@ body {
   position: absolute;
   top: 16px;
   right: 16px;
-  color: #9ca3af;
+  color: var(--text-secondary);
   background: none;
   border: none;
   cursor: pointer;
@@ -2519,7 +2519,7 @@ body {
 
 .ai-page-chart-modal-hint {
   text-align: center;
-  color: #9ca3af;
+  color: var(--text-secondary);
   font-size: 0.82rem;
   margin-top: 16px;
 }

@@ -19,12 +19,12 @@ export const tuitionData = {
     },
     byFaculty: [
         { name: 'วิทยาศาสตร์', fee: 18500 },
-        { name: 'วิศวกรรมศาสตร์', fee: 19000 },
+        { name: 'วิศวกรรมและอุตสาหกรรมเกษตร', fee: 19000 },
         { name: 'บริหารธุรกิจ', fee: 17000 },
         { name: 'ศิลปศาสตร์', fee: 16000 },
-        { name: 'เกษตรศาสตร์', fee: 17500 },
-        { name: 'สถาปัตยกรรม', fee: 18000 },
-        { name: 'เทคโนโลยีสารสนเทศ', fee: 18500 },
+        { name: 'ผลิตกรรมการเกษตร', fee: 17500 },
+        { name: 'สถาปัตยกรรมศาสตร์ฯ', fee: 18000 },
+        { name: 'สารสนเทศและการสื่อสาร', fee: 18500 },
         { name: 'พัฒนาการท่องเที่ยว', fee: 16500 }
     ],
     breakdown: [
@@ -117,13 +117,6 @@ export const dashboardSummary = {
     // ข้อมูลประสิทธิภาพแยกตามคณะ (สำหรับเปรียบเทียบ Radar Chart)
     faculties: [
         {
-            name: 'คณะวิทยาศาสตร์',
-            totalStudents: 1591,
-            totalCourses: 156,
-            avgGPA: 3.18,
-            graduationRate: 91.2
-        },
-        {
             name: 'คณะบริหารธุรกิจ',
             totalStudents: 4387,
             totalCourses: 210,
@@ -131,11 +124,32 @@ export const dashboardSummary = {
             graduationRate: 85.4
         },
         {
-            name: 'วิศวกรรมและอุตสาหกรรมเกษตร',
-            totalStudents: 801,
-            totalCourses: 125,
-            avgGPA: 2.88,
-            graduationRate: 82.5
+            name: 'คณะผลิตกรรมการเกษตร',
+            totalStudents: 2493,
+            totalCourses: 185,
+            avgGPA: 3.02,
+            graduationRate: 86.8
+        },
+        {
+            name: 'คณะวิทยาศาสตร์',
+            totalStudents: 1591,
+            totalCourses: 156,
+            avgGPA: 3.18,
+            graduationRate: 91.2
+        },
+        {
+            name: 'คณะสารสนเทศและการสื่อสาร',
+            totalStudents: 1493,
+            totalCourses: 72,
+            avgGPA: 3.10,
+            graduationRate: 89.5
+        },
+        {
+            name: 'วิทยาลัยบริหารศาสตร์',
+            totalStudents: 1297,
+            totalCourses: 95,
+            avgGPA: 3.08,
+            graduationRate: 87.2
         },
         {
             name: 'คณะศิลปศาสตร์',
@@ -145,11 +159,88 @@ export const dashboardSummary = {
             graduationRate: 94.1
         },
         {
+            name: 'มหาวิทยาลัยแม่โจ้ - แพร่ฯ',
+            totalStudents: 1156,
+            totalCourses: 110,
+            avgGPA: 3.00,
+            graduationRate: 84.5
+        },
+        {
+            name: 'คณะพัฒนาการท่องเที่ยว',
+            totalStudents: 987,
+            totalCourses: 68,
+            avgGPA: 3.22,
+            graduationRate: 90.3
+        },
+        {
+            name: 'คณะเศรษฐศาสตร์',
+            totalStudents: 968,
+            totalCourses: 82,
+            avgGPA: 3.15,
+            graduationRate: 88.7
+        },
+        {
+            name: 'คณะสัตวศาสตร์และเทคโนโลยี',
+            totalStudents: 901,
+            totalCourses: 78,
+            avgGPA: 3.05,
+            graduationRate: 87.0
+        },
+        {
+            name: 'วิทยาลัยพลังงานทดแทน',
+            totalStudents: 856,
+            totalCourses: 74,
+            avgGPA: 2.98,
+            graduationRate: 85.2
+        },
+        {
+            name: 'คณะวิศวกรรมและอุตสาหกรรมเกษตร',
+            totalStudents: 801,
+            totalCourses: 125,
+            avgGPA: 2.88,
+            graduationRate: 82.5
+        },
+        {
+            name: 'คณะเทคโนโลยีการประมงฯ',
+            totalStudents: 503,
+            totalCourses: 58,
+            avgGPA: 3.12,
+            graduationRate: 88.5
+        },
+        {
             name: 'คณะสถาปัตยกรรมศาสตร์ฯ',
             totalStudents: 431,
             totalCourses: 65,
             avgGPA: 3.05,
             graduationRate: 88.0
+        },
+        {
+            name: 'มหาวิทยาลัยแม่โจ้-ชุมพร',
+            totalStudents: 304,
+            totalCourses: 48,
+            avgGPA: 2.92,
+            graduationRate: 83.0
+        },
+        {
+            name: 'คณะพยาบาลศาสตร์',
+            totalStudents: 184,
+            totalCourses: 45,
+            avgGPA: 3.42,
+            graduationRate: 96.5
+        },
+        {
+            name: 'คณะสัตวแพทยศาสตร์',
+            totalStudents: 96,
+            totalCourses: 52,
+            avgGPA: 3.28,
+            graduationRate: 92.0
+        },
+        {
+            name: 'วิทยาลัยนานาชาติ',
+            totalStudents: 80,
+            totalCourses: 38,
+            avgGPA: 3.20,
+            graduationRate: 90.0
         }
     ]
 };

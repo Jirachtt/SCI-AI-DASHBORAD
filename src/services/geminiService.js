@@ -6,6 +6,9 @@ import {
 import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+if (!API_KEY) {
+    console.warn('[Gemini] ⚠️ VITE_GEMINI_API_KEY is not set. AI Chat will fall back to local responses only.');
+}
 
 // Models to try in order (fallback chain) — verified available via API
 const MODELS = [
@@ -18,19 +21,36 @@ function getApiUrl(model) {
     return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
 }
 
-// Retry helper for rate-limited requests (429)
+// Request timeout (30 seconds)
+const REQUEST_TIMEOUT_MS = 30000;
+
+// Retry helper for rate-limited and transient error requests
 async function fetchWithRetry(url, options, maxRetries = 3) {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        const response = await fetch(url, options);
-        if (response.status === 429 && attempt < maxRetries) {
-            const waitMs = Math.pow(2, attempt) * 1000 + Math.random() * 500;
-            console.warn(`[Gemini] Rate-limited (429), retrying in ${Math.round(waitMs)}ms (attempt ${attempt + 1}/${maxRetries})`);
-            await new Promise(r => setTimeout(r, waitMs));
-            continue;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        try {
+            const response = await fetch(url, { ...options, signal: controller.signal });
+            clearTimeout(timeoutId);
+            if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
+                const waitMs = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+                console.warn(`[Gemini] HTTP ${response.status}, retrying in ${Math.round(waitMs)}ms (attempt ${attempt + 1}/${maxRetries})`);
+                await new Promise(r => setTimeout(r, waitMs));
+                continue;
+            }
+            return response;
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError') {
+                throw new Error('คำขอหมดเวลา (Timeout 30s) — กรุณาลองใหม่อีกครั้ง');
+            }
+            throw err;
         }
-        return response;
     }
 }
+
+// Cached system instruction (rebuilt only when needed)
+let cachedSystemInstruction = null;
 
 // Build the system instruction with all dashboard data + MJU general knowledge
 function buildSystemInstruction() {
@@ -207,7 +227,7 @@ export async function sendMessageToGemini(userMessage) {
 
     const requestBody = {
         system_instruction: {
-            parts: [{ text: buildSystemInstruction() }]
+            parts: [{ text: cachedSystemInstruction || (cachedSystemInstruction = buildSystemInstruction()) }]
         },
         contents: conversationHistory,
         generationConfig: {
@@ -217,10 +237,10 @@ export async function sendMessageToGemini(userMessage) {
             maxOutputTokens: 8192,
         },
         safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
         ]
     };
 
@@ -291,7 +311,8 @@ export async function getDashboardInsights() {
     const cached = sessionStorage.getItem('ai_insights');
     if (cached) return JSON.parse(cached);
 
-    const prompt = `จากข้อมูลใน Dashboard ของมหาวิทยาลัยแม่โจ้ต่อไปนี้:\n${buildSystemInstruction()}
+    const sysInstruction = cachedSystemInstruction || (cachedSystemInstruction = buildSystemInstruction());
+    const prompt = `จากข้อมูลใน Dashboard ของมหาวิทยาลัยแม่โจ้ต่อไปนี้:\n${sysInstruction}
     
 บรรทัดฐาน:
 ให้คุณทำหน้าที่เป็น Data Analyst วิเคราะห์ข้อมูลทั้งหมดแล้วสรุป "Insight ที่น่าสนใจ / ข้อควรระวัง / หรือแนวโน้มสำคัญ" มา 3 ข้อสั้นๆ กระชับๆ (ข้อละไม่เกิน 1-2 บรรทัด)
@@ -307,29 +328,32 @@ export async function getDashboardInsights() {
 \`\`\`
 `;
 
-    try {
-        const apiUrl = getApiUrl(MODELS[0]);
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.2 }
-            })
-        });
+    for (const model of MODELS) {
+        try {
+            const apiUrl = getApiUrl(model);
+            const response = await fetchWithRetry(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.2 }
+                })
+            });
 
-        if (!response.ok) throw new Error('API Error');
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (!response.ok) { console.warn(`[Insights] Model ${model} failed`); continue; }
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-        const match = text.match(/```json\s*([\s\S]*?)\s*```/);
-        if (match) {
-            const insights = JSON.parse(match[1]);
-            sessionStorage.setItem('ai_insights', JSON.stringify(insights));
-            return insights;
+            const match = text.match(/```json\s*([\s\S]*?)\s*```/);
+            if (match) {
+                const insights = JSON.parse(match[1]);
+                sessionStorage.setItem('ai_insights', JSON.stringify(insights));
+                return insights;
+            }
+        } catch (error) {
+            console.warn(`[Insights] Model ${model} error:`, error.message);
+            continue;
         }
-    } catch (error) {
-        console.error("Failed to fetch AI insights", error);
     }
 
     return [
