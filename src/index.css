@@ -905,7 +905,9 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--border-radius);
   padding: 24px;
-  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.35s ease;
   position: relative;
   overflow: hidden;
 }
@@ -919,7 +921,7 @@ body {
   height: 3px;
   background: linear-gradient(90deg, var(--mju-green), var(--mju-gold));
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.35s ease;
 }
 
 .stat-card::after {
@@ -929,14 +931,14 @@ body {
   border-radius: var(--border-radius);
   opacity: 0;
   background: radial-gradient(circle at 50% 0%, rgba(0, 166, 81, 0.06), transparent 70%);
-  transition: opacity 0.4s ease;
+  transition: opacity 0.35s ease;
   pointer-events: none;
 }
 
 .stat-card:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--shadow-md), 0 0 30px rgba(0, 166, 81, 0.08);
-  border-color: rgba(0, 166, 81, 0.2);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md), 0 0 24px rgba(0, 166, 81, 0.06);
+  border-color: rgba(0, 166, 81, 0.18);
 }
 
 .stat-card:hover::before {
@@ -1029,6 +1031,19 @@ body {
   }
 }
 
+.topic-cards-grid {
+  /* staggered entrance for children */
+}
+.topic-cards-grid .topic-card {
+  opacity: 0;
+  animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.topic-cards-grid .topic-card:nth-child(1) { animation-delay: 0.05s; }
+.topic-cards-grid .topic-card:nth-child(2) { animation-delay: 0.1s; }
+.topic-cards-grid .topic-card:nth-child(3) { animation-delay: 0.15s; }
+.topic-cards-grid .topic-card:nth-child(4) { animation-delay: 0.22s; }
+.topic-cards-grid .topic-card:nth-child(5) { animation-delay: 0.29s; }
+
 .topic-card {
   background: rgba(19, 25, 41, 0.65);
   backdrop-filter: blur(20px) saturate(1.4);
@@ -1037,11 +1052,15 @@ body {
   border-radius: var(--border-radius-lg);
   padding: 28px;
   cursor: pointer;
-  transition: all 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.35s ease;
   position: relative;
   overflow: hidden;
   text-decoration: none;
   color: inherit;
+  display: flex;
+  flex-direction: column;
 }
 
 .topic-card::before {
@@ -1050,11 +1069,10 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: radial-gradient(ellipse at 30% 0%, rgba(0, 166, 81, 0.04), transparent 60%);
-  pointer-events: none;
+  height: 3px;
+  background: var(--topic-accent, linear-gradient(90deg, var(--mju-green), var(--mju-green-light)));
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.35s ease;
 }
 
 .topic-card::after {
@@ -1062,20 +1080,16 @@ body {
   position: absolute;
   inset: 0;
   border-radius: var(--border-radius-lg);
-  padding: 1px;
-  background: linear-gradient(135deg, transparent, rgba(0, 166, 81, 0.3), transparent);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+  background: radial-gradient(ellipse at 30% 0%, var(--topic-glow, rgba(0, 166, 81, 0.06)), transparent 65%);
+  pointer-events: none;
   opacity: 0;
   transition: opacity 0.4s ease;
 }
 
 .topic-card:hover {
-  transform: translateY(-8px) scale(1.01);
-  box-shadow: var(--shadow-lg), 0 0 40px rgba(0, 166, 81, 0.1);
-  border-color: rgba(0, 166, 81, 0.15);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md), 0 0 30px var(--topic-shadow, rgba(0, 166, 81, 0.08));
+  border-color: var(--topic-border, rgba(0, 166, 81, 0.18));
 }
 
 .topic-card:hover::before {
@@ -1087,29 +1101,45 @@ body {
 }
 
 .topic-card-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   font-size: 28px;
   box-shadow: var(--shadow-sm);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.topic-card:hover .topic-card-icon {
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .topic-card h3 {
-  font-size: 1.12rem;
+  font-size: 1.05rem;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   letter-spacing: -0.01em;
+}
+
+.topic-card .topic-card-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
 }
 
 .topic-card p {
   font-size: 0.82rem;
   color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 16px;
+  line-height: 1.6;
+  margin-bottom: 0;
+  flex: 1;
 }
 
 .topic-card-footer {
@@ -1118,6 +1148,9 @@ body {
   justify-content: space-between;
   font-size: 0.78rem;
   color: var(--text-muted);
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .topic-card-footer .view-more {
@@ -1126,6 +1159,11 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  transition: gap 0.25s ease;
+}
+
+.topic-card:hover .topic-card-footer .view-more {
+  gap: 8px;
 }
 
 /* ==================== CHART CARDS ==================== */

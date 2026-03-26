@@ -18,6 +18,7 @@ const topics = [
         description: 'จำนวนบุคลากร ตำแหน่งทางวิชาการ ความหลากหลาย อัตราส่วนนักศึกษา:อาจารย์',
         Icon: Users,
         bgColor: 'linear-gradient(135deg, #2E86AB, #1a5276)',
+        accent: '#2E86AB',
         path: '/dashboard/hr',
         section: 'hr_overview',
         stats: '113 คน (คณะวิทย์)'
@@ -29,6 +30,7 @@ const topics = [
         description: 'สถิตินิสิตปัจจุบัน การรับเข้า สำเร็จการศึกษา กิจกรรม/พฤติกรรม',
         Icon: GraduationCap,
         bgColor: 'linear-gradient(135deg, #7B68EE, #5B4FCF)',
+        accent: '#7B68EE',
         path: '/dashboard/student-stats',
         section: 'student_stats',
         stats: '19,821 คน (อ้างอิง MJU)'
@@ -40,6 +42,7 @@ const topics = [
         description: 'ผลงานตีพิมพ์ งบวิจัย สิทธิบัตร นวัตกรรม Benchmarking กับมหาวิทยาลัยอื่น',
         Icon: Microscope,
         bgColor: 'linear-gradient(135deg, #006838, #00a651)',
+        accent: '#00a651',
         path: '/dashboard/research',
         section: 'research_overview',
         stats: '1,284 publications'
@@ -51,6 +54,7 @@ const topics = [
         description: 'รายรับ-รายจ่าย ค่าธรรมเนียม งบประมาณคณะ พยากรณ์งบประมาณ AI',
         Icon: Wallet,
         bgColor: 'linear-gradient(135deg, #C5A028, #9a7d1e)',
+        accent: '#C5A028',
         path: '/dashboard/financial',
         section: 'financial',
         stats: '~1,920 ล้านบาท/ปี'
@@ -62,6 +66,7 @@ const topics = [
         description: 'เป้าหมายยุทธศาสตร์ OKR Monitoring ประสิทธิภาพ 5 ด้าน',
         Icon: Target,
         bgColor: 'linear-gradient(135deg, #A23B72, #7B2D8E)',
+        accent: '#A23B72',
         path: '/dashboard/strategic',
         section: 'strategic_overview',
         stats: 'OKR Progress'
@@ -143,7 +148,7 @@ export default function DashboardHome() {
     return (
         <div>
             {/* Welcome Section */}
-            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div>
                     <h2 style={{
                         fontSize: '1.7rem', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em',
@@ -390,7 +395,7 @@ export default function DashboardHome() {
             </div>
 
             {/* Topic Cards — 5 Data Domains */}
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 20, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 20, marginTop: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <FileBarChart2 size={18} color="#9ca3af" /> หมวดข้อมูลหลัก 5 ด้าน
             </h3>
             <div className="topic-cards-grid">
@@ -399,14 +404,21 @@ export default function DashboardHome() {
                     const TopicIcon = topic.Icon;
                     return (
                         <Link key={topic.id} to={hasAccess ? topic.path : '#'}
-                            className="topic-card animate-in"
+                            className="topic-card"
                             onClick={(e) => !hasAccess && e.preventDefault()}
-                            style={{ opacity: hasAccess ? 1 : 0.5 }}
+                            style={{
+                                opacity: hasAccess ? 1 : 0.5,
+                                '--topic-accent': topic.bgColor,
+                                '--topic-glow': `${topic.accent}10`,
+                                '--topic-shadow': `${topic.accent}15`,
+                                '--topic-border': `${topic.accent}30`,
+                            }}
                         >
                             <div className="topic-card-icon" style={{ background: topic.bgColor }}>
                                 <TopicIcon size={22} color="#fff" />
                             </div>
                             <h3>{topic.title}</h3>
+                            <div className="topic-card-subtitle">{topic.subtitle}</div>
                             <p>{topic.description}</p>
                             <div className="topic-card-footer">
                                 <span>{topic.stats}</span>
