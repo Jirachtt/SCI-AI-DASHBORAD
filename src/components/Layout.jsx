@@ -21,8 +21,8 @@ export default function Layout() {
                             <Menu size={24} />
                         </button>
                         <div className="header-title">
-                            <h1>MJU Dashboard</h1>
-                            <p>ระบบสารสนเทศ มหาวิทยาลัยแม่โจ้</p>
+                            <h1>Science AI Dashboard</h1>
+                            <p>คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
                         </div>
                     </div>
                     <div className="header-right">

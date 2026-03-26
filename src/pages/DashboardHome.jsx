@@ -145,10 +145,14 @@ export default function DashboardHome() {
             {/* Welcome Section */}
             <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                    <h2 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8 }}>
+                    <h2 style={{
+                        fontSize: '1.7rem', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em',
+                        background: 'linear-gradient(135deg, #fff 30%, #00a651)',
+                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                    }}>
                         สวัสดี, {user?.name}
                     </h2>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', letterSpacing: '0.01em' }}>
                         ยินดีต้อนรับสู่ Science AI Dashboard — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้
                     </p>
                 </div>
@@ -270,10 +274,12 @@ export default function DashboardHome() {
             {/* Daily Insights */}
             {insights && (
                 <div style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'rgba(19, 25, 41, 0.5)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.06)',
                     borderLeft: '3px solid #006838',
-                    borderRadius: 12, padding: '20px 24px', marginBottom: 28,
+                    borderRadius: 16, padding: '20px 24px', marginBottom: 28,
                 }}>
                     <h3 style={{
                         color: '#e5e7eb', fontSize: '0.92rem', fontWeight: 600,
@@ -353,8 +359,9 @@ export default function DashboardHome() {
                                 <div className="stat-card-label">{card.label}</div>
                             </div>
                             <div style={{
-                                background: 'rgba(0, 0, 0, 0.2)', backdropFilter: 'blur(10px)',
-                                border: '1px solid var(--border-color)', borderTop: '1px dashed rgba(255, 255, 255, 0.1)',
+                                background: 'rgba(8, 11, 20, 0.4)', backdropFilter: 'blur(12px)',
+                                WebkitBackdropFilter: 'blur(12px)',
+                                border: '1px solid rgba(255,255,255,0.04)', borderTop: '1px dashed rgba(255, 255, 255, 0.08)',
                                 borderBottomLeftRadius: 16, borderBottomRightRadius: 16,
                                 padding: '16px 20px', position: 'relative', display: 'flex', flexDirection: 'column', gap: 12
                             }}>
