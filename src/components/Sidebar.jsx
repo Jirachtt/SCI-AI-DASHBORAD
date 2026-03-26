@@ -37,6 +37,7 @@ const menuGroups = [
             { path: '/dashboard/students', label: '2.2 รายชื่อนักศึกษา', icon: GraduationCap, section: 'student_list' },
             { path: '/dashboard/graduation', label: '2.3 ตรวจสอบการจบ', icon: CheckCircle, section: 'graduation_check' },
             { path: '/dashboard/student-life', label: '2.4 กิจกรรม/พฤติกรรม', icon: Users, section: 'student_life' },
+            { path: '/dashboard/graduation-stats', label: '2.5 สถิติสำเร็จการศึกษา', icon: Award, section: 'graduation_stats' },
         ]
     },
     {
