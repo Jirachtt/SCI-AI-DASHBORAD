@@ -10,6 +10,7 @@ import zoomPlugin from 'chartjs-plugin-zoom';
 import { sendMessageToGemini, resetConversation } from '../services/geminiService';
 import {
     studentStatsData, universityBudgetData, scienceFacultyBudgetData,
+    dashboardSummary,
 } from '../data/mockData';
 import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
 
@@ -302,9 +303,107 @@ function searchStudents(query) {
     return { text, chart: null };
 }
 
+// ==================== Combo Chart: Students vs Graduation Rate ====================
+function generateComboChart() {
+    const faculties = dashboardSummary.faculties;
+    const maxStudents = Math.max(...faculties.map(f => f.totalStudents));
+
+    const labels = faculties.map(f => {
+        const n = f.name.replace(/^คณะ|^มหาวิทยาลัย|^วิทยาลัย/g, '').trim();
+        return n.length > 14 ? n.slice(0, 14) + '…' : n;
+    });
+
+    const normalizedStudents = faculties.map(f => +((f.totalStudents / maxStudents) * 100).toFixed(1));
+    const gradRates = faculties.map(f => f.graduationRate);
+
+    const chart = {
+        chartType: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'จำนวนนิสิต (Index 0-100)',
+                    data: normalizedStudents,
+                    backgroundColor: 'rgba(0, 166, 81, 0.65)',
+                    borderColor: '#00a651',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    order: 2,
+                },
+                {
+                    type: 'line',
+                    label: 'อัตราสำเร็จการศึกษา (%)',
+                    data: gradRates,
+                    borderColor: '#C5A028',
+                    backgroundColor: 'rgba(197, 160, 40, 0.15)',
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#C5A028',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    tension: 0.35,
+                    fill: true,
+                    order: 1,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 14, font: { size: 11 }, usePointStyle: true } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            if (ctx.datasetIndex === 0) {
+                                const actual = faculties[ctx.dataIndex].totalStudents.toLocaleString();
+                                return `${ctx.dataset.label}: ${ctx.parsed.y} (จริง: ${actual} คน)`;
+                            }
+                            return `${ctx.dataset.label}: ${ctx.parsed.y}%`;
+                        }
+                    }
+                },
+                zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } }
+            },
+            scales: {
+                x: { ticks: { color: '#9ca3af', font: { size: 10 }, maxRotation: 45, minRotation: 25 }, grid: { display: false } },
+                y: { min: 0, max: 100, ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => v }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+    };
+
+    let text = `📊 **Combo Chart: จำนวนนิสิต vs อัตราสำเร็จการศึกษา (แยกตามคณะ)**\n\n`;
+    text += `📌 **หมายเหตุ:** จำนวนนิสิตถูก Normalize เป็น Index (0-100) เพื่อให้เปรียบเทียบกับ % อัตราสำเร็จได้ในแกน Y เดียวกัน\n`;
+    text += `โดยคณะที่มีนิสิตมากสุด = 100 (${faculties.reduce((a, b) => a.totalStudents > b.totalStudents ? a : b).name}: ${maxStudents.toLocaleString()} คน)\n\n`;
+
+    text += `📋 **จำนวนนิสิตจริง (ก่อน Normalize):**\n`;
+    faculties.forEach(f => {
+        const idx = normalizedStudents[faculties.indexOf(f)];
+        text += `• ${f.name}: **${f.totalStudents.toLocaleString()}** คน (Index: ${idx}) | สำเร็จ: ${f.graduationRate}%\n`;
+    });
+
+    text += `\n🔍 **Insight:**\n`;
+    const topGrad = [...faculties].sort((a, b) => b.graduationRate - a.graduationRate)[0];
+    const lowGrad = [...faculties].sort((a, b) => a.graduationRate - b.graduationRate)[0];
+    text += `• 🏆 อัตราสำเร็จสูงสุด: ${topGrad.name} (${topGrad.graduationRate}%)\n`;
+    text += `• ⚠️ อัตราสำเร็จต่ำสุด: ${lowGrad.name} (${lowGrad.graduationRate}%)\n`;
+    text += `• คณะที่มีนิสิตมากไม่ได้หมายความว่าจะมีอัตราสำเร็จสูงเสมอไป`;
+
+    return { text, chart };
+}
+
 // ==================== Check if query needs local handling ====================
 function tryLocalResponse(question) {
     const q = question.toLowerCase();
+
+    // Combo chart: students vs graduation rate
+    const comboKeywords = ['combo', 'เปรียบเทียบนิสิต', 'นิสิตกับอัตราสำเร็จ', 'นิสิตกับสำเร็จ', 'นักศึกษากับอัตรา', 'จำนวนนิสิตกับ', 'students vs grad'];
+    if (comboKeywords.some(k => q.includes(k)) || (q.includes('นิสิต') && q.includes('สำเร็จ') && (q.includes('เปรียบเทียบ') || q.includes('กราฟ') || q.includes('chart')))) {
+        return generateComboChart();
+    }
+
     const forecastParsed = parseForecastRequest(question);
     if (forecastParsed) return generateForecastResponse(forecastParsed);
     const studentKeywords = ['รหัส', 'รายชื่อ', 'หานักศึกษา', 'ค้นหานักศึกษา', 'นักศึกษา', 'นิสิต', 'สาขา', 'ชั้นปี', 'รอพินิจ', 'เกรดต่ำ', 'เกรดสูง', 'เกียรตินิยม'];
@@ -750,9 +849,9 @@ export default function AIChatPage() {
     const handleKeyDown = (e) => { if (e.key === 'Enter') handleSend(); };
 
     const quickActions = [
+        { label: '📊 นิสิต vs อัตราสำเร็จ', query: 'เปรียบเทียบนิสิตกับอัตราสำเร็จการศึกษาแต่ละคณะ เป็นกราฟ combo chart', icon: BarChart3 },
         { label: '🔮 พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: ChartLine },
-        { label: '📊 คาดการณ์จำนวนนิสิต', query: 'พยากรณ์จำนวนนิสิตมหาวิทยาลัย ปี 70 71 แบบกราฟแท่ง', icon: TrendingUp },
-        { label: '📈 งบฯ มหาวิทยาลัย', query: 'พยากรณ์งบประมาณมหาวิทยาลัย ปี 2570 2571 เป็นกราฟเส้น', icon: BarChart3 },
+        { label: '📈 คาดการณ์จำนวนนิสิต', query: 'พยากรณ์จำนวนนิสิตมหาวิทยาลัย ปี 70 71 แบบกราฟแท่ง', icon: TrendingUp },
         { label: '🔍 ค้นหานิสิตรอพินิจ', query: 'แสดงรายชื่อนักศึกษาที่สถานะรอพินิจ', icon: Search },
         { label: '🎓 นิสิตเกียรตินิยม', query: 'แสดงนักศึกษาเกรดสูง เกียรตินิยม', icon: Sparkles },
         { label: '💰 สรุปงบประมาณ', query: 'สรุปภาพรวมงบประมาณคณะวิทยาศาสตร์ปีล่าสุด', icon: BarChart3 },
