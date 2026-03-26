@@ -698,14 +698,12 @@ export default function AIChatPage() {
         } catch (error) {
             console.error('[AIChatPage] Gemini API error:', error);
             const errMsg = error.message || 'ไม่ทราบสาเหตุ';
-            const isTimeout = errMsg.includes('Timeout') || errMsg.includes('หมดเวลา');
-            const isApiKey = errMsg.includes('API key') || errMsg.includes('403');
-            const hint = isTimeout ? '💡 เซิร์ฟเวอร์ตอบช้า — ลองถามคำถามสั้นลง หรือลองใหม่'
-                : isApiKey ? '💡 ตรวจสอบ API Key ใน .env (VITE_GEMINI_API_KEY)'
-                : '💡 ลองถามคำถามใหม่อีกครั้ง';
+            const isQuota = errMsg.includes('รอ') || errMsg.includes('quota');
             setMessages(prev => [...prev, {
                 role: 'bot',
-                text: `❌ **เกิดข้อผิดพลาด** ไม่สามารถเชื่อมต่อกับ AI ได้\n\n🔍 รายละเอียด: ${errMsg}\n\n${hint}`,
+                text: isQuota
+                    ? `⏳ **ระบบ AI กำลังพักการใช้งานชั่วคราว**\n\nกรุณารอประมาณ 1 นาทีแล้วลองถามใหม่อีกครั้งค่ะ 🙏`
+                    : `⚠️ ${errMsg}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
                 chart: null
             }]);
         } finally {
@@ -741,9 +739,12 @@ export default function AIChatPage() {
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
             console.error('[AIChatPage] Gemini API error:', error);
+            const isQuota = (error.message || '').includes('รอ') || (error.message || '').includes('quota');
             setMessages(prev => [...prev, {
                 role: 'bot',
-                text: `❌ **เกิดข้อผิดพลาด** ไม่สามารถเชื่อมต่อกับ AI ได้\n\n🔍 ${error.message}`,
+                text: isQuota
+                    ? `⏳ **ระบบ AI กำลังพักการใช้งานชั่วคราว**\n\nกรุณารอประมาณ 1 นาทีแล้วลองถามใหม่อีกครั้งค่ะ 🙏`
+                    : `⚠️ ${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
                 chart: null
             }]);
         } finally {

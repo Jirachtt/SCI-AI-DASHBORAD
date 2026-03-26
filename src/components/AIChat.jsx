@@ -633,9 +633,12 @@ export default function AIChat() {
             }]);
         } catch (error) {
             console.error('[AIChat] Gemini API error:', error);
+            const isQuota = (error.message || '').includes('รอ') || (error.message || '').includes('quota');
             setMessages(prev => [...prev, {
                 role: 'bot',
-                text: `❌ **เกิดข้อผิดพลาด** ไม่สามารถเชื่อมต่อกับ AI ได้\n\n🔍 รายละเอียด: ${error.message || 'ไม่ทราบสาเหตุ'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                text: isQuota
+                    ? `⏳ **ระบบ AI กำลังพักการใช้งานชั่วคราว**\n\nกรุณารอประมาณ 1 นาทีแล้วลองถามใหม่อีกครั้งค่ะ 🙏`
+                    : `⚠️ ${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
                 chart: null
             }]);
         } finally {
@@ -671,9 +674,12 @@ export default function AIChat() {
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
             console.error('[AIChat] Gemini API error:', error);
+            const isQuota = (error.message || '').includes('รอ') || (error.message || '').includes('quota');
             setMessages(prev => [...prev, {
                 role: 'bot',
-                text: `❌ **เกิดข้อผิดพลาด** ไม่สามารถเชื่อมต่อกับ AI ได้\n\n🔍 ${error.message || 'ไม่ทราบสาเหตุ'}`,
+                text: isQuota
+                    ? `⏳ **ระบบ AI กำลังพักการใช้งานชั่วคราว**\n\nกรุณารอประมาณ 1 นาทีแล้วลองถามใหม่อีกครั้งค่ะ 🙏`
+                    : `⚠️ ${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
                 chart: null
             }]);
         } finally {
