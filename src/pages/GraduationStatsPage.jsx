@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
@@ -42,14 +42,14 @@ export default function GraduationStatsPage() {
     const stats = currentGraduationStats;
 
     // Filter candidate list
-    const filteredCandidates = graduationCandidateList.filter(s => {
+    const filteredCandidates = useMemo(() => graduationCandidateList.filter(s => {
         const matchSearch = searchTerm === '' ||
             s.name.includes(searchTerm) ||
             s.id.includes(searchTerm);
         const matchMajor = filterMajor === 'all' || s.major === filterMajor;
         const matchStatus = filterStatus === 'all' || s.graduationStatus === filterStatus;
         return matchSearch && matchMajor && matchStatus;
-    });
+    }), [searchTerm, filterMajor, filterStatus]);
 
     // Summary cards data
     const summaryCards = [

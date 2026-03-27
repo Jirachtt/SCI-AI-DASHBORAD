@@ -16,7 +16,6 @@ const MODELS = [
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
 ];
 
 function getApiUrl(model) {
@@ -224,6 +223,14 @@ export async function sendMessageToGemini(userMessage) {
                 modelCooldowns[model] = Date.now() + COOLDOWN_MS;
                 console.warn(`[Gemini] ${model} quota exceeded, cooldown 60s`);
                 lastError = new Error('QUOTA_EXCEEDED');
+                continue;
+            }
+
+            if (response.status === 404) {
+                // Model not found / deprecated — skip silently
+                allQuotaExhausted = false;
+                console.warn(`[Gemini] ${model} not found (404), skipping...`);
+                lastError = new Error(`${model}: Model not available`);
                 continue;
             }
 

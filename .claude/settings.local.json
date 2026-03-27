@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(wc:*)",
+      "Bash(find 'C:\\\\Users\\\\JR\\\\Desktop\\\\SCI AI DASHBORAD/src' -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.css \\\\\\))"
     ]
   }
 }

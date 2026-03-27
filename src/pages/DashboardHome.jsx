@@ -279,9 +279,7 @@ export default function DashboardHome() {
             {/* Daily Insights */}
             {insights && (
                 <div style={{
-                    background: 'rgba(19, 25, 41, 0.5)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
+                    background: 'rgba(19, 25, 41, 0.7)',
                     border: '1px solid rgba(255,255,255,0.06)',
                     borderLeft: '3px solid #006838',
                     borderRadius: 16, padding: '20px 24px', marginBottom: 28,
@@ -364,8 +362,7 @@ export default function DashboardHome() {
                                 <div className="stat-card-label">{card.label}</div>
                             </div>
                             <div style={{
-                                background: 'rgba(8, 11, 20, 0.4)', backdropFilter: 'blur(12px)',
-                                WebkitBackdropFilter: 'blur(12px)',
+                                background: 'rgba(8, 11, 20, 0.7)',
                                 border: '1px solid rgba(255,255,255,0.04)', borderTop: '1px dashed rgba(255, 255, 255, 0.08)',
                                 borderBottomLeftRadius: 16, borderBottomRightRadius: 16,
                                 padding: '16px 20px', position: 'relative', display: 'flex', flexDirection: 'column', gap: 12
