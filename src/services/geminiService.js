@@ -182,8 +182,7 @@ export async function sendMessageToGemini(userMessage) {
     let lastError = null;
     let allQuotaExhausted = true;
 
-    // Build base request body (without tools)
-    const baseRequestBody = {
+    const requestBody = {
         system_instruction: {
             parts: [{ text: cachedSystemInstruction || (cachedSystemInstruction = buildSystemInstruction()) }]
         },
@@ -202,92 +201,74 @@ export async function sendMessageToGemini(userMessage) {
         ]
     };
 
-    // Try with Google Search grounding first, fall back without it
-    const attempts = [
-        { label: '+search', body: { ...baseRequestBody, tools: [{ google_search: {} }] } },
-        { label: 'no-search', body: baseRequestBody },
-    ];
-
-    for (const attempt of attempts) {
-        for (const model of MODELS) {
-            if (isModelOnCooldown(model)) {
-                console.log(`[Gemini] Skipping ${model} (cooldown)`);
-                continue;
-            }
-
-            try {
-                console.log(`[Gemini] Trying ${model} (${attempt.label})...`);
-                const apiUrl = getApiUrl(model);
-
-                const response = await fetchSmart(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(attempt.body)
-                });
-
-                if (response.status === 429) {
-                    modelCooldowns[model] = Date.now() + COOLDOWN_MS;
-                    console.warn(`[Gemini] ${model} quota exceeded, cooldown 60s`);
-                    lastError = new Error('QUOTA_EXCEEDED');
-                    continue;
-                }
-
-                if (response.status === 404) {
-                    allQuotaExhausted = false;
-                    console.warn(`[Gemini] ${model} not found (404), skipping...`);
-                    lastError = new Error(`${model}: Model not available`);
-                    continue;
-                }
-
-                if (!response.ok) {
-                    allQuotaExhausted = false;
-                    const errorData = await response.json().catch(() => ({}));
-                    console.warn(`[Gemini] ${model} failed (${attempt.label}): ${response.status}`);
-                    lastError = new Error(`${model}: HTTP ${response.status} - ${errorData?.error?.message || 'Unknown'}`);
-                    // If search tool caused the error, break to try without it
-                    if (attempt.label === '+search') break;
-                    continue;
-                }
-
-                allQuotaExhausted = false;
-                const data = await response.json();
-                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                if (!aiText) {
-                    console.warn(`[Gemini] ${model} empty response`);
-                    lastError = new Error(`${model}: Empty response`);
-                    continue;
-                }
-
-                console.log(`[Gemini] ✅ ${model} OK (${attempt.label})`);
-
-                // Log grounding sources if available
-                const grounding = data.candidates?.[0]?.groundingMetadata;
-                if (grounding?.groundingChunks?.length) {
-                    console.log(`[Gemini] 🔍 Grounded with ${grounding.groundingChunks.length} web sources`);
-                }
-
-                conversationHistory.push({
-                    role: 'model',
-                    parts: [{ text: aiText }]
-                });
-
-                if (conversationHistory.length > 16) {
-                    conversationHistory = conversationHistory.slice(-16);
-                }
-
-                return aiText;
-
-            } catch (error) {
-                allQuotaExhausted = false;
-                console.warn(`[Gemini] ${model} error:`, error.message);
-                lastError = error;
-                continue;
-            }
+    // Try each model in order, skip models on cooldown
+    for (const model of MODELS) {
+        if (isModelOnCooldown(model)) {
+            console.log(`[Gemini] Skipping ${model} (cooldown)`);
+            continue;
         }
 
-        // If first attempt (+search) had a success somewhere, we already returned
-        // If all models failed with search, try next attempt (no-search)
+        try {
+            console.log(`[Gemini] Trying model: ${model}...`);
+            const apiUrl = getApiUrl(model);
+
+            const response = await fetchSmart(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (response.status === 429) {
+                modelCooldowns[model] = Date.now() + COOLDOWN_MS;
+                console.warn(`[Gemini] ${model} quota exceeded, cooldown 60s`);
+                lastError = new Error('QUOTA_EXCEEDED');
+                continue;
+            }
+
+            if (response.status === 404) {
+                allQuotaExhausted = false;
+                console.warn(`[Gemini] ${model} not found (404), skipping...`);
+                lastError = new Error(`${model}: Model not available`);
+                continue;
+            }
+
+            if (!response.ok) {
+                allQuotaExhausted = false;
+                const errorData = await response.json().catch(() => ({}));
+                console.warn(`[Gemini] ${model} failed: ${response.status}`);
+                lastError = new Error(`${model}: HTTP ${response.status} - ${errorData?.error?.message || 'Unknown'}`);
+                continue;
+            }
+
+            allQuotaExhausted = false;
+            const data = await response.json();
+            const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!aiText) {
+                console.warn(`[Gemini] ${model} empty response`);
+                lastError = new Error(`${model}: Empty response`);
+                continue;
+            }
+
+            console.log(`[Gemini] ✅ ${model} OK`);
+
+            conversationHistory.push({
+                role: 'model',
+                parts: [{ text: aiText }]
+            });
+
+            if (conversationHistory.length > 16) {
+                conversationHistory = conversationHistory.slice(-16);
+            }
+
+            return aiText;
+
+        } catch (error) {
+            allQuotaExhausted = false;
+            console.warn(`[Gemini] ${model} error:`, error.message);
+            lastError = error;
+            continue;
+        }
     }
 
     // Remove the failed user message from history
