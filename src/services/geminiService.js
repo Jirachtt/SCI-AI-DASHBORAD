@@ -10,11 +10,11 @@ if (!API_KEY) {
     console.warn('[Gemini] ⚠️ VITE_GEMINI_API_KEY is not set.');
 }
 
-// Models to try in order — spread across different model families for separate quota pools
+// Models ordered by free-tier quota: highest RPM first
 const MODELS = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
+    'gemini-2.0-flash-lite',   // 30 RPM free
+    'gemini-2.0-flash',        // 15 RPM free
+    'gemini-2.5-flash',        // 10 RPM free
 ];
 
 function getApiUrl(modelId) {
@@ -26,7 +26,7 @@ const REQUEST_TIMEOUT_MS = 30000;
 
 // Per-model cooldown tracking — skip models that recently hit quota
 const modelCooldowns = {};
-const COOLDOWN_MS = 60000; // 60s cooldown after quota error
+const COOLDOWN_MS = 30000; // 30s cooldown after quota error
 
 function isModelOnCooldown(model) {
     const until = modelCooldowns[model];
@@ -81,15 +81,12 @@ async function fetchSmart(url, options) {
     return response;
 }
 
-// Cached system instruction (rebuilt only when needed)
-let cachedSystemInstruction = null;
-
 // Build compact system instruction — optimized for token efficiency
-function buildSystemInstruction() {
+// Split into base (small) and student detail (large) parts
+function buildBaseInstruction() {
     const budgetActual = universityBudgetData.yearly.filter(y => y.type === 'actual');
     const sciBudgetActual = scienceFacultyBudgetData.yearly.filter(y => y.type === 'actual');
 
-    // Build student summary (compact)
     const majorCounts = {};
     const yearCounts = {};
     let statusNormal = 0, statusAtRisk = 0;
@@ -101,55 +98,62 @@ function buildSystemInstruction() {
     const majorSummary = Object.entries(majorCounts).map(([m, c]) => `${m}:${c}`).join(', ');
     const yearSummary = Object.entries(yearCounts).sort().map(([y, c]) => `ปี${y}:${c}`).join(', ');
 
-    // All student data as compact JSON (for accurate answers)
-    const studentJSON = JSON.stringify(scienceStudentList.map(s => ({
-        id: s.id, n: s.name, m: s.major, y: s.year, g: s.gpa, s: s.status, l: s.level
-    })));
+    // Compute GPA stats per major for quick answers
+    const gpaByMajor = {};
+    scienceStudentList.forEach(s => {
+        if (!gpaByMajor[s.major]) gpaByMajor[s.major] = { sum: 0, count: 0 };
+        gpaByMajor[s.major].sum += s.gpa;
+        gpaByMajor[s.major].count++;
+    });
+    const gpaSummary = Object.entries(gpaByMajor).map(([m, d]) => `${m}:${(d.sum / d.count).toFixed(2)}`).join(', ');
 
     return `คุณคือ "MJU AI Assistant" ผู้เชี่ยวชาญมหาวิทยาลัยแม่โจ้ (MJU)
 ตอบเฉพาะเรื่องแม่โจ้เท่านั้น ถ้าถามเรื่องอื่นที่ไม่เกี่ยวกับแม่โจ้ → ปฏิเสธสุภาพ
 
 ## กฎ
 1. ตอบภาษาไทย ใช้ emoji กระชับ
-2. **ลำดับการหาข้อมูล:** ข้อมูล Dashboard (ด้านล่าง) = ใช้ก่อนเสมอ (แม่นยำสุด) → ถ้า Dashboard ไม่มีข้อมูลที่ต้องการ → ใช้ Google Search ค้นหาจากเว็บไซต์มหาวิทยาลัยแม่โจ้ (www.mju.ac.th, science.mju.ac.th) → ถ้าค้นไม่พบ → ใช้ความรู้ทั่วไปเกี่ยวกับแม่โจ้
-3. **ห้ามแต่งข้อมูลเด็ดขาด:** ใช้เฉพาะข้อมูลจริงจาก Dashboard หรือเว็บไซต์แม่โจ้เท่านั้น ถ้าไม่มีข้อมูล → บอกตรงๆ ว่าไม่มีและแนะนำแหล่งที่หาเพิ่มได้ เมื่อใช้ข้อมูลจากเว็บให้ระบุแหล่งที่มา
+2. **ลำดับการหาข้อมูล:** ข้อมูล Dashboard = ใช้ก่อนเสมอ (แม่นยำสุด) → ถ้าไม่มี → ใช้ความรู้เกี่ยวกับแม่โจ้จากเว็บ mju.ac.th
+3. **ห้ามแต่งข้อมูลเด็ดขาด:** ใช้เฉพาะข้อมูลจริงจาก Dashboard เท่านั้น ถ้าไม่มีข้อมูล → บอกตรงๆ ว่าไม่มีและแนะนำแหล่งที่หาเพิ่มได้
 4. เรื่องไม่เกี่ยวแม่โจ้ → ปฏิเสธ: "ขออภัยค่ะ ตอบได้เฉพาะเรื่องแม่โจ้เท่านั้นค่ะ 🎓"
 5. **⚠️ สำคัญมาก: เมื่อสร้างกราฟ ต้องใช้ \`\`\`json_chart\`\`\` เท่านั้น (ห้ามใช้ \`\`\`json\`\`\`)** รูปแบบ:
 \`\`\`json_chart
 {"chartType":"bar","data":{"labels":["A","B"],"datasets":[{"label":"X","data":[10,20],"backgroundColor":["#00a651","#7B68EE"]}]}}
 \`\`\`
 รองรับ chartType: "bar", "line", "pie", "doughnut", "radar", "polarArea"
-6. พยากรณ์ → คำนวณ + json_chart เสมอ (ถ้าข้อมูลใน Dashboard ไม่พอ ให้ค้นหาจากเว็บแล้วพยากรณ์ให้)
-7. ถามนศ./รายชื่อ → ใช้ข้อมูลนักศึกษาด้านล่าง
-8. **เปรียบเทียบข้ามหมวด:** เมื่อผู้ใช้ขอเปรียบเทียบ/รวมข้อมูลข้ามหมวด (เช่น นักศึกษา vs งบประมาณ, ค่าเทอม vs จำนวนนักศึกษา) → สร้าง json_chart ที่มีหลาย datasets แต่ละ dataset มาจากข้อมูลคนละหมวด ใช้สีต่างกันชัดเจน ถ้าหน่วยต่างกัน (คน vs ล้านบาท) → อธิบายหน่วยใน label ของ dataset
-9. **ไฟล์ที่อัปโหลด:** ถ้ามีข้อมูลไฟล์ในบริบท สามารถรวมกับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้
+6. พยากรณ์ → คำนวณ + json_chart เสมอ
+7. ถามนศ./รายชื่อ → ใช้ข้อมูลนักศึกษาที่ให้มา
+8. **เปรียบเทียบข้ามหมวด:** สร้าง json_chart ที่มีหลาย datasets ใช้สีต่างกัน ถ้าหน่วยต่างกัน → อธิบายใน label
+9. **ไฟล์ที่อัปโหลด:** รวมกับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้
 
 ## แม่โจ้
-- ก่อตั้ง 2477 ปรัชญา:"มหาวิทยาลัยแห่งชีวิต" ที่ตั้ง:สันทราย เชียงใหม่ 14,000ไร่
+- ก่อตั้ง 2477 ปรัชญา:"มหาวิทยาลัยแห่งชีวิต" ที่ตั้ง:สันทราย เชียงใหม่
 - 16คณะ: ผลิตกรรมฯ,วิทย์,วิศวะฯ,บริหาร,เศรษฐศาสตร์,ท่องเที่ยว,ศิลปศาสตร์,สถาปัตย์,สารสนเทศ,ประมง,สัตวศาสตร์,พลังงาน,นานาชาติ,พยาบาล,แพร่,ชุมพร
 - คณะวิทย์: CS,IT,เคมี,ชีวะ,คณิต,ฟิสิกส์,สถิติ,DataSci,Biotech,เคมีอุตฯ
-- TCAS: Portfolio/โควตา/Admission/Direct | ป.ตรี-โท-เอก
 
 ## Dashboard
 - นิสิต:${dashboardSummary.totalStudents} GPA:${dashboardSummary.avgGPA} สำเร็จ:${dashboardSummary.graduationRate}% เทอม:${dashboardSummary.currentSemester}/${dashboardSummary.academicYear}
 - คณะ: ${dashboardSummary.faculties.map(f => `${f.name}(${f.totalStudents},GPA${f.avgGPA.toFixed(2)},${f.graduationRate}%)`).join(' | ')}
-- ระดับ: ${studentStatsData.current.byLevel.map(l => `${l.level}:${l.count}`).join(', ')} รวม:${studentStatsData.current.total}
-- แยกคณะ: ${studentStatsData.byFaculty.map(f => `${f.name}(ตรี${f.bachelor}/โท${f.master}/เอก${f.doctoral})`).join(', ')}
 - แนวโน้ม: ${studentStatsData.trend.map(t => `${t.year}:${t.total}(${t.type === 'actual' ? 'จริง' : 'พยากรณ์'})`).join(', ')}
-- คณะวิทย์: ระดับ ${studentStatsData.scienceFaculty.byLevel.map(l => `${l.level}${l.count}`).join('/')} บุคลากร${studentStatsData.scienceFaculty.personnel.total}คน
 - งบมหา'ลัย(ล้านบ.): ${budgetActual.map(y => `${y.year}:รับ${y.revenue}/จ่าย${y.expense}`).join(', ')}
 - งบคณะวิทย์(ล้านบ.): ${sciBudgetActual.map(y => `${y.year}:รับ${y.revenue}/จ่าย${y.expense}`).join(', ')}
-- ค่าเทอม: ${tuitionData.flatRate.min}-${tuitionData.flatRate.max}บ./เทอม แยกคณะ:${tuitionData.byFaculty.map(f => `${f.name}${f.fee}บ.`).join(',')}
-- การเงิน: เทอมนี้${financialData.tuitionStatus.current.amount}บ.(${financialData.tuitionStatus.current.status}) ชำระ${financialData.tuitionStatus.total.totalPaid}บ. ค้าง${financialData.tuitionStatus.total.totalRemaining}บ.
-- ทุน:${financialData.scholarship.name} ${financialData.scholarship.amount}บ.(${financialData.scholarship.status})
-- กิจกรรม: เป้า${studentLifeData.activityHours.target}ชม. ผ่าน${studentLifeData.activityHours.completed}ชม. ประพฤติ:${studentLifeData.behaviorScore.score}/${studentLifeData.behaviorScore.maxScore}
+- ค่าเทอม: ${tuitionData.flatRate.min}-${tuitionData.flatRate.max}บ./เทอม
+- คณะวิทย์: นศ.${scienceStudentList.length}คน สาขา: ${majorSummary} | ชั้นปี: ${yearSummary} | ปกติ${statusNormal} รอพินิจ${statusAtRisk}
+- GPA เฉลี่ยแยกสาขา: ${gpaSummary}`;
+}
 
-## นักศึกษาคณะวิทยาศาสตร์ (${scienceStudentList.length}คน)
-สาขา: ${majorSummary}
-ชั้นปี: ${yearSummary}
-สถานะ: ปกติ${statusNormal} รอพินิจ${statusAtRisk}
-ข้อมูลทั้งหมด(id=รหัส,n=ชื่อ,m=สาขา,y=ปี,g=GPA,s=สถานะ,l=ระดับ):
-${studentJSON}`;
+// Full student list — only included when query is about students
+function buildStudentData() {
+    return '\n\n## รายชื่อนักศึกษา(id=รหัส,n=ชื่อ,m=สาขา,y=ปี,g=GPA,s=สถานะ):\n' +
+        JSON.stringify(scienceStudentList.map(s => ({
+            id: s.id, n: s.name, m: s.major, y: s.year, g: s.gpa, s: s.status
+        })));
+}
+
+// Check if user message needs student detail data
+function needsStudentDetail(msg) {
+    const q = msg.toLowerCase();
+    const keywords = ['รายชื่อ', 'ชื่อนักศึกษา', 'ชื่อนิสิต', 'ค้นหานักศึกษา', 'หานักศึกษา', 'รหัส 6', 'ใครบ้าง', 'คนไหน', 'gpa สูง', 'เกรดสูง', 'รอพินิจ', 'เกรดต่ำ', 'เกียรตินิยม'];
+    return keywords.some(k => q.includes(k));
 }
 
 // Conversation history for multi-turn chat
@@ -182,9 +186,15 @@ export async function sendMessageToGemini(userMessage) {
     let lastError = null;
     let allQuotaExhausted = true;
 
+    // Only include full student data when the question is about students
+    const baseInstruction = buildBaseInstruction();
+    const systemText = needsStudentDetail(userMessage)
+        ? baseInstruction + buildStudentData()
+        : baseInstruction;
+
     const requestBody = {
         system_instruction: {
-            parts: [{ text: cachedSystemInstruction || (cachedSystemInstruction = buildSystemInstruction()) }]
+            parts: [{ text: systemText }]
         },
         contents: conversationHistory,
         generationConfig: {
@@ -295,7 +305,7 @@ export async function getDashboardInsights() {
     const cached = sessionStorage.getItem('ai_insights');
     if (cached) return JSON.parse(cached);
 
-    const sysInstruction = cachedSystemInstruction || (cachedSystemInstruction = buildSystemInstruction());
+    const sysInstruction = buildBaseInstruction();
     const prompt = `จากข้อมูล Dashboard แม่โจ้:\n${sysInstruction}\n\nวิเคราะห์สรุป Insight 3 ข้อสั้นๆ (ข้อละ 1-2 บรรทัด) ห้ามแต่งตัวเลข ตอบเป็น JSON array เท่านั้น:\n\`\`\`json\n["insight1","insight2","insight3"]\n\`\`\``;
 
     await waitForRateLimit();
