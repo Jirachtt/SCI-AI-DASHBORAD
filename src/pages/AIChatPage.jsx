@@ -13,6 +13,7 @@ import {
     dashboardSummary,
 } from '../data/mockData';
 import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
+import { graduationHistory } from '../data/graduationData';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, PieController, DoughnutController, RadarController, PolarAreaController, zoomPlugin);
 
@@ -64,21 +65,45 @@ const DATASETS = {
     universityStudents: {
         label: 'จำนวนนิสิตมหาวิทยาลัย', unit: 'คน', scope: 'มหาวิทยาลัย',
         getData: () => studentStatsData.trend.filter(t => t.type === 'actual').map(t => ({ x: parseInt(t.year), y: t.total })),
-        color: '#7B68EE', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต'],
-        scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
+        color: '#7B68EE', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวน'],
+        scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
+        yAxisID: 'y',
     },
     scienceStudents: {
         label: 'จำนวนนิสิตคณะวิทยาศาสตร์', unit: 'คน', scope: 'คณะวิทยาศาสตร์',
         getData: () => studentStatsData.scienceFaculty.byEnrollmentYear.map(e => ({ x: parseInt(e.year), y: e.count })),
-        color: '#006838', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต'],
-        scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์']
-    }
+        color: '#006838', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวน'],
+        scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์'],
+        yAxisID: 'y',
+    },
+    // ==================== GPA Datasets ====================
+    scienceGPA: {
+        label: 'เกรดเฉลี่ย (GPA) คณะวิทยาศาสตร์', unit: '', scope: 'คณะวิทยาศาสตร์',
+        getData: () => graduationHistory.map(g => ({ x: g.year, y: g.avgGPA })),
+        color: '#C5A028', keywords: ['เกรด', 'gpa', 'เกรดเฉลี่ย', 'ผลการเรียน', 'grade'],
+        scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์', 'มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
+        yAxisID: 'y1',
+    },
+    scienceGraduationRate: {
+        label: 'อัตราสำเร็จการศึกษา คณะวิทยาศาสตร์', unit: '%', scope: 'คณะวิทยาศาสตร์',
+        getData: () => graduationHistory.map(g => ({ x: g.year, y: g.rate })),
+        color: '#A23B72', keywords: ['อัตราสำเร็จ', 'สำเร็จการศึกษา', 'graduation', 'จบการศึกษา', 'สำเร็จ'],
+        scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์', 'มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
+        yAxisID: 'y1',
+    },
+    scienceGraduated: {
+        label: 'จำนวนผู้สำเร็จการศึกษา คณะวิทยาศาสตร์', unit: 'คน', scope: 'คณะวิทยาศาสตร์',
+        getData: () => graduationHistory.map(g => ({ x: g.year, y: g.graduated })),
+        color: '#2E86AB', keywords: ['ผู้สำเร็จ', 'จบ', 'graduated', 'สำเร็จการศึกษา', 'จำนวนผู้สำเร็จ'],
+        scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์', 'มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
+        yAxisID: 'y',
+    },
 };
 
 // ==================== Request Parser ====================
 function parseForecastRequest(question) {
     const q = question.toLowerCase();
-    const forecastKeywords = ['พยากรณ์', 'คาดการณ์', 'ประมาณการ', 'ทำนาย', 'predict', 'forecast', 'คาดว่า'];
+    const forecastKeywords = ['พยากรณ์', 'คาดการณ์', 'ประมาณการ', 'ทำนาย', 'predict', 'forecast', 'คาดว่า', 'กราฟ', 'สร้างกราฟ', 'แสดงกราฟ', 'chart'];
     const isForecast = forecastKeywords.some(k => q.includes(k));
     if (!isForecast) return null;
 
@@ -98,32 +123,57 @@ function parseForecastRequest(question) {
     const isScience = ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์'].some(k => q.includes(k));
     let matchedDatasets = [];
 
-    for (const [key, ds] of Object.entries(DATASETS)) {
-        const hasKeyword = ds.keywords.some(k => q.includes(k));
-        const hasScopeMatch = isScience
-            ? ds.scopeKeywords.some(k => ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์'].includes(k))
-            : ds.scopeKeywords.some(k => ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'].includes(k));
-        if (hasKeyword && hasScopeMatch) matchedDatasets.push(key);
-    }
+    // Check for GPA / grade keywords
+    const hasGPA = ['เกรด', 'gpa', 'เกรดเฉลี่ย', 'ผลการเรียน', 'grade'].some(k => q.includes(k));
+    // Check for student keywords
+    const hasStudent = ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต'].some(k => q.includes(k));
+    // Check for graduation keywords
+    const hasGraduation = ['สำเร็จการศึกษา', 'อัตราสำเร็จ', 'จบการศึกษา', 'graduation', 'เรียนจบ'].some(k => q.includes(k));
+    // Check for budget keywords
+    const hasBudget = ['งบประมาณ', 'budget', 'งบ', 'รายรับ', 'รายจ่าย', 'revenue', 'expense'].some(k => q.includes(k));
 
-    if (matchedDatasets.length === 0 && isScience) {
-        if (q.includes('งบประมาณ') || q.includes('budget') || q.includes('งบ') || q.includes('รายรับ') || q.includes('รายจ่าย')) {
-            matchedDatasets = (q.includes('รายจ่าย') || q.includes('expense')) ? ['scienceBudgetExpense'] : ['scienceBudgetRevenue'];
-        } else if (q.includes('นิสิต') || q.includes('นักศึกษา') || q.includes('student')) {
-            matchedDatasets = ['scienceStudents'];
+    // Multi-topic matching: user asks "นักศึกษากับเกรด" -> match BOTH
+    if (hasStudent && hasGPA) {
+        matchedDatasets = isScience ? ['scienceStudents', 'scienceGPA'] : ['universityStudents', 'scienceGPA'];
+    } else if (hasStudent && hasGraduation) {
+        matchedDatasets = ['scienceStudents', 'scienceGraduationRate', 'scienceGraduated'];
+    } else if (hasGPA && hasGraduation) {
+        matchedDatasets = ['scienceGPA', 'scienceGraduationRate'];
+    } else if (hasGPA) {
+        matchedDatasets = ['scienceGPA'];
+    } else if (hasGraduation) {
+        matchedDatasets = ['scienceGraduationRate', 'scienceGraduated'];
+    } else {
+        // Original matching logic for budget and students
+        for (const [key, ds] of Object.entries(DATASETS)) {
+            const hasKeyword = ds.keywords.some(k => q.includes(k));
+            const hasScopeMatch = isScience
+                ? ds.scopeKeywords.some(k => ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์'].includes(k))
+                : ds.scopeKeywords.some(k => ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'].includes(k));
+            if (hasKeyword && hasScopeMatch) matchedDatasets.push(key);
+        }
+
+        if (matchedDatasets.length === 0 && isScience) {
+            if (hasBudget) {
+                matchedDatasets = (q.includes('รายจ่าย') || q.includes('expense')) ? ['scienceBudgetExpense'] : ['scienceBudgetRevenue'];
+            } else if (hasStudent) {
+                matchedDatasets = ['scienceStudents'];
+            }
+        }
+
+        if (matchedDatasets.length === 0) {
+            if (q.includes('งบประมาณ') || q.includes('budget') || q.includes('งบ')) matchedDatasets = ['universityBudget'];
+            else if (q.includes('รายรับ') || q.includes('revenue')) matchedDatasets = ['universityBudgetRevenue'];
+            else if (q.includes('รายจ่าย') || q.includes('expense')) matchedDatasets = ['universityBudgetExpense'];
+            else if (hasStudent) matchedDatasets = ['universityStudents'];
         }
     }
 
-    if (matchedDatasets.length === 0) {
-        if (q.includes('งบประมาณ') || q.includes('budget') || q.includes('งบ')) matchedDatasets = ['universityBudget'];
-        else if (q.includes('รายรับ') || q.includes('revenue')) matchedDatasets = ['universityBudgetRevenue'];
-        else if (q.includes('รายจ่าย') || q.includes('expense')) matchedDatasets = ['universityBudgetExpense'];
-        else if (q.includes('นิสิต') || q.includes('นักศึกษา') || q.includes('student')) matchedDatasets = ['universityStudents'];
-    }
-
+    // Remove duplicates
     if (matchedDatasets.includes('universityBudget') && matchedDatasets.includes('universityBudgetRevenue')) {
         matchedDatasets = matchedDatasets.filter(d => d !== 'universityBudget');
     }
+    matchedDatasets = [...new Set(matchedDatasets)];
 
     return { years: years.sort(), chartType, datasets: matchedDatasets, isScience };
 }
@@ -131,16 +181,23 @@ function parseForecastRequest(question) {
 // ==================== Generate Forecast Response ====================
 function generateForecastResponse(parsed) {
     if (!parsed || parsed.datasets.length === 0) {
-        // No local data matched — fall through to Gemini AI (with Google Search)
         return null;
     }
 
     const results = [];
     const allLabels = [];
     const allDatasets = [];
+    let needsDualAxis = false;
+
+    // Check if we need dual Y-axis (mixing count + GPA/rate)
+    const yAxisIDs = parsed.datasets.map(k => DATASETS[k]?.yAxisID).filter(Boolean);
+    if (yAxisIDs.includes('y') && yAxisIDs.includes('y1')) {
+        needsDualAxis = true;
+    }
 
     for (const dsKey of parsed.datasets) {
         const ds = DATASETS[dsKey];
+        if (!ds) continue;
         const dataPoints = ds.getData();
         if (dataPoints.length < 3) { results.push(`⚠️ ${ds.label}: ข้อมูลไม่เพียงพอ`); continue; }
 
@@ -155,17 +212,27 @@ function generateForecastResponse(parsed) {
             if (existingYears.includes(y)) {
                 return y === Math.max(...existingYears) ? dataPoints.find(d => d.x === y).y : null;
             }
-            return model.predict(y);
+            const predicted = model.predict(y);
+            // For GPA, keep 2 decimal places
+            return ds.yAxisID === 'y1' && ds.unit === '' ? +(model.slope * y + model.intercept).toFixed(2) : predicted;
         });
 
         if (allLabels.length === 0) allLabels.push(...labels);
+        // If different datasets have different labels, merge
+        else if (labels.length > allLabels.length) {
+            allLabels.length = 0;
+            allLabels.push(...labels);
+        }
+
+        const yAxisID = needsDualAxis ? (ds.yAxisID || 'y') : 'y';
 
         allDatasets.push({
             label: `${ds.label} (ข้อมูลจริง)`, data: actualValues,
             borderColor: ds.color, backgroundColor: ds.color + '20',
             fill: parsed.chartType === 'line', tension: 0.4,
-            pointBackgroundColor: ds.color, pointRadius: 5, borderWidth: 2,
+            pointBackgroundColor: ds.color, pointRadius: 5, borderWidth: 2.5,
             borderRadius: parsed.chartType === 'bar' ? 6 : 0,
+            yAxisID,
         });
         allDatasets.push({
             label: `${ds.label} (พยากรณ์)`, data: forecastValues,
@@ -173,10 +240,34 @@ function generateForecastResponse(parsed) {
             tension: 0.4, pointBackgroundColor: ds.color + 'cc', pointRadius: 5,
             pointStyle: 'triangle', borderWidth: 2,
             borderRadius: parsed.chartType === 'bar' ? 6 : 0,
+            yAxisID,
         });
 
-        const forecastSummary = parsed.years.map(y => `   ปี ${y}: ~${model.predict(y).toLocaleString()} ${ds.unit}`).join('\n');
+        const forecastSummary = parsed.years.map(y => {
+            const val = ds.yAxisID === 'y1' && ds.unit === '' 
+                ? (model.slope * y + model.intercept).toFixed(2)
+                : model.predict(y).toLocaleString();
+            return `   ปี ${y}: ~${val} ${ds.unit}`;
+        }).join('\n');
         results.push(`📊 **${ds.label}**\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}`);
+    }
+
+    // Build scales config — support dual Y-axis
+    const scalesConfig = {
+        x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { display: false } },
+        y: {
+            ticks: { color: '#9ca3af', font: { size: 11 } },
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            title: needsDualAxis ? { display: true, text: 'จำนวน (คน)', color: '#9ca3af', font: { size: 11 } } : {},
+        },
+    };
+    if (needsDualAxis) {
+        scalesConfig.y1 = {
+            position: 'right',
+            ticks: { color: '#C5A028', font: { size: 11 } },
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: 'เกรดเฉลี่ย / %', color: '#C5A028', font: { size: 11 } },
+        };
     }
 
     const chartConfig = allDatasets.length > 0 ? {
@@ -196,10 +287,7 @@ function generateForecastResponse(parsed) {
                     }
                 }
             },
-            scales: {
-                x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { display: false } },
-                y: { ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' } }
-            }
+            scales: scalesConfig,
         }
     } : null;
 
@@ -661,7 +749,7 @@ export default function AIChatPage() {
     const [messages, setMessages] = useState([
         {
             role: 'bot',
-            text: 'สวัสดีครับ! ผม **MJU AI Assistant** (Powered by Gemini ✨)\n\nพร้อมช่วยตอบคำถามเกี่ยวกับข้อมูลมหาวิทยาลัยแม่โจ้ ถามมาได้เลยครับ!\n\n🔮 **ฟีเจอร์ทั้งหมด:**\n• 💬 แชทสอบถามข้อมูลทั่วไป\n• 📊 สร้างกราฟและพยากรณ์ข้อมูล\n• 🔍 ค้นหานักศึกษา\n• 🎤 สั่งงานด้วยเสียง\n• 📎 **อัปโหลดไฟล์ CSV** เพื่อวิเคราะห์และสร้างกราฟ\n\nลองเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ!',
+            text: 'สวัสดีครับ! ผม **MJU AI Assistant** (Powered by Gemini ✨)\n\nพร้อมช่วยตอบ **ทุกเรื่องเกี่ยวกับมหาวิทยาลัยแม่โจ้** ถามมาได้เลยครับ!\n\n🔮 **ฟีเจอร์ทั้งหมด:**\n• 💬 ถาม-ตอบทุกเรื่องแม่โจ้ (ประวัติ, คณะ, หลักสูตร, รับสมัคร, สถานที่, วิจัย)\n• 📊 สร้างกราฟจำนวนนักศึกษา, เกรด, งบประมาณ และพยากรณ์\n• 🔍 ค้นหานักศึกษาตามรหัส, ชื่อ, สาขา, GPA\n• 🎤 สั่งงานด้วยเสียง\n• 📎 **อัปโหลดไฟล์ CSV** เพื่อวิเคราะห์และสร้างกราฟ\n\nลองเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ!',
             chart: null
         }
     ]);
@@ -826,14 +914,60 @@ export default function AIChatPage() {
         } catch (error) {
             console.error('[AIChatPage] Gemini API error:', error);
             const errMsg = error.message || 'ไม่ทราบสาเหตุ';
-            const isQuota = errMsg.includes('รอ') || errMsg.includes('quota');
-            setMessages(prev => [...prev, {
-                role: 'bot',
-                text: isQuota
-                    ? `⏳ **ระบบ AI กำลังพักการใช้งานชั่วคราว**\n\nกรุณารอประมาณ 1 นาทีแล้วลองถามใหม่อีกครั้งค่ะ 🙏`
-                    : `⚠️ ${errMsg}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
-                chart: null
-            }]);
+            const isQuota = errMsg.includes('รอ') || errMsg.includes('quota') || errMsg.includes('API ถูกใช้งาน');
+            if (isQuota) {
+                // Show countdown message and auto-retry after 60s
+                const retryTime = Date.now() + 60000;
+                const countdownMsgIdx = { current: null };
+                setMessages(prev => {
+                    countdownMsgIdx.current = prev.length;
+                    return [...prev, {
+                        role: 'bot',
+                        text: `⏳ **API ถูกใช้งานบ่อยเกินไป — กำลังรอ 60 วินาที แล้วจะลองใหม่อัตโนมัติ...**\n\n🔄 กรุณารอสักครู่ ระบบจะลองส่งคำถามให้ใหม่เองค่ะ`,
+                        chart: null
+                    }];
+                });
+                // Auto-retry after cooldown
+                setTimeout(async () => {
+                    setTyping(true);
+                    try {
+                        let retryMsg = userMsg;
+                        if (uploadedFileData) {
+                            const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
+                            const dashPreview = dashboardMergeSummary.rows.map(r => Object.values(r).join(', ')).join('\n');
+                            retryMsg = `[บริบท: ข้อมูลไฟล์ คอลัมน์: ${uploadedFileData.headers.join(', ')} ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nDashboard (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}]\n\nคำถาม: ${userMsg}`;
+                        }
+                        const aiText = await sendMessageToGemini(retryMsg);
+                        const parsedAI = parseAIResponse(aiText);
+                        setMessages(prev => {
+                            const updated = [...prev];
+                            // Replace countdown message with success
+                            if (countdownMsgIdx.current !== null && updated[countdownMsgIdx.current]) {
+                                updated[countdownMsgIdx.current] = { role: 'bot', text: `✅ _ลองใหม่สำเร็จแล้ว!_\n\n${parsedAI.text}`, chart: parsedAI.chart };
+                            } else {
+                                updated.push({ role: 'bot', text: parsedAI.text, chart: parsedAI.chart });
+                            }
+                            return updated;
+                        });
+                    } catch (retryErr) {
+                        setMessages(prev => {
+                            const updated = [...prev];
+                            if (countdownMsgIdx.current !== null && updated[countdownMsgIdx.current]) {
+                                updated[countdownMsgIdx.current] = { role: 'bot', text: `⏳ **ยังไม่สามารถเชื่อมต่อ AI ได้**\n\nกรุณารอ 1-2 นาทีแล้วลองถามใหม่อีกครั้งค่ะ 🙏\n\n💡 _ระหว่างรอ ลองใช้ Quick Actions เช่น พยากรณ์ข้อมูล หรือค้นหานักศึกษา ซึ่งทำงานได้โดยไม่ต้องใช้ AI_`, chart: null };
+                            }
+                            return updated;
+                        });
+                    } finally {
+                        setTyping(false);
+                    }
+                }, 60000);
+            } else {
+                setMessages(prev => [...prev, {
+                    role: 'bot',
+                    text: `⚠️ ${errMsg}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                    chart: null
+                }]);
+            }
         } finally {
             setTyping(false);
         }
@@ -842,12 +976,12 @@ export default function AIChatPage() {
     const handleKeyDown = (e) => { if (e.key === 'Enter') handleSend(); };
 
     const quickActions = [
-        { label: '📊 นิสิต vs อัตราสำเร็จ', query: 'เปรียบเทียบนิสิตกับอัตราสำเร็จการศึกษาแต่ละคณะ เป็นกราฟ combo chart', icon: BarChart3 },
-        { label: '🔮 พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: ChartLine },
-        { label: '📈 คาดการณ์จำนวนนิสิต', query: 'พยากรณ์จำนวนนิสิตมหาวิทยาลัย ปี 70 71 แบบกราฟแท่ง', icon: TrendingUp },
+        { label: '📊 กราฟนักศึกษาและเกรด', query: 'สร้างกราฟจำนวนนักศึกษาและเกรดเฉลี่ยคณะวิทยาศาสตร์ เป็นกราฟ', icon: BarChart3 },
+        { label: '📈 พยากรณ์จำนวนนิสิต+เกรด', query: 'พยากรณ์จำนวนนักศึกษาและเกรดเฉลี่ย คณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: TrendingUp },
+        { label: '🏫 ข้อมูลทั่วไปแม่โจ้', query: 'สรุปข้อมูลทั่วไปมหาวิทยาลัยแม่โจ้ ประวัติ คณะ ที่ตั้ง จุดเด่น', icon: Search },
+        { label: '📋 การรับสมัครนักศึกษา', query: 'ระบบรับสมัครนักศึกษาแม่โจ้ TCAS มีกี่รอบ แต่ละรอบเปิดเมื่อไหร่', icon: Sparkles },
         { label: '🔍 ค้นหานิสิตรอพินิจ', query: 'แสดงรายชื่อนักศึกษาที่สถานะรอพินิจ', icon: Search },
-        { label: '🎓 นิสิตเกียรตินิยม', query: 'แสดงนักศึกษาเกรดสูง เกียรตินิยม', icon: Sparkles },
-        { label: '💰 สรุปงบประมาณ', query: 'สรุปภาพรวมงบประมาณคณะวิทยาศาสตร์ปีล่าสุด', icon: BarChart3 },
+        { label: '🔮 พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: ChartLine },
     ];
 
     const handleQuickAction = async (query) => {
@@ -866,13 +1000,14 @@ export default function AIChatPage() {
             const parsedAI = parseAIResponse(aiText);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
-            console.error('[AIChatPage] Gemini API error:', error);
-            const isQuota = (error.message || '').includes('รอ') || (error.message || '').includes('quota');
+            console.error('[AIChatPage] Quick action error:', error);
+            const errMsg = error.message || '';
+            const isQuota = errMsg.includes('รอ') || errMsg.includes('quota') || errMsg.includes('API ถูกใช้งาน');
             setMessages(prev => [...prev, {
                 role: 'bot',
                 text: isQuota
-                    ? `⏳ **ระบบ AI กำลังพักการใช้งานชั่วคราว**\n\nกรุณารอประมาณ 1 นาทีแล้วลองถามใหม่อีกครั้งค่ะ 🙏`
-                    : `⚠️ ${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                    ? `⏳ **API ถูกใช้งานบ่อยเกินไป**\n\nกรุณารอ 1 นาทีแล้วลองใหม่ค่ะ 🙏\n\n💡 _ระหว่างรอ ลองใช้ฟีเจอร์พยากรณ์หรือค้นหานักศึกษาที่ทำงานได้โดยไม่ต้องเชื่อมต่อ AI_`
+                    : `⚠️ ${errMsg || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
                 chart: null
             }]);
         } finally {
@@ -881,7 +1016,7 @@ export default function AIChatPage() {
     };
 
     const featureCards = [
-        { icon: Bot, title: 'ถาม-ตอบ AI', desc: 'สอบถามข้อมูลมหาวิทยาลัย, งบประมาณ, นักศึกษา', color: '#00e676' },
+        { icon: Bot, title: 'ถาม-ตอบ AI', desc: 'ตอบทุกเรื่องแม่โจ้: ประวัติ, คณะ, หลักสูตร, รับสมัคร, วิจัย', color: '#00e676' },
         { icon: ChartLine, title: 'พยากรณ์ข้อมูล', desc: 'สร้างกราฟพยากรณ์งบประมาณ/จำนวนนิสิต', color: '#00e5ff' },
         { icon: Search, title: 'ค้นหานักศึกษา', desc: 'ค้นหาตามรหัส, ชื่อ, สาขา, ชั้นปี, GPA', color: '#7B68EE' },
         { icon: Paperclip, title: 'อัปโหลดไฟล์', desc: 'แนบ CSV เพื่อวิเคราะห์และสร้างกราฟอัตโนมัติ', color: '#C5A028' },
@@ -1019,11 +1154,14 @@ export default function AIChatPage() {
                     <div className="ai-chat-page-tips">
                         <h4>💡 ตัวอย่างคำถาม</h4>
                         <ul>
-                            <li>"พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71"</li>
+                            <li>"สร้างกราฟจำนวนนักศึกษาและเกรด"</li>
+                            <li>"แม่โจ้มีกี่คณะ แต่ละคณะมีสาขาอะไร"</li>
+                            <li>"การรับสมัคร TCAS มีกี่รอบ"</li>
+                            <li>"พยากรณ์งบประมาณคณะวิทย์ ปี 70 71"</li>
                             <li>"แสดงนักศึกษาสาขาคอม ชั้นปี 3"</li>
-                            <li>"สรุปข้อมูลค่าธรรมเนียมการศึกษา"</li>
-                            <li>"เปรียบเทียบรายรับรายจ่ายมหาวิทยาลัย"</li>
+                            <li>"ค่าเทอมแม่โจ้เท่าไหร่"</li>
                             <li>"นักศึกษาที่มี GPA สูงสุด 10 คน"</li>
+                            <li>"แม่โจ้อยู่ที่ไหน เดินทางยังไง"</li>
                         </ul>
                     </div>
                 </div>
