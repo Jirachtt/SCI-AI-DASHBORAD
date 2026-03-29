@@ -52,7 +52,7 @@ const ACCESS_LEVELS = {
         sections: [
             'dashboard', 'tuition', 'student_life',
             'graduation_check', 'student_stats', 'ai_chat',
-            'graduation_stats'
+            'graduation_stats', 'hr_overview'
         ]
     },
     student: {
@@ -63,7 +63,7 @@ const ACCESS_LEVELS = {
         sections: [
             'dashboard', 'tuition', 'student_life',
             'graduation_check', 'student_stats',
-            'graduation_stats'
+            'graduation_stats', 'ai_chat'
         ]
     }
 };
