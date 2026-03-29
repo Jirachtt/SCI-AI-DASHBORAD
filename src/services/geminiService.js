@@ -12,10 +12,33 @@ if (!API_KEY) {
 
 // Models ordered by free-tier quota: highest RPM first
 const MODELS = [
-    'gemini-2.0-flash-lite',   // 30 RPM free
-    'gemini-2.0-flash',        // 15 RPM free
-    'gemini-2.5-flash',        // 10 RPM free
+    'gemini-2.0-flash-lite',   // 30 RPM free — no google_search support
+    'gemini-2.0-flash',        // 15 RPM free — supports google_search
+    'gemini-2.5-flash',        // 10 RPM free — supports google_search
 ];
+
+// Models that support Google Search grounding for real-time web data
+const SEARCH_CAPABLE_MODELS = new Set(['gemini-2.0-flash', 'gemini-2.5-flash']);
+
+// Detect if query should use Google Search for real Maejo website data
+function shouldUseWebSearch(msg) {
+    const q = msg.toLowerCase();
+    // Skip search for chart/data/forecast/student queries (use dashboard data instead)
+    const skipKeywords = ['กราฟ', 'chart', 'json_chart', 'พยากรณ์', 'forecast', 'คาดการณ์',
+        'รายชื่อ', 'ค้นหานักศึกษา', 'หานักศึกษา', 'รหัส 6', 'เกรดสูง', 'เกรดต่ำ',
+        'รอพินิจ', 'เกียรตินิยม', 'combo', 'เปรียบเทียบนิสิต', 'แผนภูมิ', 'แผนภาพ'];
+    if (skipKeywords.some(k => q.includes(k))) return false;
+    // Enable search for general Maejo knowledge queries
+    const searchTriggers = ['ประวัติ', 'คณะ', 'สาขา', 'หลักสูตร', 'รับสมัคร', 'tcas',
+        'ที่ตั้ง', 'ที่อยู่', 'อยู่ที่ไหน', 'เดินทาง', 'สถานที่', 'กิจกรรม', 'หอพัก',
+        'ค่าเทอม', 'ข้อมูลทั่วไป', 'ผู้บริหาร', 'อธิการบดี', 'ทุนการศึกษา', 'ทุน',
+        'วิจัย', 'ผลงาน', 'ติดต่อ', 'เปิดรับ', 'ปฏิทิน', 'เว็บไซต์', 'โทรศัพท์',
+        'แม่โจ้คือ', 'แม่โจ้มี', 'แม่โจ้เป็น', 'เกี่ยวกับแม่โจ้', 'mju', 'maejo',
+        'อาจารย์', 'บุคลากร', 'เรียนอะไร', 'เรียนที่ไหน', 'คะแนน', 'เกณฑ์',
+        'ข่าว', 'ประกาศ', 'สมัคร', 'ลงทะเบียน', 'ปริญญา', 'บัณฑิต',
+        'ห้องสมุด', 'สนามกีฬา', 'โรงอาหาร', 'หน่วยงาน', 'สำนัก', 'สถาบัน'];
+    return searchTriggers.some(k => q.includes(k));
+}
 
 function getApiUrl(modelId) {
     return `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${API_KEY}`;
@@ -111,22 +134,25 @@ function buildBaseInstruction() {
 
 ## กฎ
 1. ตอบภาษาไทย ใช้ emoji กระชับ
-2. **ลำดับการหาข้อมูล:**
-   - ข้อมูล Dashboard (ด้านล่าง) = ใช้ก่อนเสมอ (แม่นยำสุด)
-   - ถ้าไม่มีใน Dashboard → ใช้ความรู้ทั่วไปเกี่ยวกับแม่โจ้จาก mju.ac.th และแหล่งข้อมูลอื่น
-   - สามารถตอบเรื่องทั่วไปของแม่โจ้ได้ทุกเรื่อง เช่น ประวัติ คณะ หลักสูตร การรับสมัคร วิจัย กิจกรรม สถานที่ การเดินทาง ฯลฯ
-3. **ห้ามแต่งตัวเลขสถิติเด็ดขาด:** ถ้าถามตัวเลขที่ไม่มีใน Dashboard → ใช้ความรู้ทั่วไปได้แต่ต้องระบุว่า "ข้อมูลนี้ไม่ได้มาจาก Dashboard แนะนำตรวจสอบเพิ่มเติมที่ mju.ac.th"
-4. เรื่องไม่เกี่ยวกับแม่โจ้เลย → ปฏิเสธ: "ขออภัยค่ะ ตอบได้เฉพาะเรื่องแม่โจ้เท่านั้นค่ะ 🎓"
-5. **⚠️ สำคัญมาก: เมื่อสร้างกราฟ ต้องใช้ \`\`\`json_chart\`\`\` เท่านั้น (ห้ามใช้ \`\`\`json\`\`\`)** รูปแบบ:
+2. **ลำดับการหาข้อมูล (สำคัญมาก):**
+   - ถ้ามี google_search → ค้นหาจาก mju.ac.th เป็นหลัก เพื่อข้อมูลจริงที่เป็นปัจจุบัน
+   - ข้อมูล Dashboard ด้านล่าง = ข้อมูลตัวอย่างสำหรับระบบ ใช้ประกอบการตอบ
+   - ถ้าไม่มี google_search → ใช้ความรู้จริงที่คุณมีเกี่ยวกับแม่โจ้ (จากการเทรน) ได้เลย
+   - **สำคัญ: ใช้ข้อมูลจริงจาก mju.ac.th และความรู้จริงเกี่ยวกับแม่โจ้เป็นหลักเสมอ** ข้อมูล Dashboard เป็นเพียงตัวอย่างประกอบ
+3. **สามารถตอบเรื่องทั่วไปของแม่โจ้ได้ทุกเรื่อง:** ประวัติ คณะ หลักสูตร รับสมัคร TCAS วิจัย กิจกรรม สถานที่ การเดินทาง ค่าเทอม ทุน อาจารย์ บุคลากร ข่าวสาร ฯลฯ
+4. **ห้ามแต่งข้อมูลเด็ดขาด:** ถ้าไม่แน่ใจ → บอกตรงๆ และแนะนำตรวจสอบที่ mju.ac.th
+5. เรื่องไม่เกี่ยวกับแม่โจ้เลย → ปฏิเสธ: "ขออภัยค่ะ ตอบได้เฉพาะเรื่องแม่โจ้เท่านั้นค่ะ 🎓"
+6. **⚠️ สำคัญมาก: เมื่อสร้างกราฟ ต้องใช้ \`\`\`json_chart\`\`\` เท่านั้น (ห้ามใช้ \`\`\`json\`\`\`)** รูปแบบ:
 \`\`\`json_chart
 {"chartType":"bar","data":{"labels":["A","B"],"datasets":[{"label":"X","data":[10,20],"backgroundColor":["#00a651","#7B68EE"]}]}}
 \`\`\`
 รองรับ chartType: "bar", "line", "pie", "doughnut", "radar", "polarArea"
-6. พยากรณ์ → คำนวณ + json_chart เสมอ
-7. ถามนศ./รายชื่อ → ใช้ข้อมูลนักศึกษาที่ให้มา
-8. **เปรียบเทียบข้ามหมวด:** สร้าง json_chart ที่มีหลาย datasets ใช้สีต่างกัน ถ้าหน่วยต่างกัน → อธิบายใน label
-9. **ไฟล์ที่อัปโหลด:** รวมกับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้
-10. **ถ้าถามเรื่องทั่วไปของแม่โจ้** (เช่น ประวัติ สถานที่ การรับสมัคร) → ตอบจากความรู้ด้านล่างและความรู้ทั่วไปได้เลย ไม่ต้องปฏิเสธ
+7. พยากรณ์ → คำนวณ + json_chart เสมอ
+8. ถามนศ./รายชื่อ → ใช้ข้อมูลนักศึกษาที่ให้มา
+9. **เปรียบเทียบข้ามหมวด:** สร้าง json_chart ที่มีหลาย datasets ใช้สีต่างกัน ถ้าหน่วยต่างกัน → อธิบายใน label
+10. **ไฟล์ที่อัปโหลด:** รวมกับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้
+11. **ถ้าถามเรื่องทั่วไปของแม่โจ้** → ตอบจากข้อมูลจริง (google_search/ความรู้) ได้เลย ไม่ต้องปฏิเสธ ไม่ต้องพึ่งข้อมูล Dashboard อย่างเดียว
+12. **เมื่อใช้ google_search:** ค้นหาจาก site:mju.ac.th เพื่อให้ได้ข้อมูลจริงล่าสุดเกี่ยวกับแม่โจ้ อ้างอิงแหล่งที่มาด้วย
 
 ## มหาวิทยาลัยแม่โจ้ — ข้อมูลครบถ้วน
 ### ประวัติและข้อมูลทั่วไป
@@ -261,7 +287,10 @@ export async function sendMessageToGemini(userMessage) {
         ? baseInstruction + buildStudentData()
         : baseInstruction;
 
-    const requestBody = {
+    // Check if this query should use Google Search for real-time Maejo data
+    const useSearch = shouldUseWebSearch(userMessage);
+
+    const baseRequestBody = {
         system_instruction: {
             parts: [{ text: systemText }]
         },
@@ -295,6 +324,13 @@ export async function sendMessageToGemini(userMessage) {
         attemptCount++;
 
         try {
+            // Build per-model request body — add google_search for capable models
+            const requestBody = { ...baseRequestBody };
+            if (useSearch && SEARCH_CAPABLE_MODELS.has(model)) {
+                requestBody.tools = [{ google_search: {} }];
+                console.log(`[Gemini] 🔍 ${model} + Google Search (real web data)`);
+            }
+
             console.log(`[Gemini] Trying model: ${model}...`);
             const apiUrl = getApiUrl(model);
 
