@@ -11,12 +11,10 @@ if (!API_KEY) {
 }
 
 // Models to try in order — spread across different model families for separate quota pools
-// Each model has its own Google Search grounding tool format
 const MODELS = [
-    { id: 'gemini-2.5-flash', searchTool: { google_search: {} } },
-    { id: 'gemini-2.0-flash', searchTool: { google_search: {} } },
-    { id: 'gemini-2.0-flash-lite', searchTool: { google_search: {} } },
-    { id: 'gemini-1.5-flash', searchTool: { google_search_retrieval: { dynamic_retrieval_config: { mode: "MODE_DYNAMIC", dynamic_threshold: 0.3 } } } },
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
 ];
 
 function getApiUrl(modelId) {
@@ -113,8 +111,8 @@ function buildSystemInstruction() {
 
 ## กฎ
 1. ตอบภาษาไทย ใช้ emoji กระชับ
-2. **ลำดับการหาข้อมูล:** ข้อมูล Dashboard (ด้านล่าง) = ใช้ก่อนเสมอ (แม่นยำสุด) → ถ้า Dashboard ไม่มีข้อมูลที่ต้องการ → ใช้ Google Search ค้นหาจากเว็บไซต์มหาวิทยาลัยแม่โจ้ (www.mju.ac.th, science.mju.ac.th) และแหล่งข้อมูลอื่นที่เกี่ยวข้อง → ถ้าค้นหาจากเว็บแล้วก็ไม่พบ → ใช้ความรู้ทั่วไปเกี่ยวกับแม่โจ้
-3. เมื่อใช้ข้อมูลจากเว็บ ให้ระบุแหล่งที่มาสั้นๆ เช่น "(ข้อมูลจาก mju.ac.th)"
+2. **ลำดับการหาข้อมูล:** ข้อมูล Dashboard (ด้านล่าง) = ใช้ก่อนเสมอ (แม่นยำสุด) → ถ้า Dashboard ไม่มีข้อมูลที่ต้องการ → ใช้ Google Search ค้นหาจากเว็บไซต์มหาวิทยาลัยแม่โจ้ (www.mju.ac.th, science.mju.ac.th) → ถ้าค้นไม่พบ → ใช้ความรู้ทั่วไปเกี่ยวกับแม่โจ้
+3. **ห้ามแต่งข้อมูลเด็ดขาด:** ใช้เฉพาะข้อมูลจริงจาก Dashboard หรือเว็บไซต์แม่โจ้เท่านั้น ถ้าไม่มีข้อมูล → บอกตรงๆ ว่าไม่มีและแนะนำแหล่งที่หาเพิ่มได้ เมื่อใช้ข้อมูลจากเว็บให้ระบุแหล่งที่มา
 4. เรื่องไม่เกี่ยวแม่โจ้ → ปฏิเสธ: "ขออภัยค่ะ ตอบได้เฉพาะเรื่องแม่โจ้เท่านั้นค่ะ 🎓"
 5. **⚠️ สำคัญมาก: เมื่อสร้างกราฟ ต้องใช้ \`\`\`json_chart\`\`\` เท่านั้น (ห้ามใช้ \`\`\`json\`\`\`)** รูปแบบ:
 \`\`\`json_chart
@@ -184,103 +182,112 @@ export async function sendMessageToGemini(userMessage) {
     let lastError = null;
     let allQuotaExhausted = true;
 
-    // Try each model in order, skip models on cooldown
-    for (const model of MODELS) {
-        if (isModelOnCooldown(model.id)) {
-            console.log(`[Gemini] Skipping ${model.id} (cooldown)`);
-            continue;
+    // Build base request body (without tools)
+    const baseRequestBody = {
+        system_instruction: {
+            parts: [{ text: cachedSystemInstruction || (cachedSystemInstruction = buildSystemInstruction()) }]
+        },
+        contents: conversationHistory,
+        generationConfig: {
+            temperature: 0.7,
+            topP: 0.9,
+            topK: 40,
+            maxOutputTokens: 4096,
+        },
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        ]
+    };
+
+    // Try with Google Search grounding first, fall back without it
+    const attempts = [
+        { label: '+search', body: { ...baseRequestBody, tools: [{ google_search: {} }] } },
+        { label: 'no-search', body: baseRequestBody },
+    ];
+
+    for (const attempt of attempts) {
+        for (const model of MODELS) {
+            if (isModelOnCooldown(model)) {
+                console.log(`[Gemini] Skipping ${model} (cooldown)`);
+                continue;
+            }
+
+            try {
+                console.log(`[Gemini] Trying ${model} (${attempt.label})...`);
+                const apiUrl = getApiUrl(model);
+
+                const response = await fetchSmart(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(attempt.body)
+                });
+
+                if (response.status === 429) {
+                    modelCooldowns[model] = Date.now() + COOLDOWN_MS;
+                    console.warn(`[Gemini] ${model} quota exceeded, cooldown 60s`);
+                    lastError = new Error('QUOTA_EXCEEDED');
+                    continue;
+                }
+
+                if (response.status === 404) {
+                    allQuotaExhausted = false;
+                    console.warn(`[Gemini] ${model} not found (404), skipping...`);
+                    lastError = new Error(`${model}: Model not available`);
+                    continue;
+                }
+
+                if (!response.ok) {
+                    allQuotaExhausted = false;
+                    const errorData = await response.json().catch(() => ({}));
+                    console.warn(`[Gemini] ${model} failed (${attempt.label}): ${response.status}`);
+                    lastError = new Error(`${model}: HTTP ${response.status} - ${errorData?.error?.message || 'Unknown'}`);
+                    // If search tool caused the error, break to try without it
+                    if (attempt.label === '+search') break;
+                    continue;
+                }
+
+                allQuotaExhausted = false;
+                const data = await response.json();
+                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!aiText) {
+                    console.warn(`[Gemini] ${model} empty response`);
+                    lastError = new Error(`${model}: Empty response`);
+                    continue;
+                }
+
+                console.log(`[Gemini] ✅ ${model} OK (${attempt.label})`);
+
+                // Log grounding sources if available
+                const grounding = data.candidates?.[0]?.groundingMetadata;
+                if (grounding?.groundingChunks?.length) {
+                    console.log(`[Gemini] 🔍 Grounded with ${grounding.groundingChunks.length} web sources`);
+                }
+
+                conversationHistory.push({
+                    role: 'model',
+                    parts: [{ text: aiText }]
+                });
+
+                if (conversationHistory.length > 16) {
+                    conversationHistory = conversationHistory.slice(-16);
+                }
+
+                return aiText;
+
+            } catch (error) {
+                allQuotaExhausted = false;
+                console.warn(`[Gemini] ${model} error:`, error.message);
+                lastError = error;
+                continue;
+            }
         }
 
-        try {
-            console.log(`[Gemini] Trying model: ${model.id}...`);
-            const apiUrl = getApiUrl(model.id);
-
-            const requestBody = {
-                system_instruction: {
-                    parts: [{ text: cachedSystemInstruction || (cachedSystemInstruction = buildSystemInstruction()) }]
-                },
-                contents: conversationHistory,
-                tools: [model.searchTool],
-                generationConfig: {
-                    temperature: 0.7,
-                    topP: 0.9,
-                    topK: 40,
-                    maxOutputTokens: 4096,
-                },
-                safetySettings: [
-                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-                ]
-            };
-
-            const response = await fetchSmart(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (response.status === 429) {
-                // Quota exceeded — put model on cooldown and try next
-                modelCooldowns[model.id] = Date.now() + COOLDOWN_MS;
-                console.warn(`[Gemini] ${model.id} quota exceeded, cooldown 60s`);
-                lastError = new Error('QUOTA_EXCEEDED');
-                continue;
-            }
-
-            if (response.status === 404) {
-                // Model not found / deprecated — skip silently
-                allQuotaExhausted = false;
-                console.warn(`[Gemini] ${model.id} not found (404), skipping...`);
-                lastError = new Error(`${model.id}: Model not available`);
-                continue;
-            }
-
-            if (!response.ok) {
-                allQuotaExhausted = false;
-                const errorData = await response.json().catch(() => ({}));
-                console.warn(`[Gemini] ${model.id} failed: ${response.status}`);
-                lastError = new Error(`${model.id}: HTTP ${response.status} - ${errorData?.error?.message || 'Unknown'}`);
-                continue;
-            }
-
-            allQuotaExhausted = false;
-            const data = await response.json();
-            const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (!aiText) {
-                console.warn(`[Gemini] ${model.id} empty response`);
-                lastError = new Error(`${model.id}: Empty response`);
-                continue;
-            }
-
-            console.log(`[Gemini] ✅ ${model.id} OK`);
-
-            // Log grounding sources if available
-            const grounding = data.candidates?.[0]?.groundingMetadata;
-            if (grounding?.groundingChunks?.length) {
-                console.log(`[Gemini] 🔍 Grounded with ${grounding.groundingChunks.length} web sources`);
-            }
-
-            conversationHistory.push({
-                role: 'model',
-                parts: [{ text: aiText }]
-            });
-
-            // Keep history compact — max 16 messages
-            if (conversationHistory.length > 16) {
-                conversationHistory = conversationHistory.slice(-16);
-            }
-
-            return aiText;
-
-        } catch (error) {
-            allQuotaExhausted = false;
-            console.warn(`[Gemini] ${model.id} error:`, error.message);
-            lastError = error;
-            continue;
-        }
+        // If first attempt (+search) had a success somewhere, we already returned
+        // If all models failed with search, try next attempt (no-search)
     }
 
     // Remove the failed user message from history
@@ -313,10 +320,10 @@ export async function getDashboardInsights() {
     await waitForRateLimit();
 
     for (const model of MODELS) {
-        if (isModelOnCooldown(model.id)) continue;
+        if (isModelOnCooldown(model)) continue;
 
         try {
-            const apiUrl = getApiUrl(model.id);
+            const apiUrl = getApiUrl(model);
             const response = await fetchSmart(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -327,7 +334,7 @@ export async function getDashboardInsights() {
             });
 
             if (response.status === 429) {
-                modelCooldowns[model.id] = Date.now() + COOLDOWN_MS;
+                modelCooldowns[model] = Date.now() + COOLDOWN_MS;
                 continue;
             }
             if (!response.ok) continue;
@@ -343,7 +350,7 @@ export async function getDashboardInsights() {
                 return insights;
             }
         } catch (error) {
-            console.warn(`[Insights] ${model.id} error:`, error.message);
+            console.warn(`[Insights] ${model} error:`, error.message);
             continue;
         }
     }
