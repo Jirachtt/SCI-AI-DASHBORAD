@@ -131,15 +131,8 @@ function parseForecastRequest(question) {
 // ==================== Generate Forecast Response ====================
 function generateForecastResponse(parsed) {
     if (!parsed || parsed.datasets.length === 0) {
-        return {
-            text: '⚠️ **ข้อมูลไม่เพียงพอในการคาดการณ์**\n\nระบบมีข้อมูลสำหรับพยากรณ์ดังนี้:\n' +
-                '• 📈 งบประมาณมหาวิทยาลัย (รายรับ/รายจ่าย)\n' +
-                '• 🔬 งบประมาณคณะวิทยาศาสตร์ (รายรับ/รายจ่าย)\n' +
-                '• จำนวนนิสิตมหาวิทยาลัย\n' +
-                '• 🧪 จำนวนนิสิตคณะวิทยาศาสตร์\n\n' +
-                'ลองถามใหม่ เช่น "พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 แบบกราฟ"',
-            chart: null
-        };
+        // No local data matched — fall through to Gemini AI (with Google Search)
+        return null;
     }
 
     const results = [];
