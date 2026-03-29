@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AIChat from './AIChat';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,19 @@ import { dashboardSummary } from '../data/mockData';
 export default function Layout() {
     const { user } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const location = useLocation();
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const prevPath = useRef(location.pathname);
+
+    // Smooth page transition on route change
+    useEffect(() => {
+        if (prevPath.current !== location.pathname) {
+            setIsTransitioning(true);
+            prevPath.current = location.pathname;
+            const timer = setTimeout(() => setIsTransitioning(false), 50);
+            return () => clearTimeout(timer);
+        }
+    }, [location.pathname]);
 
     return (
         <div className="app-layout">
@@ -30,7 +43,9 @@ export default function Layout() {
                     </div>
                 </header>
                 <div className="page-content">
-                    <Outlet />
+                    <div className={`page-transition ${isTransitioning ? 'page-enter' : 'page-enter-active'}`}>
+                        <Outlet />
+                    </div>
                 </div>
             </div>
             <AIChat />

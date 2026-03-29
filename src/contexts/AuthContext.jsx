@@ -154,43 +154,54 @@ export function AuthProvider({ children }) {
 
     const loginWithGoogle = async () => {
         try {
-            // Try popup first
-            const result = await signInWithPopup(auth, googleProvider);
-            const user = result.user;
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
+            if (isLocalhost) {
+                // Popup works fine on localhost
+                const result = await signInWithPopup(auth, googleProvider);
+                const user = result.user;
 
-            // Try to save user document to Firestore (non-blocking)
-            try {
-                const userDocRef = doc(db, "users", user.uid);
-                const userDoc = await getDoc(userDocRef);
-
-                if (!userDoc.exists()) {
-                    await setDoc(userDocRef, {
-                        name: user.displayName,
-                        email: user.email,
-                        role: 'student',
-                        roleLabel: 'นักศึกษา (Student)',
-                        avatar: user.photoURL || '👤',
-                        createdAt: serverTimestamp()
-                    });
+                // Save user document to Firestore
+                try {
+                    const userDocRef = doc(db, "users", user.uid);
+                    const userDoc = await getDoc(userDocRef);
+                    if (!userDoc.exists()) {
+                        await setDoc(userDocRef, {
+                            name: user.displayName,
+                            email: user.email,
+                            role: 'student',
+                            roleLabel: 'นักศึกษา (Student)',
+                            avatar: user.photoURL || '👤',
+                            createdAt: serverTimestamp()
+                        });
+                    }
+                } catch (firestoreError) {
+                    console.warn('Firestore save skipped:', firestoreError.message);
                 }
-            } catch (firestoreError) {
-                console.warn('Firestore save skipped (permissions):', firestoreError.message);
-                // Login still succeeds even if Firestore write fails
-            }
 
-            return { success: true };
+                return { success: true };
+            } else {
+                // On deployed environments (Vercel), use redirect 
+                // Redirect is more reliable than popup for cross-origin auth
+                await signInWithRedirect(auth, googleProvider);
+                return { success: true }; // Page will reload after redirect
+            }
         } catch (error) {
             console.error('Google login error:', error.code, error.message);
 
-            // If popup blocked or unauthorized domain, try redirect
-            if (error.code === 'auth/popup-blocked' ||
-                error.code === 'auth/popup-closed-by-user' ||
-                error.code === 'auth/unauthorized-domain') {
+            // Handle specific errors
+            if (error.code === 'auth/unauthorized-domain') {
+                return { 
+                    success: false, 
+                    error: 'Domain นี้ยังไม่ได้เพิ่มใน Firebase Console → Authentication → Settings → Authorized domains' 
+                };
+            }
+            
+            if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
                 try {
                     await signInWithRedirect(auth, googleProvider);
-                    return { success: true }; // redirect will reload page
+                    return { success: true };
                 } catch (redirectError) {
-                    console.error('Redirect error:', redirectError);
                     return { success: false, error: redirectError.message };
                 }
             }
