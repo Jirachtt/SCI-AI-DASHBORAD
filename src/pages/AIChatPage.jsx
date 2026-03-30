@@ -4,7 +4,8 @@ import { Chart as ReactChart } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
     Title, Tooltip, Legend, BarElement, Filler, ArcElement, RadialLinearScale,
-    PieController, DoughnutController, RadarController, PolarAreaController, ScatterController,
+    BarController, LineController, PieController, DoughnutController,
+    RadarController, PolarAreaController, ScatterController, BubbleController,
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { sendMessageToGemini, resetConversation } from '../services/geminiService';
@@ -15,7 +16,7 @@ import {
 import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
 import { graduationHistory } from '../data/graduationData';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, zoomPlugin);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin);
 
 // ==================== Linear Regression Forecasting ====================
 function linearRegression(dataPoints) {
@@ -597,18 +598,52 @@ function parseAIResponse(text) {
 
             // Ensure datasets have decent default colors if missing
             const defaultColors = ['#00a651', '#7B68EE', '#E91E63', '#C5A028', '#2E86AB', '#FF6B6B', '#006838', '#A23B72'];
+            const isScatter = rawJson.chartType === 'scatter';
+            const isBubble = rawJson.chartType === 'bubble';
+            const isPointChart = isScatter || isBubble;
+
             if (rawJson.data?.datasets) {
                 rawJson.data.datasets.forEach((ds, i) => {
                     if (!ds.borderColor && !ds.backgroundColor) {
                         const c = defaultColors[i % defaultColors.length];
                         ds.borderColor = c;
-                        ds.backgroundColor = c + '40';
+                        ds.backgroundColor = isPointChart ? c + '99' : c + '40';
                     }
                     // Ensure bar charts have borderRadius for modern look
                     if ((rawJson.chartType === 'bar') && !ds.borderRadius) {
                         ds.borderRadius = 6;
                     }
+                    // Ensure scatter/bubble have visible point sizes
+                    if (isPointChart && !ds.pointRadius) {
+                        ds.pointRadius = isScatter ? 7 : undefined;
+                        ds.pointHoverRadius = isScatter ? 10 : undefined;
+                    }
                 });
+            }
+
+            // Build default scales based on chart type
+            let defaultScales;
+            if (isRadar) {
+                defaultScales = {
+                    r: {
+                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        pointLabels: { color: '#e5e7eb', font: { size: 11, weight: 'bold' } },
+                        ticks: { display: false, min: 0, max: 100 }
+                    }
+                };
+            } else if (rawJson.chartType === 'pie' || rawJson.chartType === 'doughnut') {
+                defaultScales = {};
+            } else if (isPointChart) {
+                defaultScales = {
+                    x: { type: 'linear', position: 'bottom', ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' }, title: rawJson.options?.scales?.x?.title || { display: false } },
+                    y: { ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, title: rawJson.options?.scales?.y?.title || { display: false } }
+                };
+            } else {
+                defaultScales = {
+                    x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { display: false } },
+                    y: { ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                };
             }
 
             chartConfig = {
@@ -624,17 +659,7 @@ function parseAIResponse(text) {
                             zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
                         }
                     },
-                    scales: isRadar ? {
-                        r: {
-                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                            pointLabels: { color: '#e5e7eb', font: { size: 11, weight: 'bold' } },
-                            ticks: { display: false, min: 0, max: 100 }
-                        }
-                    } : (rawJson.chartType === 'pie' || rawJson.chartType === 'doughnut') ? {} : {
-                        x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { display: false } },
-                        y: { ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' } }
-                    }
+                    scales: defaultScales
                 }
             };
         } catch (e) {

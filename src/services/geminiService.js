@@ -276,13 +276,21 @@ Output format: MUST use \`\`\`json_chart\`\`\` (NEVER \`\`\`json\`\`\`):
 | Composition/ratio | **pie** or **doughnut** | สัดส่วน, เปอร์เซ็นต์, องค์ประกอบ |
 | Multi-dimension compare | **radar** or **polarArea** | เทียบหลายมิติ, ประสิทธิภาพรวม (min 3 axes) |
 | Distribution | **bar** (horizontal) | การกระจาย, distribution |
-| Correlation 2 variables | **scatter** | ความสัมพันธ์, correlation |
+| Correlation 2 variables | **scatter** | ความสัมพันธ์, correlation, กราฟจุด |
+| 3-variable relationship | **bubble** | 3 ตัวแปร, ขนาดตามค่า, bubble |
 | Forecast + actual | **line** (solid+dashed) | พยากรณ์, forecast, คาดการณ์ |
 | Dual-metric compare | **bar+line** (mixed) | เปรียบเทียบ 2 หน่วยต่างกัน |
 
+### AUTO-SELECT RULE: When user asks "สร้างกราฟ" or "แสดงกราฟ" WITHOUT specifying chart type, choose the BEST type from the matrix above based on the data characteristics. Prefer scatter for 2-variable relationships, line for time series, bar for category comparisons, pie/doughnut for proportions.
+
 ### Scatter Chart Format (NO labels array):
 \`\`\`json_chart
-{"chartType":"scatter","data":{"datasets":[{"label":"GPA vs Hours","data":[{"x":15,"y":3.25},{"x":20,"y":3.41}],"backgroundColor":"rgba(0,166,81,0.6)","pointRadius":6}]}}
+{"chartType":"scatter","data":{"datasets":[{"label":"GPA vs Hours","data":[{"x":15,"y":3.25},{"x":20,"y":3.41}],"backgroundColor":"rgba(0,166,81,0.6)","pointRadius":8}]},"options":{"scales":{"x":{"title":{"display":true,"text":"X Axis Label"}},"y":{"title":{"display":true,"text":"Y Axis Label"}}}}}
+\`\`\`
+
+### Bubble Chart Format (NO labels array, r = radius):
+\`\`\`json_chart
+{"chartType":"bubble","data":{"datasets":[{"label":"Departments","data":[{"x":52,"y":48,"r":15,"label":"Dept A"},{"x":30,"y":20,"r":8,"label":"Dept B"}],"backgroundColor":"rgba(0,166,81,0.6)"}]}}
 \`\`\`
 
 ### Cross-Table JOIN:
@@ -306,6 +314,8 @@ Examples:
 Colors: #00a651(เขียว) #7B68EE(ม่วง) #E91E63(ชมพู) #C5A028(ทอง) #2E86AB(น้ำเงิน) #FF6B6B(แดง) #006838(เขียวเข้ม) #A23B72(บานเย็น) #00e5ff(ฟ้า) #f97316(ส้ม)
 Bar charts: borderRadius=6
 Line charts: tension=0.4, pointRadius=5
+Scatter charts: pointRadius=8, pointHoverRadius=10, always include axis titles in options.scales.x.title and options.scales.y.title
+Bubble charts: use r (radius) proportional to 3rd variable, min r=5 max r=25
 Always: responsive=true, maintainAspectRatio=false
 
 ═══════════════════════════════════════════
