@@ -4,7 +4,7 @@ import { Chart as ReactChart } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
     Title, Tooltip, Legend, BarElement, Filler, ArcElement, RadialLinearScale,
-    PieController, DoughnutController, RadarController, PolarAreaController,
+    PieController, DoughnutController, RadarController, PolarAreaController, ScatterController,
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { sendMessageToGemini, resetConversation } from '../services/geminiService';
@@ -15,7 +15,7 @@ import {
 import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
 import { graduationHistory } from '../data/graduationData';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, PieController, DoughnutController, RadarController, PolarAreaController, zoomPlugin);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, zoomPlugin);
 
 // ==================== Linear Regression Forecasting ====================
 function linearRegression(dataPoints) {
