@@ -312,22 +312,30 @@ function searchStudents(query) {
 function tryLocalResponse(question) {
     const q = question.toLowerCase();
 
-    // 1. Check forecast/chart request
+    // 1. Explicit forecast requests only (with forecast-specific keywords)
     const forecastParsed = parseForecastRequest(question);
     if (forecastParsed) {
-        return generateForecastResponse(forecastParsed);
+        const result = generateForecastResponse(forecastParsed);
+        if (result) return result;
+        // No datasets matched → fall through to AI
     }
 
-    // 2. Check student search
-    const studentKeywords = ['รหัส', 'รายชื่อ', 'หานักศึกษา', 'ค้นหานักศึกษา', 'นักศึกษา', 'นิสิต', 'สาขา', 'ชั้นปี', 'รอพินิจ', 'เกรดต่ำ', 'เกรดสูง', 'เกียรตินิยม'];
-    const hasStudentQuery = studentKeywords.some(k => q.includes(k)) &&
-        (q.match(/\d{2,}/) || q.includes('สาขา') || q.includes('ชั้นปี') || q.includes('รอพินิจ') || q.includes('เกรดต่ำ') || q.includes('เกรดสูง') || q.includes('เกียรตินิยม') || q.includes('รายชื่อ') || q.includes('ใคร') || q.includes('คน'));
-    if (hasStudentQuery) {
+    // 2. Student search — only specific structured lookups
+    const isStudentLookup =
+        (q.match(/(?:รหัส|id)\s*\d{2,}/i)) ||
+        (q.includes('รอพินิจ') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
+        (q.includes('เกรดต่ำ') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
+        (q.includes('เกรดสูง') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
+        (q.includes('เกียรตินิยม') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
+        ((q.includes('รายชื่อ') || q.includes('ค้นหานักศึกษา') || q.includes('หานักศึกษา')) &&
+         (q.includes('สาขา') || q.includes('ชั้นปี') || q.match(/\d{2,}/)));
+
+    if (isStudentLookup) {
         const studentResult = searchStudents(q);
         if (studentResult) return studentResult;
     }
 
-    return null; // Not handled locally → send to Gemini
+    return null; // Let AI handle everything else
 }
 
 // ==================== Parse AI Generated Chart ====================
@@ -351,28 +359,47 @@ function parseAIResponse(text) {
         }
     }
 
+    // Last fallback: find raw JSON with chartType (no code block)
+    if (!match) {
+        const startIdx = text.indexOf('{"chartType"');
+        if (startIdx !== -1) {
+            try {
+                let depth = 0, endIdx = startIdx;
+                for (let i = startIdx; i < text.length; i++) {
+                    if (text[i] === '{') depth++;
+                    else if (text[i] === '}') { depth--; if (depth === 0) { endIdx = i + 1; break; } }
+                }
+                const jsonStr = text.slice(startIdx, endIdx);
+                const parsed = JSON.parse(jsonStr);
+                if (parsed.chartType && parsed.data) {
+                    match = [jsonStr, jsonStr];
+                    regex = new RegExp(jsonStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+                }
+            } catch (_) { /* not valid */ }
+        }
+    }
+
     let chartConfig = null;
     let cleanText = text;
 
     if (match) {
         try {
-            const rawJson = JSON.parse(match[1]);
-            cleanText = text.replace(regex, '').trim();
+            const rawJson = JSON.parse(match[1] || match[0]);
+            cleanText = text.replace(match[0].includes('```') ? regex : match[0], '').trim();
+            cleanText = cleanText.replace(/```\s*```/g, '').trim();
 
             const isRadar = rawJson.chartType === 'radar' || rawJson.chartType === 'polarArea';
 
-            // Validate radar charts have minimum 3 axes
             if (isRadar && rawJson.data?.labels?.length < 3) {
                 rawJson.chartType = 'bar';
             }
 
             if (isRadar && rawJson.data?.labels?.length >= 3) {
-                // Neon theme for radar
                 const neonColors = [
-                    { border: '#00e5ff', fill: 'rgba(0, 229, 255, 0.4)' }, // Cyan
-                    { border: '#e91e63', fill: 'rgba(233, 30, 99, 0.4)' }, // Magenta
-                    { border: '#00e676', fill: 'rgba(0, 230, 118, 0.4)' }, // Green
-                    { border: '#ffea00', fill: 'rgba(255, 234, 0, 0.4)' }  // Yellow
+                    { border: '#00e5ff', fill: 'rgba(0, 229, 255, 0.4)' },
+                    { border: '#e91e63', fill: 'rgba(233, 30, 99, 0.4)' },
+                    { border: '#00e676', fill: 'rgba(0, 230, 118, 0.4)' },
+                    { border: '#ffea00', fill: 'rgba(255, 234, 0, 0.4)' }
                 ];
                 rawJson.data.datasets.forEach((ds, i) => {
                     const colorSet = neonColors[i % neonColors.length];
@@ -384,6 +411,19 @@ function parseAIResponse(text) {
                     ds.pointRadius = 4;
                     ds.pointHoverRadius = 6;
                     ds.borderWidth = 2;
+                });
+            }
+
+            // Ensure default colors
+            const defaultColors = ['#00a651', '#7B68EE', '#E91E63', '#C5A028', '#2E86AB', '#FF6B6B', '#006838', '#A23B72'];
+            if (rawJson.data?.datasets) {
+                rawJson.data.datasets.forEach((ds, i) => {
+                    if (!ds.borderColor && !ds.backgroundColor) {
+                        const c = defaultColors[i % defaultColors.length];
+                        ds.borderColor = c;
+                        ds.backgroundColor = c + '40';
+                    }
+                    if (rawJson.chartType === 'bar' && !ds.borderRadius) ds.borderRadius = 6;
                 });
             }
 

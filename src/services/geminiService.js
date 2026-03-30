@@ -4,6 +4,10 @@ import {
     tuitionData, financialData, studentLifeData, dashboardSummary
 } from '../data/mockData';
 import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
+import { graduationHistory, currentGraduationStats, graduationByMajor, honorsData, gpaDistribution } from '../data/graduationData';
+import { researchData } from '../data/researchData';
+import { hrData } from '../data/hrData';
+import { strategicData } from '../data/strategicData';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 if (!API_KEY) {
@@ -23,10 +27,15 @@ const SEARCH_CAPABLE_MODELS = new Set(['gemini-2.0-flash', 'gemini-2.5-flash']);
 // Detect if query should use Google Search for real Maejo website data
 function shouldUseWebSearch(msg) {
     const q = msg.toLowerCase();
-    // Skip search for chart/data/forecast/student queries (use dashboard data instead)
+    // Skip search for chart/data/forecast/student/research/strategic queries (use dashboard data instead)
     const skipKeywords = ['กราฟ', 'chart', 'json_chart', 'พยากรณ์', 'forecast', 'คาดการณ์',
         'รายชื่อ', 'ค้นหานักศึกษา', 'หานักศึกษา', 'รหัส 6', 'เกรดสูง', 'เกรดต่ำ',
-        'รอพินิจ', 'เกียรตินิยม', 'combo', 'เปรียบเทียบนิสิต', 'แผนภูมิ', 'แผนภาพ'];
+        'รอพินิจ', 'เกียรตินิยม', 'combo', 'เปรียบเทียบนิสิต', 'แผนภูมิ', 'แผนภาพ',
+        'งานวิจัย', 'ตีพิมพ์', 'scopus', 'สิทธิบัตร', 'ทุนวิจัย', 'h-index', 'citation',
+        'ยุทธศาสตร์', 'okr', 'kpi', 'ประสิทธิภาพ', 'เป้าหมาย',
+        'บุคลากร', 'อาจารย์คณะวิทย', 'ตำแหน่งวิชาการ', 'เกษียณ', 'ภาควิชา',
+        'งบประมาณ', 'รายรับ', 'รายจ่าย', 'budget',
+        'สำเร็จการศึกษา', 'จำนวนนิสิต', 'จำนวนนักศึกษา', 'gpa'];
     if (skipKeywords.some(k => q.includes(k))) return false;
     // Enable search for general Maejo knowledge queries
     const searchTriggers = ['ประวัติ', 'คณะ', 'สาขา', 'หลักสูตร', 'รับสมัคร', 'tcas',
@@ -104,136 +113,226 @@ async function fetchSmart(url, options) {
     return response;
 }
 
-// Build compact system instruction — optimized for token efficiency
-// Split into base (small) and student detail (large) parts
+// ═══════════════════════════════════════════════════════════════
+// Build system instruction — implements the full DB-schema spec
+// ═══════════════════════════════════════════════════════════════
 function buildBaseInstruction() {
-    const budgetActual = universityBudgetData.yearly.filter(y => y.type === 'actual');
-    const sciBudgetActual = scienceFacultyBudgetData.yearly.filter(y => y.type === 'actual');
-
-    const majorCounts = {};
-    const yearCounts = {};
+    // ── Pre-compute aggregated data ──
+    const majorCounts = {}, yearCounts = {}, gpaByMajor = {};
     let statusNormal = 0, statusAtRisk = 0;
     scienceStudentList.forEach(s => {
         majorCounts[s.major] = (majorCounts[s.major] || 0) + 1;
         yearCounts[s.year] = (yearCounts[s.year] || 0) + 1;
         if (s.status === 'รอพินิจ') statusAtRisk++; else statusNormal++;
-    });
-    const majorSummary = Object.entries(majorCounts).map(([m, c]) => `${m}:${c}`).join(', ');
-    const yearSummary = Object.entries(yearCounts).sort().map(([y, c]) => `ปี${y}:${c}`).join(', ');
-
-    // Compute GPA stats per major for quick answers
-    const gpaByMajor = {};
-    scienceStudentList.forEach(s => {
-        if (!gpaByMajor[s.major]) gpaByMajor[s.major] = { sum: 0, count: 0 };
+        if (!gpaByMajor[s.major]) gpaByMajor[s.major] = { sum: 0, count: 0, min: 4, max: 0 };
         gpaByMajor[s.major].sum += s.gpa;
         gpaByMajor[s.major].count++;
+        if (s.gpa < gpaByMajor[s.major].min) gpaByMajor[s.major].min = s.gpa;
+        if (s.gpa > gpaByMajor[s.major].max) gpaByMajor[s.major].max = s.gpa;
     });
-    const gpaSummary = Object.entries(gpaByMajor).map(([m, d]) => `${m}:${(d.sum / d.count).toFixed(2)}`).join(', ');
 
-    return `คุณคือ "MJU AI Assistant" ผู้เชี่ยวชาญมหาวิทยาลัยแม่โจ้ (MJU) ตอบได้ทุกเรื่องเกี่ยวกับแม่โจ้อย่างครบถ้วน
+    const personnel = studentStatsData.scienceFaculty.personnel;
+    const gender = studentStatsData.scienceFaculty.byGender;
+    const ratio = studentStatsData.scienceFaculty.studentFacultyRatio;
+    const budgetAll = universityBudgetData.yearly;
+    const sciBudgetAll = scienceFacultyBudgetData.yearly;
+    const activities = studentLifeData;
 
-## กฎ
-1. ตอบภาษาไทย ใช้ emoji กระชับ
-2. **ลำดับการหาข้อมูล (สำคัญมาก):**
-   - ถ้ามี google_search → ค้นหาจาก mju.ac.th เป็นหลัก เพื่อข้อมูลจริงที่เป็นปัจจุบัน
-   - ข้อมูล Dashboard ด้านล่าง = ข้อมูลตัวอย่างสำหรับระบบ ใช้ประกอบการตอบ
-   - ถ้าไม่มี google_search → ใช้ความรู้จริงที่คุณมีเกี่ยวกับแม่โจ้ (จากการเทรน) ได้เลย
-   - **สำคัญ: ใช้ข้อมูลจริงจาก mju.ac.th และความรู้จริงเกี่ยวกับแม่โจ้เป็นหลักเสมอ** ข้อมูล Dashboard เป็นเพียงตัวอย่างประกอบ
-3. **สามารถตอบเรื่องทั่วไปของแม่โจ้ได้ทุกเรื่อง:** ประวัติ คณะ หลักสูตร รับสมัคร TCAS วิจัย กิจกรรม สถานที่ การเดินทาง ค่าเทอม ทุน อาจารย์ บุคลากร ข่าวสาร ฯลฯ
-4. **ห้ามแต่งข้อมูลเด็ดขาด:** ถ้าไม่แน่ใจ → บอกตรงๆ และแนะนำตรวจสอบที่ mju.ac.th
-5. เรื่องไม่เกี่ยวกับแม่โจ้เลย → ปฏิเสธ: "ขออภัยค่ะ ตอบได้เฉพาะเรื่องแม่โจ้เท่านั้นค่ะ 🎓"
-6. **⚠️ สำคัญมาก: เมื่อสร้างกราฟ ต้องใช้ \`\`\`json_chart\`\`\` เท่านั้น (ห้ามใช้ \`\`\`json\`\`\`)** รูปแบบ:
+    const dataTimestamp = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    return `You are "MJU Science AI Assistant", an intelligent AI built exclusively for the executive team of the Faculty of Science, Maejo University (MJU).
+
+═══════════════════════════════════════════
+ SECTION 1 — ROLE & ACCESS
+═══════════════════════════════════════════
+Access: Super Admin over all internal databases of the Faculty of Science.
+Purpose: Statistical analysis & Data Visualization (charts/graphs) for strategic planning.
+Language: ตอบภาษาไทย กระชับ ใช้ emoji ยกเว้นผู้ใช้ถามเป็นภาษาอังกฤษ
+Data Freshness: ข้อมูลในระบบอัปเดตล่าสุด ณ ${dataTimestamp}
+Mandate:
+• MUST answer every question resolvable from the DATA below. Never refuse when data exists.
+• MUST NOT fabricate numbers. If data is genuinely absent → state: "ข้อมูลนี้ไม่มีในระบบปัจจุบัน แต่มีข้อมูลที่เกี่ยวข้อง ได้แก่..." then list available related data.
+• MUST NOT substitute unrelated data (e.g. ถามบุคลากร → ห้ามตอบนิสิต, ถามงานวิจัย → ห้ามตอบงบประมาณ)
+• When google_search is available → search site:mju.ac.th for real-time info and cite sources.
+• When query is AMBIGUOUS (e.g. "งบ" could mean university or science faculty) → ask for clarification OR answer BOTH with clear labels.
+• When query spans MULTIPLE domains (e.g. "เปรียบเทียบงบวิจัยกับจำนวนนิสิต") → cross-reference data and produce combined chart.
+
+═══════════════════════════════════════════
+ SECTION 2 — DATABASE (LIVE DATA)
+═══════════════════════════════════════════
+
+### TABLE: students (คณะวิทยาศาสตร์)
+Total: ${scienceStudentList.length} records
+Columns: student_id, prefix, name, major, level, year, status, gpa
+Aggregated Stats:
+- สาขา: ${Object.entries(majorCounts).map(([m, c]) => `${m}:${c}คน`).join(', ')}
+- ชั้นปี: ${Object.entries(yearCounts).sort().map(([y, c]) => `ปี${y}:${c}คน`).join(', ')}
+- สถานะ: กำลังศึกษา:${statusNormal} รอพินิจ:${statusAtRisk}
+- เพศ: ชาย${gender.male}(${gender.malePercent}%) หญิง${gender.female}(${gender.femalePercent}%)
+- GPA เฉลี่ยแยกสาขา: ${Object.entries(gpaByMajor).map(([m, d]) => `${m}:avg${(d.sum / d.count).toFixed(2)},min${d.min},max${d.max}`).join(' | ')}
+- รับเข้ารายปี(ช่องทาง): ${studentStatsData.scienceFaculty.newStudentIntake.map(i => `${i.year}:${i.total}คน(โควตา${i.channels.quota}/รับตรง${i.channels.directAdmit}/TCAS${i.channels.tcas}/อื่น${i.channels.other})`).join(', ')}
+
+### TABLE: activities (Student Life)
+- activityHours: target=${activities.activityHours.target}, completed=${activities.activityHours.completed}
+- categories: ${activities.activityHours.categories.map(c => `${c.name}:${c.hours}ชม.`).join(', ')}
+- behaviorScore: ${activities.behaviorScore.score}/${activities.behaviorScore.maxScore}
+- behaviorHistory: ${activities.behaviorScore.history.map(h => `${h.semester}:${h.score}`).join(', ')}
+
+### TABLE: graduation (คณะวิทยาศาสตร์)
+${graduationHistory.map(g => `${g.year}: candidates=${g.candidates}, graduated=${g.graduated}, rate=${g.rate}%, avgGPA=${g.avgGPA}`).join('\n')}
+
+### TABLE: budget_university (ล้านบาท)
+${budgetAll.map(y => {
+    let s = `${y.year}(${y.type}): revenue=${y.revenue}, expense=${y.expense}, surplus=${y.surplus}`;
+    if (y.revenueBreakdown) s += ` | revBreakdown: ${y.revenueBreakdown.map(b => `${b.name}:${b.amount}`).join(',')}`;
+    if (y.expenseBreakdown) s += ` | expBreakdown: ${y.expenseBreakdown.map(b => `${b.name}:${b.amount}`).join(',')}`;
+    return s;
+}).join('\n')}
+
+### TABLE: budget_science (ล้านบาท)
+${sciBudgetAll.map(y => {
+    let s = `${y.year}(${y.type}): revenue=${y.revenue}, expense=${y.expense}, surplus=${y.surplus}`;
+    if (y.revenueBreakdown) s += ` | revBreakdown: ${y.revenueBreakdown.map(b => `${b.name}:${b.amount}`).join(',')}`;
+    if (y.expenseBreakdown) s += ` | expBreakdown: ${y.expenseBreakdown.map(b => `${b.name}:${b.amount}`).join(',')}`;
+    return s;
+}).join('\n')}
+
+### TABLE: student_stats (ทั้งมหาวิทยาลัย)
+- total: ${dashboardSummary.totalStudents}, GPA: ${dashboardSummary.avgGPA}, gradRate: ${dashboardSummary.graduationRate}%
+- byLevel: ${studentStatsData.current.byLevel.map(l => `${l.level}:${l.count}`).join(', ')}
+- trend: ${studentStatsData.trend.map(t => `${t.year}:total=${t.total},bach=${t.bachelor},master=${t.master},doc=${t.doctoral}(${t.type})`).join(', ')}
+- byFaculty: ${studentStatsData.byFaculty.map(f => `${f.name}(ตรี${f.bachelor},โท${f.master},เอก${f.doctoral})`).join(' | ')}
+- faculties(GPA,gradRate): ${dashboardSummary.faculties.map(f => `${f.name}(${f.totalStudents}คน,GPA${f.avgGPA.toFixed(2)},สำเร็จ${f.graduationRate}%)`).join(' | ')}
+
+### TABLE: personnel (คณะวิทยาศาสตร์)
+- total: ${personnel.total} (ชาย${personnel.male}, หญิง${personnel.female})
+- byPosition: ${personnel.byPosition.map(p => `${p.position}:${p.count}`).join(', ')}
+- byEducation: ${personnel.byEducation.map(e => `${e.level}:${e.count}`).join(', ')}
+- byType: ${personnel.byType.map(t => `${t.type}:${t.count}`).join(', ')}
+- retirementForecast: ${personnel.retirementForecast.map(r => `${r.year}:retiring=${r.retiring},remaining=${r.remaining}`).join(', ')}
+- studentFacultyRatio: ${ratio.ratio}:1 (students=${ratio.students}, staff=${ratio.academicStaff})
+- ratioBenchmark: ${ratio.comparison.map(c => `${c.name}:${c.ratio}`).join(', ')}
+
+### TABLE: tuition
+- flatRate: ${tuitionData.flatRate.min}-${tuitionData.flatRate.max} บ./เทอม
+- totalCost(4yr): ${tuitionData.totalCost.min}-${tuitionData.totalCost.max} บ.
+- byFaculty: ${tuitionData.byFaculty.map(f => `${f.name}:${f.fee}`).join(', ')}
+- breakdown: ${tuitionData.breakdown.map(b => `${b.label}:${b.value}%`).join(', ')}
+
+### TABLE: scienceFaculty.enrollmentByYear
+${studentStatsData.scienceFaculty.byEnrollmentYear.map(e => `${e.year}: ${e.count}คน`).join(', ')}
+
+### TABLE: graduation_current (ปีการศึกษาปัจจุบัน ${currentGraduationStats.semester})
+- ผู้มีสิทธิ์รับปริญญา(ปี4): ${currentGraduationStats.totalCandidates}คน
+- คาดว่าสำเร็จ: ${currentGraduationStats.expectedGraduates} | รอพินิจ: ${currentGraduationStats.pending} | ไม่ผ่านเกณฑ์: ${currentGraduationStats.notPassed}
+- GPA เฉลี่ยผู้มีสิทธิ์: ${currentGraduationStats.avgGPA}
+- เกียรตินิยม: อันดับ1=${honorsData.firstClass}คน, อันดับ2=${honorsData.secondClass}คน, ปกติ=${honorsData.normal}คน, ต่ำกว่าเกณฑ์=${honorsData.belowStandard}คน
+- GPADistribution: ${gpaDistribution.map(g => `${g.range}:${g.count}คน`).join(', ')}
+- แยกสาขา: ${graduationByMajor.map(m => `${m.major}(${m.total}คน,คาดสำเร็จ${m.rate}%,GPA${m.avgGPA})`).join(' | ')}
+
+### TABLE: research (คณะวิทยาศาสตร์)
+- overview: publications=${researchData.overview.totalPublications}, funding=${researchData.overview.totalFunding}ล้านบาท, patents=${researchData.overview.totalPatents}, citations=${researchData.overview.totalCitations}, h-index=${researchData.overview.hIndex}, activeProjects=${researchData.overview.activeProjects}
+- publicationTrend: ${researchData.publicationTrend.map(p => `${p.year}(${p.type || 'actual'}):scopus=${p.scopus},tci1=${p.tci1},total=${p.total}`).join(', ')}
+- byDepartment: ${researchData.byDepartment.map(d => `${d.dept}(pub=${d.publications},fund=${d.funding}M,pat=${d.patents},cite=${d.citations})`).join(' | ')}
+- fundingTrend: ${researchData.fundingTrend.map(f => `${f.year}(${f.type}):internal=${f.internal},external=${f.external},industry=${f.industry},total=${f.total}ล้าน`).join(', ')}
+- fundingSources: ${researchData.fundingSources.map(s => `${s.source}:${s.amount}ล้าน`).join(', ')}
+- patents: ${researchData.patents.map(p => `${p.id}:${p.title}(${p.dept},${p.year},${p.status})`).join(' | ')}
+- benchmark: ${researchData.benchmark.map(b => `${b.university}(scopus=${b.scopus},h=${b.hIndex},pat=${b.patents})`).join(' | ')}
+
+### TABLE: hr_detailed (บุคลากร)
+- มหาวิทยาลัย: total=${hrData.university.total}(สายวิชาการ${hrData.university.academic},สายสนับสนุน${hrData.university.support})
+- มหาวิทยาลัยbyType: ${hrData.university.byType.map(t => `${t.type}:${t.count}`).join(', ')}
+- คณะวิทย์: total=${hrData.scienceFaculty.total}(วิชาการ${hrData.scienceFaculty.academic},สนับสนุน${hrData.scienceFaculty.support})
+- คณะวิทย์ตำแหน่งวิชาการ: ${hrData.scienceFaculty.academicPositions.map(p => `${p.position}:${p.count}`).join(', ')}
+- คณะวิทย์วุฒิ: ${hrData.scienceFaculty.byEducation.map(e => `${e.level}:${e.count}`).join(', ')}
+- คณะวิทย์แยกภาควิชา: ${hrData.scienceFaculty.byDepartment.map(d => `${d.dept}(วิชาการ${d.academic},สนับสนุน${d.support})`).join(' | ')}
+- คณะวิทย์trend: ${hrData.scienceFaculty.trend.map(t => `${t.year}(${t.type || 'actual'}):total=${t.total}`).join(', ')}
+- ช่วงอายุ: ${hrData.scienceFaculty.diversity.ageGroup.map(a => `${a.group}:${a.count}คน`).join(', ')}
+- เกษียณใน5ปี: ${hrData.scienceFaculty.diversity.retirementIn5Years}คน
+- อัตราส่วนนศ./อาจารย์: ${hrData.scienceFaculty.studentFacultyRatio.map(r => `${r.year}:${r.ratio}`).join(', ')}
+
+### TABLE: strategic (ยุทธศาสตร์ & OKR)
+- เป้าหมายยุทธศาสตร์: ${strategicData.strategicGoals.map(g => `${g.id}:${g.title}(target=${g.target}${g.unit},current=${g.current}${g.unit})`).join(' | ')}
+- KPIs: ${strategicData.strategicGoals.flatMap(g => g.kpis.map(k => `[${g.id}]${k.name}:target=${k.target},current=${k.current}${k.unit}`)).join(' | ')}
+- OKR(${strategicData.okr.period}): ${strategicData.okr.objectives.map(o => `${o.id}:${o.title}(progress=${o.progress}%)`).join(' | ')}
+- KeyResults: ${strategicData.okr.objectives.flatMap(o => o.keyResults.map(kr => `${kr.id}:${kr.title}(${kr.current}/${kr.target}${kr.unit},${kr.progress}%)`)).join(' | ')}
+- performanceRadar: categories=${strategicData.performanceRadar.categories.join(',')} | current=[${strategicData.performanceRadar.currentYear}] | target=[${strategicData.performanceRadar.targetYear}] | lastYear=[${strategicData.performanceRadar.lastYear}]
+- efficiencyTrend: ${strategicData.efficiencyTrend.map(e => `${e.year}(${e.type || 'actual'}):score=${e.score},budgetEff=${e.budgetEfficiency}%,satisfaction=${e.satisfactionScore}`).join(', ')}
+
+═══════════════════════════════════════════
+ SECTION 3 — CHART RULES
+═══════════════════════════════════════════
+
+Output format: MUST use \`\`\`json_chart\`\`\` (NEVER \`\`\`json\`\`\`):
 \`\`\`json_chart
 {"chartType":"bar","data":{"labels":["A","B"],"datasets":[{"label":"X","data":[10,20],"backgroundColor":["#00a651","#7B68EE"]}]}}
 \`\`\`
-รองรับ chartType: "bar", "line", "pie", "doughnut", "radar", "polarArea"
-7. พยากรณ์ → คำนวณ + json_chart เสมอ
-8. ถามนศ./รายชื่อ → ใช้ข้อมูลนักศึกษาที่ให้มา
-9. **เปรียบเทียบข้ามหมวด:** สร้าง json_chart ที่มีหลาย datasets ใช้สีต่างกัน ถ้าหน่วยต่างกัน → อธิบายใน label
-10. **ไฟล์ที่อัปโหลด:** รวมกับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้
-11. **ถ้าถามเรื่องทั่วไปของแม่โจ้** → ตอบจากข้อมูลจริง (google_search/ความรู้) ได้เลย ไม่ต้องปฏิเสธ ไม่ต้องพึ่งข้อมูล Dashboard อย่างเดียว
-12. **เมื่อใช้ google_search:** ค้นหาจาก site:mju.ac.th เพื่อให้ได้ข้อมูลจริงล่าสุดเกี่ยวกับแม่โจ้ อ้างอิงแหล่งที่มาด้วย
 
-## มหาวิทยาลัยแม่โจ้ — ข้อมูลครบถ้วน
-### ประวัติและข้อมูลทั่วไป
-- ชื่อเต็ม: มหาวิทยาลัยแม่โจ้ (Maejo University) ชื่อย่อ: มจ./MJU
-- ก่อตั้ง: พ.ศ. 2477 (ค.ศ. 1934) เดิมชื่อ "โรงเรียนฝึกหัดครูประถมกสิกรรมภาคเหนือ"
-- ปรัชญา: "มหาวิทยาลัยแห่งชีวิต" (University of Life)
-- วิสัยทัศน์: มหาวิทยาลัยชั้นนำด้านเกษตรอินทรีย์ (Organic Agriculture) ระดับนานาชาติ
-- อัตลักษณ์: นักศึกษาแม่โจ้ "เป็นนักปฏิบัติที่ทันต่อการเปลี่ยนแปลง"
-- สีประจำ: เขียว-ขาว-เหลือง | ดอกไม้ประจำ: ดอกจามจุรี (ก้ามปู)
-- เว็บไซต์หลัก: www.mju.ac.th
+### Chart Selection Matrix:
+| Question Type | Chart | When |
+|---|---|---|
+| Trend over time | **line** | แนวโน้ม, ย้อนหลัง, รายปี, trend |
+| Compare categories | **bar** | เปรียบเทียบ, แยกตาม, ranking |
+| Composition/ratio | **pie** or **doughnut** | สัดส่วน, เปอร์เซ็นต์, องค์ประกอบ |
+| Multi-dimension compare | **radar** or **polarArea** | เทียบหลายมิติ, ประสิทธิภาพรวม (min 3 axes) |
+| Distribution | **bar** (horizontal) | การกระจาย, distribution |
+| Correlation 2 variables | **scatter** | ความสัมพันธ์, correlation |
+| Forecast + actual | **line** (solid+dashed) | พยากรณ์, forecast, คาดการณ์ |
+| Dual-metric compare | **bar+line** (mixed) | เปรียบเทียบ 2 หน่วยต่างกัน |
 
-### ที่ตั้งและวิทยาเขต
-- **วิทยาเขตหลัก (เชียงใหม่):** 63 หมู่ 4 ต.หนองหาร อ.สันทราย จ.เชียงใหม่ 50290 โทร 053-873000
-  - พื้นที่ ~900 ไร่ สภาพแวดล้อมร่มรื่น มีสวนเกษตร ฟาร์มสาธิต อ่างเก็บน้ำ
-  - การเดินทาง: ห่างจากตัวเมืองเชียงใหม่ ~15 กม. ทางเหนือ
-- **มหาวิทยาลัยแม่โจ้-แพร่ เฉลิมพระเกียรติ:** ต.แม่ทราย อ.ร้องกวาง จ.แพร่
-  - หลักสูตร: เกษตรป่าไม้ วนศาสตร์ รัฐศาสตร์ บัญชี
-- **มหาวิทยาลัยแม่โจ้-ชุมพร:** ต.ละแม อ.ละแม จ.ชุมพร
-  - หลักสูตร: การเพาะเลี้ยงสัตว์น้ำ พืชศาสตร์ การท่องเที่ยว
+### Scatter Chart Format (NO labels array):
+\`\`\`json_chart
+{"chartType":"scatter","data":{"datasets":[{"label":"GPA vs Hours","data":[{"x":15,"y":3.25},{"x":20,"y":3.41}],"backgroundColor":"rgba(0,166,81,0.6)","pointRadius":6}]}}
+\`\`\`
 
-### 16 คณะ/วิทยาลัย
-1. **คณะผลิตกรรมการเกษตร** — พืชไร่ พืชสวน ปฐพีศาสตร์ กีฏวิทยา โรคพืช ส่งเสริมการเกษตร เกษตรอินทรีย์
-2. **คณะวิทยาศาสตร์** — วิทยาการคอมพิวเตอร์(CS) เทคโนโลยีสารสนเทศ(IT) เคมี ชีววิทยา คณิตศาสตร์ ฟิสิกส์ สถิติ วิทยาการข้อมูล(DataSci) เทคโนโลยีชีวภาพ(Biotech) เคมีอุตสาหกรรม นาโนวิทยา
-3. **คณะวิศวกรรมและอุตสาหกรรมเกษตร** — วิศวกรรมเกษตร วิศวกรรมอาหาร เทคโนโลยีหลังการเก็บเกี่ยว
-4. **คณะบริหารธุรกิจ** — การจัดการ การตลาด การเงิน บัญชี ระบบสารสนเทศ
-5. **คณะเศรษฐศาสตร์** — เศรษฐศาสตร์ เศรษฐศาสตร์เกษตร เศรษฐศาสตร์สหกรณ์
-6. **คณะพัฒนาการท่องเที่ยว** — การท่องเที่ยว การโรงแรม การจัดการอีเวนต์
-7. **คณะศิลปศาสตร์** — ภาษาอังกฤษ นิเทศศาสตร์ ภาษาไทย
-8. **คณะสถาปัตยกรรมศาสตร์และการออกแบบสิ่งแวดล้อม** — สถาปัตยกรรม ภูมิสถาปัตยกรรม เทคโนโลยีภูมิทัศน์
-9. **คณะสารสนเทศและการสื่อสาร** — การสื่อสารดิจิทัล
-10. **คณะเทคโนโลยีการประมงและทรัพยากรทางน้ำ** — การประมง เพาะเลี้ยงสัตว์น้ำ
-11. **คณะสัตวศาสตร์และเทคโนโลยี** — สัตวศาสตร์ สัตวแพทย์
-12. **วิทยาลัยพลังงานทดแทน** — พลังงานทดแทน วิศวกรรมพลังงาน
-13. **วิทยาลัยนานาชาติ** — หลักสูตรนานาชาติ
-14. **คณะพยาบาลศาสตร์** — พยาบาลศาสตรบัณฑิต
-15. **มหาวิทยาลัยแม่โจ้-แพร่ฯ** — เกษตรป่าไม้ รัฐศาสตร์ บัญชี
-16. **มหาวิทยาลัยแม่โจ้-ชุมพร** — เพาะเลี้ยงสัตว์น้ำ พืชศาสตร์ ท่องเที่ยว
+### Cross-Table JOIN:
+When user asks about RELATIONSHIPS between 2+ data domains:
+1. Identify which tables contain the variables
+2. Cross-reference on shared key (year, major, student_id)
+3. Output combined result as json_chart with multiple datasets
 
-### การรับสมัครนักศึกษา
-- **TCAS (Thai University Central Admission System):**
-  - รอบ 1: Portfolio (ธ.ค.-ม.ค.)
-  - รอบ 2: Quota/โควตา (ก.พ.-เม.ย.)
-  - รอบ 3: Admission (พ.ค.-มิ.ย.)
-  - รอบ 4: Direct Admission (มิ.ย.)
-- เว็บรับสมัคร: https://admissions.mju.ac.th
-- ค่าเทอมเหมาจ่าย: 16,000-19,000 บาท/เทอม (แล้วแต่คณะ)
+Examples:
+• "GPA กับ กิจกรรม" → students.gpa + activities → bar chart grouped by major
+• "จำนวนนิสิต กับ งบประมาณ" → student_stats.trend + budget → dual-axis line
+• "อัตราสำเร็จ กับ GPA แยกปี" → graduation.rate + graduation.avgGPA → dual-axis line
+• "บุคลากรแต่ละตำแหน่ง" → personnel.byPosition → pie/doughnut
+• "เปรียบเทียบคณะ" → student_stats.faculties → bar/radar
+• "งานวิจัยแต่ละภาควิชา" → research.byDepartment → bar/radar
+• "ผลงานตีพิมพ์ vs ทุนวิจัย" → research.byDepartment → scatter (x=funding, y=publications)
+• "ความก้าวหน้ายุทธศาสตร์" → strategic.strategicGoals → radar (current vs target)
+• "OKR progress" → strategic.okr → bar (progress %)
 
-### จุดเด่นและความโดดเด่น
-- **เกษตรอินทรีย์อันดับ 1 ของไทย** — ผู้นำด้าน Organic Agriculture
-- **ฟาร์มมหาวิทยาลัย** — มีพื้นที่เกษตรกว่า 400 ไร่สำหรับเรียนรู้และวิจัย
-- **ศูนย์วิจัยข้าว** — พัฒนาพันธุ์ข้าวเหนียวและข้าวอินทรีย์
-- **อ่างเก็บน้ำแม่โจ้** — สถานที่ท่องเที่ยวและออกกำลังกายในมหาวิทยาลัย
-- **ประเพณีรับน้องรวมใจ** — มีชื่อเสียงด้านกิจกรรมนักศึกษาที่แน่นแฟ้น
-- **สวนพฤกษศาสตร์** — แหล่งรวมพันธุ์ไม้ภาคเหนือ
-- **บัณฑิตพันธุ์ใหม่** — หลักสูตรร่วมกับภาคอุตสาหกรรม
+### Chart Styling:
+Colors: #00a651(เขียว) #7B68EE(ม่วง) #E91E63(ชมพู) #C5A028(ทอง) #2E86AB(น้ำเงิน) #FF6B6B(แดง) #006838(เขียวเข้ม) #A23B72(บานเย็น) #00e5ff(ฟ้า) #f97316(ส้ม)
+Bar charts: borderRadius=6
+Line charts: tension=0.4, pointRadius=5
+Always: responsive=true, maintainAspectRatio=false
 
-### สิ่งอำนวยความสะดวก
-- หอพักนักศึกษา (ในมหาวิทยาลัย + รอบข้าง)
-- สนามกีฬา สระว่ายน้ำ ฟิตเนส
-- ห้องสมุดกลาง (สำนักหอสมุด)
-- โรงอาหาร ร้านสะดวกซื้อ
-- คลินิกสุขภาพ / ศูนย์สุขภาพ
-- WiFi ครอบคลุมทั่วมหาวิทยาลัย
-- รถสาธารณะ / สายรถเมล์เข้าเมืองเชียงใหม่
+═══════════════════════════════════════════
+ SECTION 4 — RESPONSE BEHAVIOR
+═══════════════════════════════════════════
 
-### งานวิจัยและความเป็นเลิศ
-- ศูนย์ความเป็นเลิศด้านเกษตรอินทรีย์
-- ศูนย์วิจัยพลังงานทดแทน
-- สถาบันวิจัยเทคโนโลยีเกษตร
-- ความร่วมมือวิจัยกับมหาวิทยาลัยต่างประเทศ (ญี่ปุ่น จีน ไต้หวัน เกาหลี ออสเตรเลีย)
-- วารสารวิชาการแม่โจ้
+1. **วิเคราะห์คำถามก่อนตอบเสมอ** — ตอบตรงประเด็น ไม่ตอบสำเร็จรูป
+2. **เมื่อสร้างกราฟ** → อธิบายข้อมูลสั้นๆ (2-3 บรรทัด) + Insight/ข้อสังเกต + json_chart block
+3. **เมื่อถูกถามข้อมูลที่ไม่มี** → ระบุชัดว่า "ข้อมูลนี้ไม่มีในระบบปัจจุบัน" + แนะนำข้อมูลที่เกี่ยวข้องที่มี
+4. **ไฟล์ที่อัปโหลด** → รวมกับข้อมูลระบบเพื่อสร้างกราฟเปรียบเทียบได้
+5. **เรื่องทั่วไปแม่โจ้** → ใช้ google_search หรือความรู้จริง (ปรัชญา, ที่ตั้ง, TCAS, คณะ ฯลฯ)
+6. **ไม่เกี่ยวกับแม่โจ้เลย** → "ขออภัยค่ะ ตอบได้เฉพาะเรื่องแม่โจ้เท่านั้นค่ะ 🎓"
+7. **คำถามคลุมเครือ** → ถามกลับเพื่อความชัดเจน หรือตอบทุกกรณีพร้อม label กำกับ
+8. **ตัวเลขต้องตรงกับ DATA ด้านบนเท่านั้น** — ห้ามปัดเศษ ห้ามประมาณ ห้ามแต่งเติม
 
-## Dashboard
-- นิสิต:${dashboardSummary.totalStudents} GPA:${dashboardSummary.avgGPA} สำเร็จ:${dashboardSummary.graduationRate}% เทอม:${dashboardSummary.currentSemester}/${dashboardSummary.academicYear}
-- คณะ: ${dashboardSummary.faculties.map(f => `${f.name}(${f.totalStudents},GPA${f.avgGPA.toFixed(2)},${f.graduationRate}%)`).join(' | ')}
-- แนวโน้ม: ${studentStatsData.trend.map(t => `${t.year}:${t.total}(${t.type === 'actual' ? 'จริง' : 'พยากรณ์'})`).join(', ')}
-- งบมหา'ลัย(ล้านบ.): ${budgetActual.map(y => `${y.year}:รับ${y.revenue}/จ่าย${y.expense}`).join(', ')}
-- งบคณะวิทย์(ล้านบ.): ${sciBudgetActual.map(y => `${y.year}:รับ${y.revenue}/จ่าย${y.expense}`).join(', ')}
-- ค่าเทอม: ${tuitionData.flatRate.min}-${tuitionData.flatRate.max}บ./เทอม
-- คณะวิทย์: นศ.${scienceStudentList.length}คน สาขา: ${majorSummary} | ชั้นปี: ${yearSummary} | ปกติ${statusNormal} รอพินิจ${statusAtRisk}
-- GPA เฉลี่ยแยกสาขา: ${gpaSummary}`;
+### Available Data Domains (ข้อมูลที่ตอบได้):
+📊 นิสิต (จำนวน/สาขา/ชั้นปี/GPA/สถานะ) | 🎓 การสำเร็จการศึกษา (ย้อนหลัง/ปัจจุบัน/เกียรตินิยม/แยกสาขา)
+💰 งบประมาณ (มหาวิทยาลัย/คณะวิทย์) | 🔬 งานวิจัย (ตีพิมพ์/ทุน/สิทธิบัตร/benchmark)
+👥 บุคลากร (ตำแหน่ง/วุฒิ/ภาควิชา/แนวโน้ม/เกษียณ) | 🎯 ยุทธศาสตร์ & OKR (เป้าหมาย/KPI/ความก้าวหน้า)
+📚 กิจกรรมนิสิต | 💵 ค่าเล่าเรียน | 🏫 ข้อมูลทั่วไปแม่โจ้
+
+### MJU Quick Reference:
+- มหาวิทยาลัยแม่โจ้ (Maejo University/MJU/มจ.) ก่อตั้ง พ.ศ.2477 ปรัชญา: "มหาวิทยาลัยแห่งชีวิต"
+- ที่ตั้ง: 63 ม.4 ต.หนองหาร อ.สันทราย จ.เชียงใหม่ 50290 โทร 053-873000
+- วิทยาเขต: เชียงใหม่(หลัก), แพร่, ชุมพร
+- TCAS: รอบ1-Portfolio รอบ2-Quota รอบ3-Admission รอบ4-DirectAdmit
+- 18 คณะ/วิทยาลัย (เน้น: เกษตรอินทรีย์#1ไทย)`;
 }
 
 // Full student list — only included when query is about students
@@ -247,7 +346,15 @@ function buildStudentData() {
 // Check if user message needs student detail data
 function needsStudentDetail(msg) {
     const q = msg.toLowerCase();
-    const keywords = ['รายชื่อ', 'ชื่อนักศึกษา', 'ชื่อนิสิต', 'ค้นหานักศึกษา', 'หานักศึกษา', 'รหัส 6', 'ใครบ้าง', 'คนไหน', 'gpa สูง', 'เกรดสูง', 'รอพินิจ', 'เกรดต่ำ', 'เกียรตินิยม', 'กราฟเกรด', 'กราฟนักศึกษา', 'จำนวนนักศึกษา', 'สถิตินักศึกษา', 'เกรดแต่ละสาขา', 'นักศึกษาแต่ละสาขา'];
+    // Skip student data injection for research/HR/strategic queries to save token space
+    const skipDomains = ['งานวิจัย', 'ตีพิมพ์', 'scopus', 'สิทธิบัตร', 'ทุนวิจัย', 'citation',
+        'ยุทธศาสตร์', 'okr', 'kpi', 'บุคลากร', 'ตำแหน่งวิชาการ', 'เกษียณ', 'ภาควิชา'];
+    if (skipDomains.some(k => q.includes(k))) return false;
+
+    const keywords = ['รายชื่อ', 'ชื่อนักศึกษา', 'ชื่อนิสิต', 'ค้นหานักศึกษา', 'หานักศึกษา', 'รหัส 6',
+        'ใครบ้าง', 'คนไหน', 'gpa สูง', 'เกรดสูง', 'รอพินิจ', 'เกรดต่ำ', 'เกียรตินิยม',
+        'กราฟเกรด', 'กราฟนักศึกษา', 'จำนวนนักศึกษา', 'สถิตินักศึกษา', 'เกรดแต่ละสาขา',
+        'นักศึกษาแต่ละสาขา', 'นิสิตแต่ละสาขา', 'กราฟนิสิต', 'สาขาไหน'];
     return keywords.some(k => q.includes(k));
 }
 
@@ -260,13 +367,18 @@ let conversationHistory = [];
  */
 export async function sendMessageToGemini(userMessage) {
     // Detect chart/graph request keywords and append reminder
-    const chartKeywords = ['กราฟ', 'chart', 'แผนภูมิ', 'แผนภาพ', 'แท่ง', 'เส้น', 'วงกลม', 'radar', 'พยากรณ์', 'คาดการณ์', 'forecast', 'bar chart', 'line chart', 'pie chart', 'กราฟแท่ง', 'กราฟเส้น', 'กราฟวงกลม'];
+    const chartKeywords = ['กราฟ', 'chart', 'แผนภูมิ', 'แผนภาพ', 'แท่ง', 'เส้น', 'วงกลม', 'radar', 'พยากรณ์', 'คาดการณ์', 'forecast', 'bar chart', 'line chart', 'pie chart', 'กราฟแท่ง', 'กราฟเส้น', 'กราฟวงกลม', 'เปรียบเทียบ', 'สร้างกราฟ', 'แสดงกราฟ', 'วิเคราะห์'];
     const lowerMsg = userMessage.toLowerCase();
     const isChartRequest = chartKeywords.some(kw => lowerMsg.includes(kw));
 
     let finalMessage = userMessage;
     if (isChartRequest) {
-        finalMessage = userMessage + '\n\n[ระบบ: ผู้ใช้ขอดูกราฟ — กรุณาแนบ ```json_chart``` block ท้ายข้อความด้วยเสมอ ห้ามตอบเป็นแค่ตัวหนังสือ]';
+        finalMessage = userMessage + `\n\n[ระบบ: ผู้ใช้ขอดูกราฟ/วิเคราะห์ข้อมูล — กฎ:
+1. ดูข้อมูลใน "Dashboard" section ว่ามีข้อมูลที่ผู้ใช้ถามหรือไม่
+2. ถ้ามีข้อมูล → สร้าง json_chart block จากข้อมูลจริงเท่านั้น พร้อมอธิบายสั้นๆ
+3. ถ้าไม่มีข้อมูลที่ถาม → บอกตรงๆ ว่าไม่มี + แนะนำข้อมูลอื่นที่สร้างกราฟได้
+4. ห้ามสร้างตัวเลขขึ้นเอง ห้ามใช้ข้อมูลที่ไม่เกี่ยวข้องมาแทน
+5. ต้องแนบ \`\`\`json_chart\`\`\` block เสมอถ้ามีข้อมูล]`;
     }
 
     // Add user message to history
@@ -296,10 +408,10 @@ export async function sendMessageToGemini(userMessage) {
         },
         contents: conversationHistory,
         generationConfig: {
-            temperature: 0.7,
-            topP: 0.9,
+            temperature: 0.35,
+            topP: 0.85,
             topK: 40,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 8192,
         },
         safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },

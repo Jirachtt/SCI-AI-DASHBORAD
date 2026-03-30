@@ -65,14 +65,14 @@ const DATASETS = {
     universityStudents: {
         label: 'จำนวนนิสิตมหาวิทยาลัย', unit: 'คน', scope: 'มหาวิทยาลัย',
         getData: () => studentStatsData.trend.filter(t => t.type === 'actual').map(t => ({ x: parseInt(t.year), y: t.total })),
-        color: '#7B68EE', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวน'],
+        color: '#7B68EE', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวนนักศึกษา'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
         yAxisID: 'y',
     },
     scienceStudents: {
         label: 'จำนวนนิสิตคณะวิทยาศาสตร์', unit: 'คน', scope: 'คณะวิทยาศาสตร์',
         getData: () => studentStatsData.scienceFaculty.byEnrollmentYear.map(e => ({ x: parseInt(e.year), y: e.count })),
-        color: '#006838', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวน'],
+        color: '#006838', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวนนักศึกษา'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์'],
         yAxisID: 'y',
     },
@@ -87,7 +87,7 @@ const DATASETS = {
     scienceGraduationRate: {
         label: 'อัตราสำเร็จการศึกษา คณะวิทยาศาสตร์', unit: '%', scope: 'คณะวิทยาศาสตร์',
         getData: () => graduationHistory.map(g => ({ x: g.year, y: g.rate })),
-        color: '#A23B72', keywords: ['อัตราสำเร็จ', 'สำเร็จการศึกษา', 'graduation', 'จบการศึกษา', 'สำเร็จ'],
+        color: '#A23B72', keywords: ['อัตราสำเร็จ', 'สำเร็จการศึกษา', 'graduation', 'จบการศึกษา', 'อัตราจบ'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์', 'มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
         yAxisID: 'y1',
     },
@@ -103,7 +103,7 @@ const DATASETS = {
 // ==================== Request Parser ====================
 function parseForecastRequest(question) {
     const q = question.toLowerCase();
-    const forecastKeywords = ['พยากรณ์', 'คาดการณ์', 'ประมาณการ', 'ทำนาย', 'predict', 'forecast', 'คาดว่า', 'กราฟ', 'สร้างกราฟ', 'แสดงกราฟ', 'chart'];
+    const forecastKeywords = ['พยากรณ์', 'คาดการณ์', 'ประมาณการ', 'ทำนาย', 'predict', 'forecast', 'คาดว่า'];
     const isForecast = forecastKeywords.some(k => q.includes(k));
     if (!isForecast) return null;
 
@@ -476,25 +476,37 @@ function generateComboChart() {
 }
 
 // ==================== Check if query needs local handling ====================
+// Only handle queries that local functions SPECIFICALLY excel at:
+// 1. Explicit forecast requests (with "พยากรณ์"/"predict" keywords)
+// 2. Student search by ID/name/major/GPA (structured lookups)
+// Everything else → Gemini AI (smarter, context-aware answers)
 function tryLocalResponse(question) {
     const q = question.toLowerCase();
 
-    // Combo chart: students vs graduation rate
-    const comboKeywords = ['combo', 'เปรียบเทียบนิสิต', 'นิสิตกับอัตราสำเร็จ', 'นิสิตกับสำเร็จ', 'นักศึกษากับอัตรา', 'จำนวนนิสิตกับ', 'students vs grad'];
-    if (comboKeywords.some(k => q.includes(k)) || (q.includes('นิสิต') && q.includes('สำเร็จ') && (q.includes('เปรียบเทียบ') || q.includes('กราฟ') || q.includes('chart')))) {
-        return generateComboChart();
+    // 1. Explicit forecast requests ONLY when forecast keyword + known data topic
+    const forecastParsed = parseForecastRequest(question);
+    if (forecastParsed) {
+        const result = generateForecastResponse(forecastParsed);
+        if (result) return result;
+        // If no datasets matched, fall through to AI
     }
 
-    const forecastParsed = parseForecastRequest(question);
-    if (forecastParsed) return generateForecastResponse(forecastParsed);
-    const studentKeywords = ['รหัส', 'รายชื่อ', 'หานักศึกษา', 'ค้นหานักศึกษา', 'นักศึกษา', 'นิสิต', 'สาขา', 'ชั้นปี', 'รอพินิจ', 'เกรดต่ำ', 'เกรดสูง', 'เกียรตินิยม'];
-    const hasStudentQuery = studentKeywords.some(k => q.includes(k)) &&
-        (q.match(/\d{2,}/) || q.includes('สาขา') || q.includes('ชั้นปี') || q.includes('รอพินิจ') || q.includes('เกรดต่ำ') || q.includes('เกรดสูง') || q.includes('เกียรตินิยม') || q.includes('รายชื่อ') || q.includes('ใคร') || q.includes('คน'));
-    if (hasStudentQuery) {
+    // 2. Student search — only for specific structured lookups (ID, name, GPA filter)
+    const isStudentLookup =
+        (q.match(/(?:รหัส|id)\s*\d{2,}/i)) ||  // search by ID
+        (q.includes('รอพินิจ') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
+        (q.includes('เกรดต่ำ') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
+        (q.includes('เกรดสูง') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
+        (q.includes('เกียรตินิยม') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
+        ((q.includes('รายชื่อ') || q.includes('ค้นหานักศึกษา') || q.includes('หานักศึกษา')) &&
+         (q.includes('สาขา') || q.includes('ชั้นปี') || q.match(/\d{2,}/)));
+
+    if (isStudentLookup) {
         const studentResult = searchStudents(q);
         if (studentResult) return studentResult;
     }
-    return null;
+
+    return null; // Let AI handle everything else
 }
 
 // ==================== Parse AI Generated Chart ====================
@@ -518,20 +530,51 @@ function parseAIResponse(text) {
         }
     }
 
+    // Last fallback: try to find raw JSON object with chartType (no code block)
+    if (!match) {
+        const rawJsonRegex = /(\{"chartType"[\s\S]*?"datasets"[\s\S]*?\})\s*(?:\})\s*$/;
+        const rawMatch = text.match(rawJsonRegex);
+        if (rawMatch) {
+            try {
+                // Try to find complete JSON by matching braces
+                const startIdx = text.indexOf('{"chartType"');
+                if (startIdx !== -1) {
+                    let depth = 0;
+                    let endIdx = startIdx;
+                    for (let i = startIdx; i < text.length; i++) {
+                        if (text[i] === '{') depth++;
+                        else if (text[i] === '}') { depth--; if (depth === 0) { endIdx = i + 1; break; } }
+                    }
+                    const jsonStr = text.slice(startIdx, endIdx);
+                    const parsed = JSON.parse(jsonStr);
+                    if (parsed.chartType && parsed.data) {
+                        match = [jsonStr, jsonStr];
+                        regex = new RegExp(jsonStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+                    }
+                }
+            } catch (_) { /* not valid */ }
+        }
+    }
+
     let chartConfig = null;
     let cleanText = text;
 
     if (match) {
         try {
-            const rawJson = JSON.parse(match[1]);
-            cleanText = text.replace(regex, '').trim();
+            const rawJson = JSON.parse(match[1] || match[0]);
+            // Remove the chart JSON from the display text
+            cleanText = text.replace(match[0].includes('```') ? regex : match[0], '').trim();
+            // Clean up any leftover empty code fences
+            cleanText = cleanText.replace(/```\s*```/g, '').trim();
+
             const isRadar = rawJson.chartType === 'radar' || rawJson.chartType === 'polarArea';
 
             // Validate radar charts have minimum 3 axes
             if (isRadar && rawJson.data?.labels?.length < 3) {
-                rawJson.chartType = 'bar'; // Fall back to bar chart for insufficient axes
+                rawJson.chartType = 'bar';
             }
 
+            // Apply neon theme to radar/polar charts
             if (isRadar && rawJson.data?.labels?.length >= 3) {
                 const neonColors = [
                     { border: '#00e5ff', fill: 'rgba(0, 229, 255, 0.4)' },
@@ -549,6 +592,22 @@ function parseAIResponse(text) {
                     ds.pointRadius = 4;
                     ds.pointHoverRadius = 6;
                     ds.borderWidth = 2;
+                });
+            }
+
+            // Ensure datasets have decent default colors if missing
+            const defaultColors = ['#00a651', '#7B68EE', '#E91E63', '#C5A028', '#2E86AB', '#FF6B6B', '#006838', '#A23B72'];
+            if (rawJson.data?.datasets) {
+                rawJson.data.datasets.forEach((ds, i) => {
+                    if (!ds.borderColor && !ds.backgroundColor) {
+                        const c = defaultColors[i % defaultColors.length];
+                        ds.borderColor = c;
+                        ds.backgroundColor = c + '40';
+                    }
+                    // Ensure bar charts have borderRadius for modern look
+                    if ((rawJson.chartType === 'bar') && !ds.borderRadius) {
+                        ds.borderRadius = 6;
+                    }
                 });
             }
 
@@ -976,11 +1035,11 @@ export default function AIChatPage() {
     const handleKeyDown = (e) => { if (e.key === 'Enter') handleSend(); };
 
     const quickActions = [
-        { label: '📊 กราฟนักศึกษาและเกรด', query: 'สร้างกราฟจำนวนนักศึกษาและเกรดเฉลี่ยคณะวิทยาศาสตร์ เป็นกราฟ', icon: BarChart3 },
-        { label: '📈 พยากรณ์จำนวนนิสิต+เกรด', query: 'พยากรณ์จำนวนนักศึกษาและเกรดเฉลี่ย คณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: TrendingUp },
-        { label: '🏫 ข้อมูลทั่วไปแม่โจ้', query: 'สรุปข้อมูลทั่วไปมหาวิทยาลัยแม่โจ้ ประวัติ คณะ ที่ตั้ง จุดเด่น', icon: Search },
-        { label: '📋 การรับสมัครนักศึกษา', query: 'ระบบรับสมัครนักศึกษาแม่โจ้ TCAS มีกี่รอบ แต่ละรอบเปิดเมื่อไหร่', icon: Sparkles },
-        { label: '🔍 ค้นหานิสิตรอพินิจ', query: 'แสดงรายชื่อนักศึกษาที่สถานะรอพินิจ', icon: Search },
+        { label: '📊 กราฟนิสิตแยกคณะ', query: 'สร้างกราฟแท่งแสดงจำนวนนิสิตแยกตามคณะ พร้อมเรียงลำดับจากมากไปน้อย', icon: BarChart3 },
+        { label: '📈 เปรียบเทียบ GPA ทุกคณะ', query: 'สร้างกราฟเปรียบเทียบ GPA เฉลี่ยและอัตราสำเร็จการศึกษาของทุกคณะ', icon: TrendingUp },
+        { label: '👩‍🏫 บุคลากรคณะวิทย์', query: 'แสดงกราฟข้อมูลบุคลากรคณะวิทยาศาสตร์ ตำแหน่งวิชาการ วุฒิการศึกษา และพยากรณ์เกษียณ', icon: Search },
+        { label: '💰 วิเคราะห์งบประมาณ', query: 'วิเคราะห์งบประมาณมหาวิทยาลัยแม่โจ้ ย้อนหลัง 4 ปี แสดงกราฟรายรับ-รายจ่าย พร้อมสรุปแนวโน้ม', icon: ChartLine },
+        { label: '🎓 สถิติสำเร็จการศึกษา', query: 'แสดงกราฟแนวโน้มอัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ย้อนหลัง 5 ปี', icon: Sparkles },
         { label: '🔮 พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: ChartLine },
     ];
 
