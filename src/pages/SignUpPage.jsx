@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Lock, Mail, Briefcase } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { User, Lock, Mail, Briefcase, Sun, Moon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function SignUpPage() {
     const { signup } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         email: '',
@@ -83,6 +85,18 @@ export default function SignUpPage() {
 
     return (
         <div className="login-page">
+            <button
+                className={`theme-toggle ${theme}`}
+                onClick={toggleTheme}
+                title="เปลี่ยนธีม"
+                style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}
+            >
+                <span className="theme-toggle-track">
+                    <Sun size={14} className="theme-icon sun" />
+                    <Moon size={14} className="theme-icon moon" />
+                    <span className="theme-toggle-thumb" />
+                </span>
+            </button>
             <div className="login-container">
                 <div className="login-card">
                     <div className="login-logo">

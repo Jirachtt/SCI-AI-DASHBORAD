@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, Mail, ShieldCheck, X } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { Lock, Mail, ShieldCheck, X, Sun, Moon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
     const { loginWithEmail, loginWithGoogle, loginWithAdminCode } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -49,6 +51,18 @@ export default function LoginPage() {
 
     return (
         <div className="login-page">
+            <button
+                className={`theme-toggle ${theme}`}
+                onClick={toggleTheme}
+                title="เปลี่ยนธีม"
+                style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}
+            >
+                <span className="theme-toggle-track">
+                    <Sun size={14} className="theme-icon sun" />
+                    <Moon size={14} className="theme-icon moon" />
+                    <span className="theme-toggle-thumb" />
+                </span>
+            </button>
             <div className="login-container">
                 <div className="login-card">
                     <div className="login-logo">

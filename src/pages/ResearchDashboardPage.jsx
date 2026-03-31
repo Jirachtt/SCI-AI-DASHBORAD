@@ -7,9 +7,10 @@ import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
     Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler
 } from 'chart.js';
+import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { FileText, DollarSign, Award, BookOpen, Globe2, TrendingUp, Microscope } from 'lucide-react';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
 const cardStyle = {
     background: 'rgba(255,255,255,0.04)',

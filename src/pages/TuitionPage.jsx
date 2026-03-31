@@ -9,8 +9,9 @@ import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
     Title, Tooltip, Legend, ArcElement
 } from 'chart.js';
+import { themeAdaptorPlugin } from '../utils/chartTheme';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, themeAdaptorPlugin);
 
 export default function TuitionPage() {
     const { user } = useAuth();

@@ -3,11 +3,13 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AIChat from './AIChat';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { Menu, Sun, Moon } from 'lucide-react';
 import { dashboardSummary } from '../data/mockData';
 
 export default function Layout() {
     const { user } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
     const [isTransitioning, setIsTransitioning] = useState(false);
@@ -39,7 +41,17 @@ export default function Layout() {
                         </div>
                     </div>
                     <div className="header-right">
-
+                        <button
+                            className={`theme-toggle ${theme}`}
+                            onClick={toggleTheme}
+                            title="เปลี่ยนธีม"
+                        >
+                            <span className="theme-toggle-track">
+                                <Sun size={14} className="theme-icon sun" />
+                                <Moon size={14} className="theme-icon moon" />
+                                <span className="theme-toggle-thumb" />
+                            </span>
+                        </button>
                     </div>
                 </header>
                 <div className="page-content">

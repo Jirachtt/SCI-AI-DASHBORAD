@@ -9,10 +9,11 @@ import {
     RadarController, PolarAreaController, ScatterController, BubbleController
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { studentStatsData, universityBudgetData, scienceFacultyBudgetData } from '../data/mockData';
 import { sendMessageToGemini, resetConversation } from '../services/geminiService';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
 // ==================== Linear Regression Forecasting ====================
 function linearRegression(dataPoints) {

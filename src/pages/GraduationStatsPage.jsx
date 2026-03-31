@@ -15,8 +15,9 @@ import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
     Title, Tooltip, Legend, ArcElement, Filler, BarElement
 } from 'chart.js';
+import { themeAdaptorPlugin } from '../utils/chartTheme';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
 
 const cardStyle = {
     background: 'rgba(255,255,255,0.03)',

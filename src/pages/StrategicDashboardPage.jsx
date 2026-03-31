@@ -9,9 +9,10 @@ import {
     Title, Tooltip, Legend, PointElement, LineElement, Filler,
     RadialLinearScale
 } from 'chart.js';
+import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { Target, TrendingUp, CheckCircle2, AlertTriangle } from 'lucide-react';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, Filler, RadialLinearScale);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, Filler, RadialLinearScale, themeAdaptorPlugin);
 
 const cardStyle = {
     background: 'rgba(255,255,255,0.04)',

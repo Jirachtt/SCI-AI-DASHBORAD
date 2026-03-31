@@ -9,8 +9,9 @@ import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement,
     Title, Tooltip, Legend, Filler
 } from 'chart.js';
+import { themeAdaptorPlugin } from '../utils/chartTheme';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler, themeAdaptorPlugin);
 
 /* ────────────── Shared Styles (matching Student List theme) ────────────── */
 const card = {

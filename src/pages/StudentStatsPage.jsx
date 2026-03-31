@@ -10,8 +10,9 @@ import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
     Title, Tooltip, Legend, ArcElement, Filler, BarElement
 } from 'chart.js';
+import { themeAdaptorPlugin } from '../utils/chartTheme';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
 
 export default function StudentStatsPage() {
     const { user } = useAuth();
