@@ -18,24 +18,41 @@ export default function StudentStatsPage() {
     const { user } = useAuth();
     const [selectedFaculty, setSelectedFaculty] = useState('all');
     const [selectedLevel, setSelectedLevel] = useState('all');
-    const [filtersApplied, setFiltersApplied] = useState(false);
+    const [appliedFaculty, setAppliedFaculty] = useState('all');
+    const [appliedLevel, setAppliedLevel] = useState('all');
 
     if (!canAccess(user?.role, 'student_stats')) return <AccessDenied />;
 
     const { current, byFaculty, trend, scienceFaculty } = studentStatsData;
 
-    // Apply filters
-    const filteredFaculty = selectedFaculty === 'all'
+    const isFiltered = appliedFaculty !== 'all' || appliedLevel !== 'all';
+
+    // Apply filters using the committed (applied) values
+    const filteredFaculty = appliedFaculty === 'all'
         ? byFaculty
-        : byFaculty.filter(f => f.name === selectedFaculty);
+        : byFaculty.filter(f => f.name === appliedFaculty);
 
     const filteredTotal = filteredFaculty.reduce((sum, f) => {
-        if (selectedLevel === 'all') return sum + f.bachelor + f.master + f.doctoral;
-        if (selectedLevel === 'bachelor') return sum + f.bachelor;
-        if (selectedLevel === 'master') return sum + f.master;
-        if (selectedLevel === 'doctoral') return sum + f.doctoral;
+        if (appliedLevel === 'all') return sum + f.bachelor + f.master + f.doctoral;
+        if (appliedLevel === 'bachelor') return sum + f.bachelor;
+        if (appliedLevel === 'master') return sum + f.master;
+        if (appliedLevel === 'doctoral') return sum + f.doctoral;
         return sum;
     }, 0);
+
+    // Build filtered stat cards from applied filters
+    const filteredByLevel = useMemo(() => {
+        const levels = [
+            { level: 'ปริญญาตรี', key: 'bachelor', color: '#006838' },
+            { level: 'ปริญญาโท', key: 'master', color: '#2E86AB' },
+            { level: 'ปริญญาเอก', key: 'doctoral', color: '#A23B72' },
+        ];
+        if (appliedLevel !== 'all') {
+            const lvl = levels.find(l => l.key === appliedLevel);
+            return lvl ? [{ ...lvl, count: filteredFaculty.reduce((s, f) => s + f[lvl.key], 0) }] : [];
+        }
+        return levels.map(l => ({ ...l, count: filteredFaculty.reduce((s, f) => s + f[l.key], 0) }));
+    }, [appliedFaculty, appliedLevel, filteredFaculty]);
 
     // Doughnut chart for student levels
     const doughnutData = {
@@ -234,34 +251,35 @@ export default function StudentStatsPage() {
                     <option value="master">ปริญญาโท</option>
                     <option value="doctoral">ปริญญาเอก</option>
                 </select>
-                <button className="filter-apply-btn" onClick={() => setFiltersApplied(true)}>
+                <button className="filter-apply-btn" onClick={() => { setAppliedFaculty(selectedFaculty); setAppliedLevel(selectedLevel); }}>
                     <Filter size={14} /> Apply Filters
                 </button>
                 <button className="filter-reset-btn" onClick={() => {
                     setSelectedFaculty('all');
                     setSelectedLevel('all');
-                    setFiltersApplied(false);
+                    setAppliedFaculty('all');
+                    setAppliedLevel('all');
                 }}>
                     <RotateCcw size={12} /> Reset
                 </button>
-                {(selectedFaculty !== 'all' || selectedLevel !== 'all') && (
+                {isFiltered && (
                     <span style={{ fontSize: '0.78rem', color: '#00a651', fontWeight: 600, marginLeft: 'auto' }}>
-                        ผลลัพธ์: {filteredTotal.toLocaleString()} คน
+                        กรอง: {appliedFaculty !== 'all' ? appliedFaculty : 'ทุกคณะ'} / {appliedLevel !== 'all' ? (appliedLevel === 'bachelor' ? 'ป.ตรี' : appliedLevel === 'master' ? 'ป.โท' : 'ป.เอก') : 'ทุกระดับ'} — ผลลัพธ์: {filteredTotal.toLocaleString()} คน
                     </span>
                 )}
             </div>
 
             {/* Summary Stats */}
             <div className="stats-grid">
-                {current.byLevel.map((item, i) => (
+                {(isFiltered ? filteredByLevel : current.byLevel).map((item, i) => (
                     <div key={i} className="stat-card animate-in">
                         <div className="stat-card-header">
                             <div className="stat-card-icon" style={{ background: `linear-gradient(135deg, ${item.color}, ${item.color}cc)` }}>
                                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {i === 0 ? <GraduationCap size={20} color="#fff" /> : i === 1 ? <BookOpen size={20} color="#fff" /> : i === 2 ? <Award size={20} color="#fff" /> : <FileText size={20} color="#fff" />}
+                                    {item.key === 'bachelor' || (!item.key && i === 0) ? <GraduationCap size={20} color="#fff" /> : item.key === 'master' || (!item.key && i === 1) ? <BookOpen size={20} color="#fff" /> : item.key === 'doctoral' || (!item.key && i === 2) ? <Award size={20} color="#fff" /> : <FileText size={20} color="#fff" />}
                                 </span>
                             </div>
-                            {i === 0 && <span className="stat-card-trend up">+{growthYoY}%</span>}
+                            {!isFiltered && i === 0 && <span className="stat-card-trend up">+{growthYoY}%</span>}
                         </div>
                         <div className="stat-card-value">{item.count.toLocaleString()}</div>
                         <div className="stat-card-label">{item.level}</div>
@@ -299,38 +317,40 @@ export default function StudentStatsPage() {
             {/* Faculty Table */}
             <div className="data-table-container animate-in" style={{ marginTop: 32 }}>
                 <div className="data-table-header">
-                    <span className="data-table-title">จำนวนนิสิตแยกตามคณะ</span>
+                    <span className="data-table-title">จำนวนนิสิตแยกตามคณะ{isFiltered ? ' (กรองแล้ว)' : ''}</span>
                 </div>
                 <table className="data-table">
                     <thead>
                         <tr>
                             <th>คณะ</th>
-                            <th>ป.ตรี</th>
-                            <th>ป.โท</th>
-                            <th>ป.เอก</th>
-                            <th>รวม</th>
+                            {(appliedLevel === 'all' || appliedLevel === 'bachelor') && <th>ป.ตรี</th>}
+                            {(appliedLevel === 'all' || appliedLevel === 'master') && <th>ป.โท</th>}
+                            {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <th>ป.เอก</th>}
+                            {appliedLevel === 'all' && <th>รวม</th>}
                         </tr>
                     </thead>
                     <tbody>
-                        {byFaculty.map((fac, i) => {
-                            const total = fac.bachelor + fac.master + fac.doctoral;
+                        {filteredFaculty.map((fac, i) => {
+                            const total = appliedLevel === 'all'
+                                ? fac.bachelor + fac.master + fac.doctoral
+                                : fac[appliedLevel] || 0;
                             const isSci = fac.name === 'คณะวิทยาศาสตร์';
                             return (
                                 <tr key={i} style={isSci ? { background: 'rgba(0, 104, 56, 0.15)', borderLeft: '3px solid #00a651' } : {}}>
                                     <td style={{ fontWeight: isSci ? 700 : 500, color: isSci ? '#00a651' : undefined }}>{isSci ? '⭐ ' : ''}{fac.name}</td>
-                                    <td style={{ color: 'var(--mju-green-light)' }}>{fac.bachelor.toLocaleString()}</td>
-                                    <td style={{ color: '#2E86AB' }}>{fac.master}</td>
-                                    <td style={{ color: '#A23B72' }}>{fac.doctoral}</td>
-                                    <td style={{ fontWeight: 700 }}>{total.toLocaleString()}</td>
+                                    {(appliedLevel === 'all' || appliedLevel === 'bachelor') && <td style={{ color: 'var(--mju-green-light)' }}>{fac.bachelor.toLocaleString()}</td>}
+                                    {(appliedLevel === 'all' || appliedLevel === 'master') && <td style={{ color: '#2E86AB' }}>{fac.master}</td>}
+                                    {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <td style={{ color: '#A23B72' }}>{fac.doctoral}</td>}
+                                    {appliedLevel === 'all' && <td style={{ fontWeight: 700 }}>{total.toLocaleString()}</td>}
                                 </tr>
                             );
                         })}
                         <tr style={{ background: 'rgba(0,104,56,0.1)', fontWeight: 700 }}>
-                            <td>รวมทั้งหมด</td>
-                            <td style={{ color: 'var(--mju-green-light)' }}>{byFaculty.reduce((s, f) => s + f.bachelor, 0).toLocaleString()}</td>
-                            <td style={{ color: '#2E86AB' }}>{byFaculty.reduce((s, f) => s + f.master, 0)}</td>
-                            <td style={{ color: '#A23B72' }}>{byFaculty.reduce((s, f) => s + f.doctoral, 0)}</td>
-                            <td>{byFaculty.reduce((s, f) => s + f.bachelor + f.master + f.doctoral, 0).toLocaleString()}</td>
+                            <td>รวม{isFiltered ? ' (กรองแล้ว)' : 'ทั้งหมด'}</td>
+                            {(appliedLevel === 'all' || appliedLevel === 'bachelor') && <td style={{ color: 'var(--mju-green-light)' }}>{filteredFaculty.reduce((s, f) => s + f.bachelor, 0).toLocaleString()}</td>}
+                            {(appliedLevel === 'all' || appliedLevel === 'master') && <td style={{ color: '#2E86AB' }}>{filteredFaculty.reduce((s, f) => s + f.master, 0)}</td>}
+                            {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <td style={{ color: '#A23B72' }}>{filteredFaculty.reduce((s, f) => s + f.doctoral, 0)}</td>}
+                            {appliedLevel === 'all' && <td>{filteredFaculty.reduce((s, f) => s + f.bachelor + f.master + f.doctoral, 0).toLocaleString()}</td>}
                         </tr>
                     </tbody>
                 </table>
