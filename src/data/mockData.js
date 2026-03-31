@@ -311,7 +311,7 @@ export const studentStatsData = {
         // สัดส่วนสัญชาติ
         byNationality: [
             { nationality: 'ไทย', count: 1570 },
-            { nationality: 'ไร้สัญชาติ', count: 22 }
+            { nationality: 'สัญชาติอื่นๆ', count: 22 }
         ],
         // ==================== เพศนักศึกษา (ใหม่) ====================
         // อ้างอิง: dashboard.mju.ac.th/student?dep=20300-20300-20300 (ตัวกรองเพศ)
