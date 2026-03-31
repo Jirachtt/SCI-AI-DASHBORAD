@@ -159,16 +159,16 @@ export default function Sidebar({ isOpen, onClose }) {
                                     transition: 'all 0.2s',
                                     opacity: hasAnyAccess ? 1 : 0.4,
                                 }}
-                                onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                onMouseOver={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
                                 onMouseOut={e => e.currentTarget.style.background = 'transparent'}
                             >
-                                <GroupIcon size={16} color={group.color || '#9ca3af'} />
+                                <GroupIcon size={16} color={group.color || 'var(--text-muted)'} />
                                 <span style={{
                                     flex: 1,
                                     textAlign: 'left',
                                     fontSize: '0.82rem',
                                     fontWeight: 700,
-                                    color: group.color || '#ccc',
+                                    color: group.color || 'var(--text-secondary)',
                                     letterSpacing: '0.01em',
                                     fontFamily: "'Noto Sans Thai', 'Inter', sans-serif",
                                 }}>{group.label}</span>

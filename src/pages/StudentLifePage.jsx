@@ -27,7 +27,7 @@ export default function StudentLifePage() {
         labels: ['สำเร็จแล้ว', 'คงเหลือ'],
         datasets: [{
             data: [activityHours.completed, activityHours.target - activityHours.completed],
-            backgroundColor: ['#00a651', 'rgba(255,255,255,0.05)'],
+            backgroundColor: ['#00a651', 'var(--border-color)'],
             borderWidth: 0,
             cutout: '75%',
         }]

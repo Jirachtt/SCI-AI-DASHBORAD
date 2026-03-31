@@ -8,27 +8,27 @@ const MAJORS = SCIENCE_MAJORS;
 
 /* ────────────── Styles ────────────── */
 const card = {
-    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--bg-card)', border: '1px solid var(--border-color)',
     borderRadius: '16px', padding: '24px',
 };
 const inputBase = {
-    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-    borderRadius: '10px', color: '#fff', padding: '10px 14px', fontSize: '0.9rem',
+    background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+    borderRadius: '10px', color: 'var(--text-primary)', padding: '10px 14px', fontSize: '0.9rem',
     outline: 'none', width: '100%', transition: 'border-color 0.2s',
 };
 const selectStyle = {
     ...inputBase, cursor: 'pointer', appearance: 'auto',
-    backgroundColor: '#1a1d23',
+    backgroundColor: 'var(--bg-card)',
 };
 const optionStyle = {
-    backgroundColor: '#1a1d23', color: '#fff',
+    backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)',
 };
 const modalOverlay = {
     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999,
 };
 const modalBox = {
-    background: '#1a1d23', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '20px',
+    background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '20px',
     padding: '32px', width: '95%', maxWidth: '520px', position: 'relative',
 };
 
@@ -120,15 +120,15 @@ export default function StudentListPage() {
                 <div style={{ textAlign: 'center', maxWidth: 480 }}>
                     <div style={{ fontSize: '4rem', marginBottom: 16 }}>🔒</div>
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>จำกัดสิทธิ์การเข้าถึง</h2>
-                    <p style={{ color: '#9ca3af', fontSize: '0.9rem', lineHeight: 1.7 }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.7 }}>
                         หน้ารายชื่อนักศึกษามีข้อมูลส่วนบุคคล (ชื่อ-นามสกุล, รหัส, ผลการเรียน)<br />
                         ตาม <strong style={{ color: '#FFC107' }}>พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)</strong><br />
                         เฉพาะผู้บริหาร (Admin) เท่านั้นที่สามารถเข้าถึงได้
                     </p>
                     <div style={{
                         marginTop: 20, padding: '12px 24px', borderRadius: '10px',
-                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                        fontSize: '0.82rem', color: '#9ca3af'
+                        background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+                        fontSize: '0.82rem', color: 'var(--text-muted)'
                     }}>
                         🔑 กรุณาเข้าสู่ระบบด้วยรหัสผู้บริหาร
                     </div>
@@ -146,15 +146,15 @@ export default function StudentListPage() {
                         <GraduationCap size={24} style={{ verticalAlign: '-4px', marginRight: 8 }} />
                         รายชื่อนักศึกษา
                     </h1>
-                    <p style={{ color: '#9ca3af', margin: '4px 0 0', fontSize: '0.9rem' }}>
-                        ข้อมูลจาก MJU Dashboard (ปี 65 – 69) • ทั้งหมด <strong style={{ color: '#fff' }}>{students.length}</strong> คน
+                    <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: '0.9rem' }}>
+                        ข้อมูลจาก MJU Dashboard (ปี 65 – 69) • ทั้งหมด <strong style={{ color: 'var(--text-primary)' }}>{students.length}</strong> คน
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button onClick={exportCSV} style={{
                         display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',
-                        borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)',
-                        color: '#fff', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, transition: 'all 0.2s',
+                        borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)',
+                        color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, transition: 'all 0.2s',
                     }}>
                         <Download size={16} /> Export CSV
                     </button>
@@ -178,14 +178,14 @@ export default function StudentListPage() {
                     <div key={ys.year} onClick={() => { setYearFilter(String(ys.year)); setPage(1); }}
                         style={{
                             ...card, cursor: 'pointer', position: 'relative', overflow: 'hidden',
-                            borderColor: yearFilter === String(ys.year) ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
+                            borderColor: yearFilter === String(ys.year) ? 'var(--border-active, rgba(0,104,56,0.5))' : 'var(--border-color)',
                             transition: 'border-color 0.2s',
                         }}>
                         <div style={{ position: 'absolute', top: 0, right: 0, width: '60px', height: '60px', background: ys.gradient, borderRadius: '0 16px 0 40px', opacity: 0.25 }} />
-                        <div style={{ fontSize: '0.82rem', color: '#9ca3af', fontWeight: 600, marginBottom: '6px' }}>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '6px' }}>
                             {ys.icon} นักศึกษาปี {ys.year}
                         </div>
-                        <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{ys.count} <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#9ca3af' }}>คน</span></div>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{ys.count} <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-muted)' }}>คน</span></div>
                     </div>
                 ))}
             </div>
@@ -193,7 +193,7 @@ export default function StudentListPage() {
             {/* ── Search & Filters ── */}
             <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
                 <div style={{ position: 'relative', flex: '1 1 280px' }}>
-                    <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+                    <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input
                         type="text" placeholder="ค้นหาชื่อ หรือ รหัสนักศึกษา..."
                         value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
@@ -217,24 +217,24 @@ export default function StudentListPage() {
                 <div style={{ overflowX: 'auto' }}>
                     <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
-                            <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
-                                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>รหัส</th>
-                                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ชื่อ-นามสกุล</th>
-                                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>สาขาวิชา</th>
-                                <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ระดับ</th>
-                                <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ชั้นปี</th>
-                                <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>GPA</th>
-                                <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>สถานะ</th>
+                            <tr style={{ background: 'var(--bg-secondary)' }}>
+                                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>รหัส</th>
+                                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ชื่อ-นามสกุล</th>
+                                <th style={{ padding: '14px 18px', textAlign: 'left', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>สาขาวิชา</th>
+                                <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ระดับ</th>
+                                <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ชั้นปี</th>
+                                <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>GPA</th>
+                                <th style={{ padding: '14px 18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>สถานะ</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paged.length > 0 ? paged.map((s, idx) => (
                                 <tr key={s.id} style={{
-                                    borderBottom: '1px solid rgba(255,255,255,0.04)',
-                                    background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
+                                    borderBottom: '1px solid var(--border-color)',
+                                    background: idx % 2 === 0 ? 'transparent' : 'var(--bg-secondary)',
                                     transition: 'background 0.15s',
                                 }}>
-                                    <td style={{ padding: '12px 18px', fontFamily: 'monospace', fontSize: '0.88rem', color: '#9ca3af' }}>{s.id}</td>
+                                    <td style={{ padding: '12px 18px', fontFamily: 'monospace', fontSize: '0.88rem', color: 'var(--text-muted)' }}>{s.id}</td>
                                     <td style={{ padding: '12px 18px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                             <div style={{
@@ -261,11 +261,11 @@ export default function StudentListPage() {
                                         </span>
                                     </td>
                                     <td style={{ padding: '12px 18px', textAlign: 'center' }}>
-                                        <span style={{ padding: '3px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, background: 'rgba(255,255,255,0.08)' }}>
+                                        <span style={{ padding: '3px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, background: 'var(--bg-secondary)' }}>
                                             ปี {s.year}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '12px 18px', textAlign: 'center', fontWeight: 700, color: s.gpa < 2.0 ? '#ef4444' : s.gpa >= 3.5 ? '#4CAF50' : '#fff' }}>
+                                    <td style={{ padding: '12px 18px', textAlign: 'center', fontWeight: 700, color: s.gpa < 2.0 ? '#ef4444' : s.gpa >= 3.5 ? '#4CAF50' : 'var(--text-primary)' }}>
                                         {s.gpa.toFixed(2)}
                                     </td>
                                     <td style={{ padding: '12px 18px', textAlign: 'center' }}>
@@ -281,7 +281,7 @@ export default function StudentListPage() {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>
+                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                                         <Users size={40} style={{ marginBottom: 12, opacity: 0.3 }} /><br />
                                         ไม่พบข้อมูลนักศึกษาที่ตรงกับเงื่อนไข
                                     </td>
@@ -294,8 +294,8 @@ export default function StudentListPage() {
                 {/* Pagination & Show All */}
                 <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.06)',
-                    fontSize: '0.85rem', color: '#9ca3af', flexWrap: 'wrap', gap: '10px'
+                    padding: '14px 18px', borderTop: '1px solid var(--border-color)',
+                    fontSize: '0.85rem', color: 'var(--text-muted)', flexWrap: 'wrap', gap: '10px'
                 }}>
                     <span>
                         {showAll
@@ -308,7 +308,7 @@ export default function StudentListPage() {
                             style={{
                                 ...inputBase, width: 'auto', padding: '6px 14px', textAlign: 'center', cursor: 'pointer',
                                 background: showAll ? 'rgba(0,104,56,0.4)' : inputBase.background,
-                                borderColor: showAll ? '#006838' : 'rgba(255,255,255,0.12)',
+                                borderColor: showAll ? '#006838' : 'var(--border-color)',
                                 fontWeight: 600, fontSize: '0.82rem',
                             }}>
                             {showAll ? 'แบ่งหน้า' : 'แสดงทั้งหมด'}
@@ -345,39 +345,39 @@ export default function StudentListPage() {
                 <div style={modalOverlay} onClick={() => setShowModal(false)}>
                     <div style={modalBox} onClick={e => e.stopPropagation()}>
                         <button onClick={() => setShowModal(false)}
-                            style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>
+                            style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                             <X size={20} />
                         </button>
 
                         <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '0 0 6px' }}>
                             <UserPlus size={20} style={{ verticalAlign: '-3px', marginRight: 8 }} />เพิ่มนักศึกษาใหม่
                         </h2>
-                        <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '24px' }}>กรอกข้อมูลนักศึกษาที่ต้องการเพิ่มเข้าระบบ</p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '24px' }}>กรอกข้อมูลนักศึกษาที่ต้องการเพิ่มเข้าระบบ</p>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             {/* Student ID */}
                             <div>
-                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', display: 'block' }}>รหัสนักศึกษา *</label>
+                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>รหัสนักศึกษา *</label>
                                 <input value={newStudent.id} onChange={e => setNewStudent(p => ({ ...p, id: e.target.value }))}
                                     placeholder="เช่น 65010050" style={inputBase} />
                             </div>
                             {/* Name */}
                             <div>
-                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', display: 'block' }}>ชื่อ-นามสกุล *</label>
+                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>ชื่อ-นามสกุล *</label>
                                 <input value={newStudent.name} onChange={e => setNewStudent(p => ({ ...p, name: e.target.value }))}
                                     placeholder="เช่น สมชาย ใจดี" style={inputBase} />
                             </div>
                             {/* Major & Year */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                 <div>
-                                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', display: 'block' }}>สาขาวิชา</label>
+                                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>สาขาวิชา</label>
                                     <select value={newStudent.major} onChange={e => setNewStudent(p => ({ ...p, major: e.target.value }))}
                                         style={selectStyle}>
                                         {MAJORS.map(m => <option key={m} value={m} style={optionStyle}>{m}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', display: 'block' }}>ชั้นปี</label>
+                                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>ชั้นปี</label>
                                     <select value={newStudent.year} onChange={e => setNewStudent(p => ({ ...p, year: e.target.value }))}
                                         style={selectStyle}>
                                         {[1, 2, 3, 4].map(y => <option key={y} value={y} style={optionStyle}>ปี {y}</option>)}
@@ -386,7 +386,7 @@ export default function StudentListPage() {
                             </div>
                             {/* GPA */}
                             <div>
-                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#9ca3af', marginBottom: '6px', display: 'block' }}>เกรดเฉลี่ย (GPA) *</label>
+                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>เกรดเฉลี่ย (GPA) *</label>
                                 <input type="number" step="0.01" min="0" max="4"
                                     value={newStudent.gpa} onChange={e => setNewStudent(p => ({ ...p, gpa: e.target.value }))}
                                     placeholder="0.00 - 4.00" style={inputBase} />
@@ -396,14 +396,14 @@ export default function StudentListPage() {
                         {/* Actions */}
                         <div style={{ display: 'flex', gap: '12px', marginTop: '28px', justifyContent: 'flex-end' }}>
                             <button onClick={() => setShowModal(false)}
-                                style={{ padding: '10px 24px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                                style={{ padding: '10px 24px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>
                                 ยกเลิก
                             </button>
                             <button onClick={handleAdd}
                                 style={{
                                     padding: '10px 24px', borderRadius: '10px', border: 'none', fontWeight: 600,
-                                    background: (!newStudent.id || !newStudent.name || !newStudent.gpa) ? '#333' : 'linear-gradient(135deg, #006838, #00a651)',
-                                    color: (!newStudent.id || !newStudent.name || !newStudent.gpa) ? '#666' : '#fff',
+                                    background: (!newStudent.id || !newStudent.name || !newStudent.gpa) ? 'var(--bg-card-hover)' : 'linear-gradient(135deg, #006838, #00a651)',
+                                    color: (!newStudent.id || !newStudent.name || !newStudent.gpa) ? 'var(--text-muted)' : '#fff',
                                     cursor: (!newStudent.id || !newStudent.name || !newStudent.gpa) ? 'not-allowed' : 'pointer',
                                 }}>
                                 เพิ่มนักศึกษา

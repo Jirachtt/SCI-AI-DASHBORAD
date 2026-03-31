@@ -13,12 +13,12 @@ import { FileText, DollarSign, Award, BookOpen, Globe2, TrendingUp, Microscope }
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
 const cardStyle = {
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-color)',
     borderRadius: '16px', padding: '24px',
 };
-const thStyle = { padding: '10px 14px', textAlign: 'left', fontSize: '0.78rem', fontWeight: 700, color: '#9ca3af', borderBottom: '1px solid #ffffff10' };
-const tdStyle = { padding: '10px 14px', fontSize: '0.83rem', color: '#ddd', borderBottom: '1px solid #ffffff08' };
+const thStyle = { padding: '10px 14px', textAlign: 'left', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)' };
+const tdStyle = { padding: '10px 14px', fontSize: '0.83rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)' };
 
 export default function ResearchDashboardPage() {
     const { user } = useAuth();
@@ -79,18 +79,18 @@ export default function ResearchDashboardPage() {
     const chartOptions = {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-            legend: { position: 'bottom', labels: { color: '#ccc', padding: 12, font: { size: 11 } } },
-            tooltip: { backgroundColor: '#1a1a2e', titleColor: '#fff', bodyColor: '#ccc' }
+            legend: { position: 'bottom', labels: { color: 'var(--text-secondary)', padding: 12, font: { size: 11 } } },
+            tooltip: { backgroundColor: 'var(--bg-card)', titleColor: 'var(--text-primary)', bodyColor: 'var(--text-secondary)' }
         },
         scales: {
-            x: { ticks: { color: '#888', font: { size: 10 } }, grid: { color: '#ffffff08' } },
-            y: { ticks: { color: '#888' }, grid: { color: '#ffffff08' } }
+            x: { ticks: { color: 'var(--text-muted)', font: { size: 10 } }, grid: { color: '#ffffff08' } },
+            y: { ticks: { color: 'var(--text-muted)' }, grid: { color: '#ffffff08' } }
         }
     };
 
     const doughnutOptions = {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { color: '#ccc', padding: 10, font: { size: 10 } } } },
+        plugins: { legend: { position: 'bottom', labels: { color: 'var(--text-secondary)', padding: 10, font: { size: 10 } } } },
         cutout: '60%',
     };
 
@@ -106,8 +106,8 @@ export default function ResearchDashboardPage() {
     return (
         <div style={{ padding: '0 4px' }}>
             <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}><Microscope size={24} /> การวิจัยและนวัตกรรม</h1>
-                <p style={{ color: '#9ca3af', margin: '4px 0 0' }}>Research & Innovation — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}><Microscope size={24} /> การวิจัยและนวัตกรรม</h1>
+                <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Research & Innovation — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
             </div>
 
             {/* Scorecards */}
@@ -120,8 +120,8 @@ export default function ResearchDashboardPage() {
                                 <Icon size={20} color={sc.color} />
                             </div>
                             <div>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>{sc.value}</div>
-                                <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{sc.label}</div>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>{sc.value}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{sc.label}</div>
                             </div>
                         </div>
                     );
@@ -131,13 +131,13 @@ export default function ResearchDashboardPage() {
             {/* Row 1: Publication trend + Funding sources */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มผลงานตีพิมพ์</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มผลงานตีพิมพ์</h3>
                     <div style={{ height: 280 }}>
                         <Line data={pubChartData} options={chartOptions} />
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>แหล่งทุนวิจัย</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แหล่งทุนวิจัย</h3>
                     <div style={{ height: 280 }}>
                         <Doughnut data={sourceData} options={doughnutOptions} />
                     </div>
@@ -147,13 +147,13 @@ export default function ResearchDashboardPage() {
             {/* Row 2: Department + Funding trend */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>ผลงานแยกตามภาควิชา</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>ผลงานแยกตามภาควิชา</h3>
                     <div style={{ height: 260 }}>
                         <Bar data={deptChartData} options={chartOptions} />
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มงบวิจัย (ล้านบาท)</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มงบวิจัย (ล้านบาท)</h3>
                     <div style={{ height: 260 }}>
                         <Bar data={fundChartData} options={{ ...chartOptions, scales: { ...chartOptions.scales, x: { ...chartOptions.scales.x, stacked: true }, y: { ...chartOptions.scales.y, stacked: true } } }} />
                     </div>
@@ -162,7 +162,7 @@ export default function ResearchDashboardPage() {
 
             {/* Row 3: Benchmark chart */}
             <div style={{ ...cardStyle, marginBottom: 16 }}>
-                <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>เปรียบเทียบกับมหาวิทยาลัยอื่น (Benchmarking)</h3>
+                <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>เปรียบเทียบกับมหาวิทยาลัยอื่น (Benchmarking)</h3>
                 <div style={{ height: 280 }}>
                     <Bar data={benchData} options={chartOptions} />
                 </div>
@@ -171,7 +171,7 @@ export default function ResearchDashboardPage() {
             {/* Row 4: Patents table + Community impact */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>สิทธิบัตรและนวัตกรรม</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>สิทธิบัตรและนวัตกรรม</h3>
                     <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
@@ -202,12 +202,12 @@ export default function ResearchDashboardPage() {
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>งานวิจัยสู่ชุมชน</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>งานวิจัยสู่ชุมชน</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {communityImpact.map((ci, i) => (
-                            <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '12px 16px' }}>
-                                <div style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600 }}>{ci.title}</div>
-                                <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4, display: 'flex', gap: 12 }}>
+                            <div key={i} style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '12px 16px' }}>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{ci.title}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', gap: 12 }}>
                                     <span>{ci.area}</span>
                                     <span>{ci.beneficiaries.toLocaleString()} คน</span>
                                     <span>{ci.year}</span>

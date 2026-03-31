@@ -480,7 +480,7 @@ function ChatMessage({ msg, onExpand }) {
                     return <strong key={j}>{part.slice(2, -2)}</strong>;
                 }
                 if (part.startsWith('_') && part.endsWith('_')) {
-                    return <em key={j} style={{ fontSize: '0.85em', color: '#9ca3af' }}>{part.slice(1, -1)}</em>;
+                    return <em key={j} style={{ fontSize: '0.85em', color: 'var(--text-muted)' }}>{part.slice(1, -1)}</em>;
                 }
                 return part;
             });
@@ -834,7 +834,7 @@ export default function AIChat() {
                                 disabled={typing}
                                 style={{
                                     background: 'transparent', border: 'none', cursor: 'pointer',
-                                    padding: '8px', color: isListening ? '#e91e63' : '#9ca3af',
+                                    padding: '8px', color: isListening ? '#e91e63' : 'var(--text-muted)',
                                     animation: isListening ? 'pulse 1.5s infinite' : 'none'
                                 }}
                                 title="สั่งงานด้วยเสียง"
@@ -859,17 +859,17 @@ export default function AIChat() {
 
             {expandedChart && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setExpandedChart(null)}>
-                    <div style={{ backgroundColor: '#1e1e2e', width: '100%', maxWidth: '900px', height: '80vh', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }} onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setExpandedChart(null)} style={{ position: 'absolute', top: '16px', right: '16px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
+                    <div style={{ backgroundColor: 'var(--bg-card)', width: '100%', maxWidth: '900px', height: '80vh', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', border: '1px solid var(--border-color)' }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setExpandedChart(null)} style={{ position: 'absolute', top: '16px', right: '16px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
                             <X size={24} />
                         </button>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '16px' }}>
                             📊 กราฟขยาย (รองรับการซูมและแพน)
                         </h3>
                         <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', paddingBottom: '32px' }}>
                             <ReactChart type={expandedChart.chartType} data={expandedChart.data} options={expandedChart.options} />
                         </div>
-                        <div style={{ marginTop: '16px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
+                        <div style={{ marginTop: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                             💡 เลื่อนลูกกลิ้งเมาส์ (Scroll) หรือ Pinch นิ้วเพื่อซูม และคลิกค้างเพื่อเลื่อนซ้าย/ขวา
                         </div>
                     </div>

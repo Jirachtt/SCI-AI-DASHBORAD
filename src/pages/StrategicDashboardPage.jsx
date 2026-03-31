@@ -15,15 +15,15 @@ import { Target, TrendingUp, CheckCircle2, AlertTriangle } from 'lucide-react';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, Filler, RadialLinearScale, themeAdaptorPlugin);
 
 const cardStyle = {
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-color)',
     borderRadius: '16px', padding: '24px',
 };
 
 function ProgressBar({ value, target, color }) {
     const pct = Math.min((value / target) * 100, 100);
     return (
-        <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.08)' }}>
+        <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'var(--bg-secondary)' }}>
             <div style={{
                 width: `${pct}%`, height: '100%', borderRadius: 4,
                 background: `linear-gradient(90deg, ${color}, ${color}aa)`,
@@ -84,13 +84,13 @@ export default function StrategicDashboardPage() {
         scales: {
             x: {
                 min: 0, max: 100,
-                ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => v + '%' },
-                grid: { color: 'rgba(255,255,255,0.06)' },
-                title: { display: true, text: 'คะแนน (%)', color: '#9ca3af', font: { size: 11 } }
+                ticks: { color: 'var(--text-muted)', font: { size: 11 }, callback: v => v + '%' },
+                grid: { color: 'var(--border-color)' },
+                title: { display: true, text: 'คะแนน (%)', color: 'var(--text-muted)', font: { size: 11 } }
             },
             y: {
                 ticks: {
-                    color: '#e5e7eb',
+                    color: 'var(--text-primary)',
                     font: { size: 13, weight: 'bold', family: "'Noto Sans Thai', 'Inter', sans-serif" },
                 },
                 grid: { display: false },
@@ -100,7 +100,7 @@ export default function StrategicDashboardPage() {
             legend: {
                 position: 'bottom',
                 labels: {
-                    color: '#e5e7eb',
+                    color: 'var(--text-primary)',
                     font: { size: 12, weight: '600', family: "'Noto Sans Thai', 'Inter', sans-serif" },
                     padding: 20,
                     usePointStyle: true,
@@ -108,13 +108,13 @@ export default function StrategicDashboardPage() {
                 }
             },
             tooltip: {
-                backgroundColor: 'rgba(13, 17, 23, 0.95)',
-                titleColor: '#fff',
-                bodyColor: '#e5e7eb',
+                backgroundColor: 'var(--bg-card)',
+                titleColor: 'var(--text-primary)',
+                bodyColor: 'var(--text-secondary)',
                 titleFont: { size: 13, weight: 'bold' },
                 bodyFont: { size: 12 },
                 padding: 12,
-                borderColor: 'rgba(255,255,255,0.1)',
+                borderColor: 'var(--border-color)',
                 borderWidth: 1,
                 displayColors: true,
                 callbacks: {
@@ -142,12 +142,12 @@ export default function StrategicDashboardPage() {
     const chartOptions = {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-            legend: { position: 'bottom', labels: { color: '#ccc', font: { size: 11 } } },
-            tooltip: { backgroundColor: '#1a1a2e', titleColor: '#fff', bodyColor: '#ccc' }
+            legend: { position: 'bottom', labels: { color: 'var(--text-secondary)', font: { size: 11 } } },
+            tooltip: { backgroundColor: 'var(--bg-card)', titleColor: 'var(--text-primary)', bodyColor: 'var(--text-secondary)' }
         },
         scales: {
-            x: { ticks: { color: '#888' }, grid: { color: '#ffffff08' } },
-            y: { ticks: { color: '#888' }, grid: { color: '#ffffff08' } }
+            x: { ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } },
+            y: { ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } }
         }
     };
 
@@ -156,8 +156,8 @@ export default function StrategicDashboardPage() {
     return (
         <div style={{ padding: '0 4px' }}>
             <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}><Target size={24} /> ยุทธศาสตร์และการดำเนินงาน</h1>
-                <p style={{ color: '#9ca3af', margin: '4px 0 0' }}>Strategic & OKR Monitoring — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}><Target size={24} /> ยุทธศาสตร์และการดำเนินงาน</h1>
+                <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Strategic & OKR Monitoring — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
             </div>
 
             {/* Strategic Goals Cards */}
@@ -174,10 +174,10 @@ export default function StrategicDashboardPage() {
                                     color: pct >= 90 ? '#00a651' : pct >= 70 ? '#C5A028' : '#E91E63'
                                 }}>{pct}%</span>
                             </div>
-                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginBottom: 4 }}>{goal.title}</div>
-                            <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: 10 }}>{goal.subtitle}</div>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{goal.title}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 10 }}>{goal.subtitle}</div>
                             <ProgressBar value={goal.current} target={goal.target} color={goal.color} />
-                            <div style={{ fontSize: '0.7rem', color: '#888', marginTop: 6 }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 6 }}>
                                 {goal.current} / {goal.target} {goal.unit}
                             </div>
                         </div>
@@ -188,13 +188,13 @@ export default function StrategicDashboardPage() {
             {/* Row 2: Radar + KPI Details */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>📊 ประสิทธิภาพ 5 ด้าน — เปรียบเทียบเป้าหมาย</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>📊 ประสิทธิภาพ 5 ด้าน — เปรียบเทียบเป้าหมาย</h3>
                     <div style={{ height: 320 }}>
                         <Bar data={perfBarData} options={perfBarOptions} />
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>KPI แต่ละเป้าหมาย</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>KPI แต่ละเป้าหมาย</h3>
                     <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
                         {strategicGoals.map((g, i) => (
                             <span key={i} style={{ fontSize: '0.7rem' }}>{g.icon} {g.id}</span>
@@ -205,9 +205,9 @@ export default function StrategicDashboardPage() {
                             goal.kpis.map((kpi, ki) => {
                                 const pct = Math.round((kpi.current / kpi.target) * 100);
                                 return (
-                                    <div key={`${goal.id}-${ki}`} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '10px 14px' }}>
+                                    <div key={`${goal.id}-${ki}`} style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 14px' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '0.78rem', color: '#ddd' }}>{goal.icon} {kpi.name}</span>
+                                            <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)' }}>{goal.icon} {kpi.name}</span>
                                             <span style={{
                                                 fontSize: '0.7rem', fontWeight: 700,
                                                 color: pct >= 90 ? '#00a651' : pct >= 70 ? '#C5A028' : '#E91E63'
@@ -226,7 +226,7 @@ export default function StrategicDashboardPage() {
 
             {/* Row 3: OKR Section */}
             <div style={{ ...cardStyle, marginBottom: 16 }}>
-                <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>OKR Monitoring — {okr.period}</h3>
+                <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>OKR Monitoring — {okr.period}</h3>
 
                 {/* OKR tabs */}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -236,8 +236,8 @@ export default function StrategicDashboardPage() {
                             style={{
                                 padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
                                 fontSize: '0.78rem', fontWeight: 600, transition: 'all 0.2s',
-                                background: activeOKR === i ? `${obj.color}33` : 'rgba(255,255,255,0.05)',
-                                color: activeOKR === i ? obj.color : '#888',
+                                background: activeOKR === i ? `${obj.color}33` : 'var(--bg-secondary)',
+                                color: activeOKR === i ? obj.color : 'var(--text-muted)',
                                 outline: activeOKR === i ? `2px solid ${obj.color}66` : 'none',
                             }}
                         >
@@ -250,31 +250,31 @@ export default function StrategicDashboardPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
                     <div style={{
                         width: 60, height: 60, borderRadius: 15,
-                        background: `conic-gradient(${selectedObj.color} ${selectedObj.progress * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
+                        background: `conic-gradient(${selectedObj.color} ${selectedObj.progress * 3.6}deg, var(--bg-secondary) 0deg)`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                         <div style={{
-                            width: 48, height: 48, borderRadius: 12, background: '#0d1117',
+                            width: 48, height: 48, borderRadius: 12, background: 'var(--bg-card)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: '0.85rem', fontWeight: 700, color: selectedObj.color,
                         }}>{selectedObj.progress}%</div>
                     </div>
                     <div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>{selectedObj.title}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>ความคืบหน้ารวม: {selectedObj.progress}%</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedObj.title}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ความคืบหน้ารวม: {selectedObj.progress}%</div>
                     </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
                     {selectedObj.keyResults.map((kr, i) => (
-                        <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '14px 18px' }}>
+                        <div key={i} style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: '14px 18px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                <span style={{ fontSize: '0.78rem', color: '#ccc', fontWeight: 600 }}>{kr.id}</span>
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{kr.id}</span>
                                 <span style={{ fontSize: '0.7rem', color: selectedObj.color, fontWeight: 700 }}>{kr.progress}%</span>
                             </div>
-                            <div style={{ fontSize: '0.82rem', color: '#fff', marginBottom: 8 }}>{kr.title}</div>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', marginBottom: 8 }}>{kr.title}</div>
                             <ProgressBar value={kr.current} target={kr.target} color={selectedObj.color} />
-                            <div style={{ fontSize: '0.7rem', color: '#888', marginTop: 6 }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 6 }}>
                                 ปัจจุบัน: {kr.current} / เป้าหมาย: {kr.target} {kr.unit}
                             </div>
                         </div>
@@ -284,7 +284,7 @@ export default function StrategicDashboardPage() {
 
             {/* Row 4: Efficiency Trend */}
             <div style={cardStyle}>
-                <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มประสิทธิภาพรวม</h3>
+                <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มประสิทธิภาพรวม</h3>
                 <div style={{ height: 260 }}>
                     <Line data={effData} options={chartOptions} />
                 </div>

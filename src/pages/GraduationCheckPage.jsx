@@ -35,8 +35,8 @@ export default function GraduationCheckPage() {
 
     // Shared card style
     const cardStyle = {
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border-color)',
         borderRadius: '16px',
         padding: '24px',
     };
@@ -44,12 +44,12 @@ export default function GraduationCheckPage() {
     const headerStyle = {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         marginBottom: '20px', paddingBottom: '12px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)'
+        borderBottom: '1px solid var(--border-color)'
     };
 
-    const labelStyle = { fontSize: '0.88rem', fontWeight: 600, color: '#9ca3af', letterSpacing: '0.02em', textTransform: 'uppercase' };
+    const labelStyle = { fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.02em', textTransform: 'uppercase' };
 
-    const trackStyle = (h = 6) => ({ height: h, background: 'rgba(255,255,255,0.08)', borderRadius: h, overflow: 'hidden', width: '100%' });
+    const trackStyle = (h = 6) => ({ height: h, background: 'var(--bg-secondary)', borderRadius: h, overflow: 'hidden', width: '100%' });
 
     const fillStyle = (w, color) => ({ height: '100%', width: `${w}%`, background: color, borderRadius: 'inherit', transition: 'width 0.6s ease' });
 
@@ -77,7 +77,7 @@ export default function GraduationCheckPage() {
                         <div style={{ fontSize: '2.8rem', fontWeight: 800, color: graduationData.gpa.current >= graduationData.gpa.required ? '#4CAF50' : '#FFC107', lineHeight: 1.1 }}>
                             {graduationData.gpa.current.toFixed(2)}
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: '8px' }}>เกณฑ์ขั้นต่ำ: {graduationData.gpa.required.toFixed(2)}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px' }}>เกณฑ์ขั้นต่ำ: {graduationData.gpa.required.toFixed(2)}</div>
                     </div>
                 </div>
 
@@ -90,7 +90,7 @@ export default function GraduationCheckPage() {
                     {/* Big number */}
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '14px' }}>
                         <span style={{ fontSize: '2rem', fontWeight: 800, color: '#2E86AB' }}>{graduationData.credits.current}</span>
-                        <span style={{ fontSize: '1rem', color: '#9ca3af' }}>/ {graduationData.credits.required} หน่วยกิต</span>
+                        <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ {graduationData.credits.required} หน่วยกิต</span>
                     </div>
 
                     {/* Progress bar */}
@@ -102,7 +102,7 @@ export default function GraduationCheckPage() {
                     <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {graduationData.credits.details.map((item, idx) => (
                             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                <span style={{ color: item.status === 'complete' ? '#4CAF50' : '#9ca3af' }}>
+                                <span style={{ color: item.status === 'complete' ? '#4CAF50' : 'var(--text-muted)' }}>
                                     {item.status === 'complete' ? '✓' : '○'} {item.name}
                                 </span>
                                 <span style={{ fontWeight: 600, color: item.status === 'complete' ? '#4CAF50' : '#FFC107' }}>
@@ -125,7 +125,7 @@ export default function GraduationCheckPage() {
                     {/* Big number */}
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '14px' }}>
                         <span style={{ fontSize: '2rem', fontWeight: 800, color: '#E91E63' }}>{graduationData.activities.current}</span>
-                        <span style={{ fontSize: '1rem', color: '#9ca3af' }}>/ {graduationData.activities.required} ชั่วโมง</span>
+                        <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ {graduationData.activities.required} ชั่วโมง</span>
                     </div>
 
                     {/* Progress bar */}
@@ -177,16 +177,16 @@ export default function GraduationCheckPage() {
                                         </div>
                                     </td>
                                     <td style={{ textAlign: 'center' }}>
-                                        <span style={{ fontWeight: 700, color: item.currentActs >= item.requiredActs ? '#4CAF50' : '#fff' }}>
+                                        <span style={{ fontWeight: 700, color: item.currentActs >= item.requiredActs ? '#4CAF50' : 'var(--text-primary)' }}>
                                             {item.currentActs}
                                         </span>
-                                        <span style={{ color: '#9ca3af' }}> / ≥{item.requiredActs}</span>
+                                        <span style={{ color: 'var(--text-muted)' }}> / ≥{item.requiredActs}</span>
                                     </td>
                                     <td style={{ textAlign: 'center' }}>
-                                        <span style={{ fontWeight: 700, color: item.currentHours >= item.requiredHours ? '#4CAF50' : '#fff' }}>
+                                        <span style={{ fontWeight: 700, color: item.currentHours >= item.requiredHours ? '#4CAF50' : 'var(--text-primary)' }}>
                                             {item.currentHours}
                                         </span>
-                                        <span style={{ color: '#9ca3af' }}> / ≥{item.requiredHours}</span>
+                                        <span style={{ color: 'var(--text-muted)' }}> / ≥{item.requiredHours}</span>
                                     </td>
                                     <td>
                                         <div style={trackStyle(6)}>
@@ -202,15 +202,15 @@ export default function GraduationCheckPage() {
                             );
                         })}
                         {/* Totals Row */}
-                        <tr style={{ borderTop: '2px solid rgba(255,255,255,0.1)', fontWeight: 700 }}>
+                        <tr style={{ borderTop: '2px solid var(--border-color)', fontWeight: 700 }}>
                             <td>รวม</td>
                             <td style={{ textAlign: 'center' }}>
                                 <span>{graduationData.activities.details.reduce((s, i) => s + i.currentActs, 0)}</span>
-                                <span style={{ color: '#9ca3af' }}> / ≥{graduationData.activities.details.reduce((s, i) => s + i.requiredActs, 0)}</span>
+                                <span style={{ color: 'var(--text-muted)' }}> / ≥{graduationData.activities.details.reduce((s, i) => s + i.requiredActs, 0)}</span>
                             </td>
                             <td style={{ textAlign: 'center' }}>
                                 <span style={{ color: '#E91E63' }}>{graduationData.activities.current}</span>
-                                <span style={{ color: '#9ca3af' }}> / ≥{graduationData.activities.required}</span>
+                                <span style={{ color: 'var(--text-muted)' }}> / ≥{graduationData.activities.required}</span>
                             </td>
                             <td>
                                 <div style={trackStyle(6)}>
@@ -250,13 +250,13 @@ export default function GraduationCheckPage() {
                                     <td>
                                         <span style={{
                                             fontSize: '0.8rem', padding: '3px 10px', borderRadius: '20px',
-                                            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                                            background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
                                             whiteSpace: 'nowrap'
                                         }}>{a.category}</span>
                                     </td>
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
-                                            <Calendar size={14} color="#9ca3af" /> {a.date}
+                                            <Calendar size={14} color="var(--text-muted)" /> {a.date}
                                         </div>
                                     </td>
                                     <td><span className="badge">{a.type}</span></td>

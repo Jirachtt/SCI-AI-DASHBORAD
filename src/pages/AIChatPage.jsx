@@ -690,7 +690,7 @@ function ChatMessage({ msg, onExpand }) {
                     return <strong key={j}>{part.slice(2, -2)}</strong>;
                 }
                 if (part.startsWith('_') && part.endsWith('_')) {
-                    return <em key={j} style={{ fontSize: '0.9em', color: '#9ca3af' }}>{part.slice(1, -1)}</em>;
+                    return <em key={j} style={{ fontSize: '0.9em', color: 'var(--text-muted)' }}>{part.slice(1, -1)}</em>;
                 }
                 if (part.startsWith('`') && part.endsWith('`')) {
                     return <code key={j} style={{ background: 'rgba(0,230,118,0.15)', color: '#00e676', padding: '2px 6px', borderRadius: 4, fontSize: '0.88em' }}>{part.slice(1, -1)}</code>;
@@ -1170,7 +1170,7 @@ export default function AIChatPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', marginBottom: 6, borderRadius: '8px', background: 'rgba(0,166,81,0.12)', border: '1px solid rgba(0,166,81,0.25)', fontSize: '0.78rem', color: '#00a651' }}>
                                 <FileSpreadsheet size={14} />
                                 <span>📎 ไฟล์ที่โหลด: {uploadedFileData.rowCount} แถว × {uploadedFileData.headers.length} คอลัมน์ — ถามคำถามเกี่ยวกับข้อมูลนี้ได้เลย</span>
-                                <button onClick={() => setUploadedFileData(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 2 }}><X size={14} /></button>
+                                <button onClick={() => setUploadedFileData(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}><X size={14} /></button>
                             </div>
                         )}
                         <div className="ai-chat-page-input-area">

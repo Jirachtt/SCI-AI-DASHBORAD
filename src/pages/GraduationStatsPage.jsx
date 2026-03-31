@@ -20,8 +20,8 @@ import { themeAdaptorPlugin } from '../utils/chartTheme';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
 
 const cardStyle = {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-color)',
     borderRadius: '16px',
     padding: '24px',
 };
@@ -29,7 +29,7 @@ const cardStyle = {
 const headerStyle = {
     display: 'flex', alignItems: 'center', gap: 10,
     marginBottom: '20px', paddingBottom: '12px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)'
+    borderBottom: '1px solid var(--border-color)'
 };
 
 export default function GraduationStatsPage() {
@@ -89,7 +89,7 @@ export default function GraduationStatsPage() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { labels: { color: '#9ca3af', font: { size: 12 } } },
+            legend: { labels: { color: 'var(--text-muted)', font: { size: 12 } } },
             tooltip: {
                 callbacks: {
                     label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} คน`
@@ -97,8 +97,8 @@ export default function GraduationStatsPage() {
             }
         },
         scales: {
-            x: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-            y: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+            x: { ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } },
+            y: { ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } }
         }
     };
 
@@ -121,7 +121,7 @@ export default function GraduationStatsPage() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { labels: { color: '#9ca3af', font: { size: 12 } } },
+            legend: { labels: { color: 'var(--text-muted)', font: { size: 12 } } },
             tooltip: {
                 callbacks: {
                     label: (ctx) => `${ctx.parsed.y}%`
@@ -129,8 +129,8 @@ export default function GraduationStatsPage() {
             }
         },
         scales: {
-            x: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-            y: { min: 75, max: 100, ticks: { color: '#6b7280', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+            x: { ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } },
+            y: { min: 75, max: 100, ticks: { color: 'var(--text-muted)', callback: v => v + '%' }, grid: { color: 'var(--border-color)' } }
         }
     };
 
@@ -162,7 +162,7 @@ export default function GraduationStatsPage() {
         maintainAspectRatio: false,
         indexAxis: 'y',
         plugins: {
-            legend: { labels: { color: '#9ca3af', font: { size: 11 } } },
+            legend: { labels: { color: 'var(--text-muted)', font: { size: 11 } } },
             tooltip: {
                 callbacks: {
                     label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.x} คน`
@@ -170,8 +170,8 @@ export default function GraduationStatsPage() {
             }
         },
         scales: {
-            x: { stacked: true, ticks: { color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-            y: { stacked: true, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { display: false } }
+            x: { stacked: true, ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } },
+            y: { stacked: true, ticks: { color: 'var(--text-muted)', font: { size: 11 } }, grid: { display: false } }
         }
     };
 
@@ -200,8 +200,8 @@ export default function GraduationStatsPage() {
             }
         },
         scales: {
-            x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { display: false } },
-            y: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+            x: { ticks: { color: 'var(--text-muted)', font: { size: 11 } }, grid: { display: false } },
+            y: { ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } }
         }
     };
 
@@ -222,7 +222,7 @@ export default function GraduationStatsPage() {
         plugins: {
             legend: {
                 position: 'bottom',
-                labels: { color: '#9ca3af', padding: 12, font: { size: 11 }, usePointStyle: true }
+                labels: { color: 'var(--text-muted)', padding: 12, font: { size: 11 }, usePointStyle: true }
             },
             tooltip: {
                 callbacks: {
@@ -252,7 +252,7 @@ export default function GraduationStatsPage() {
         plugins: {
             legend: {
                 position: 'bottom',
-                labels: { color: '#9ca3af', padding: 12, font: { size: 11 }, usePointStyle: true }
+                labels: { color: 'var(--text-muted)', padding: 12, font: { size: 11 }, usePointStyle: true }
             },
             tooltip: {
                 callbacks: {
@@ -268,11 +268,11 @@ export default function GraduationStatsPage() {
         <div style={{ padding: '24px 28px', maxWidth: 1400, margin: '0 auto' }}>
             {/* Header */}
             <div style={{ marginBottom: 28 }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f3f4f6', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
                     <GraduationCap size={28} color="#7B68EE" />
                     สถิติการสำเร็จการศึกษา
                 </h1>
-                <p style={{ color: '#6b7280', fontSize: '0.88rem', marginTop: 6 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 6 }}>
                     คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้ | ปีการศึกษา {stats.academicYear}
                 </p>
             </div>
@@ -299,8 +299,8 @@ export default function GraduationStatsPage() {
                             </div>
                             <div>
                                 <div style={{ fontSize: '1.4rem', fontWeight: 700, color: card.color }}>{card.value}</div>
-                                <div style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600 }}>{card.label}</div>
-                                <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{card.sub}</div>
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>{card.label}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{card.sub}</div>
                             </div>
                         </div>
                     );
@@ -313,12 +313,12 @@ export default function GraduationStatsPage() {
                 <div style={cardStyle}>
                     <div style={headerStyle}>
                         <CheckCircle size={18} color="#22c55e" />
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e5e7eb' }}>สถานะการสำเร็จ (ปัจจุบัน)</span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>สถานะการสำเร็จ (ปัจจุบัน)</span>
                     </div>
                     <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Doughnut data={statusChartData} options={statusOptions} />
                     </div>
-                    <div style={{ textAlign: 'center', marginTop: 8, color: '#9ca3af', fontSize: '0.8rem' }}>
+                    <div style={{ textAlign: 'center', marginTop: 8, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                         รวม {stats.totalCandidates} คน | คาดว่าสำเร็จ {((stats.expectedGraduates / stats.totalCandidates) * 100).toFixed(1)}%
                     </div>
                 </div>
@@ -327,7 +327,7 @@ export default function GraduationStatsPage() {
                 <div style={cardStyle}>
                     <div style={headerStyle}>
                         <TrendingUp size={18} color="#7B68EE" />
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e5e7eb' }}>แนวโน้มการสำเร็จการศึกษา (ย้อนหลัง 5 ปี)</span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>แนวโน้มการสำเร็จการศึกษา (ย้อนหลัง 5 ปี)</span>
                     </div>
                     <div style={{ height: 280 }}>
                         <Line data={historyChartData} options={historyChartOptions} />
@@ -341,7 +341,7 @@ export default function GraduationStatsPage() {
                 <div style={cardStyle}>
                     <div style={headerStyle}>
                         <Users size={18} color="#3b82f6" />
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e5e7eb' }}>แยกตามสาขาวิชา</span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>แยกตามสาขาวิชา</span>
                     </div>
                     <div style={{ height: Math.max(280, graduationByMajor.length * 35) }}>
                         <Bar data={majorChartData} options={majorChartOptions} />
@@ -352,7 +352,7 @@ export default function GraduationStatsPage() {
                 <div style={cardStyle}>
                     <div style={headerStyle}>
                         <Award size={18} color="#f59e0b" />
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e5e7eb' }}>การกระจายตัวของ GPA</span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>การกระจายตัวของ GPA</span>
                     </div>
                     <div style={{ height: 280 }}>
                         <Bar data={gpaChartData} options={gpaChartOptions} />
@@ -366,7 +366,7 @@ export default function GraduationStatsPage() {
                 <div style={cardStyle}>
                     <div style={headerStyle}>
                         <TrendingUp size={18} color="#f59e0b" />
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e5e7eb' }}>อัตราสำเร็จการศึกษา (%)</span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>อัตราสำเร็จการศึกษา (%)</span>
                     </div>
                     <div style={{ height: 260 }}>
                         <Line data={rateChartData} options={rateChartOptions} />
@@ -377,7 +377,7 @@ export default function GraduationStatsPage() {
                 <div style={cardStyle}>
                     <div style={headerStyle}>
                         <Award size={18} color="#8b5cf6" />
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e5e7eb' }}>เกียรตินิยม</span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>เกียรตินิยม</span>
                     </div>
                     <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Doughnut data={honorsChartData} options={honorsOptions} />
@@ -389,26 +389,26 @@ export default function GraduationStatsPage() {
             <div style={{ ...cardStyle, marginBottom: 18 }}>
                 <div style={headerStyle}>
                     <GraduationCap size={18} color="#06b6d4" />
-                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e5e7eb' }}>สรุปตามสาขาวิชา</span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>สรุปตามสาขาวิชา</span>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                         <thead>
-                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                            <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                                 {['สาขาวิชา', 'ผู้มีสิทธิ์', 'คาดว่าสำเร็จ', 'รอพินิจ', 'ไม่ผ่าน', 'GPA เฉลี่ย', 'อัตราสำเร็จ'].map(h => (
-                                    <th key={h} style={{ padding: '10px 12px', color: '#9ca3af', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                                    <th key={h} style={{ padding: '10px 12px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {graduationByMajor.map((m, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                    <td style={{ padding: '10px 12px', color: '#e5e7eb', fontWeight: 500 }}>{m.major}</td>
-                                    <td style={{ padding: '10px 12px', color: '#d1d5db', textAlign: 'center' }}>{m.total}</td>
+                                <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                    <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 500 }}>{m.major}</td>
+                                    <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', textAlign: 'center' }}>{m.total}</td>
                                     <td style={{ padding: '10px 12px', color: '#22c55e', textAlign: 'center', fontWeight: 600 }}>{m.expected}</td>
                                     <td style={{ padding: '10px 12px', color: '#f59e0b', textAlign: 'center' }}>{m.pending}</td>
                                     <td style={{ padding: '10px 12px', color: '#ef4444', textAlign: 'center' }}>{m.notPassed}</td>
-                                    <td style={{ padding: '10px 12px', color: '#d1d5db', textAlign: 'center' }}>{m.avgGPA}</td>
+                                    <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', textAlign: 'center' }}>{m.avgGPA}</td>
                                     <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                                         <span style={{
                                             background: m.rate >= 90 ? 'rgba(34,197,94,0.15)' : m.rate >= 70 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
@@ -431,24 +431,24 @@ export default function GraduationStatsPage() {
                 <div style={{ ...headerStyle, flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <Users size={18} color="#7B68EE" />
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e5e7eb' }}>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                             รายชื่อผู้มีสิทธิ์รับปริญญา ({filteredCandidates.length} คน)
                         </span>
                     </div>
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
                         <div style={{ position: 'relative' }}>
-                            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
+                            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                             <input
                                 type="text"
                                 placeholder="ค้นหาชื่อ / รหัส..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 style={{
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-color)',
                                     borderRadius: 8,
                                     padding: '7px 10px 7px 32px',
-                                    color: '#e5e7eb',
+                                    color: 'var(--text-primary)',
                                     fontSize: '0.82rem',
                                     outline: 'none',
                                     width: 180,
@@ -459,11 +459,11 @@ export default function GraduationStatsPage() {
                             value={filterMajor}
                             onChange={e => setFilterMajor(e.target.value)}
                             style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--bg-secondary)',
+                                border: '1px solid var(--border-color)',
                                 borderRadius: 8,
                                 padding: '7px 10px',
-                                color: '#e5e7eb',
+                                color: 'var(--text-primary)',
                                 fontSize: '0.82rem',
                             }}
                         >
@@ -474,11 +474,11 @@ export default function GraduationStatsPage() {
                             value={filterStatus}
                             onChange={e => setFilterStatus(e.target.value)}
                             style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--bg-secondary)',
+                                border: '1px solid var(--border-color)',
                                 borderRadius: 8,
                                 padding: '7px 10px',
-                                color: '#e5e7eb',
+                                color: 'var(--text-primary)',
                                 fontSize: '0.82rem',
                             }}
                         >
@@ -491,23 +491,23 @@ export default function GraduationStatsPage() {
                 </div>
                 <div style={{ overflowX: 'auto', maxHeight: 400, overflowY: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                        <thead style={{ position: 'sticky', top: 0, background: '#1a1a2e' }}>
-                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                        <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-card)' }}>
+                            <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                                 {['#', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'สาขาวิชา', 'GPA', 'เกียรตินิยม', 'สถานะ'].map(h => (
-                                    <th key={h} style={{ padding: '10px 10px', color: '#9ca3af', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                                    <th key={h} style={{ padding: '10px 10px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {filteredCandidates.map((s, i) => (
-                                <tr key={s.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}
-                                    onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                                <tr key={s.id} style={{ borderBottom: '1px solid var(--border-color)' }}
+                                    onMouseOver={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
                                     onMouseOut={e => e.currentTarget.style.background = 'transparent'}
                                 >
-                                    <td style={{ padding: '9px 10px', color: '#6b7280' }}>{i + 1}</td>
-                                    <td style={{ padding: '9px 10px', color: '#d1d5db', fontFamily: 'monospace' }}>{s.id}</td>
-                                    <td style={{ padding: '9px 10px', color: '#e5e7eb', fontWeight: 500 }}>{s.prefix}{s.name}</td>
-                                    <td style={{ padding: '9px 10px', color: '#9ca3af' }}>{s.major}</td>
+                                    <td style={{ padding: '9px 10px', color: 'var(--text-muted)' }}>{i + 1}</td>
+                                    <td style={{ padding: '9px 10px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{s.id}</td>
+                                    <td style={{ padding: '9px 10px', color: 'var(--text-primary)', fontWeight: 500 }}>{s.prefix}{s.name}</td>
+                                    <td style={{ padding: '9px 10px', color: 'var(--text-muted)' }}>{s.major}</td>
                                     <td style={{ padding: '9px 10px', color: s.gpa >= 3.50 ? '#8b5cf6' : s.gpa >= 3.00 ? '#3b82f6' : s.gpa >= 2.00 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{s.gpa.toFixed(2)}</td>
                                     <td style={{ padding: '9px 10px' }}>
                                         <span style={{

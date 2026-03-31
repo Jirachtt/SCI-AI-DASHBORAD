@@ -152,7 +152,7 @@ export default function DashboardHome() {
                 <div>
                     <h2 style={{
                         fontSize: '1.7rem', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em',
-                        background: 'linear-gradient(135deg, #fff 30%, #00a651)',
+                        background: 'linear-gradient(135deg, var(--text-primary) 30%, #00a651)',
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                     }}>
                         สวัสดี, {user?.name}
@@ -169,9 +169,9 @@ export default function DashboardHome() {
                         display: 'flex', alignItems: 'center', gap: 10,
                         background: showForecast
                             ? 'linear-gradient(135deg, #006838, #00a651)'
-                            : 'rgba(255,255,255,0.04)',
-                        border: showForecast ? 'none' : '1px solid rgba(255,255,255,0.12)',
-                        color: showForecast ? '#fff' : '#ccc',
+                            : 'var(--bg-card)',
+                        border: showForecast ? 'none' : '1px solid var(--border-color)',
+                        color: showForecast ? '#fff' : 'var(--text-secondary)',
                         padding: '10px 22px', borderRadius: 12, cursor: 'pointer',
                         fontSize: '0.88rem', fontWeight: 600,
                         boxShadow: showForecast ? '0 6px 20px rgba(0,104,56,0.35)' : 'none',
@@ -186,21 +186,21 @@ export default function DashboardHome() {
             {/* Forecast Panel (Toggle) */}
             {showForecast && (
                 <div style={{
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
                     borderRadius: 16, padding: '24px', marginBottom: 28,
                     animation: 'slideDown 0.4s ease',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                         <div>
-                            <h3 style={{ color: '#fff', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <LineChart size={18} color="#00a651" /> Predictive Analytics
                             </h3>
-                            <p style={{ color: '#6b7280', fontSize: '0.78rem', marginTop: 4 }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: 4 }}>
                                 Linear Regression จากข้อมูลย้อนหลัง 4 ปี — พยากรณ์ล่วงหน้า 2 ปี
                             </p>
                         </div>
-                        <span style={{ fontSize: '0.7rem', color: '#9ca3af', background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: 8 }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '4px 12px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
                             Forecast FY2569
                         </span>
                     </div>
@@ -209,13 +209,13 @@ export default function DashboardHome() {
                             const FcIcon = fc.FcIcon;
                             return (
                                 <div key={i} style={{
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.06)',
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-color)',
                                     borderRadius: 14, padding: '18px',
                                     transition: 'transform 0.2s, border-color 0.2s',
                                 }}
                                     onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = `${fc.color}44`; }}
-                                    onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                                    onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = ''; }}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                                         <div style={{ width: 36, height: 36, borderRadius: 10, background: `${fc.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -229,16 +229,16 @@ export default function DashboardHome() {
                                             <ArrowUpRight size={12} />{fc.trend}
                                         </span>
                                     </div>
-                                    <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: 6 }}>{fc.label}</div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6 }}>{fc.label}</div>
                                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
                                         <div>
-                                            <span style={{ fontSize: '0.68rem', color: '#6b7280' }}>Actual</span>
-                                            <div style={{ fontSize: '0.9rem', color: '#ccc', fontWeight: 500 }}>{fc.actual}</div>
+                                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Actual</span>
+                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{fc.actual}</div>
                                         </div>
-                                        <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.08)' }} />
+                                        <div style={{ width: 1, height: 28, background: 'var(--border-color)' }} />
                                         <div>
                                             <span style={{ fontSize: '0.68rem', color: fc.color }}>Forecast</span>
-                                            <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff' }}>{fc.forecast}</div>
+                                            <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>{fc.forecast}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -249,26 +249,26 @@ export default function DashboardHome() {
                         <Link to="/dashboard/budget" style={{
                             display: 'inline-flex', alignItems: 'center', gap: 6,
                             padding: '8px 16px', borderRadius: 10,
-                            background: 'rgba(255,255,255,0.04)', color: '#ccc',
+                            background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
                             fontSize: '0.8rem', fontWeight: 500, textDecoration: 'none',
-                            border: '1px solid rgba(255,255,255,0.08)',
+                            border: '1px solid var(--border-color)',
                             transition: 'background 0.2s',
                         }}
-                            onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                            onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                            onMouseOver={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+                            onMouseOut={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
                         >
                             <Wallet size={14} /> รายละเอียดพยากรณ์งบประมาณ <ChevronRight size={14} />
                         </Link>
                         <Link to="/dashboard/student-stats" style={{
                             display: 'inline-flex', alignItems: 'center', gap: 6,
                             padding: '8px 16px', borderRadius: 10,
-                            background: 'rgba(255,255,255,0.04)', color: '#ccc',
+                            background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
                             fontSize: '0.8rem', fontWeight: 500, textDecoration: 'none',
-                            border: '1px solid rgba(255,255,255,0.08)',
+                            border: '1px solid var(--border-color)',
                             transition: 'background 0.2s',
                         }}
-                            onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                            onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                            onMouseOver={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+                            onMouseOut={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
                         >
                             <GraduationCap size={14} /> พยากรณ์จำนวนนักศึกษา <ChevronRight size={14} />
                         </Link>
@@ -279,13 +279,13 @@ export default function DashboardHome() {
             {/* Daily Insights */}
             {insights && (
                 <div style={{
-                    background: 'rgba(19, 25, 41, 0.7)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
                     borderLeft: '3px solid #006838',
                     borderRadius: 16, padding: '20px 24px', marginBottom: 28,
                 }}>
                     <h3 style={{
-                        color: '#e5e7eb', fontSize: '0.92rem', fontWeight: 600,
+                        color: 'var(--text-primary)', fontSize: '0.92rem', fontWeight: 600,
                         display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14
                     }}>
                         <Sparkles size={16} color="#00a651" /> Daily Insights
@@ -294,7 +294,7 @@ export default function DashboardHome() {
                         {insights.map((insight, idx) => (
                             <li key={idx} style={{
                                 display: 'flex', alignItems: 'flex-start', gap: 10,
-                                color: '#9ca3af', fontSize: '0.85rem', lineHeight: 1.5
+                                color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.5
                             }}>
                                 <span style={{ color: '#006838', marginTop: 2 }}>—</span>
                                 <span>{insight}</span>
@@ -313,9 +313,9 @@ export default function DashboardHome() {
                     onClick={() => setIsEditMode(!isEditMode)}
                     style={{
                         display: 'flex', alignItems: 'center', gap: 6,
-                        background: isEditMode ? '#00a651' : 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        color: isEditMode ? 'white' : '#9ca3af',
+                        background: isEditMode ? '#00a651' : 'var(--bg-card)',
+                        border: '1px solid var(--border-color)',
+                        color: isEditMode ? 'white' : 'var(--text-muted)',
                         padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
                         fontSize: '0.82rem', transition: 'all 0.2s',
                         boxShadow: isEditMode ? '0 4px 12px rgba(0, 166, 81, 0.3)' : 'none'
@@ -362,8 +362,8 @@ export default function DashboardHome() {
                                 <div className="stat-card-label">{card.label}</div>
                             </div>
                             <div style={{
-                                background: 'rgba(8, 11, 20, 0.7)',
-                                border: '1px solid rgba(255,255,255,0.04)', borderTop: '1px dashed rgba(255, 255, 255, 0.08)',
+                                background: 'var(--bg-secondary)',
+                                border: '1px solid var(--border-color)', borderTop: '1px dashed var(--border-color)',
                                 borderBottomLeftRadius: 16, borderBottomRightRadius: 16,
                                 padding: '16px 20px', position: 'relative', display: 'flex', flexDirection: 'column', gap: 12
                             }}>
@@ -373,15 +373,15 @@ export default function DashboardHome() {
                                         <div style={{ width: 24, height: 24, borderRadius: 6, background: `${sciData.color}20`, color: sciData.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <Microscope size={12} />
                                         </div>
-                                        <span style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{sciData.label}</span>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{sciData.label}</span>
                                     </div>
                                     <div style={{ fontSize: 16, fontWeight: 700, color: sciData.color }}>{sciData.value}</div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     {sciData.details.map((d, j) => (
-                                        <div key={j} style={{ flex: 1, background: 'rgba(255, 255, 255, 0.03)', borderRadius: 8, padding: '8px', textAlign: 'center', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                                        <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '8px', textAlign: 'center', border: '1px solid var(--border-color)' }}>
                                             <div style={{ fontSize: 13, fontWeight: 700, color: d.color }}>{d.value}</div>
-                                            <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 2 }}>{d.label}</div>
+                                            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>{d.label}</div>
                                         </div>
                                     ))}
                                 </div>

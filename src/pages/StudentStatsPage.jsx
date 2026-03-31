@@ -54,7 +54,7 @@ export default function StudentStatsPage() {
         plugins: {
             legend: {
                 position: 'bottom',
-                labels: { color: '#9ca3af', padding: 14, font: { size: 11 } }
+                labels: { color: 'var(--text-muted)', padding: 14, font: { size: 11 } }
             },
             tooltip: {
                 callbacks: {
@@ -122,16 +122,16 @@ export default function StudentStatsPage() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12, font: { size: 11 } } },
+            legend: { position: 'bottom', labels: { color: 'var(--text-muted)', padding: 12, font: { size: 11 } } },
             tooltip: {
                 callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() || '-'} คน` }
             }
         },
         scales: {
-            x: { ticks: { color: '#9ca3af' }, grid: { display: false } },
+            x: { ticks: { color: 'var(--text-muted)' }, grid: { display: false } },
             y: {
-                ticks: { color: '#9ca3af', callback: (v) => v.toLocaleString() },
-                grid: { color: 'rgba(255,255,255,0.05)' }
+                ticks: { color: 'var(--text-muted)', callback: (v) => v.toLocaleString() },
+                grid: { color: 'var(--border-color)' }
             }
         }
     };
@@ -159,7 +159,7 @@ export default function StudentStatsPage() {
         plugins: {
             legend: {
                 position: 'bottom',
-                labels: { color: '#9ca3af', padding: 14, font: { size: 11 } }
+                labels: { color: 'var(--text-muted)', padding: 14, font: { size: 11 } }
             },
             tooltip: {
                 callbacks: {
@@ -193,10 +193,10 @@ export default function StudentStatsPage() {
             }
         },
         scales: {
-            x: { ticks: { color: '#9ca3af' }, grid: { display: false } },
+            x: { ticks: { color: 'var(--text-muted)' }, grid: { display: false } },
             y: {
-                ticks: { color: '#9ca3af' },
-                grid: { color: 'rgba(255,255,255,0.05)' }
+                ticks: { color: 'var(--text-muted)' },
+                grid: { color: 'var(--border-color)' }
             }
         }
     };
@@ -357,7 +357,7 @@ export default function StudentStatsPage() {
                         alignItems: 'center'
                     }}>
                         <span style={{ fontSize: 22, fontWeight: 800, color: '#00a651' }}>{scienceFaculty.total.toLocaleString()}</span>
-                        <span style={{ fontSize: 11, color: '#9ca3af' }}>คน ({scienceSharePct}% ของทั้งมหาวิทยาลัย)</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>คน ({scienceSharePct}% ของทั้งมหาวิทยาลัย)</span>
                     </div>
                 </div>
 
@@ -385,8 +385,8 @@ export default function StudentStatsPage() {
                                 {item.count > 0 && (
                                     <span style={{
                                         fontSize: 11,
-                                        color: '#9ca3af',
-                                        background: 'rgba(255,255,255,0.05)',
+                                        color: 'var(--text-muted)',
+                                        background: 'var(--bg-secondary)',
                                         padding: '2px 8px',
                                         borderRadius: 8
                                     }}>
@@ -450,7 +450,7 @@ export default function StudentStatsPage() {
                                 }} options={{
                                     responsive: true, maintainAspectRatio: false,
                                     plugins: {
-                                        legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 14, font: { size: 12 } } },
+                                        legend: { position: 'bottom', labels: { color: 'var(--text-muted)', padding: 14, font: { size: 12 } } },
                                         tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString()} คน (${((ctx.parsed / scienceFaculty.total) * 100).toFixed(1)}%)` } }
                                     }
                                 }} />
@@ -458,12 +458,12 @@ export default function StudentStatsPage() {
                             <div style={{ display: 'flex', gap: 24, justifyContent: 'center', width: '100%' }}>
                                 <div style={{ textAlign: 'center' }}>
                                     <div style={{ fontSize: 28, fontWeight: 800, color: '#2E86AB' }}>{scienceFaculty.byGender.male}</div>
-                                    <div style={{ fontSize: 11, color: '#9ca3af' }}>ชาย ({scienceFaculty.byGender.malePercent}%)</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>ชาย ({scienceFaculty.byGender.malePercent}%)</div>
                                 </div>
-                                <div style={{ width: 1, background: 'rgba(255,255,255,0.1)' }} />
+                                <div style={{ width: 1, background: 'var(--border-color)' }} />
                                 <div style={{ textAlign: 'center' }}>
                                     <div style={{ fontSize: 28, fontWeight: 800, color: '#E91E63' }}>{scienceFaculty.byGender.female}</div>
-                                    <div style={{ fontSize: 11, color: '#9ca3af' }}>หญิง ({scienceFaculty.byGender.femalePercent}%)</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>หญิง ({scienceFaculty.byGender.femalePercent}%)</div>
                                 </div>
                             </div>
                         </div>
@@ -483,9 +483,9 @@ export default function StudentStatsPage() {
                                 background: 'linear-gradient(135deg, rgba(0,104,56,0.15), rgba(0,166,81,0.08))',
                                 border: '1px solid rgba(0,166,81,0.3)', borderRadius: 12
                             }}>
-                                <div style={{ fontSize: 11, color: '#9ca3af' }}>อัตราส่วน นศ./อาจารย์</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>อัตราส่วน นศ./อาจารย์</div>
                                 <div style={{ fontSize: 36, fontWeight: 800, color: '#00a651' }}>{scienceFaculty.studentFacultyRatio.ratio}:1</div>
-                                <div style={{ fontSize: 11, color: '#9ca3af' }}>({scienceFaculty.studentFacultyRatio.students} นศ. / {scienceFaculty.studentFacultyRatio.academicStaff} อาจารย์)</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>({scienceFaculty.studentFacultyRatio.students} นศ. / {scienceFaculty.studentFacultyRatio.academicStaff} อาจารย์)</div>
                             </div>
                             <div className="chart-container" style={{ height: 180 }}>
                                 <Bar data={{
@@ -505,8 +505,8 @@ export default function StudentStatsPage() {
                                         tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.x}:1` } }
                                     },
                                     scales: {
-                                        x: { ticks: { color: '#9ca3af', callback: v => v + ':1' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                                        y: { ticks: { color: '#e5e7eb', font: { size: 11 } }, grid: { display: false } }
+                                        x: { ticks: { color: 'var(--text-muted)', callback: v => v + ':1' }, grid: { color: 'var(--border-color)' } },
+                                        y: { ticks: { color: 'var(--text-primary)', font: { size: 11 } }, grid: { display: false } }
                                     }
                                 }} />
                             </div>
@@ -543,12 +543,12 @@ export default function StudentStatsPage() {
                             }} options={{
                                 responsive: true, maintainAspectRatio: false,
                                 plugins: {
-                                    legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12, font: { size: 11 } } },
+                                    legend: { position: 'bottom', labels: { color: 'var(--text-muted)', padding: 12, font: { size: 11 } } },
                                     tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} คน` } }
                                 },
                                 scales: {
-                                    x: { stacked: true, ticks: { color: '#9ca3af' }, grid: { display: false } },
-                                    y: { stacked: true, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                                    x: { stacked: true, ticks: { color: 'var(--text-muted)' }, grid: { display: false } },
+                                    y: { stacked: true, ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } }
                                 }
                             }} />
                         </div>
@@ -558,11 +558,11 @@ export default function StudentStatsPage() {
                                 const growth = prev ? (((intake.total - prev) / prev) * 100).toFixed(1) : null;
                                 return (
                                     <div key={i} style={{
-                                        background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '10px 14px',
-                                        border: '1px solid rgba(255,255,255,0.06)'
+                                        background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 14px',
+                                        border: '1px solid var(--border-color)'
                                     }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: 12, color: '#9ca3af' }}>ปี {intake.year}</span>
+                                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>ปี {intake.year}</span>
                                             <span style={{ fontSize: 16, fontWeight: 800, color: '#00a651' }}>{intake.total}</span>
                                         </div>
                                         {growth && (
@@ -592,17 +592,17 @@ export default function StudentStatsPage() {
                         </div>
                         <div style={{ padding: '0 20px 20px' }}>
                             <div style={{ marginBottom: 16 }}>
-                                <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, fontWeight: 600 }}>ตำแหน่งทางวิชาการ</div>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600 }}>ตำแหน่งทางวิชาการ</div>
                                 {scienceFaculty.personnel.byPosition.map((pos, i) => {
                                     const pct = ((pos.count / scienceFaculty.personnel.total) * 100).toFixed(0);
                                     const colors = ['#006838', '#2E86AB', '#C5A028'];
                                     return (
                                         <div key={i} style={{ marginBottom: 10 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                                                <span style={{ color: '#e5e7eb' }}>{pos.position}</span>
+                                                <span style={{ color: 'var(--text-primary)' }}>{pos.position}</span>
                                                 <span style={{ color: colors[i], fontWeight: 700 }}>{pos.count} คน ({pct}%)</span>
                                             </div>
-                                            <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                                            <div style={{ height: 6, borderRadius: 3, background: 'var(--border-color)', overflow: 'hidden' }}>
                                                 <div style={{
                                                     width: `${pct}%`,
                                                     height: '100%',
@@ -617,38 +617,38 @@ export default function StudentStatsPage() {
                             </div>
 
                             <div style={{ marginBottom: 16 }}>
-                                <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, fontWeight: 600 }}>ประเภทการจ้าง</div>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600 }}>ประเภทการจ้าง</div>
                                 <div style={{ display: 'flex', gap: 12 }}>
                                     {scienceFaculty.personnel.byType.map((t, i) => (
                                         <div key={i} style={{
                                             flex: 1,
-                                            background: 'rgba(255,255,255,0.03)',
+                                            background: 'var(--bg-secondary)',
                                             borderRadius: 10,
                                             padding: '12px 14px',
                                             textAlign: 'center',
-                                            border: '1px solid rgba(255,255,255,0.06)'
+                                            border: '1px solid var(--border-color)'
                                         }}>
                                             <div style={{ fontSize: 20, fontWeight: 800, color: i === 0 ? '#00a651' : '#C5A028' }}>{t.count}</div>
-                                            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{t.type}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t.type}</div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
                             <div>
-                                <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, fontWeight: 600 }}>ระดับการศึกษา</div>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600 }}>ระดับการศึกษา</div>
                                 <div style={{ display: 'flex', gap: 12 }}>
                                     {scienceFaculty.personnel.byEducation.map((e, i) => (
                                         <div key={i} style={{
                                             flex: 1,
-                                            background: 'rgba(255,255,255,0.03)',
+                                            background: 'var(--bg-secondary)',
                                             borderRadius: 10,
                                             padding: '12px 14px',
                                             textAlign: 'center',
-                                            border: '1px solid rgba(255,255,255,0.06)'
+                                            border: '1px solid var(--border-color)'
                                         }}>
                                             <div style={{ fontSize: 20, fontWeight: 800, color: i === 0 ? '#7B68EE' : '#2E86AB' }}>{e.count}</div>
-                                            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{e.level}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{e.level}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -682,15 +682,15 @@ export default function StudentStatsPage() {
                                                     {i === 0 ? 'TH' : 'INT'}
                                                 </div>
                                                 <div>
-                                                    <div style={{ color: '#e5e7eb', fontWeight: 600, fontSize: 14 }}>{n.nationality}</div>
-                                                    <div style={{ color: '#9ca3af', fontSize: 11 }}>{pct}%</div>
+                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 14 }}>{n.nationality}</div>
+                                                    <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{pct}%</div>
                                                 </div>
                                             </div>
                                             <div style={{ fontSize: 24, fontWeight: 800, color }}>
                                                 {n.count.toLocaleString()}
                                             </div>
                                         </div>
-                                        <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                                        <div style={{ height: 8, borderRadius: 4, background: 'var(--border-color)', overflow: 'hidden' }}>
                                             <div style={{
                                                 width: `${pct}%`,
                                                 height: '100%',
@@ -711,7 +711,7 @@ export default function StudentStatsPage() {
                                 borderRadius: 12,
                                 textAlign: 'center'
                             }}>
-                                <div style={{ fontSize: 12, color: '#9ca3af' }}>นิสิตสัญชาติไทยคิดเป็น</div>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>นิสิตสัญชาติไทยคิดเป็น</div>
                                 <div style={{ fontSize: 28, fontWeight: 800, color: '#00a651', marginTop: 4 }}>
                                     {((scienceFaculty.byNationality[0].count / scienceFaculty.total) * 100).toFixed(1)}%
                                 </div>
