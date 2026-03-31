@@ -2501,6 +2501,16 @@ html {
   transform: translateX(-3px);
 }
 
+[data-theme="light"] .back-button {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .back-button:hover {
+  background: rgba(0, 104, 56, 0.06);
+  border-color: rgba(0, 166, 81, 0.3);
+}
+
 /* Chat typing indicator */
 .typing-indicator {
   display: flex;
