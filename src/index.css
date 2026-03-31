@@ -2548,6 +2548,13 @@ html {
   background-clip: text;
 }
 
+[data-theme="light"] .section-header h2 {
+  background: linear-gradient(135deg, #1A1D26 40%, var(--mju-green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .section-header p {
   font-size: 0.82rem;
   color: var(--text-secondary);
