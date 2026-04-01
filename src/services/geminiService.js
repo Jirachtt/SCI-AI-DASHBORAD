@@ -56,15 +56,45 @@ function getApiUrl(modelId) {
 // Request timeout (30 seconds)
 const REQUEST_TIMEOUT_MS = 30000;
 
-// Per-model cooldown tracking — skip models that recently hit quota
+// Per-model cooldown tracking with exponential backoff
 const modelCooldowns = {};
-const COOLDOWN_MS = 60000; // 60s cooldown after quota error
+const modelConsecutiveFails = {};
+const BASE_COOLDOWN_MS = 65000; // 65s base (just over 1 minute for Gemini free tier)
+const MAX_COOLDOWN_MS = 300000; // 5 minute cap
+
+function setModelCooldown(model) {
+    modelConsecutiveFails[model] = (modelConsecutiveFails[model] || 0) + 1;
+    const fails = modelConsecutiveFails[model];
+    const cooldownMs = Math.min(BASE_COOLDOWN_MS * Math.pow(1.5, fails - 1), MAX_COOLDOWN_MS);
+    modelCooldowns[model] = Date.now() + cooldownMs;
+    console.warn(`[Gemini] ${model} cooldown ${Math.round(cooldownMs / 1000)}s (consecutive fail #${fails})`);
+}
+
+function onModelSuccess(model) {
+    delete modelCooldowns[model];
+    delete modelConsecutiveFails[model];
+}
 
 function isModelOnCooldown(model) {
     const until = modelCooldowns[model];
     if (!until) return false;
     if (Date.now() >= until) { delete modelCooldowns[model]; return false; }
     return true;
+}
+
+/**
+ * Get seconds until at least one model becomes available.
+ * Returns 0 if any model is available now.
+ */
+export function getWaitSeconds() {
+    let earliest = Infinity;
+    for (const model of MODELS) {
+        const until = modelCooldowns[model];
+        if (!until || Date.now() >= until) return 0;
+        earliest = Math.min(earliest, until);
+    }
+    if (earliest === Infinity) return 0;
+    return Math.max(0, Math.ceil((earliest - Date.now()) / 1000));
 }
 
 // Rate limiting — minimum 4s between requests (prevents quota burn)
@@ -78,6 +108,9 @@ async function waitForRateLimit() {
     }
     lastRequestTime = Date.now();
 }
+
+// Request queue — serialize all API calls to prevent concurrent quota burns
+let requestQueue = Promise.resolve();
 
 // Simple fetch with timeout — NO retry on 429 quota errors
 async function fetchWithTimeout(url, options) {
@@ -375,7 +408,13 @@ let conversationHistory = [];
  * Send a message to the Gemini API and return the response text.
  * Tries multiple models in order until one succeeds.
  */
-export async function sendMessageToGemini(userMessage) {
+export function sendMessageToGemini(userMessage) {
+    const p = requestQueue.then(() => _sendMessageImpl(userMessage));
+    requestQueue = p.catch(() => {}); // keep queue alive even if request fails
+    return p;
+}
+
+async function _sendMessageImpl(userMessage) {
     // Detect chart/graph request keywords and append reminder
     const chartKeywords = ['กราฟ', 'chart', 'แผนภูมิ', 'แผนภาพ', 'แท่ง', 'เส้น', 'วงกลม', 'radar', 'พยากรณ์', 'คาดการณ์', 'forecast', 'bar chart', 'line chart', 'pie chart', 'กราฟแท่ง', 'กราฟเส้น', 'กราฟวงกลม', 'เปรียบเทียบ', 'สร้างกราฟ', 'แสดงกราฟ', 'วิเคราะห์'];
     const lowerMsg = userMessage.toLowerCase();
@@ -463,8 +502,7 @@ export async function sendMessageToGemini(userMessage) {
             });
 
             if (response.status === 429) {
-                modelCooldowns[model] = Date.now() + COOLDOWN_MS;
-                console.warn(`[Gemini] ${model} quota exceeded, cooldown ${COOLDOWN_MS / 1000}s`);
+                setModelCooldown(model);
                 lastError = new Error('QUOTA_EXCEEDED');
                 continue;
             }
@@ -495,6 +533,7 @@ export async function sendMessageToGemini(userMessage) {
             }
 
             console.log(`[Gemini] ✅ ${model} OK`);
+            onModelSuccess(model);
 
             conversationHistory.push({
                 role: 'model',
@@ -520,7 +559,7 @@ export async function sendMessageToGemini(userMessage) {
 
     // Throw a user-friendly error
     if (allQuotaExhausted || lastError?.message === 'QUOTA_EXCEEDED') {
-        throw new Error('⏳ API ถูกใช้งานบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่ (ประมาณ 1 นาที)');
+        throw new Error('QUOTA_ALL_EXHAUSTED');
     }
 
     console.error('[Gemini] ❌ All models failed:', lastError);
@@ -559,7 +598,7 @@ export async function getDashboardInsights() {
             });
 
             if (response.status === 429) {
-                modelCooldowns[model] = Date.now() + COOLDOWN_MS;
+                setModelCooldown(model);
                 continue;
             }
             if (!response.ok) continue;

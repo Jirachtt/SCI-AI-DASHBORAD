@@ -11,7 +11,7 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { studentStatsData, universityBudgetData, scienceFacultyBudgetData } from '../data/mockData';
-import { sendMessageToGemini, resetConversation } from '../services/geminiService';
+import { sendMessageToGemini, resetConversation, getWaitSeconds } from '../services/geminiService';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -666,6 +666,51 @@ export default function AIChat() {
         resetConversation();
     }, []);
 
+    // Robust auto-retry with live countdown for quota errors
+    const retryWithCountdown = async (buildMessage, retryId) => {
+        const MAX_RETRIES = 5;
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            let waitSec = Math.max(getWaitSeconds(), 30) + 10;
+            await new Promise(resolve => {
+                let remaining = waitSec;
+                const update = () => {
+                    setMessages(prev => prev.map(m =>
+                        m._retryId === retryId
+                            ? { ...m, text: `⏳ **API ถูกใช้งานบ่อยเกินไป** — รอ ${remaining} วินาที แล้วจะลองใหม่อัตโนมัติ (ครั้งที่ ${attempt}/${MAX_RETRIES})\n\n🔄 กรุณารอสักครู่ ระบบจะลองส่งคำถามให้ใหม่เองค่ะ` }
+                            : m
+                    ));
+                };
+                update();
+                const id = setInterval(() => {
+                    remaining--;
+                    if (remaining <= 0) { clearInterval(id); resolve(); }
+                    else update();
+                }, 1000);
+            });
+            try {
+                const aiText = await sendMessageToGemini(buildMessage());
+                const parsedAI = parseAIResponse(aiText);
+                setMessages(prev => prev.map(m =>
+                    m._retryId === retryId
+                        ? { role: 'bot', text: `✅ _ลองใหม่สำเร็จ!_\n\n${parsedAI.text}`, chart: parsedAI.chart }
+                        : m
+                ));
+                return;
+            } catch (retryErr) {
+                const isStillQuota = /รอ|quota|API ถูกใช้งาน|QUOTA/.test(retryErr.message || '');
+                if (!isStillQuota || attempt === MAX_RETRIES) {
+                    const finalMsg = isStillQuota
+                        ? `❌ **ไม่สามารถเชื่อมต่อ AI ได้หลังจากลอง ${MAX_RETRIES} ครั้ง**\n\nAPI ถูกจำกัดการใช้งาน กรุณารอ 3-5 นาทีแล้วลองใหม่ค่ะ 🙏\n\n💡 _ระหว่างรอ ลองใช้ฟีเจอร์พยากรณ์หรือค้นหานักศึกษา ซึ่งทำงานได้โดยไม่ต้องใช้ AI_`
+                        : `⚠️ ${retryErr.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`;
+                    setMessages(prev => prev.map(m =>
+                        m._retryId === retryId ? { role: 'bot', text: finalMsg, chart: null } : m
+                    ));
+                    return;
+                }
+            }
+        }
+    };
+
     const handleSend = async () => {
         if (!input.trim() || typing) return;
 
@@ -682,25 +727,25 @@ export default function AIChat() {
                 setTyping(false);
                 return;
             }
-            // Otherwise send to Gemini AI
             const aiText = await sendMessageToGemini(userMsg);
             const parsedAI = parseAIResponse(aiText);
-
-            setMessages(prev => [...prev, {
-                role: 'bot',
-                text: parsedAI.text,
-                chart: parsedAI.chart
-            }]);
+            setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
             console.error('[AIChat] Gemini API error:', error);
-            const isQuota = (error.message || '').includes('รอ') || (error.message || '').includes('quota');
-            setMessages(prev => [...prev, {
-                role: 'bot',
-                text: isQuota
-                    ? `⏳ **ระบบ AI กำลังพักการใช้งานชั่วคราว**\n\nกรุณารอประมาณ 1 นาทีแล้วลองถามใหม่อีกครั้งค่ะ 🙏`
-                    : `⚠️ ${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
-                chart: null
-            }]);
+            const isQuota = /รอ|quota|API ถูกใช้งาน|QUOTA/.test(error.message || '');
+            if (isQuota) {
+                const retryId = `retry_${Date.now()}`;
+                setMessages(prev => [...prev, {
+                    role: 'bot', text: '⏳ **API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
+                }]);
+                await retryWithCountdown(() => userMsg, retryId);
+            } else {
+                setMessages(prev => [...prev, {
+                    role: 'bot',
+                    text: `⚠️ ${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                    chart: null
+                }]);
+            }
         } finally {
             setTyping(false);
         }
@@ -734,14 +779,20 @@ export default function AIChat() {
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
             console.error('[AIChat] Gemini API error:', error);
-            const isQuota = (error.message || '').includes('รอ') || (error.message || '').includes('quota');
-            setMessages(prev => [...prev, {
-                role: 'bot',
-                text: isQuota
-                    ? `⏳ **ระบบ AI กำลังพักการใช้งานชั่วคราว**\n\nกรุณารอประมาณ 1 นาทีแล้วลองถามใหม่อีกครั้งค่ะ 🙏`
-                    : `⚠️ ${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
-                chart: null
-            }]);
+            const isQuota = /รอ|quota|API ถูกใช้งาน|QUOTA/.test(error.message || '');
+            if (isQuota) {
+                const retryId = `retry_${Date.now()}`;
+                setMessages(prev => [...prev, {
+                    role: 'bot', text: '⏳ **API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
+                }]);
+                await retryWithCountdown(() => query, retryId);
+            } else {
+                setMessages(prev => [...prev, {
+                    role: 'bot',
+                    text: `⚠️ ${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                    chart: null
+                }]);
+            }
         } finally {
             setTyping(false);
         }

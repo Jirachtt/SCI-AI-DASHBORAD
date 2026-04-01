@@ -9,7 +9,7 @@ import {
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
-import { sendMessageToGemini, resetConversation } from '../services/geminiService';
+import { sendMessageToGemini, resetConversation, getWaitSeconds } from '../services/geminiService';
 import {
     studentStatsData, universityBudgetData, scienceFacultyBudgetData,
     dashboardSummary,
@@ -971,6 +971,52 @@ export default function AIChatPage() {
         }
     };
 
+    // Robust auto-retry with live countdown for quota errors
+    const retryWithCountdown = async (buildMessage, retryId) => {
+        const MAX_RETRIES = 5;
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            let waitSec = Math.max(getWaitSeconds(), 30) + 10;
+            // Live countdown
+            await new Promise(resolve => {
+                let remaining = waitSec;
+                const update = () => {
+                    setMessages(prev => prev.map(m =>
+                        m._retryId === retryId
+                            ? { ...m, text: `⏳ **API ถูกใช้งานบ่อยเกินไป** — รอ ${remaining} วินาที แล้วจะลองใหม่อัตโนมัติ (ครั้งที่ ${attempt}/${MAX_RETRIES})\n\n🔄 กรุณารอสักครู่ ระบบจะลองส่งคำถามให้ใหม่เองค่ะ` }
+                            : m
+                    ));
+                };
+                update();
+                const id = setInterval(() => {
+                    remaining--;
+                    if (remaining <= 0) { clearInterval(id); resolve(); }
+                    else update();
+                }, 1000);
+            });
+            try {
+                const aiText = await sendMessageToGemini(buildMessage());
+                const parsedAI = parseAIResponse(aiText);
+                setMessages(prev => prev.map(m =>
+                    m._retryId === retryId
+                        ? { role: 'bot', text: `✅ _ลองใหม่สำเร็จ!_\n\n${parsedAI.text}`, chart: parsedAI.chart }
+                        : m
+                ));
+                return;
+            } catch (retryErr) {
+                const isStillQuota = /รอ|quota|API ถูกใช้งาน|QUOTA/.test(retryErr.message || '');
+                if (!isStillQuota || attempt === MAX_RETRIES) {
+                    const finalMsg = isStillQuota
+                        ? `❌ **ไม่สามารถเชื่อมต่อ AI ได้หลังจากลอง ${MAX_RETRIES} ครั้ง**\n\nAPI ถูกจำกัดการใช้งาน กรุณารอ 3-5 นาทีแล้วลองใหม่ค่ะ 🙏\n\n💡 _ระหว่างรอ ลองใช้ฟีเจอร์พยากรณ์หรือค้นหานักศึกษา ซึ่งทำงานได้โดยไม่ต้องใช้ AI_`
+                        : `⚠️ ${retryErr.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`;
+                    setMessages(prev => prev.map(m =>
+                        m._retryId === retryId ? { role: 'bot', text: finalMsg, chart: null } : m
+                    ));
+                    return;
+                }
+            }
+        }
+    };
+
     const handleSend = async () => {
         if (!input.trim() || typing) return;
         const userMsg = input.trim();
@@ -986,66 +1032,35 @@ export default function AIChatPage() {
                 setTyping(false);
                 return;
             }
-            // If user has uploaded file data, include it + dashboard summary in context for merging
-            let contextMsg = userMsg;
-            if (uploadedFileData) {
-                const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
-                const dashPreview = dashboardMergeSummary.rows.map(r => Object.values(r).join(', ')).join('\n');
-                contextMsg = `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nข้อมูล Dashboard สำหรับเปรียบเทียบ (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}\n\nสามารถรวมข้อมูลไฟล์กับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้ ถ้าผู้ใช้ขอ]\n\nคำถาม: ${userMsg}`;
-            }
-            const aiText = await sendMessageToGemini(contextMsg);
+            const buildMsg = () => {
+                if (uploadedFileData) {
+                    const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
+                    const dashPreview = dashboardMergeSummary.rows.map(r => Object.values(r).join(', ')).join('\n');
+                    return `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nข้อมูล Dashboard สำหรับเปรียบเทียบ (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}\n\nสามารถรวมข้อมูลไฟล์กับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้ ถ้าผู้ใช้ขอ]\n\nคำถาม: ${userMsg}`;
+                }
+                return userMsg;
+            };
+            const aiText = await sendMessageToGemini(buildMsg());
             const parsedAI = parseAIResponse(aiText);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
             console.error('[AIChatPage] Gemini API error:', error);
             const errMsg = error.message || 'ไม่ทราบสาเหตุ';
-            const isQuota = errMsg.includes('รอ') || errMsg.includes('quota') || errMsg.includes('API ถูกใช้งาน');
+            const isQuota = /รอ|quota|API ถูกใช้งาน|QUOTA/.test(errMsg);
             if (isQuota) {
-                // Show countdown message and auto-retry after 60s
-                const retryTime = Date.now() + 60000;
-                const countdownMsgIdx = { current: null };
-                setMessages(prev => {
-                    countdownMsgIdx.current = prev.length;
-                    return [...prev, {
-                        role: 'bot',
-                        text: `⏳ **API ถูกใช้งานบ่อยเกินไป — กำลังรอ 60 วินาที แล้วจะลองใหม่อัตโนมัติ...**\n\n🔄 กรุณารอสักครู่ ระบบจะลองส่งคำถามให้ใหม่เองค่ะ`,
-                        chart: null
-                    }];
-                });
-                // Auto-retry after cooldown
-                setTimeout(async () => {
-                    setTyping(true);
-                    try {
-                        let retryMsg = userMsg;
-                        if (uploadedFileData) {
-                            const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
-                            const dashPreview = dashboardMergeSummary.rows.map(r => Object.values(r).join(', ')).join('\n');
-                            retryMsg = `[บริบท: ข้อมูลไฟล์ คอลัมน์: ${uploadedFileData.headers.join(', ')} ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nDashboard (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}]\n\nคำถาม: ${userMsg}`;
-                        }
-                        const aiText = await sendMessageToGemini(retryMsg);
-                        const parsedAI = parseAIResponse(aiText);
-                        setMessages(prev => {
-                            const updated = [...prev];
-                            // Replace countdown message with success
-                            if (countdownMsgIdx.current !== null && updated[countdownMsgIdx.current]) {
-                                updated[countdownMsgIdx.current] = { role: 'bot', text: `✅ _ลองใหม่สำเร็จแล้ว!_\n\n${parsedAI.text}`, chart: parsedAI.chart };
-                            } else {
-                                updated.push({ role: 'bot', text: parsedAI.text, chart: parsedAI.chart });
-                            }
-                            return updated;
-                        });
-                    } catch (retryErr) {
-                        setMessages(prev => {
-                            const updated = [...prev];
-                            if (countdownMsgIdx.current !== null && updated[countdownMsgIdx.current]) {
-                                updated[countdownMsgIdx.current] = { role: 'bot', text: `⏳ **ยังไม่สามารถเชื่อมต่อ AI ได้**\n\nกรุณารอ 1-2 นาทีแล้วลองถามใหม่อีกครั้งค่ะ 🙏\n\n💡 _ระหว่างรอ ลองใช้ Quick Actions เช่น พยากรณ์ข้อมูล หรือค้นหานักศึกษา ซึ่งทำงานได้โดยไม่ต้องใช้ AI_`, chart: null };
-                            }
-                            return updated;
-                        });
-                    } finally {
-                        setTyping(false);
+                const retryId = `retry_${Date.now()}`;
+                setMessages(prev => [...prev, {
+                    role: 'bot', text: '⏳ **API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
+                }]);
+                const buildMsg = () => {
+                    if (uploadedFileData) {
+                        const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
+                        const dashPreview = dashboardMergeSummary.rows.map(r => Object.values(r).join(', ')).join('\n');
+                        return `[บริบท: ข้อมูลไฟล์ คอลัมน์: ${uploadedFileData.headers.join(', ')} ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nDashboard (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}]\n\nคำถาม: ${userMsg}`;
                     }
-                }, 60000);
+                    return userMsg;
+                };
+                await retryWithCountdown(buildMsg, retryId);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -1087,14 +1102,20 @@ export default function AIChatPage() {
         } catch (error) {
             console.error('[AIChatPage] Quick action error:', error);
             const errMsg = error.message || '';
-            const isQuota = errMsg.includes('รอ') || errMsg.includes('quota') || errMsg.includes('API ถูกใช้งาน');
-            setMessages(prev => [...prev, {
-                role: 'bot',
-                text: isQuota
-                    ? `⏳ **API ถูกใช้งานบ่อยเกินไป**\n\nกรุณารอ 1 นาทีแล้วลองใหม่ค่ะ 🙏\n\n💡 _ระหว่างรอ ลองใช้ฟีเจอร์พยากรณ์หรือค้นหานักศึกษาที่ทำงานได้โดยไม่ต้องเชื่อมต่อ AI_`
-                    : `⚠️ ${errMsg || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
-                chart: null
-            }]);
+            const isQuota = /รอ|quota|API ถูกใช้งาน|QUOTA/.test(errMsg);
+            if (isQuota) {
+                const retryId = `retry_${Date.now()}`;
+                setMessages(prev => [...prev, {
+                    role: 'bot', text: '⏳ **API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
+                }]);
+                await retryWithCountdown(() => query, retryId);
+            } else {
+                setMessages(prev => [...prev, {
+                    role: 'bot',
+                    text: `⚠️ ${errMsg || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                    chart: null
+                }]);
+            }
         } finally {
             setTyping(false);
         }
