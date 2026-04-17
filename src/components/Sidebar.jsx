@@ -1,81 +1,74 @@
-import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess, getRoleBadgeColor } from '../utils/accessControl';
 import {
     Home, CreditCard, DollarSign, Users, LogOut, Lock, FileText,
-    GraduationCap, CheckCircle, BarChart3, ChevronDown, ChevronRight,
-    Microscope, Target, UserCheck, BookOpen, Award, TrendingUp,
-    Building2, Globe2, MessageCircle
+    GraduationCap, CheckCircle, BarChart3,
+    Microscope, Target, UserCheck, BookOpen, Award,
+    MessageCircle, Shield, UserCog, Clock
 } from 'lucide-react';
 
 const menuGroups = [
     {
         id: 'home',
-        label: 'หน้าแรก',
-        icon: Home,
+        label: 'OVERVIEW',
         items: [
             { path: '/dashboard', label: 'ภาพรวม (Overview)', icon: Home, section: 'dashboard' },
         ]
     },
     {
         id: 'hr',
-        label: '1. บุคลากร (HR)',
-        icon: Users,
-        color: '#2E86AB',
+        label: 'บุคลากร · HR',
         items: [
-            { path: '/dashboard/hr', label: '1.1 ภาพรวมบุคลากร', icon: UserCheck, section: 'hr_overview' },
+            { path: '/dashboard/hr', label: 'ภาพรวมบุคลากร', icon: UserCheck, section: 'hr_overview' },
         ]
     },
     {
         id: 'student',
-        label: '2. นักศึกษา (Student)',
-        icon: GraduationCap,
-        color: '#7B68EE',
+        label: 'นักศึกษา · STUDENT',
         items: [
-            { path: '/dashboard/student-stats', label: '2.1 สถิตินิสิตปัจจุบัน', icon: BarChart3, section: 'student_stats' },
-            { path: '/dashboard/students', label: '2.2 รายชื่อนักศึกษา', icon: GraduationCap, section: 'student_list' },
-            { path: '/dashboard/graduation', label: '2.3 ตรวจสอบการจบ', icon: CheckCircle, section: 'graduation_check' },
-            { path: '/dashboard/student-life', label: '2.4 กิจกรรม/พฤติกรรม', icon: Users, section: 'student_life' },
-            { path: '/dashboard/graduation-stats', label: '2.5 สถิติสำเร็จการศึกษา', icon: Award, section: 'graduation_stats' },
+            { path: '/dashboard/student-stats', label: 'สถิตินิสิตปัจจุบัน', icon: BarChart3, section: 'student_stats' },
+            { path: '/dashboard/students', label: 'รายชื่อนักศึกษา', icon: GraduationCap, section: 'student_list' },
+            { path: '/dashboard/graduation', label: 'ตรวจสอบการจบ', icon: CheckCircle, section: 'graduation_check' },
+            { path: '/dashboard/student-life', label: 'กิจกรรม/พฤติกรรม', icon: Users, section: 'student_life' },
+            { path: '/dashboard/graduation-stats', label: 'สถิติสำเร็จการศึกษา', icon: Award, section: 'graduation_stats' },
         ]
     },
     {
         id: 'research',
-        label: '3. การวิจัย (Research)',
-        icon: Microscope,
-        color: '#006838',
+        label: 'การวิจัย · RESEARCH',
         items: [
-            { path: '/dashboard/research', label: '3.1 ภาพรวมงานวิจัย', icon: BookOpen, section: 'research_overview' },
+            { path: '/dashboard/research', label: 'ภาพรวมงานวิจัย', icon: BookOpen, section: 'research_overview' },
         ]
     },
     {
         id: 'finance',
-        label: '4. การเงิน (Finance)',
-        icon: DollarSign,
-        color: '#C5A028',
+        label: 'การเงิน · FINANCE',
         items: [
-            { path: '/dashboard/financial', label: '4.1 รายรับ-รายจ่าย', icon: DollarSign, section: 'financial' },
-            { path: '/dashboard/tuition', label: '4.2 ค่าธรรมเนียมการศึกษา', icon: CreditCard, section: 'tuition' },
-            { path: '/dashboard/budget', label: '4.3 พยากรณ์งบประมาณ', icon: FileText, section: 'budget_forecast' },
+            { path: '/dashboard/financial', label: 'รายรับ-รายจ่าย', icon: DollarSign, section: 'financial' },
+            { path: '/dashboard/tuition', label: 'ค่าธรรมเนียมการศึกษา', icon: CreditCard, section: 'tuition' },
+            { path: '/dashboard/budget', label: 'พยากรณ์งบประมาณ', icon: FileText, section: 'budget_forecast' },
         ]
     },
     {
         id: 'strategic',
-        label: '5. ยุทธศาสตร์ (OKR)',
-        icon: Target,
-        color: '#A23B72',
+        label: 'ยุทธศาสตร์ · OKR',
         items: [
-            { path: '/dashboard/strategic', label: '5.1 เป้าหมายยุทธศาสตร์', icon: Target, section: 'strategic_overview' },
+            { path: '/dashboard/strategic', label: 'เป้าหมายยุทธศาสตร์', icon: Target, section: 'strategic_overview' },
         ]
     },
     {
         id: 'ai_chat',
-        label: '6. AI แชทบอท (Chat)',
-        icon: MessageCircle,
-        color: '#00e676',
+        label: 'ผู้ช่วย AI · AI',
         items: [
-            { path: '/dashboard/ai-chat', label: '6.1 แชทกับ AI', icon: MessageCircle, section: 'ai_chat' },
+            { path: '/dashboard/ai-chat', label: 'แชทกับ AI', icon: MessageCircle, section: 'ai_chat' },
+        ]
+    },
+    {
+        id: 'admin',
+        label: 'จัดการระบบ · ADMIN',
+        items: [
+            { path: '/dashboard/admin', label: 'จัดการผู้ใช้/สิทธิ์', icon: UserCog, section: 'admin_panel' },
         ]
     }
 ];
@@ -83,11 +76,6 @@ const menuGroups = [
 export default function Sidebar({ isOpen, onClose }) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [expandedGroups, setExpandedGroups] = useState({ home: true, student: true, finance: true, hr: true, research: true, strategic: true, ai_chat: true });
-
-    const toggleGroup = (groupId) => {
-        setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
-    };
 
     const handleLogout = () => {
         logout();
@@ -99,92 +87,24 @@ export default function Sidebar({ isOpen, onClose }) {
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
             <div className="sidebar-header">
-                <div className="sidebar-logo" style={{
-                    background: 'linear-gradient(135deg, #006838, #00a651)',
-                    fontSize: '0.7rem',
-                    fontWeight: 800,
-                    letterSpacing: '0.5px',
-                }}>SCI</div>
+                <div className="sidebar-logo">SCI</div>
                 <div className="sidebar-title">
                     <h2>Science AI Dashboard</h2>
                     <p>คณะวิทยาศาสตร์ มจ.</p>
                 </div>
             </div>
 
-            <nav className="sidebar-nav" style={{ overflowY: 'auto', flex: 1 }}>
+            <nav className="sidebar-nav">
                 {menuGroups.map((group) => {
-                    const isExpanded = expandedGroups[group.id];
-                    const GroupIcon = group.icon;
                     const hasAnyAccess = group.items.some(item => canAccess(user?.role, item.section));
-
-                    // For home group, render directly without collapsible header
-                    if (group.id === 'home') {
-                        return group.items.map(item => {
-                            const Icon = item.icon;
-                            const hasAccess = canAccess(user?.role, item.section);
-                            return (
-                                <NavLink
-                                    key={item.path}
-                                    to={hasAccess ? item.path : '#'}
-                                    end={item.path === '/dashboard'}
-                                    className={({ isActive }) =>
-                                        `nav-item ${isActive && hasAccess ? 'active' : ''} ${!hasAccess ? 'locked' : ''}`
-                                    }
-                                    onClick={(e) => { if (!hasAccess) e.preventDefault(); onClose(); }}
-                                    style={{ opacity: hasAccess ? 1 : 0.4 }}
-                                >
-                                    <Icon size={18} />
-                                    <span>{item.label}</span>
-                                    {!hasAccess && <Lock className="lock-icon" size={14} />}
-                                </NavLink>
-                            );
-                        });
+                    if (!hasAnyAccess && group.id !== 'home') {
+                        // Still render label for visual structure; items will show lock icons
                     }
 
                     return (
-                        <div key={group.id} style={{ marginBottom: 4 }}>
-                            {/* Group Header */}
-                            <button
-                                onClick={() => toggleGroup(group.id)}
-                                style={{
-                                    width: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    padding: '10px 14px',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    cursor: 'pointer',
-                                    borderRadius: 10,
-                                    transition: 'all 0.2s',
-                                    opacity: hasAnyAccess ? 1 : 0.4,
-                                }}
-                                onMouseOver={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
-                                onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                                <GroupIcon size={16} color={group.color || 'var(--text-muted)'} />
-                                <span style={{
-                                    flex: 1,
-                                    textAlign: 'left',
-                                    fontSize: '0.82rem',
-                                    fontWeight: 700,
-                                    color: group.color || 'var(--text-secondary)',
-                                    letterSpacing: '0.01em',
-                                    fontFamily: "'Noto Sans Thai', 'Inter', sans-serif",
-                                }}>{group.label}</span>
-                                {isExpanded
-                                    ? <ChevronDown size={14} color="#666" />
-                                    : <ChevronRight size={14} color="#666" />
-                                }
-                            </button>
-
-                            {/* Group Items */}
-                            <div style={{
-                                maxHeight: isExpanded ? 300 : 0,
-                                overflow: 'hidden',
-                                transition: 'max-height 0.3s ease',
-                                paddingLeft: 8,
-                            }}>
+                        <div key={group.id} className="nav-section">
+                            <div className="nav-section-label">{group.label}</div>
+                            <div className="nav-section-items">
                                 {group.items.map(item => {
                                     const Icon = item.icon;
                                     const hasAccess = canAccess(user?.role, item.section);
@@ -197,16 +117,10 @@ export default function Sidebar({ isOpen, onClose }) {
                                                 `nav-item ${isActive && hasAccess ? 'active' : ''} ${!hasAccess ? 'locked' : ''}`
                                             }
                                             onClick={(e) => { if (!hasAccess) e.preventDefault(); onClose(); }}
-                                            style={{
-                                                opacity: hasAccess ? 1 : 0.4,
-                                                fontSize: '0.84rem',
-                                                padding: '9px 14px',
-                                                fontFamily: "'Noto Sans Thai', 'Inter', sans-serif",
-                                            }}
                                         >
-                                            <Icon size={16} />
+                                            <Icon size={18} />
                                             <span>{item.label}</span>
-                                            {!hasAccess && <Lock className="lock-icon" size={12} />}
+                                            {!hasAccess && <Lock className="lock-icon" size={14} />}
                                         </NavLink>
                                     );
                                 })}
@@ -230,10 +144,20 @@ export default function Sidebar({ isOpen, onClose }) {
                         <span className="sidebar-user-role" style={{ background: `${badgeColor}22`, color: badgeColor }}>
                             {user?.roleLabel}
                         </span>
+                        {user?.isPending && (
+                            <span className="sidebar-pending-badge" title="คำขอของคุณรอผู้ดูแลระบบอนุมัติ">
+                                <Clock size={10} /> รอการอนุมัติ
+                            </span>
+                        )}
                     </div>
                     <button className="logout-btn" onClick={handleLogout} title="ออกจากระบบ">
                         <LogOut size={18} />
                     </button>
+                </div>
+                <div className="sidebar-status-row">
+                    <span className="sidebar-status-dot" />
+                    <span className="sidebar-status-text">ออนไลน์</span>
+                    <span className="sidebar-version">v1.0.0</span>
                 </div>
             </div>
         </aside>
