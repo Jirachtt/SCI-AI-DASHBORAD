@@ -56,23 +56,22 @@ function getApiUrl(modelId) {
 // Request timeout (30 seconds)
 const REQUEST_TIMEOUT_MS = 30000;
 
-// Per-model cooldown tracking with exponential backoff
+// Per-model cooldown tracking — fixed 60s window matches Gemini free-tier RPM reset.
+// Do NOT extend an active cooldown: once a model is sleeping, let it sleep; re-extending
+// it on every retry creates compounding delays that lock the AI out for minutes.
 const modelCooldowns = {};
-const modelConsecutiveFails = {};
-const BASE_COOLDOWN_MS = 65000; // 65s base (just over 1 minute for Gemini free tier)
-const MAX_COOLDOWN_MS = 300000; // 5 minute cap
+const COOLDOWN_MS = 60000;
 
 function setModelCooldown(model) {
-    modelConsecutiveFails[model] = (modelConsecutiveFails[model] || 0) + 1;
-    const fails = modelConsecutiveFails[model];
-    const cooldownMs = Math.min(BASE_COOLDOWN_MS * Math.pow(1.5, fails - 1), MAX_COOLDOWN_MS);
-    modelCooldowns[model] = Date.now() + cooldownMs;
-    console.warn(`[Gemini] ${model} cooldown ${Math.round(cooldownMs / 1000)}s (consecutive fail #${fails})`);
+    const now = Date.now();
+    const existing = modelCooldowns[model];
+    if (existing && existing > now) return; // already cooling down — don't extend
+    modelCooldowns[model] = now + COOLDOWN_MS;
+    console.warn(`[Gemini] ${model} cooldown 60s`);
 }
 
 function onModelSuccess(model) {
     delete modelCooldowns[model];
-    delete modelConsecutiveFails[model];
 }
 
 function isModelOnCooldown(model) {
@@ -97,14 +96,14 @@ export function getWaitSeconds() {
     return Math.max(0, Math.ceil((earliest - Date.now()) / 1000));
 }
 
-// Rate limiting — minimum 4s between requests (prevents quota burn)
+// Rate limiting — 1s minimum between requests (per-model cooldown handles quota)
 let lastRequestTime = 0;
 
 async function waitForRateLimit() {
     const now = Date.now();
     const elapsed = now - lastRequestTime;
-    if (elapsed < 4000) {
-        await new Promise(r => setTimeout(r, 4000 - elapsed));
+    if (elapsed < 1000) {
+        await new Promise(r => setTimeout(r, 1000 - elapsed));
     }
     lastRequestTime = Date.now();
 }
@@ -471,18 +470,11 @@ async function _sendMessageImpl(userMessage) {
     };
 
     // Try each model in order, skip models on cooldown
-    let attemptCount = 0;
     for (const model of MODELS) {
         if (isModelOnCooldown(model)) {
             console.log(`[Gemini] Skipping ${model} (cooldown)`);
             continue;
         }
-
-        // Wait between model attempts to avoid burning shared quota
-        if (attemptCount > 0) {
-            await new Promise(r => setTimeout(r, 2000));
-        }
-        attemptCount++;
 
         try {
             // Build per-model request body — add google_search for capable models

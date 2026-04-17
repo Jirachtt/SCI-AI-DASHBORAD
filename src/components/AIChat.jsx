@@ -668,9 +668,9 @@ export default function AIChat() {
 
     // Robust auto-retry with live countdown for quota errors
     const retryWithCountdown = async (buildMessage, retryId) => {
-        const MAX_RETRIES = 5;
+        const MAX_RETRIES = 3;
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            let waitSec = Math.max(getWaitSeconds(), 30) + 10;
+            let waitSec = Math.max(getWaitSeconds(), 5) + 2;
             await new Promise(resolve => {
                 let remaining = waitSec;
                 const update = () => {
