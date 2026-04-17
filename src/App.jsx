@@ -6,22 +6,24 @@ import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import Layout from './components/Layout';
 import DashboardHome from './pages/DashboardHome';
+import { routeLoaders } from './utils/routePrefetch';
 import './index.css';
 
-// Lazy load heavy pages for better performance
-const TuitionPage = lazy(() => import('./pages/TuitionPage'));
-const StudentStatsPage = lazy(() => import('./pages/StudentStatsPage'));
-const BudgetForecastPage = lazy(() => import('./pages/BudgetForecastPage'));
-const FinancialPage = lazy(() => import('./pages/FinancialPage'));
-const StudentLifePage = lazy(() => import('./pages/StudentLifePage'));
-const StudentListPage = lazy(() => import('./pages/StudentListPage'));
-const GraduationCheckPage = lazy(() => import('./pages/GraduationCheckPage'));
-const HRDashboardPage = lazy(() => import('./pages/HRDashboardPage'));
-const ResearchDashboardPage = lazy(() => import('./pages/ResearchDashboardPage'));
-const StrategicDashboardPage = lazy(() => import('./pages/StrategicDashboardPage'));
-const AIChatPage = lazy(() => import('./pages/AIChatPage'));
-const GraduationStatsPage = lazy(() => import('./pages/GraduationStatsPage'));
-const AdminPanelPage = lazy(() => import('./pages/AdminPanelPage'));
+// Lazy load heavy pages for better performance — shared with prefetchRoute
+// so hovering a sidebar link warms the same chunk cache the router uses.
+const TuitionPage = lazy(routeLoaders['/dashboard/tuition']);
+const StudentStatsPage = lazy(routeLoaders['/dashboard/student-stats']);
+const BudgetForecastPage = lazy(routeLoaders['/dashboard/budget']);
+const FinancialPage = lazy(routeLoaders['/dashboard/financial']);
+const StudentLifePage = lazy(routeLoaders['/dashboard/student-life']);
+const StudentListPage = lazy(routeLoaders['/dashboard/students']);
+const GraduationCheckPage = lazy(routeLoaders['/dashboard/graduation']);
+const HRDashboardPage = lazy(routeLoaders['/dashboard/hr']);
+const ResearchDashboardPage = lazy(routeLoaders['/dashboard/research']);
+const StrategicDashboardPage = lazy(routeLoaders['/dashboard/strategic']);
+const AIChatPage = lazy(routeLoaders['/dashboard/ai-chat']);
+const GraduationStatsPage = lazy(routeLoaders['/dashboard/graduation-stats']);
+const AdminPanelPage = lazy(routeLoaders['/dashboard/admin']);
 
 const PageLoader = () => (
   <div className="page-loader">
@@ -42,16 +44,27 @@ const PageLoader = () => (
   </div>
 );
 
+const AuthLoader = () => (
+  <div className="auth-loader">
+    <div className="auth-loader-card">
+      <div className="auth-loader-logo">SCI</div>
+      <div className="auth-loader-spinner" />
+      <div className="auth-loader-text">กำลังโหลด...</div>
+      <div className="auth-loader-bar"><span /></div>
+    </div>
+  </div>
+);
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontSize: '1.2rem', color: '#9ca3af' }}>กำลังโหลด...</div>;
+  if (loading) return <AuthLoader />;
   if (!user) return <Navigate to="/" replace />;
   return children;
 }
 
 function PublicRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <div style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>กำลังโหลดข้อมูล... (หากรอนานเกินไป กรุณารีเฟรช)</div>;
+  if (loading) return <AuthLoader />;
   if (user) return <Navigate to="/dashboard" replace />;
   return children;
 }

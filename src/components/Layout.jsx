@@ -15,13 +15,17 @@ export default function Layout() {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const prevPath = useRef(location.pathname);
 
-    // Smooth page transition on route change
+    // Smooth page transition on route change — briefly unmount-style fade
+    // (set to 'enter' on navigation, next frame animate to 'enter-active').
     useEffect(() => {
         if (prevPath.current !== location.pathname) {
             setIsTransitioning(true);
             prevPath.current = location.pathname;
-            const timer = setTimeout(() => setIsTransitioning(false), 50);
-            return () => clearTimeout(timer);
+            // One frame to apply the initial state, then release to trigger the transition.
+            const raf = requestAnimationFrame(() => {
+                setIsTransitioning(false);
+            });
+            return () => cancelAnimationFrame(raf);
         }
     }, [location.pathname]);
 

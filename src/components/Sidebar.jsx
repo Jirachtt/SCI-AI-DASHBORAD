@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess, getRoleBadgeColor } from '../utils/accessControl';
+import { prefetchRoute } from '../utils/routePrefetch';
 import {
     Home, CreditCard, DollarSign, Users, LogOut, Lock, FileText,
     GraduationCap, CheckCircle, BarChart3,
@@ -108,6 +109,7 @@ export default function Sidebar({ isOpen, onClose }) {
                                 {group.items.map(item => {
                                     const Icon = item.icon;
                                     const hasAccess = canAccess(user?.role, item.section);
+                                    const warm = () => { if (hasAccess) prefetchRoute(item.path); };
                                     return (
                                         <NavLink
                                             key={item.path}
@@ -117,6 +119,9 @@ export default function Sidebar({ isOpen, onClose }) {
                                                 `nav-item ${isActive && hasAccess ? 'active' : ''} ${!hasAccess ? 'locked' : ''}`
                                             }
                                             onClick={(e) => { if (!hasAccess) e.preventDefault(); onClose(); }}
+                                            onMouseEnter={warm}
+                                            onFocus={warm}
+                                            onTouchStart={warm}
                                         >
                                             <Icon size={18} />
                                             <span>{item.label}</span>
