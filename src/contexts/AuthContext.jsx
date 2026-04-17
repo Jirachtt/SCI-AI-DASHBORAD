@@ -9,7 +9,8 @@ import {
     signOut,
     onAuthStateChanged
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { isPendingRole } from '../utils/accessControl';
 
 const AuthContext = createContext(null);
 
@@ -55,6 +56,7 @@ export function AuthProvider({ children }) {
                         role: 'student',
                         roleLabel: 'นักศึกษา (Student)',
                         avatar: u.photoURL || '👤',
+                        status: 'approved',
                         createdAt: serverTimestamp()
                     });
                 }
@@ -93,7 +95,14 @@ export function AuthProvider({ children }) {
                             ...prev,
                             ...userData,
                             role: role,
-                            roleLabel: userData.roleLabel || 'นักศึกษา (Student)'
+                            roleLabel: userData.roleLabel || 'นักศึกษา (Student)',
+                            isPending: isPendingRole(role),
+                            requestedRole: userData.requestedRole || null,
+                            status: userData.status || 'approved',
+                            employeeId: userData.employeeId || null,
+                            department: userData.department || null,
+                            approvedBy: userData.approvedBy || null,
+                            approvedAt: userData.approvedAt || null
                         }));
                     }
                 } catch (err) {
@@ -170,6 +179,7 @@ export function AuthProvider({ children }) {
                         role: 'student',
                         roleLabel: 'นักศึกษา (Student)',
                         avatar: user.photoURL || '👤',
+                        status: 'approved',
                         createdAt: serverTimestamp()
                     });
                 }
@@ -212,17 +222,29 @@ export function AuthProvider({ children }) {
             const result = await createUserWithEmailAndPassword(auth, email, password);
             const user = result.user;
 
-            // Create user document in Firestore with selected role
-            await setDoc(doc(db, "users", user.uid), {
+            // Build base doc and only attach optional pending fields when provided
+            const docPayload = {
                 name: userData.name,
                 email: email,
                 role: userData.role,
                 roleLabel: userData.roleLabel,
                 avatar: userData.avatar,
+                status: userData.status || 'approved',
                 createdAt: new Date().toISOString()
-            });
+            };
 
-            return { success: true };
+            if (userData.requestedRole) docPayload.requestedRole = userData.requestedRole;
+            if (userData.employeeId) docPayload.employeeId = userData.employeeId;
+            if (userData.department) docPayload.department = userData.department;
+            if (userData.reason) docPayload.reason = userData.reason;
+            if (userData.status === 'pending') {
+                docPayload.approvedBy = null;
+                docPayload.approvedAt = null;
+            }
+
+            await setDoc(doc(db, "users", user.uid), docPayload);
+
+            return { success: true, isPending: userData.status === 'pending' };
         } catch (error) {
             return { success: false, error: error.message };
         }
@@ -239,8 +261,26 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const updateUserDoc = async (uid, patch) => {
+        try {
+            await updateDoc(doc(db, 'users', uid), patch);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loginWithEmail, loginWithGoogle, loginWithAdminCode, signup, logout, loading }}>
+        <AuthContext.Provider value={{
+            user,
+            loginWithEmail,
+            loginWithGoogle,
+            loginWithAdminCode,
+            signup,
+            logout,
+            loading,
+            updateUserDoc
+        }}>
             {children}
         </AuthContext.Provider>
     );

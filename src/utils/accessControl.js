@@ -1,6 +1,12 @@
 // Access control utility
 // Defines which sections each role can access
 
+const GENERAL_SECTIONS = [
+    'dashboard', 'tuition', 'student_life',
+    'graduation_check', 'student_stats', 'ai_chat',
+    'graduation_stats', 'hr_overview'
+];
+
 const ACCESS_LEVELS = {
     dean: {
         label: 'ผจก.คณะ',
@@ -14,7 +20,8 @@ const ACCESS_LEVELS = {
             'budget_planning', 'student_list', 'graduation_check',
             'student_stats', 'budget_forecast',
             'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
-            'graduation_stats'
+            'graduation_stats',
+            'admin_panel'
         ]
     },
     chair: {
@@ -65,6 +72,21 @@ const ACCESS_LEVELS = {
             'graduation_check', 'student_stats',
             'graduation_stats', 'ai_chat', 'hr_overview'
         ]
+    },
+    // Pending approval roles — same access as general, amber badge
+    pending_staff: {
+        label: 'รอการอนุมัติ (Staff)',
+        level: 4,
+        dataRows: 100000,
+        color: '#F59E0B',
+        sections: GENERAL_SECTIONS
+    },
+    pending_chair: {
+        label: 'รอการอนุมัติ (Chair)',
+        level: 4,
+        dataRows: 100000,
+        color: '#F59E0B',
+        sections: GENERAL_SECTIONS
     }
 };
 
@@ -86,6 +108,10 @@ export function getRoleBadgeColor(role) {
 export function getDataRowLimit(role) {
     const info = ACCESS_LEVELS[role];
     return info ? info.dataRows : 100000;
+}
+
+export function isPendingRole(role) {
+    return role === 'pending_staff' || role === 'pending_chair';
 }
 
 export default ACCESS_LEVELS;

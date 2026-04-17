@@ -21,20 +21,21 @@ const ResearchDashboardPage = lazy(() => import('./pages/ResearchDashboardPage')
 const StrategicDashboardPage = lazy(() => import('./pages/StrategicDashboardPage'));
 const AIChatPage = lazy(() => import('./pages/AIChatPage'));
 const GraduationStatsPage = lazy(() => import('./pages/GraduationStatsPage'));
+const AdminPanelPage = lazy(() => import('./pages/AdminPanelPage'));
 
 const PageLoader = () => (
   <div className="page-loader">
     <div className="page-loader-inner">
       <div className="page-loader-bar" />
       <div className="page-loader-content">
-        <div className="page-loader-shimmer" style={{height: 32, width: '45%', borderRadius: 8}} />
-        <div className="page-loader-shimmer" style={{height: 16, width: '30%', borderRadius: 6, marginTop: 8}} />
-        <div style={{display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginTop: 28}}>
-          {[1,2,3,4].map(i => <div key={i} className="page-loader-shimmer" style={{height: 120, borderRadius: 16}} />)}
+        <div className="page-loader-shimmer" style={{ height: 32, width: '45%', borderRadius: 8 }} />
+        <div className="page-loader-shimmer" style={{ height: 16, width: '30%', borderRadius: 6, marginTop: 8 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginTop: 28 }}>
+          {[1, 2, 3, 4].map(i => <div key={i} className="page-loader-shimmer" style={{ height: 120, borderRadius: 16 }} />)}
         </div>
-        <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginTop: 20}}>
-          <div className="page-loader-shimmer" style={{height: 200, borderRadius: 16}} />
-          <div className="page-loader-shimmer" style={{height: 200, borderRadius: 16}} />
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginTop: 20 }}>
+          <div className="page-loader-shimmer" style={{ height: 200, borderRadius: 16 }} />
+          <div className="page-loader-shimmer" style={{ height: 200, borderRadius: 16 }} />
         </div>
       </div>
     </div>
@@ -74,6 +75,7 @@ function AppRoutes() {
         <Route path="research" element={<Suspense fallback={<PageLoader />}><ResearchDashboardPage /></Suspense>} />
         <Route path="strategic" element={<Suspense fallback={<PageLoader />}><StrategicDashboardPage /></Suspense>} />
         <Route path="ai-chat" element={<Suspense fallback={<PageLoader />}><AIChatPage /></Suspense>} />
+        <Route path="admin" element={<Suspense fallback={<PageLoader />}><AdminPanelPage /></Suspense>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
