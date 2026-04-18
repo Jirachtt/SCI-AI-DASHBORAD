@@ -235,15 +235,15 @@ export default function BudgetForecastPage() {
                 borderColor: 'rgba(0, 191, 255, 0.35)',
                 boxShadow: '0 8px 32px rgba(0, 191, 255, 0.12), 0 4px 20px rgba(255, 0, 128, 0.08)',
             }}>
-                <div style={{ padding: '22px 26px 0' }}>
-                    <h3 style={{ fontSize: '1.55rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                <div style={{ padding: '18px 22px 0' }}>
+                    <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
                         แนวโน้มงบประมาณและการใช้จ่าย (2560 – ปัจจุบัน)
                     </h3>
-                    <p style={{ color: 'var(--text-primary)', opacity: 0.85, fontSize: '1.15rem', margin: '8px 0 0', fontWeight: 500 }}>
+                    <p style={{ color: 'var(--text-primary)', opacity: 0.85, fontSize: '1rem', margin: '6px 0 0', fontWeight: 500 }}>
                         ย้อนหลัง + พยากรณ์ 2 ปี (* = พยากรณ์ด้วย Linear Regression)
                     </p>
                 </div>
-                <div style={{ height: 500, padding: '20px 22px 24px' }}>
+                <div style={{ height: 420, padding: '14px 18px 18px' }}>
                     <Bar data={combinedChartData} options={chartOptions} />
                 </div>
             </div>

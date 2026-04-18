@@ -543,6 +543,10 @@ body, .sidebar, .main-header, .stat-card, .chart-card,
   box-sizing: border-box;
 }
 
+html {
+  font-size: 18px;
+}
+
 body {
   font-family: 'Prompt', 'Inter', sans-serif;
   background: var(--bg-primary);
@@ -552,7 +556,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-size: 1rem;
+  line-height: 1.6;
 }
+
+@media (max-width: 900px) { html { font-size: 17px; } }
+@media (max-width: 480px) { html { font-size: 16px; } }
 
 #root {
   min-height: 100vh;
