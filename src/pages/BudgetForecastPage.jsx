@@ -85,30 +85,30 @@ export default function BudgetForecastPage() {
                 type: 'bar',
                 label: 'ใช้จ่ายจริง',
                 data: yearly.map(y => y.expense),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(236, 72, 153, 0.95)' : 'rgba(236, 72, 153, 0.6)'),
-                borderColor: '#EC4899',
+                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(255, 0, 128, 1)' : 'rgba(255, 0, 128, 0.65)'),
+                borderColor: '#FF0080',
                 borderWidth: 2, borderRadius: 6, order: 2,
             },
             {
                 type: 'bar',
                 label: 'ได้รับจัดสรร',
                 data: yearly.map(y => y.revenue),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(59, 130, 246, 0.95)' : 'rgba(59, 130, 246, 0.6)'),
-                borderColor: '#3B82F6',
+                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(0, 191, 255, 1)' : 'rgba(0, 191, 255, 0.65)'),
+                borderColor: '#00BFFF',
                 borderWidth: 2, borderRadius: 6, order: 2,
             },
             {
                 type: 'line',
                 label: 'คงเหลือ',
                 data: yearly.map(y => y.surplus),
-                borderColor: '#FBBF24',
-                backgroundColor: 'rgba(251, 191, 36, 0.18)',
-                borderWidth: 3,
+                borderColor: '#FFEA00',
+                backgroundColor: 'rgba(255, 234, 0, 0.22)',
+                borderWidth: 4,
                 fill: true, tension: 0.4,
-                pointBackgroundColor: yearly.map(y => y.type === 'actual' ? '#FBBF24' : '#FDE68A'),
+                pointBackgroundColor: yearly.map(y => y.type === 'actual' ? '#FFEA00' : '#FFF59D'),
                 pointBorderColor: '#ffffff',
                 pointBorderWidth: 2,
-                pointRadius: 7, pointHoverRadius: 9,
+                pointRadius: 8, pointHoverRadius: 10,
                 pointStyle: yearly.map(y => y.type === 'forecast' ? 'triangle' : 'circle'),
                 yAxisID: 'y1', order: 1,
             }
@@ -121,11 +121,11 @@ export default function BudgetForecastPage() {
         plugins: {
             legend: {
                 position: 'bottom',
-                labels: { color: 'var(--text-primary)', padding: 20, font: { size: 16, weight: '600' }, usePointStyle: true, pointStyleWidth: 14 }
+                labels: { color: 'var(--text-primary)', padding: 24, font: { size: 20, weight: 'bold' }, usePointStyle: true, pointStyleWidth: 16 }
             },
             tooltip: {
                 backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderWidth: 1,
-                padding: 16, titleFont: { size: 16, weight: 'bold' }, bodyFont: { size: 15 },
+                padding: 18, titleFont: { size: 18, weight: 'bold' }, bodyFont: { size: 17, weight: '600' },
                 callbacks: {
                     label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() || '-'} ล้านบาท`,
                     afterBody: (items) => {
@@ -136,18 +136,18 @@ export default function BudgetForecastPage() {
             }
         },
         scales: {
-            x: { ticks: { color: 'var(--text-primary)', font: { size: 16, weight: '600' } }, grid: { display: false } },
+            x: { ticks: { color: 'var(--text-primary)', font: { size: 19, weight: 'bold' } }, grid: { display: false } },
             y: {
                 position: 'left',
-                ticks: { color: 'var(--text-primary)', font: { size: 15, weight: '500' }, callback: (v) => (v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v.toLocaleString()) },
+                ticks: { color: 'var(--text-primary)', font: { size: 18, weight: 'bold' }, callback: (v) => (v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v.toLocaleString()) },
                 grid: { color: 'var(--border-color)' },
-                title: { display: true, text: 'ล้านบาท', color: 'var(--text-primary)', font: { size: 16, weight: 'bold' } }
+                title: { display: true, text: 'ล้านบาท', color: 'var(--text-primary)', font: { size: 18, weight: 'bold' } }
             },
             y1: {
                 position: 'right',
-                ticks: { color: '#FBBF24', font: { size: 15, weight: '600' }, callback: (v) => v.toLocaleString() },
+                ticks: { color: '#FFEA00', font: { size: 18, weight: 'bold' }, callback: (v) => v.toLocaleString() },
                 grid: { display: false },
-                title: { display: true, text: 'คงเหลือ', color: '#FBBF24', font: { size: 16, weight: 'bold' } }
+                title: { display: true, text: 'คงเหลือ', color: '#FFEA00', font: { size: 18, weight: 'bold' } }
             }
         }
     };
@@ -226,16 +226,24 @@ export default function BudgetForecastPage() {
             </div>
 
             {/* ── Main Chart ── */}
-            <div style={{ ...card, marginBottom: '24px', padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '20px 24px 0' }}>
-                    <h3 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>
+            <div style={{
+                ...card,
+                marginBottom: '24px',
+                padding: 0,
+                overflow: 'hidden',
+                background: 'linear-gradient(135deg, rgba(0, 191, 255, 0.10), rgba(255, 0, 128, 0.08) 55%, rgba(255, 234, 0, 0.10))',
+                borderColor: 'rgba(0, 191, 255, 0.35)',
+                boxShadow: '0 8px 32px rgba(0, 191, 255, 0.12), 0 4px 20px rgba(255, 0, 128, 0.08)',
+            }}>
+                <div style={{ padding: '22px 26px 0' }}>
+                    <h3 style={{ fontSize: '1.55rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
                         แนวโน้มงบประมาณและการใช้จ่าย (2560 – ปัจจุบัน)
                     </h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', margin: '6px 0 0' }}>
+                    <p style={{ color: 'var(--text-primary)', opacity: 0.85, fontSize: '1.15rem', margin: '8px 0 0', fontWeight: 500 }}>
                         ย้อนหลัง + พยากรณ์ 2 ปี (* = พยากรณ์ด้วย Linear Regression)
                     </p>
                 </div>
-                <div style={{ height: 460, padding: '16px 20px 20px' }}>
+                <div style={{ height: 500, padding: '20px 22px 24px' }}>
                     <Bar data={combinedChartData} options={chartOptions} />
                 </div>
             </div>
