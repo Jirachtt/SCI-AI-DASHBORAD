@@ -142,7 +142,7 @@ export default function StudentListPage() {
             {/* ── Header ── */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0 }}>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
                         <GraduationCap size={24} style={{ verticalAlign: '-4px', marginRight: 8 }} />
                         รายชื่อนักศึกษา
                     </h1>
