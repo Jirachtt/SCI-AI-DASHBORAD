@@ -292,9 +292,9 @@ export const studentStatsData = {
     // อ้างอิง: dashboard.mju.ac.th/person?dep=20300-20300-20300
     scienceFaculty: {
         name: 'คณะวิทยาศาสตร์',
-        total: 1592,
+        total: 1451,
         byLevel: [
-            { level: 'ปริญญาตรี', count: 1570, color: '#006838', icon: 'BSc' },
+            { level: 'ปริญญาตรี', count: 1429, color: '#006838', icon: 'BSc' },
             { level: 'ปริญญาโท', count: 17, color: '#2E86AB', icon: 'MSc' },
             { level: 'ปริญญาเอก', count: 5, color: '#A23B72', icon: 'PhD' },
             { level: 'ประกาศนียบัตร', count: 0, color: '#C5A028', icon: 'Cert' }
@@ -310,14 +310,14 @@ export const studentStatsData = {
         ],
         // สัดส่วนสัญชาติ
         byNationality: [
-            { nationality: 'ไทย', count: 1570 },
+            { nationality: 'ไทย', count: 1429 },
             { nationality: 'สัญชาติอื่นๆ', count: 22 }
         ],
         // ==================== เพศนักศึกษา (ใหม่) ====================
         // อ้างอิง: dashboard.mju.ac.th/student?dep=20300-20300-20300 (ตัวกรองเพศ)
         byGender: {
-            male: 623,
-            female: 969,
+            male: 567,
+            female: 884,
             malePercent: 39.1,
             femalePercent: 60.9,
         },
@@ -332,11 +332,11 @@ export const studentStatsData = {
         ],
         // ==================== อัตราส่วน นศ./อาจารย์ ====================
         studentFacultyRatio: {
-            students: 1592,
-            academicStaff: 113, // อาจารย์ + ผศ. + รศ. ทั้งหมด
-            ratio: 14.1, // 1592 / 113
+            students: 1451,
+            academicStaff: 104, // อาจารย์ + ผศ. + รศ. (สัดส่วนจากบุคลากรรวม 173)
+            ratio: 14.0, // 1451 / 104
             comparison: [
-                { name: 'คณะวิทยาศาสตร์ มจ.', ratio: 14.1, color: '#006838' },
+                { name: 'คณะวิทยาศาสตร์ มจ.', ratio: 14.0, color: '#006838' },
                 { name: 'เกณฑ์ สกอ. (วิทย์)', ratio: 20.0, color: '#C5A028' },
                 { name: 'เฉลี่ยมหาวิทยาลัย', ratio: 18.5, color: '#2E86AB' },
                 { name: 'จุฬาฯ (วิทย์)', ratio: 12.0, color: '#7B68EE' },
@@ -351,31 +351,32 @@ export const studentStatsData = {
         },
         // บุคลากร
         personnel: {
-            total: 113,
-            male: 42,
-            female: 71,
-            malePercent: 37.2,
-            femalePercent: 62.8,
+            total: 173,
+            male: 64,
+            female: 109,
+            malePercent: 37.0,
+            femalePercent: 63.0,
             byType: [
-                { type: 'พนักงานมหาวิทยาลัย', count: 102 },
-                { type: 'พนักงานราชการ', count: 11 }
+                { type: 'พนักงานมหาวิทยาลัย', count: 145 },
+                { type: 'พนักงานส่วนงาน', count: 14 },
+                { type: 'ข้าราชการ', count: 14 }
             ],
             byPosition: [
-                { position: 'อาจารย์', count: 70 },
-                { position: 'ผู้ช่วยศาสตราจารย์', count: 25 },
+                { position: 'อาจารย์', count: 59 },
+                { position: 'ผู้ช่วยศาสตราจารย์', count: 27 },
                 { position: 'รองศาสตราจารย์', count: 18 }
             ],
             byEducation: [
-                { level: 'ปริญญาเอก', count: 102 },
-                { level: 'ปริญญาโท', count: 11 }
+                { level: 'ปริญญาเอก', count: 156 },
+                { level: 'ปริญญาโท', count: 17 }
             ],
             // พยากรณ์บุคลากรเกษียณ (จาก MJU Dashboard)
             retirementForecast: [
-                { year: '2569', remaining: 113, retiring: 3 },
-                { year: '2570', remaining: 110, retiring: 1 },
-                { year: '2571', remaining: 109, retiring: 1 },
-                { year: '2572', remaining: 108, retiring: 1 },
-                { year: '2573', remaining: 107, retiring: 5 },
+                { year: '2569', remaining: 173, retiring: 3 },
+                { year: '2570', remaining: 170, retiring: 1 },
+                { year: '2571', remaining: 169, retiring: 1 },
+                { year: '2572', remaining: 168, retiring: 1 },
+                { year: '2573', remaining: 167, retiring: 5 },
             ]
         }
     }

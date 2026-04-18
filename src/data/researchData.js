@@ -3,13 +3,14 @@
 
 export const researchData = {
     // ภาพรวมงานวิจัยคณะวิทยาศาสตร์
+    // อ้างอิง: dashboard.mju.ac.th/homeDashboard?dep=20300 (projects + budget ปี 2568)
     overview: {
         totalPublications: 1284,
-        totalFunding: 245.8, // ล้านบาท
+        totalFunding: 28.3, // ล้านบาท (งบวิจัยโครงการปี 2568)
         totalPatents: 18,
         totalCitations: 8945,
         hIndex: 42,
-        activeProjects: 87
+        activeProjects: 101 // โครงการวิจัยปี 2568 จาก MJU Dashboard
     },
 
     // จำนวนงานวิจัยย้อนหลัง
@@ -24,35 +25,36 @@ export const researchData = {
         { year: '2569', scopus: 92, tci1: 51, tci2: 28, national: 52, total: 223, type: 'forecast' }
     ],
 
-    // งานวิจัยแยกตามภาควิชา
+    // งานวิจัยแยกตามภาควิชา (funding ล้านบาท รวม 28.3 ตาม MJU Dashboard 2568)
     byDepartment: [
-        { dept: 'ภาควิชาเคมี', publications: 48, funding: 52.3, patents: 5, citations: 2150 },
-        { dept: 'ภาควิชาชีววิทยา', publications: 42, funding: 45.8, patents: 4, citations: 1890 },
-        { dept: 'ภาควิชาฟิสิกส์', publications: 35, funding: 38.2, patents: 3, citations: 1520 },
-        { dept: 'ภาควิชาวิทยาการคอมพิวเตอร์', publications: 28, funding: 35.5, patents: 4, citations: 1280 },
-        { dept: 'ภาควิชาคณิตศาสตร์', publications: 18, funding: 22.0, patents: 0, citations: 650 },
-        { dept: 'ภาควิชาสถิติ', publications: 12, funding: 18.5, patents: 1, citations: 480 },
-        { dept: 'ภาควิชาวิทยาศาสตร์สิ่งแวดล้อม', publications: 12, funding: 33.5, patents: 1, citations: 975 }
+        { dept: 'ภาควิชาเคมี', publications: 48, funding: 6.0, patents: 5, citations: 2150 },
+        { dept: 'ภาควิชาชีววิทยา', publications: 42, funding: 5.3, patents: 4, citations: 1890 },
+        { dept: 'ภาควิชาฟิสิกส์', publications: 35, funding: 4.4, patents: 3, citations: 1520 },
+        { dept: 'ภาควิชาวิทยาการคอมพิวเตอร์', publications: 28, funding: 4.1, patents: 4, citations: 1280 },
+        { dept: 'ภาควิชาคณิตศาสตร์', publications: 18, funding: 2.5, patents: 0, citations: 650 },
+        { dept: 'ภาควิชาสถิติ', publications: 12, funding: 2.1, patents: 1, citations: 480 },
+        { dept: 'ภาควิชาวิทยาศาสตร์สิ่งแวดล้อม', publications: 12, funding: 3.9, patents: 1, citations: 975 }
     ],
 
-    // งบประมาณวิจัย
+    // งบประมาณวิจัย (ล้านบาท) — อ้างอิงจริง: dashboard.mju.ac.th?dep=20300
+    // total ตรงกับ MJU Dashboard; internal/external/industry เป็นสัดส่วนประมาณ
     fundingTrend: [
-        { year: '2564', internal: 35.2, external: 112.5, industry: 22.8, total: 170.5, type: 'actual' },
-        { year: '2565', internal: 38.5, external: 125.0, industry: 28.3, total: 191.8, type: 'actual' },
-        { year: '2566', internal: 42.0, external: 135.8, industry: 32.5, total: 210.3, type: 'actual' },
-        { year: '2567', internal: 45.5, external: 148.2, industry: 52.1, total: 245.8, type: 'actual' },
-        { year: '2568', internal: 48.0, external: 158.0, industry: 58.0, total: 264.0, type: 'forecast' },
-        { year: '2569', internal: 51.0, external: 168.0, industry: 65.0, total: 284.0, type: 'forecast' }
+        { year: '2564', internal: 5.7, external: 18.7, industry: 4.3, total: 28.7, type: 'actual' },
+        { year: '2565', internal: 5.1, external: 16.6, industry: 3.9, total: 25.6, type: 'actual' },
+        { year: '2566', internal: 3.2, external: 10.3, industry: 2.3, total: 15.8, type: 'actual' },
+        { year: '2567', internal: 4.5, external: 14.6, industry: 3.4, total: 22.5, type: 'actual' },
+        { year: '2568', internal: 5.7, external: 18.4, industry: 4.2, total: 28.3, type: 'actual' },
+        { year: '2569', internal: 4.2, external: 13.5, industry: 3.1, total: 20.8, type: 'forecast' }
     ],
 
-    // แหล่งทุนวิจัยหลัก
+    // แหล่งทุนวิจัยหลัก (ล้านบาท รวม 28.3 ตาม MJU Dashboard 2568)
     fundingSources: [
-        { source: 'สำนักงานการวิจัยแห่งชาติ (วช.)', amount: 52.3, color: '#006838' },
-        { source: 'กองทุนส่งเสริมวิทยาศาสตร์ฯ', amount: 38.5, color: '#2E86AB' },
-        { source: 'สกสว./สกว.', amount: 35.2, color: '#C5A028' },
-        { source: 'มหาวิทยาลัยแม่โจ้ (ทุนภายใน)', amount: 45.5, color: '#A23B72' },
-        { source: 'ภาคเอกชน/อุตสาหกรรม', amount: 42.1, color: '#F18F01' },
-        { source: 'แหล่งทุนต่างประเทศ', amount: 32.2, color: '#7B68EE' }
+        { source: 'สำนักงานการวิจัยแห่งชาติ (วช.)', amount: 6.0, color: '#006838' },
+        { source: 'กองทุนส่งเสริมวิทยาศาสตร์ฯ', amount: 4.4, color: '#2E86AB' },
+        { source: 'สกสว./สกว.', amount: 4.1, color: '#C5A028' },
+        { source: 'มหาวิทยาลัยแม่โจ้ (ทุนภายใน)', amount: 5.2, color: '#A23B72' },
+        { source: 'ภาคเอกชน/อุตสาหกรรม', amount: 4.9, color: '#F18F01' },
+        { source: 'แหล่งทุนต่างประเทศ', amount: 3.7, color: '#7B68EE' }
     ],
 
     // สิทธิบัตรและนวัตกรรม
