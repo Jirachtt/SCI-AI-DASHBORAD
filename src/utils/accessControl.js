@@ -1,11 +1,7 @@
 // Access control utility
 // Defines which sections each role can access
 
-const GENERAL_SECTIONS = [
-    'dashboard', 'tuition', 'student_life',
-    'graduation_check', 'student_stats', 'ai_chat',
-    'graduation_stats', 'hr_overview'
-];
+const GENERAL_SECTIONS = ['dashboard', 'tuition', 'ai_chat'];
 
 const ACCESS_LEVELS = {
     dean: {
@@ -31,8 +27,8 @@ const ACCESS_LEVELS = {
         color: '#2E86AB',
         sections: [
             'dashboard', 'tuition', 'tuition_detail',
-            'financial', 'financial_detail', 'student_life', 'student_life_detail', 'reports',
-            'budget_planning', 'student_list', 'graduation_check',
+            'financial', 'student_life', 'student_life_detail', 'reports',
+            'student_list', 'graduation_check',
             'student_stats', 'budget_forecast',
             'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
             'graduation_stats'
@@ -44,11 +40,9 @@ const ACCESS_LEVELS = {
         dataRows: 300000,
         color: '#006838',
         sections: [
-            'dashboard', 'tuition',
-            'financial', 'student_life', 'student_life_detail',
-            'graduation_check', 'student_stats', 'budget_forecast',
-            'hr_overview', 'research_overview', 'ai_chat',
-            'graduation_stats'
+            'dashboard', 'financial',
+            'student_stats', 'graduation_stats', 'budget_forecast',
+            'hr_overview', 'research_overview', 'ai_chat'
         ]
     },
     general: {
@@ -56,11 +50,7 @@ const ACCESS_LEVELS = {
         level: 4,
         dataRows: 100000,
         color: '#7B68EE',
-        sections: [
-            'dashboard', 'tuition', 'student_life',
-            'graduation_check', 'student_stats', 'ai_chat',
-            'graduation_stats', 'hr_overview'
-        ]
+        sections: GENERAL_SECTIONS
     },
     student: {
         label: 'นักศึกษา',
@@ -69,8 +59,7 @@ const ACCESS_LEVELS = {
         color: '#E91E63',
         sections: [
             'dashboard', 'tuition', 'student_life',
-            'graduation_check', 'student_stats',
-            'graduation_stats', 'ai_chat', 'hr_overview'
+            'graduation_check', 'student_stats'
         ]
     },
     // Pending approval roles — same access as general, amber badge
