@@ -544,7 +544,7 @@ body, .sidebar, .main-header, .stat-card, .chart-card,
 }
 
 html {
-  font-size: 18px;
+  font-size: 19px;
 }
 
 body {
@@ -560,7 +560,7 @@ body {
   line-height: 1.6;
 }
 
-@media (max-width: 900px) { html { font-size: 17px; } }
+@media (max-width: 900px) { html { font-size: 17.5px; } }
 @media (max-width: 480px) { html { font-size: 16px; } }
 
 #root {

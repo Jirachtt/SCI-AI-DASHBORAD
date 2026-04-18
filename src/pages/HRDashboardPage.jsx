@@ -192,7 +192,7 @@ export default function HRDashboardPage() {
                             </div>
                             <div>
                                 <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>{sc.value.toLocaleString()}</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{sc.label}</div>
+                                <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{sc.label}</div>
                             </div>
                         </div>
                     );
@@ -202,13 +202,13 @@ export default function HRDashboardPage() {
             {/* Row 1: Department bar + Position doughnut */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>บุคลากรแยกตามภาควิชา</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 16 }}>บุคลากรแยกตามภาควิชา</h3>
                     <div style={{ height: 280 }}>
                         <Bar data={deptChartData} options={{ ...chartOptions, plugins: { ...chartOptions.plugins, legend: { ...chartOptions.plugins.legend, position: 'bottom' } } }} />
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>ตำแหน่งทางวิชาการ</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 16 }}>ตำแหน่งทางวิชาการ</h3>
                     <div style={{ height: 280 }}>
                         <Doughnut data={positionData} options={doughnutOptions} />
                     </div>
@@ -218,19 +218,19 @@ export default function HRDashboardPage() {
             {/* Row 2: Trend + Gender + Age */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มจำนวนบุคลากร</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 16 }}>แนวโน้มจำนวนบุคลากร</h3>
                     <div style={{ height: 250 }}>
                         <Line data={trendData} options={chartOptions} />
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>สัดส่วนเพศ</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 16 }}>สัดส่วนเพศ</h3>
                     <div style={{ height: 250 }}>
                         <Pie data={genderData} options={doughnutOptions} />
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>กลุ่มอายุ</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 16 }}>กลุ่มอายุ</h3>
                     <div style={{ height: 250 }}>
                         <Pie data={ageData} options={doughnutOptions} />
                     </div>
@@ -240,13 +240,13 @@ export default function HRDashboardPage() {
             {/* Row 3: Promotion trend + Student-Faculty ratio */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>การได้ตำแหน่งทางวิชาการใหม่รายปี</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 16 }}>การได้ตำแหน่งทางวิชาการใหม่รายปี</h3>
                     <div style={{ height: 250 }}>
                         <Bar data={promotionData} options={chartOptions} />
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>อัตราส่วนนักศึกษา : อาจารย์</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 16 }}>อัตราส่วนนักศึกษา : อาจารย์</h3>
                     <div style={{ height: 250 }}>
                         <Line data={ratioData} options={{ ...chartOptions, plugins: { ...chartOptions.plugins, legend: { display: false } } }} />
                     </div>
@@ -256,36 +256,36 @@ export default function HRDashboardPage() {
             {/* Row 4: Education + Diversity table */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>วุฒิการศึกษาสายวิชาการ</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 16 }}>วุฒิการศึกษาสายวิชาการ</h3>
                     <div style={{ display: 'flex', gap: 16 }}>
                         {sci.byEducation.map((ed, i) => (
                             <div key={i} style={{ flex: 1, background: `${ed.color}15`, borderRadius: 12, padding: 16, textAlign: 'center' }}>
                                 <div style={{ fontSize: '2rem' }}>{ed.icon}</div>
                                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: ed.color }}>{ed.count}</div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{ed.level}</div>
+                                <div style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>{ed.level}</div>
                             </div>
                         ))}
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>ความหลากหลาย</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 16 }}>ความหลากหลาย</h3>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr>
-                                <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.8rem', borderBottom: '1px solid var(--border-color)' }}>หมวด</th>
-                                <th style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.8rem', borderBottom: '1px solid var(--border-color)' }}>จำนวน</th>
+                                <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: '1.1rem', borderBottom: '1px solid var(--border-color)' }}>หมวด</th>
+                                <th style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '1.1rem', borderBottom: '1px solid var(--border-color)' }}>จำนวน</th>
                             </tr>
                         </thead>
                         <tbody>
                             {sci.diversity.nationality.map((n, i) => (
                                 <tr key={i}>
-                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontSize: '0.85rem', borderBottom: '1px solid var(--border-color)' }}>{n.label}</td>
-                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, textAlign: 'right', borderBottom: '1px solid var(--border-color)' }}>{n.count} คน</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontSize: '1rem', borderBottom: '1px solid var(--border-color)' }}>{n.label}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 600, textAlign: 'right', borderBottom: '1px solid var(--border-color)' }}>{n.count} คน</td>
                                 </tr>
                             ))}
                             <tr>
-                                <td style={{ padding: '8px 12px', color: '#E91E63', fontSize: '0.85rem' }}>เกษียณภายใน 5 ปี</td>
-                                <td style={{ padding: '8px 12px', color: '#E91E63', fontSize: '0.85rem', fontWeight: 600, textAlign: 'right' }}>{sci.diversity.retirementIn5Years} คน</td>
+                                <td style={{ padding: '8px 12px', color: '#E91E63', fontSize: '1rem' }}>เกษียณภายใน 5 ปี</td>
+                                <td style={{ padding: '8px 12px', color: '#E91E63', fontSize: '1rem', fontWeight: 600, textAlign: 'right' }}>{sci.diversity.retirementIn5Years} คน</td>
                             </tr>
                         </tbody>
                     </table>

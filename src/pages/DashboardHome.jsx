@@ -157,7 +157,7 @@ export default function DashboardHome() {
                     }}>
                         สวัสดี, {user?.name}
                     </h2>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', letterSpacing: '0.01em' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', letterSpacing: '0.01em' }}>
                         ยินดีต้อนรับสู่ Science AI Dashboard — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้
                     </p>
                 </div>
@@ -173,7 +173,7 @@ export default function DashboardHome() {
                         border: showForecast ? 'none' : '1px solid var(--border-color)',
                         color: showForecast ? '#fff' : 'var(--text-secondary)',
                         padding: '10px 22px', borderRadius: 12, cursor: 'pointer',
-                        fontSize: '0.88rem', fontWeight: 600,
+                        fontSize: '1rem', fontWeight: 600,
                         boxShadow: showForecast ? '0 6px 20px rgba(0,104,56,0.35)' : 'none',
                         transition: 'all 0.3s ease',
                     }}
@@ -196,11 +196,11 @@ export default function DashboardHome() {
                             <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <LineChart size={18} color="#00a651" /> Predictive Analytics
                             </h3>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: 4 }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: 4 }}>
                                 Linear Regression จากข้อมูลย้อนหลัง 4 ปี — พยากรณ์ล่วงหน้า 2 ปี
                             </p>
                         </div>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '4px 12px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                        <span style={{ fontSize: '1rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '4px 12px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
                             Forecast FY2569
                         </span>
                     </div>
@@ -222,22 +222,22 @@ export default function DashboardHome() {
                                             <FcIcon size={18} color={fc.color} />
                                         </div>
                                         <span style={{
-                                            fontSize: '0.72rem', fontWeight: 600, padding: '3px 10px', borderRadius: 20,
+                                            fontSize: '1.02rem', fontWeight: 600, padding: '3px 10px', borderRadius: 20,
                                             background: `${fc.color}15`, color: fc.color,
                                             display: 'flex', alignItems: 'center', gap: 3,
                                         }}>
                                             <ArrowUpRight size={12} />{fc.trend}
                                         </span>
                                     </div>
-                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6 }}>{fc.label}</div>
+                                    <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginBottom: 6 }}>{fc.label}</div>
                                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
                                         <div>
-                                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Actual</span>
-                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{fc.actual}</div>
+                                            <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>Actual</span>
+                                            <div style={{ fontSize: '1.02rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{fc.actual}</div>
                                         </div>
                                         <div style={{ width: 1, height: 28, background: 'var(--border-color)' }} />
                                         <div>
-                                            <span style={{ fontSize: '0.68rem', color: fc.color }}>Forecast</span>
+                                            <span style={{ fontSize: '1rem', color: fc.color }}>Forecast</span>
                                             <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>{fc.forecast}</div>
                                         </div>
                                     </div>
@@ -250,7 +250,7 @@ export default function DashboardHome() {
                             display: 'inline-flex', alignItems: 'center', gap: 6,
                             padding: '8px 16px', borderRadius: 10,
                             background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
-                            fontSize: '0.8rem', fontWeight: 500, textDecoration: 'none',
+                            fontSize: '0.95rem', fontWeight: 500, textDecoration: 'none',
                             border: '1px solid var(--border-color)',
                             transition: 'background 0.2s',
                         }}
@@ -263,7 +263,7 @@ export default function DashboardHome() {
                             display: 'inline-flex', alignItems: 'center', gap: 6,
                             padding: '8px 16px', borderRadius: 10,
                             background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
-                            fontSize: '0.8rem', fontWeight: 500, textDecoration: 'none',
+                            fontSize: '0.95rem', fontWeight: 500, textDecoration: 'none',
                             border: '1px solid var(--border-color)',
                             transition: 'background 0.2s',
                         }}
@@ -285,7 +285,7 @@ export default function DashboardHome() {
                     borderRadius: 16, padding: '20px 24px', marginBottom: 28,
                 }}>
                     <h3 style={{
-                        color: 'var(--text-primary)', fontSize: '0.92rem', fontWeight: 600,
+                        color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600,
                         display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14
                     }}>
                         <Sparkles size={16} color="#00a651" /> Daily Insights
@@ -294,7 +294,7 @@ export default function DashboardHome() {
                         {insights.map((insight, idx) => (
                             <li key={idx} style={{
                                 display: 'flex', alignItems: 'flex-start', gap: 10,
-                                color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.5
+                                color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.5
                             }}>
                                 <span style={{ color: '#006838', marginTop: 2 }}>—</span>
                                 <span>{insight}</span>
@@ -317,7 +317,7 @@ export default function DashboardHome() {
                         border: '1px solid var(--border-color)',
                         color: isEditMode ? 'white' : 'var(--text-muted)',
                         padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
-                        fontSize: '0.82rem', transition: 'all 0.2s',
+                        fontSize: '0.98rem', transition: 'all 0.2s',
                         boxShadow: isEditMode ? '0 4px 12px rgba(0, 166, 81, 0.3)' : 'none'
                     }}
                 >
