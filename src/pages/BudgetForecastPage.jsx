@@ -85,8 +85,8 @@ export default function BudgetForecastPage() {
                 type: 'bar',
                 label: 'ใช้จ่ายจริง',
                 data: yearly.map(y => y.expense),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(233, 30, 99, 0.9)' : 'rgba(233, 30, 99, 0.5)'),
-                borderColor: '#E91E63',
+                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(162, 59, 114, 0.9)' : 'rgba(162, 59, 114, 0.5)'),
+                borderColor: '#A23B72',
                 borderWidth: 1.5, borderRadius: 6, order: 2,
             },
             {
