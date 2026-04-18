@@ -3712,15 +3712,18 @@ select option:checked {
 .signup-btn-back {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 10px 16px;
+  padding: 12px 18px;
   background: transparent;
   border: 1px solid var(--border-color);
   border-radius: 10px;
   color: var(--text-secondary);
   cursor: pointer;
   font-weight: 600;
+  font-family: inherit;
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 .signup-btn-back:hover:not(:disabled) {
   background: var(--bg-secondary);
@@ -3735,6 +3738,8 @@ select option:checked {
   flex: 1;
   max-width: 260px;
   margin-left: auto;
+  margin-top: 0;
+  box-sizing: border-box;
 }
 
 .signup-textarea {
@@ -4483,6 +4488,10 @@ select option:checked {
 /* =====================
    Mobile
    ===================== */
+@media (max-width: 900px) {
+  .signup-role-grid { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 720px) {
   .admin-panel { padding: 16px 14px 32px; }
   .admin-panel-header { flex-direction: column; align-items: stretch; }
@@ -4492,9 +4501,42 @@ select option:checked {
   .signup-role-grid { grid-template-columns: 1fr; }
   .signup-step-label { display: none; }
   .signup-step-line { width: 20px; }
-  .signup-step-actions { flex-direction: column-reverse; }
-  .signup-btn-back, .signup-btn-next { width: 100%; max-width: none; }
+  .signup-step-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .signup-btn-back,
+  .signup-btn-next {
+    width: 100%;
+    max-width: none;
+    flex: none;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 14px 16px;
+  }
   .admin-toast { left: 14px; right: 14px; bottom: 14px; max-width: none; }
   .admin-modal-actions { flex-direction: column-reverse; }
   .admin-tabs { flex-wrap: nowrap; }
+
+  /* Login admin-code modal: stack input + submit button on small screens */
+  .admin-code-form .input-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .admin-code-form .input-group input,
+  .admin-code-form .input-group button {
+    width: 100%;
+  }
+
+  /* Keep step indicator tidy on narrow phones */
+  .signup-steps { gap: 4px; }
+  .signup-step-wrap { gap: 4px; }
+}
+
+@media (max-width: 480px) {
+  .login-container { padding: 0 14px; }
+  .login-card { padding: 28px 20px; }
+  .signup-card-wide { padding: 28px 20px; }
+  .signup-step-line { width: 14px; margin: 0 4px; }
 }

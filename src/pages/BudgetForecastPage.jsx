@@ -85,27 +85,30 @@ export default function BudgetForecastPage() {
                 type: 'bar',
                 label: 'ใช้จ่ายจริง',
                 data: yearly.map(y => y.expense),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(233, 30, 99, 0.95)' : 'rgba(233, 30, 99, 0.55)'),
-                borderColor: yearly.map(y => y.type === 'actual' ? '#E91E63' : '#E91E63'),
+                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(236, 72, 153, 0.95)' : 'rgba(236, 72, 153, 0.6)'),
+                borderColor: '#EC4899',
                 borderWidth: 2, borderRadius: 6, order: 2,
             },
             {
                 type: 'bar',
                 label: 'ได้รับจัดสรร',
                 data: yearly.map(y => y.revenue),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(46, 134, 171, 0.95)' : 'rgba(46, 134, 171, 0.55)'),
-                borderColor: yearly.map(y => y.type === 'actual' ? '#2E86AB' : '#2E86AB'),
+                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(59, 130, 246, 0.95)' : 'rgba(59, 130, 246, 0.6)'),
+                borderColor: '#3B82F6',
                 borderWidth: 2, borderRadius: 6, order: 2,
             },
             {
                 type: 'line',
                 label: 'คงเหลือ',
                 data: yearly.map(y => y.surplus),
-                borderColor: '#C5A028',
-                backgroundColor: 'rgba(197, 160, 40, 0.1)',
+                borderColor: '#FBBF24',
+                backgroundColor: 'rgba(251, 191, 36, 0.18)',
+                borderWidth: 3,
                 fill: true, tension: 0.4,
-                pointBackgroundColor: yearly.map(y => y.type === 'actual' ? '#C5A028' : '#e0c85a'),
-                pointRadius: 6, pointHoverRadius: 8,
+                pointBackgroundColor: yearly.map(y => y.type === 'actual' ? '#FBBF24' : '#FDE68A'),
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 7, pointHoverRadius: 9,
                 pointStyle: yearly.map(y => y.type === 'forecast' ? 'triangle' : 'circle'),
                 yAxisID: 'y1', order: 1,
             }
@@ -118,11 +121,11 @@ export default function BudgetForecastPage() {
         plugins: {
             legend: {
                 position: 'bottom',
-                labels: { color: 'var(--text-muted)', padding: 16, font: { size: 14 }, usePointStyle: true }
+                labels: { color: 'var(--text-primary)', padding: 20, font: { size: 16, weight: '600' }, usePointStyle: true, pointStyleWidth: 14 }
             },
             tooltip: {
                 backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', borderWidth: 1,
-                padding: 14, titleFont: { size: 15 }, bodyFont: { size: 14 },
+                padding: 16, titleFont: { size: 16, weight: 'bold' }, bodyFont: { size: 15 },
                 callbacks: {
                     label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() || '-'} ล้านบาท`,
                     afterBody: (items) => {
@@ -133,18 +136,18 @@ export default function BudgetForecastPage() {
             }
         },
         scales: {
-            x: { ticks: { color: 'var(--text-muted)', font: { size: 14 } }, grid: { display: false } },
+            x: { ticks: { color: 'var(--text-primary)', font: { size: 16, weight: '600' } }, grid: { display: false } },
             y: {
                 position: 'left',
-                ticks: { color: 'var(--text-muted)', font: { size: 13 }, callback: (v) => (v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v.toLocaleString()) },
+                ticks: { color: 'var(--text-primary)', font: { size: 15, weight: '500' }, callback: (v) => (v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v.toLocaleString()) },
                 grid: { color: 'var(--border-color)' },
-                title: { display: true, text: 'ล้านบาท', color: 'var(--text-muted)', font: { size: 14 } }
+                title: { display: true, text: 'ล้านบาท', color: 'var(--text-primary)', font: { size: 16, weight: 'bold' } }
             },
             y1: {
                 position: 'right',
-                ticks: { color: '#C5A028', font: { size: 13 }, callback: (v) => v.toLocaleString() },
+                ticks: { color: '#FBBF24', font: { size: 15, weight: '600' }, callback: (v) => v.toLocaleString() },
                 grid: { display: false },
-                title: { display: true, text: 'คงเหลือ', color: '#C5A028', font: { size: 14 } }
+                title: { display: true, text: 'คงเหลือ', color: '#FBBF24', font: { size: 16, weight: 'bold' } }
             }
         }
     };
@@ -225,14 +228,14 @@ export default function BudgetForecastPage() {
             {/* ── Main Chart ── */}
             <div style={{ ...card, marginBottom: '24px', padding: 0, overflow: 'hidden' }}>
                 <div style={{ padding: '20px 24px 0' }}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
+                    <h3 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>
                         แนวโน้มงบประมาณและการใช้จ่าย (2560 – ปัจจุบัน)
                     </h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: '6px 0 0' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', margin: '6px 0 0' }}>
                         ย้อนหลัง + พยากรณ์ 2 ปี (* = พยากรณ์ด้วย Linear Regression)
                     </p>
                 </div>
-                <div style={{ height: 400, padding: '12px 20px 16px' }}>
+                <div style={{ height: 460, padding: '16px 20px 20px' }}>
                     <Bar data={combinedChartData} options={chartOptions} />
                 </div>
             </div>
