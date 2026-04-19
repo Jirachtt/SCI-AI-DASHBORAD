@@ -30,10 +30,10 @@ export default function ResearchDashboardPage() {
     const pubChartData = {
         labels: publicationTrend.map(p => p.year),
         datasets: [
-            { label: 'Scopus', data: publicationTrend.map(p => p.scopus), borderColor: '#006838', backgroundColor: '#00683822', fill: true, tension: 0.4 },
-            { label: 'TCI-1', data: publicationTrend.map(p => p.tci1), borderColor: '#2E86AB', backgroundColor: '#2E86AB22', fill: true, tension: 0.4 },
-            { label: 'TCI-2', data: publicationTrend.map(p => p.tci2), borderColor: '#C5A028', backgroundColor: '#C5A02822', fill: true, tension: 0.4 },
-            { label: 'ระดับชาติ', data: publicationTrend.map(p => p.national), borderColor: '#A23B72', backgroundColor: '#A23B7222', fill: true, tension: 0.4 },
+            { label: 'Scopus', data: publicationTrend.map(p => p.scopus), borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.12)', fill: true, tension: 0.4 },
+            { label: 'TCI-1', data: publicationTrend.map(p => p.tci1), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.12)', fill: true, tension: 0.4 },
+            { label: 'TCI-2', data: publicationTrend.map(p => p.tci2), borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.12)', fill: true, tension: 0.4 },
+            { label: 'ระดับชาติ', data: publicationTrend.map(p => p.national), borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.12)', fill: true, tension: 0.4 },
         ]
     };
 
@@ -41,8 +41,8 @@ export default function ResearchDashboardPage() {
     const deptChartData = {
         labels: byDepartment.map(d => d.dept.replace('ภาควิชา', '')),
         datasets: [
-            { label: 'ผลงานตีพิมพ์', data: byDepartment.map(d => d.publications), backgroundColor: '#006838cc', borderRadius: 6 },
-            { label: 'สิทธิบัตร', data: byDepartment.map(d => d.patents), backgroundColor: '#C5A028cc', borderRadius: 6 },
+            { label: 'ผลงานตีพิมพ์', data: byDepartment.map(d => d.publications), backgroundColor: 'rgba(34, 197, 94, 0.7)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 6 },
+            { label: 'สิทธิบัตร', data: byDepartment.map(d => d.patents), backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 6 },
         ]
     };
 
@@ -50,18 +50,19 @@ export default function ResearchDashboardPage() {
     const fundChartData = {
         labels: fundingTrend.map(f => f.year),
         datasets: [
-            { label: 'ทุนภายใน', data: fundingTrend.map(f => f.internal), backgroundColor: '#006838cc', borderRadius: 6 },
-            { label: 'ทุนภายนอก', data: fundingTrend.map(f => f.external), backgroundColor: '#2E86ABcc', borderRadius: 6 },
-            { label: 'ภาคเอกชน', data: fundingTrend.map(f => f.industry), backgroundColor: '#C5A028cc', borderRadius: 6 },
+            { label: 'ทุนภายใน', data: fundingTrend.map(f => f.internal), backgroundColor: 'rgba(34, 197, 94, 0.7)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 6 },
+            { label: 'ทุนภายนอก', data: fundingTrend.map(f => f.external), backgroundColor: 'rgba(59, 130, 246, 0.7)', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 6 },
+            { label: 'ภาคเอกชน', data: fundingTrend.map(f => f.industry), backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 6 },
         ]
     };
 
     // Funding sources pie
+    const gradPalette = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
     const sourceData = {
         labels: fundingSources.map(s => s.source),
         datasets: [{
             data: fundingSources.map(s => s.amount),
-            backgroundColor: fundingSources.map(s => s.color),
+            backgroundColor: fundingSources.map((_, i) => gradPalette[i % gradPalette.length]),
             borderWidth: 0,
         }]
     };
@@ -70,9 +71,9 @@ export default function ResearchDashboardPage() {
     const benchData = {
         labels: benchmark.map(b => b.university),
         datasets: [
-            { label: 'Scopus Papers', data: benchmark.map(b => b.scopus), backgroundColor: '#006838cc', borderRadius: 6 },
-            { label: 'h-Index', data: benchmark.map(b => b.hIndex), backgroundColor: '#2E86ABcc', borderRadius: 6 },
-            { label: 'สิทธิบัตร', data: benchmark.map(b => b.patents), backgroundColor: '#C5A028cc', borderRadius: 6 },
+            { label: 'Scopus Papers', data: benchmark.map(b => b.scopus), backgroundColor: 'rgba(34, 197, 94, 0.7)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 6 },
+            { label: 'h-Index', data: benchmark.map(b => b.hIndex), backgroundColor: 'rgba(59, 130, 246, 0.7)', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 6 },
+            { label: 'สิทธิบัตร', data: benchmark.map(b => b.patents), backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 6 },
         ]
     };
 

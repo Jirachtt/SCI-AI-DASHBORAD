@@ -407,8 +407,8 @@ function generateComboChart() {
                 {
                     label: 'จำนวนนิสิต (Index 0-100)',
                     data: normalizedStudents,
-                    backgroundColor: 'rgba(0, 166, 81, 0.65)',
-                    borderColor: '#00a651',
+                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                    borderColor: '#22c55e',
                     borderWidth: 1,
                     borderRadius: 6,
                     order: 2,
@@ -417,10 +417,10 @@ function generateComboChart() {
                     type: 'line',
                     label: 'อัตราสำเร็จการศึกษา (%)',
                     data: gradRates,
-                    borderColor: '#C5A028',
-                    backgroundColor: 'rgba(197, 160, 40, 0.15)',
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.12)',
                     borderWidth: 2.5,
-                    pointBackgroundColor: '#C5A028',
+                    pointBackgroundColor: '#f59e0b',
                     pointBorderColor: '#fff',
                     pointBorderWidth: 2,
                     pointRadius: 5,
@@ -579,10 +579,10 @@ function parseAIResponse(text) {
             // Apply neon theme to radar/polar charts
             if (isRadar && rawJson.data?.labels?.length >= 3) {
                 const neonColors = [
-                    { border: '#00e5ff', fill: 'rgba(0, 229, 255, 0.4)' },
-                    { border: '#e91e63', fill: 'rgba(233, 30, 99, 0.4)' },
-                    { border: '#00e676', fill: 'rgba(0, 230, 118, 0.4)' },
-                    { border: '#ffea00', fill: 'rgba(255, 234, 0, 0.4)' }
+                    { border: '#06b6d4', fill: 'rgba(6, 182, 212, 0.25)' },
+                    { border: '#ec4899', fill: 'rgba(236, 72, 153, 0.25)' },
+                    { border: '#22c55e', fill: 'rgba(34, 197, 94, 0.25)' },
+                    { border: '#f59e0b', fill: 'rgba(245, 158, 11, 0.25)' }
                 ];
                 rawJson.data.datasets.forEach((ds, i) => {
                     const colorSet = neonColors[i % neonColors.length];
@@ -598,7 +598,7 @@ function parseAIResponse(text) {
             }
 
             // Ensure datasets have decent default colors if missing
-            const defaultColors = ['#00a651', '#7B68EE', '#E91E63', '#C5A028', '#2E86AB', '#FF6B6B', '#006838', '#A23B72'];
+            const defaultColors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
             const isScatter = rawJson.chartType === 'scatter';
             const isBubble = rawJson.chartType === 'bubble';
             const isPointChart = isScatter || isBubble;
@@ -777,7 +777,7 @@ function parseCSVContent(text) {
 function generateChartFromFile(parsed, fileName) {
     if (!parsed || parsed.numericCols.length === 0) return null;
 
-    const colors = ['#00a651', '#2E86AB', '#E91E63', '#C5A028', '#7B68EE', '#FF6B6B', '#006838', '#A23B72'];
+    const colors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
     const labels = parsed.rows.map(r => r[parsed.labelCol]);
     const datasets = parsed.numericCols.slice(0, 6).map((col, i) => ({
         label: col,

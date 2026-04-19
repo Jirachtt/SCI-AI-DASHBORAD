@@ -85,27 +85,27 @@ export default function BudgetForecastPage() {
                 type: 'bar',
                 label: 'ใช้จ่ายจริง',
                 data: yearly.map(y => y.expense),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(0, 104, 56, 0.9)' : 'rgba(0, 104, 56, 0.5)'),
-                borderColor: '#006838',
+                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.35)'),
+                borderColor: '#22c55e',
                 borderWidth: 1.5, borderRadius: 6, order: 2,
             },
             {
                 type: 'bar',
                 label: 'ได้รับจัดสรร',
                 data: yearly.map(y => y.revenue),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(46, 134, 171, 0.9)' : 'rgba(46, 134, 171, 0.5)'),
-                borderColor: '#2E86AB',
+                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(59, 130, 246, 0.7)' : 'rgba(59, 130, 246, 0.35)'),
+                borderColor: '#3b82f6',
                 borderWidth: 1.5, borderRadius: 6, order: 2,
             },
             {
                 type: 'line',
                 label: 'คงเหลือ',
                 data: yearly.map(y => y.surplus),
-                borderColor: '#C5A028',
-                backgroundColor: 'rgba(197, 160, 40, 0.12)',
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.12)',
                 borderWidth: 2.5,
                 fill: true, tension: 0.4,
-                pointBackgroundColor: yearly.map(y => y.type === 'actual' ? '#C5A028' : '#e0c85a'),
+                pointBackgroundColor: yearly.map(y => y.type === 'actual' ? '#f59e0b' : '#fbbf24'),
                 pointBorderColor: 'var(--bg-card)',
                 pointBorderWidth: 2,
                 pointRadius: 6, pointHoverRadius: 8,
@@ -151,7 +151,7 @@ export default function BudgetForecastPage() {
                 position: 'right',
                 ticks: { color: 'var(--text-muted)', font: { size: 12 }, callback: (v) => v.toLocaleString() },
                 grid: { display: false },
-                title: { display: true, text: 'คงเหลือ', color: '#C5A028', font: { size: 12, weight: '600' } }
+                title: { display: true, text: 'คงเหลือ', color: '#f59e0b', font: { size: 12, weight: '600' } }
             }
         }
     };

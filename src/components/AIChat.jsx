@@ -399,10 +399,10 @@ function parseAIResponse(text) {
 
             if (isRadar && rawJson.data?.labels?.length >= 3) {
                 const neonColors = [
-                    { border: '#00e5ff', fill: 'rgba(0, 229, 255, 0.4)' },
-                    { border: '#e91e63', fill: 'rgba(233, 30, 99, 0.4)' },
-                    { border: '#00e676', fill: 'rgba(0, 230, 118, 0.4)' },
-                    { border: '#ffea00', fill: 'rgba(255, 234, 0, 0.4)' }
+                    { border: '#06b6d4', fill: 'rgba(6, 182, 212, 0.25)' },
+                    { border: '#ec4899', fill: 'rgba(236, 72, 153, 0.25)' },
+                    { border: '#22c55e', fill: 'rgba(34, 197, 94, 0.25)' },
+                    { border: '#f59e0b', fill: 'rgba(245, 158, 11, 0.25)' }
                 ];
                 rawJson.data.datasets.forEach((ds, i) => {
                     const colorSet = neonColors[i % neonColors.length];
@@ -418,7 +418,7 @@ function parseAIResponse(text) {
             }
 
             // Ensure default colors
-            const defaultColors = ['#00a651', '#7B68EE', '#E91E63', '#C5A028', '#2E86AB', '#FF6B6B', '#006838', '#A23B72'];
+            const defaultColors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
             if (rawJson.data?.datasets) {
                 rawJson.data.datasets.forEach((ds, i) => {
                     if (!ds.borderColor && !ds.backgroundColor) {

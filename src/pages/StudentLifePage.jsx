@@ -27,7 +27,7 @@ export default function StudentLifePage() {
         labels: ['สำเร็จแล้ว', 'คงเหลือ'],
         datasets: [{
             data: [activityHours.completed, activityHours.target - activityHours.completed],
-            backgroundColor: ['#00a651', 'var(--border-color)'],
+            backgroundColor: ['#22c55e', 'var(--border-color)'],
             borderWidth: 0,
             cutout: '75%',
         }]
@@ -49,11 +49,11 @@ export default function StudentLifePage() {
         datasets: [{
             label: 'คะแนนความประพฤติ',
             data: behaviorScore.history.map(h => h.score),
-            borderColor: '#C5A028',
-            backgroundColor: 'rgba(197, 160, 40, 0.1)',
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.12)',
             fill: true,
             tension: 0.4,
-            pointBackgroundColor: '#C5A028',
+            pointBackgroundColor: '#f59e0b',
             pointRadius: 6,
             pointHoverRadius: 8,
         }]

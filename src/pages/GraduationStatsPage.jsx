@@ -278,16 +278,17 @@ export default function GraduationStatsPage() {
             </div>
 
             {/* Summary Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 24 }}>
                 {summaryCards.map((card, i) => {
                     const Icon = card.icon;
                     return (
                         <div key={i} style={{
                             ...cardStyle,
-                            padding: '20px',
+                            padding: '18px 20px',
                             display: 'flex',
                             alignItems: 'center',
                             gap: 14,
+                            minHeight: 92,
                         }}>
                             <div style={{
                                 width: 44, height: 44, borderRadius: 12,
@@ -297,10 +298,10 @@ export default function GraduationStatsPage() {
                             }}>
                                 <Icon size={22} color={card.color} />
                             </div>
-                            <div>
-                                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: card.color }}>{card.value}</div>
-                                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>{card.label}</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{card.sub}</div>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: card.color, lineHeight: 1.15 }}>{card.value}</div>
+                                <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: 2 }}>{card.label}</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>{card.sub}</div>
                             </div>
                         </div>
                     );

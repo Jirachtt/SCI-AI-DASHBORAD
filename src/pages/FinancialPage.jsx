@@ -26,8 +26,8 @@ export default function FinancialPage() {
         datasets: [{
             label: 'ค่าเทอมที่จ่าย (บาท)',
             data: financialData.paymentHistory.map(p => p.amount),
-            backgroundColor: 'rgba(0, 104, 56, 0.7)',
-            borderColor: '#006838',
+            backgroundColor: 'rgba(34, 197, 94, 0.7)',
+            borderColor: '#22c55e',
             borderWidth: 1,
             borderRadius: 6,
         }]
@@ -53,7 +53,7 @@ export default function FinancialPage() {
         labels: financialData.facultyBudget.categories.map(c => c.name),
         datasets: [{
             data: financialData.facultyBudget.categories.map(c => c.amount),
-            backgroundColor: ['#006838', '#C5A028', '#2E86AB', '#A23B72', '#F18F01'],
+            backgroundColor: ['#22c55e', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899'],
             borderWidth: 0,
         }]
     } : null;

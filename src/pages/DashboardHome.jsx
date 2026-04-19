@@ -379,9 +379,9 @@ export default function DashboardHome() {
                                 </div>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     {sciData.details.map((d, j) => (
-                                        <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '8px', textAlign: 'center', border: '1px solid var(--border-color)' }}>
-                                            <div style={{ fontSize: 13, fontWeight: 700, color: d.color }}>{d.value}</div>
-                                            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>{d.label}</div>
+                                        <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '8px 6px', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                                            <div style={{ fontSize: 15, fontWeight: 700, color: d.color }}>{d.value}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, fontWeight: 500 }}>{d.label}</div>
                                         </div>
                                     ))}
                                 </div>

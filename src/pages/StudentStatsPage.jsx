@@ -55,11 +55,12 @@ export default function StudentStatsPage() {
     }, [appliedFaculty, appliedLevel, filteredFaculty]);
 
     // Doughnut chart for student levels
+    const levelPalette = ['#22c55e', '#3b82f6', '#8b5cf6', '#f59e0b'];
     const doughnutData = {
         labels: current.byLevel.map(l => l.level),
         datasets: [{
             data: current.byLevel.map(l => l.count),
-            backgroundColor: current.byLevel.map(l => l.color),
+            backgroundColor: current.byLevel.map((_, i) => levelPalette[i % levelPalette.length]),
             borderWidth: 0,
             cutout: '60%',
         }]
@@ -90,11 +91,11 @@ export default function StudentStatsPage() {
             {
                 label: 'จำนวนนิสิตรวม (ข้อมูลจริง)',
                 data: trend.map(t => t.type === 'actual' ? t.total : null),
-                borderColor: '#006838',
-                backgroundColor: 'rgba(0, 104, 56, 0.1)',
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.12)',
                 fill: true,
                 tension: 0.4,
-                pointBackgroundColor: '#006838',
+                pointBackgroundColor: '#22c55e',
                 pointRadius: 6,
                 pointHoverRadius: 8,
                 spanGaps: false,
@@ -106,12 +107,12 @@ export default function StudentStatsPage() {
                     if (i === actualData.length - 1) return t.total;
                     return null;
                 }),
-                borderColor: '#006838',
+                borderColor: '#22c55e',
                 borderDash: [8, 4],
-                backgroundColor: 'rgba(0, 104, 56, 0.05)',
+                backgroundColor: 'rgba(34, 197, 94, 0.05)',
                 fill: true,
                 tension: 0.4,
-                pointBackgroundColor: '#00a651',
+                pointBackgroundColor: '#22c55e',
                 pointRadius: 6,
                 pointHoverRadius: 8,
                 pointStyle: 'triangle',
@@ -119,7 +120,7 @@ export default function StudentStatsPage() {
             {
                 label: 'ป.ตรี',
                 data: trend.map(t => t.bachelor),
-                borderColor: '#2E86AB',
+                borderColor: '#3b82f6',
                 tension: 0.4,
                 pointRadius: 4,
                 borderWidth: 2,
@@ -127,7 +128,7 @@ export default function StudentStatsPage() {
             {
                 label: 'ป.โท + ป.เอก',
                 data: trend.map(t => t.master + t.doctoral),
-                borderColor: '#C5A028',
+                borderColor: '#f59e0b',
                 tension: 0.4,
                 pointRadius: 4,
                 borderWidth: 2,
@@ -164,7 +165,7 @@ export default function StudentStatsPage() {
         labels: scienceFaculty.byLevel.filter(l => l.count > 0).map(l => l.level),
         datasets: [{
             data: scienceFaculty.byLevel.filter(l => l.count > 0).map(l => l.count),
-            backgroundColor: scienceFaculty.byLevel.filter(l => l.count > 0).map(l => l.color),
+            backgroundColor: scienceFaculty.byLevel.filter(l => l.count > 0).map((_, i) => levelPalette[i % levelPalette.length]),
             borderWidth: 0,
             cutout: '60%',
         }]
@@ -192,9 +193,14 @@ export default function StudentStatsPage() {
             label: 'จำนวนนิสิต',
             data: scienceFaculty.byEnrollmentYear.map(e => e.count),
             backgroundColor: scienceFaculty.byEnrollmentYear.map((_, i) => {
-                const colors = ['#1a3a2a', '#1e5a3a', '#006838', '#00a651', '#2E86AB', '#7B68EE'];
-                return colors[i] || '#006838';
+                const colors = ['rgba(100, 116, 139, 0.7)', 'rgba(20, 184, 166, 0.7)', 'rgba(34, 197, 94, 0.7)', 'rgba(59, 130, 246, 0.7)', 'rgba(139, 92, 246, 0.7)', 'rgba(123, 104, 238, 0.7)'];
+                return colors[i] || 'rgba(34, 197, 94, 0.7)';
             }),
+            borderColor: scienceFaculty.byEnrollmentYear.map((_, i) => {
+                const colors = ['#64748b', '#14b8a6', '#22c55e', '#3b82f6', '#8b5cf6', '#7B68EE'];
+                return colors[i] || '#22c55e';
+            }),
+            borderWidth: 1,
             borderRadius: 8,
             borderSkipped: false,
         }]
@@ -463,7 +469,7 @@ export default function StudentStatsPage() {
                                     labels: ['ชาย', 'หญิง'],
                                     datasets: [{
                                         data: [scienceFaculty.byGender.male, scienceFaculty.byGender.female],
-                                        backgroundColor: ['#2E86AB', '#E91E63'],
+                                        backgroundColor: ['#3b82f6', '#ec4899'],
                                         borderWidth: 0,
                                         cutout: '65%',
                                     }]
@@ -513,8 +519,14 @@ export default function StudentStatsPage() {
                                     datasets: [{
                                         label: 'อัตราส่วน นศ./อาจารย์',
                                         data: scienceFaculty.studentFacultyRatio.comparison.map(c => c.ratio),
-                                        backgroundColor: scienceFaculty.studentFacultyRatio.comparison.map(c => c.color + 'cc'),
-                                        borderColor: scienceFaculty.studentFacultyRatio.comparison.map(c => c.color),
+                                        backgroundColor: scienceFaculty.studentFacultyRatio.comparison.map((_, i) => {
+                                            const p = ['#22c55e', '#f59e0b', '#3b82f6', '#7B68EE', '#ec4899', '#06b6d4'];
+                                            return p[i % p.length] + 'cc';
+                                        }),
+                                        borderColor: scienceFaculty.studentFacultyRatio.comparison.map((_, i) => {
+                                            const p = ['#22c55e', '#f59e0b', '#3b82f6', '#7B68EE', '#ec4899', '#06b6d4'];
+                                            return p[i % p.length];
+                                        }),
                                         borderWidth: 1, borderRadius: 4,
                                     }]
                                 }} options={{
@@ -550,14 +562,14 @@ export default function StudentStatsPage() {
                                     {
                                         label: 'ป.ตรี',
                                         data: scienceFaculty.newStudentIntake.map(s => s.bachelor),
-                                        backgroundColor: 'rgba(0, 104, 56, 0.8)',
-                                        borderColor: '#006838', borderWidth: 1, borderRadius: 4,
+                                        backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                                        borderColor: '#22c55e', borderWidth: 1, borderRadius: 4,
                                     },
                                     {
                                         label: 'ป.โท + ป.เอก',
                                         data: scienceFaculty.newStudentIntake.map(s => s.master + s.doctoral),
-                                        backgroundColor: 'rgba(46, 134, 171, 0.8)',
-                                        borderColor: '#2E86AB', borderWidth: 1, borderRadius: 4,
+                                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                                        borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4,
                                     }
                                 ]
                             }} options={{

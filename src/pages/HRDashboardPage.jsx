@@ -31,24 +31,29 @@ export default function HRDashboardPage() {
             {
                 label: 'สายวิชาการ',
                 data: sci.byDepartment.map(d => d.academic),
-                backgroundColor: '#006838cc',
+                backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                borderColor: '#22c55e',
+                borderWidth: 1,
                 borderRadius: 6,
             },
             {
                 label: 'สายสนับสนุน',
                 data: sci.byDepartment.map(d => d.support),
-                backgroundColor: '#2E86ABcc',
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderColor: '#3b82f6',
+                borderWidth: 1,
                 borderRadius: 6,
             }
         ]
     };
 
     // Academic positions doughnut
+    const gradPalette = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
     const positionData = {
         labels: sci.academicPositions.map(p => p.position),
         datasets: [{
             data: sci.academicPositions.map(p => p.count),
-            backgroundColor: sci.academicPositions.map(p => p.color),
+            backgroundColor: sci.academicPositions.map((_, i) => gradPalette[i % gradPalette.length]),
             borderWidth: 0,
         }]
     };
@@ -58,7 +63,7 @@ export default function HRDashboardPage() {
         labels: sci.byGender.map(g => g.gender),
         datasets: [{
             data: sci.byGender.map(g => g.count),
-            backgroundColor: sci.byGender.map(g => g.color),
+            backgroundColor: ['#3b82f6', '#ec4899'],
             borderWidth: 0,
         }]
     };
@@ -70,8 +75,8 @@ export default function HRDashboardPage() {
             {
                 label: 'สายวิชาการ',
                 data: sci.trend.map(t => t.academic),
-                borderColor: '#006838',
-                backgroundColor: '#00683822',
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.12)',
                 fill: true,
                 tension: 0.4,
                 borderDash: sci.trend.map(t => t.type === 'forecast' ? [5, 5] : []),
@@ -79,8 +84,8 @@ export default function HRDashboardPage() {
             {
                 label: 'สายสนับสนุน',
                 data: sci.trend.map(t => t.support),
-                borderColor: '#2E86AB',
-                backgroundColor: '#2E86AB22',
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.12)',
                 fill: true,
                 tension: 0.4,
             }
@@ -94,19 +99,25 @@ export default function HRDashboardPage() {
             {
                 label: 'รศ. ใหม่',
                 data: sci.promotionTrend.map(p => p.newAssocProf),
-                backgroundColor: '#C5A028cc',
+                backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                borderColor: '#8b5cf6',
+                borderWidth: 1,
                 borderRadius: 6,
             },
             {
                 label: 'ผศ. ใหม่',
                 data: sci.promotionTrend.map(p => p.newAssistProf),
-                backgroundColor: '#2E86ABcc',
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderColor: '#3b82f6',
+                borderWidth: 1,
                 borderRadius: 6,
             },
             {
                 label: 'ศ. ใหม่',
                 data: sci.promotionTrend.map(p => p.newProf),
-                backgroundColor: '#FFD700cc',
+                backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                borderColor: '#f59e0b',
+                borderWidth: 1,
                 borderRadius: 6,
             }
         ]
@@ -117,7 +128,7 @@ export default function HRDashboardPage() {
         labels: sci.diversity.ageGroup.map(a => a.group),
         datasets: [{
             data: sci.diversity.ageGroup.map(a => a.count),
-            backgroundColor: sci.diversity.ageGroup.map(a => a.color),
+            backgroundColor: sci.diversity.ageGroup.map((_, i) => gradPalette[i % gradPalette.length]),
             borderWidth: 0,
         }]
     };
@@ -128,12 +139,12 @@ export default function HRDashboardPage() {
         datasets: [{
             label: 'อัตราส่วนนักศึกษา:อาจารย์',
             data: sci.studentFacultyRatio.map(r => r.ratio),
-            borderColor: '#A23B72',
-            backgroundColor: '#A23B7222',
+            borderColor: '#8b5cf6',
+            backgroundColor: 'rgba(139, 92, 246, 0.12)',
             fill: true,
             tension: 0.4,
             pointRadius: 5,
-            pointBackgroundColor: sci.studentFacultyRatio.map(r => r.type === 'forecast' ? '#F18F01' : '#A23B72'),
+            pointBackgroundColor: sci.studentFacultyRatio.map(r => r.type === 'forecast' ? '#f97316' : '#8b5cf6'),
         }]
     };
 

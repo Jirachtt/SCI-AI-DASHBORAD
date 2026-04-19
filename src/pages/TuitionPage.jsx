@@ -26,11 +26,11 @@ export default function TuitionPage() {
             label: 'ค่าเทอม (บาท/เทอม)',
             data: tuitionData.byFaculty.map(f => f.fee),
             backgroundColor: tuitionData.byFaculty.map((_, i) => {
-                const colors = ['rgba(0, 104, 56, 0.7)', 'rgba(46, 134, 171, 0.7)', 'rgba(197, 160, 40, 0.7)', 'rgba(162, 59, 114, 0.7)', 'rgba(123, 104, 238, 0.7)', 'rgba(0, 166, 81, 0.7)', 'rgba(241, 143, 1, 0.7)', 'rgba(233, 30, 99, 0.7)'];
+                const colors = ['rgba(123, 104, 238, 0.7)', 'rgba(34, 197, 94, 0.7)', 'rgba(245, 158, 11, 0.7)', 'rgba(239, 68, 68, 0.7)', 'rgba(59, 130, 246, 0.7)', 'rgba(6, 182, 212, 0.7)', 'rgba(236, 72, 153, 0.7)', 'rgba(139, 92, 246, 0.7)', 'rgba(20, 184, 166, 0.7)', 'rgba(249, 115, 22, 0.7)', 'rgba(168, 85, 247, 0.7)', 'rgba(100, 116, 139, 0.7)'];
                 return colors[i % colors.length];
             }),
             borderColor: tuitionData.byFaculty.map((_, i) => {
-                const colors = ['#006838', '#2E86AB', '#C5A028', '#A23B72', '#7B68EE', '#00a651', '#F18F01', '#E91E63'];
+                const colors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
                 return colors[i % colors.length];
             }),
             borderWidth: 1,
@@ -68,7 +68,7 @@ export default function TuitionPage() {
         labels: tuitionData.breakdown.map(b => b.label),
         datasets: [{
             data: tuitionData.breakdown.map(b => b.value),
-            backgroundColor: tuitionData.breakdown.map(b => b.color),
+            backgroundColor: ['#22c55e', '#f59e0b', '#3b82f6', '#8b5cf6', '#f97316', '#ec4899'],
             borderWidth: 0,
         }]
     };

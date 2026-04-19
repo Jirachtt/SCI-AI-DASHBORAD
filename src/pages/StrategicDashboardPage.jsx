@@ -48,8 +48,8 @@ export default function StrategicDashboardPage() {
             {
                 label: 'เป้าหมาย',
                 data: performanceRadar.targetYear,
-                backgroundColor: 'rgba(255, 215, 0, 0.85)',
-                borderColor: '#FFD700',
+                backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                borderColor: '#f59e0b',
                 borderWidth: 1,
                 borderRadius: 4,
                 barPercentage: 0.7,
@@ -58,8 +58,8 @@ export default function StrategicDashboardPage() {
             {
                 label: 'ปีปัจจุบัน',
                 data: performanceRadar.currentYear,
-                backgroundColor: 'rgba(0, 230, 118, 0.85)',
-                borderColor: '#00e676',
+                backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                borderColor: '#22c55e',
                 borderWidth: 1,
                 borderRadius: 4,
                 barPercentage: 0.7,
@@ -130,11 +130,11 @@ export default function StrategicDashboardPage() {
         datasets: [
             {
                 label: 'คะแนนประสิทธิภาพรวม', data: efficiencyTrend.map(e => e.score),
-                borderColor: '#006838', backgroundColor: '#00683822', fill: true, tension: 0.4,
+                borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.12)', fill: true, tension: 0.4,
             },
             {
                 label: 'ประสิทธิภาพงบประมาณ (%)', data: efficiencyTrend.map(e => e.budgetEfficiency),
-                borderColor: '#2E86AB', backgroundColor: '#2E86AB22', fill: true, tension: 0.4,
+                borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.12)', fill: true, tension: 0.4,
             }
         ]
     };
