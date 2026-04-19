@@ -212,17 +212,17 @@ export default function BudgetForecastPage() {
             </div>
 
             {/* ── Stat Cards ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px', alignItems: 'stretch' }}>
                 {statCards.map((sc, i) => (
-                    <div key={i} style={{ ...card, padding: '18px 20px', position: 'relative', overflow: 'hidden' }}>
+                    <div key={i} style={{ ...card, padding: '18px 20px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 120, height: '100%' }}>
                         <div style={{ position: 'absolute', top: 0, right: 0, width: '80px', height: '80px', background: sc.gradient, borderRadius: '0 16px 0 60px', opacity: 0.6 }} />
-                        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 8, position: 'relative', lineHeight: 1.3 }}>
                             <sc.Icon size={16} /> {sc.label}
                         </div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: sc.valueColor, marginBottom: '4px', position: 'relative' }}>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: sc.valueColor, marginBottom: '4px', position: 'relative', lineHeight: 1.1 }}>
                             {sc.value}
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', position: 'relative' }}>{sc.sub}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', position: 'relative', lineHeight: 1.3, marginTop: 'auto' }}>{sc.sub}</div>
                     </div>
                 ))}
             </div>

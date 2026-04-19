@@ -278,7 +278,7 @@ export default function GraduationStatsPage() {
             </div>
 
             {/* Summary Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 24, alignItems: 'stretch' }}>
                 {summaryCards.map((card, i) => {
                     const Icon = card.icon;
                     return (
@@ -288,7 +288,8 @@ export default function GraduationStatsPage() {
                             display: 'flex',
                             alignItems: 'center',
                             gap: 14,
-                            minHeight: 92,
+                            minHeight: 118,
+                            height: '100%',
                         }}>
                             <div style={{
                                 width: 44, height: 44, borderRadius: 12,
@@ -299,9 +300,9 @@ export default function GraduationStatsPage() {
                                 <Icon size={22} color={card.color} />
                             </div>
                             <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: card.color, lineHeight: 1.15 }}>{card.value}</div>
-                                <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: 2 }}>{card.label}</div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>{card.sub}</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: card.color, lineHeight: 1.1 }}>{card.value}</div>
+                                <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: 4, lineHeight: 1.3 }}>{card.label}</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.3 }}>{card.sub}</div>
                             </div>
                         </div>
                     );

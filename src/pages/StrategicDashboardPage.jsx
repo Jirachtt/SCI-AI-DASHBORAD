@@ -166,23 +166,23 @@ export default function StrategicDashboardPage() {
             </div>
 
             {/* Strategic Goals Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 24, alignItems: 'stretch' }}>
                 {strategicGoals.map((goal) => {
                     const pct = Math.round((goal.current / goal.target) * 100);
                     return (
-                        <div key={goal.id} style={{ ...cardStyle, padding: '18px 20px' }}>
+                        <div key={goal.id} style={{ ...cardStyle, padding: '18px 20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                                 <span style={{ fontSize: '1.5rem' }}>{goal.icon}</span>
                                 <span style={{
-                                    fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                                    fontSize: '0.78rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
                                     background: pct >= 90 ? '#00683822' : pct >= 70 ? '#C5A02822' : '#E91E6322',
                                     color: pct >= 90 ? '#00a651' : pct >= 70 ? '#C5A028' : '#E91E63'
                                 }}>{pct}%</span>
                             </div>
-                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{goal.title}</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 10 }}>{goal.subtitle}</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, lineHeight: 1.3 }}>{goal.title}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.3, flex: 1 }}>{goal.subtitle}</div>
                             <ProgressBar value={goal.current} target={goal.target} color={goal.color} />
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 6 }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 6 }}>
                                 {goal.current} / {goal.target} {goal.unit}
                             </div>
                         </div>

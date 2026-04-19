@@ -204,7 +204,7 @@ export default function DashboardHome() {
                             Forecast FY2569
                         </span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, alignItems: 'stretch' }}>
                         {forecasts.map((fc, i) => {
                             const FcIcon = fc.FcIcon;
                             return (
@@ -213,6 +213,7 @@ export default function DashboardHome() {
                                     border: '1px solid var(--border-color)',
                                     borderRadius: 14, padding: '18px',
                                     transition: 'transform 0.2s, border-color 0.2s',
+                                    display: 'flex', flexDirection: 'column', height: '100%',
                                 }}
                                     onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = `${fc.color}44`; }}
                                     onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = ''; }}

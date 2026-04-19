@@ -117,17 +117,17 @@ export default function ResearchDashboardPage() {
             </div>
 
             {/* Scorecards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24, alignItems: 'stretch' }}>
                 {scorecards.map((sc, i) => {
                     const Icon = sc.icon;
                     return (
-                        <div key={i} style={{ ...cardStyle, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 10, background: `${sc.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div key={i} style={{ ...cardStyle, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12, minHeight: 92, height: '100%' }}>
+                            <div style={{ width: 40, height: 40, borderRadius: 10, background: `${sc.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 <Icon size={20} color={sc.color} />
                             </div>
-                            <div>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>{sc.value}</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{sc.label}</div>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>{sc.value}</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.3 }}>{sc.label}</div>
                             </div>
                         </div>
                     );
