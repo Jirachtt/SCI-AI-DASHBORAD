@@ -190,6 +190,7 @@ export default function DashboardHome() {
                     border: '1px solid var(--border-color)',
                     borderRadius: 16, padding: '24px', marginBottom: 28,
                     animation: 'slideDown 0.4s ease',
+                    boxShadow: 'var(--shadow-sm)',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                         <div>
@@ -212,7 +213,7 @@ export default function DashboardHome() {
                                     background: 'var(--bg-secondary)',
                                     border: '1px solid var(--border-color)',
                                     borderRadius: 14, padding: '18px',
-                                    transition: 'transform 0.2s, border-color 0.2s',
+                                    transition: 'transform 0.2s, border-color 0.2s, box-shadow 0.2s',
                                     display: 'flex', flexDirection: 'column', height: '100%',
                                 }}
                                     onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = `${fc.color}44`; }}
@@ -284,6 +285,7 @@ export default function DashboardHome() {
                     border: '1px solid var(--border-color)',
                     borderLeft: '3px solid #006838',
                     borderRadius: 16, padding: '20px 24px', marginBottom: 28,
+                    boxShadow: 'var(--shadow-sm)',
                 }}>
                     <h3 style={{
                         color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600,
@@ -366,7 +368,7 @@ export default function DashboardHome() {
                                 background: 'var(--bg-secondary)',
                                 border: '1px solid var(--border-color)', borderTop: '1px dashed var(--border-color)',
                                 borderBottomLeftRadius: 16, borderBottomRightRadius: 16,
-                                padding: '18px 20px', position: 'relative', display: 'flex', flexDirection: 'column', gap: 14
+                                padding: '18px 20px', position: 'relative', display: 'flex', flexDirection: 'column', gap: 14,
                             }}>
                                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: sciData.color }} />
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -380,7 +382,7 @@ export default function DashboardHome() {
                                 </div>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     {sciData.details.map((d, j) => (
-                                        <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '10px 8px', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                                        <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '10px 8px', textAlign: 'center', border: '1px solid var(--border-color)', boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)' }}>
                                             <div style={{ fontSize: 18, fontWeight: 700, color: d.color }}>{d.value}</div>
                                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{d.label}</div>
                                         </div>
