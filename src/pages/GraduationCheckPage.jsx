@@ -117,7 +117,7 @@ export default function GraduationCheckPage() {
                 <div style={cardStyle}>
                     <div style={headerStyle}>
                         <span style={labelStyle}><Clock size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />ชั่วโมงกิจกรรม</span>
-                        <span style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: '20px', background: 'rgba(233,30,99,0.15)', color: '#E91E63', fontWeight: 600 }}>
+                        <span style={{ fontSize: '0.82rem', padding: '3px 10px', borderRadius: '20px', background: 'rgba(233,30,99,0.15)', color: '#E91E63', fontWeight: 600 }}>
                             หลักสูตร 4 ปี
                         </span>
                     </div>

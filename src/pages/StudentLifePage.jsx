@@ -110,7 +110,7 @@ export default function StudentLifePage() {
                                 pointerEvents: 'none'
                             }}>
                                 <span style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--mju-green-light)' }}>{pct}%</span>
-                                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{activityHours.completed}/{activityHours.target} ชม.</span>
+                                <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{activityHours.completed}/{activityHours.target} ชม.</span>
                             </div>
                         </div>
                     </div>

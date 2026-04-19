@@ -17,8 +17,8 @@ const cardStyle = {
     border: '1px solid var(--border-color)',
     borderRadius: '16px', padding: '24px',
 };
-const thStyle = { padding: '10px 14px', textAlign: 'left', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)' };
-const tdStyle = { padding: '10px 14px', fontSize: '0.83rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)' };
+const thStyle = { padding: '10px 14px', textAlign: 'left', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)' };
+const tdStyle = { padding: '10px 14px', fontSize: '0.88rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)' };
 
 export default function ResearchDashboardPage() {
     const { user } = useAuth();
@@ -191,7 +191,7 @@ export default function ResearchDashboardPage() {
                                         <td style={tdStyle}>{p.type}</td>
                                         <td style={tdStyle}>
                                             <span style={{
-                                                padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
+                                                padding: '3px 10px', borderRadius: 20, fontSize: '0.82rem', fontWeight: 600,
                                                 background: p.status === 'ได้รับแล้ว' ? '#00683822' : '#C5A02822',
                                                 color: p.status === 'ได้รับแล้ว' ? '#00a651' : '#C5A028',
                                             }}>{p.status}</span>
@@ -207,8 +207,8 @@ export default function ResearchDashboardPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {communityImpact.map((ci, i) => (
                             <div key={i} style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '12px 16px' }}>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{ci.title}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', gap: 12 }}>
+                                <div style={{ fontSize: '0.92rem', color: 'var(--text-primary)', fontWeight: 600 }}>{ci.title}</div>
+                                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', gap: 12 }}>
                                     <span>{ci.area}</span>
                                     <span>{ci.beneficiaries.toLocaleString()} คน</span>
                                     <span>{ci.year}</span>

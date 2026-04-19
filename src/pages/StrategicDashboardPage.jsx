@@ -197,7 +197,7 @@ export default function StrategicDashboardPage() {
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>KPI แต่ละเป้าหมาย</h3>
                     <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
                         {strategicGoals.map((g, i) => (
-                            <span key={i} style={{ fontSize: '0.7rem' }}>{g.icon} {g.id}</span>
+                            <span key={i} style={{ fontSize: '0.82rem' }}>{g.icon} {g.id}</span>
                         ))}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 280, overflowY: 'auto' }}>
@@ -207,9 +207,9 @@ export default function StrategicDashboardPage() {
                                 return (
                                     <div key={`${goal.id}-${ki}`} style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 14px' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)' }}>{goal.icon} {kpi.name}</span>
+                                            <span style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 500 }}>{goal.icon} {kpi.name}</span>
                                             <span style={{
-                                                fontSize: '0.7rem', fontWeight: 700,
+                                                fontSize: '0.82rem', fontWeight: 700,
                                                 color: pct >= 90 ? '#00a651' : pct >= 70 ? '#C5A028' : '#E91E63'
                                             }}>{kpi.current}/{kpi.target} {kpi.unit}</span>
                                         </div>
@@ -235,7 +235,7 @@ export default function StrategicDashboardPage() {
                             onClick={() => setActiveOKR(i)}
                             style={{
                                 padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                                fontSize: '0.78rem', fontWeight: 600, transition: 'all 0.2s',
+                                fontSize: '0.88rem', fontWeight: 600, transition: 'all 0.2s',
                                 background: activeOKR === i ? `${obj.color}33` : 'var(--bg-secondary)',
                                 color: activeOKR === i ? obj.color : 'var(--text-muted)',
                                 outline: activeOKR === i ? `2px solid ${obj.color}66` : 'none',
@@ -261,7 +261,7 @@ export default function StrategicDashboardPage() {
                     </div>
                     <div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedObj.title}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ความคืบหน้ารวม: {selectedObj.progress}%</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>ความคืบหน้ารวม: {selectedObj.progress}%</div>
                     </div>
                 </div>
 
@@ -269,12 +269,12 @@ export default function StrategicDashboardPage() {
                     {selectedObj.keyResults.map((kr, i) => (
                         <div key={i} style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: '14px 18px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{kr.id}</span>
-                                <span style={{ fontSize: '0.7rem', color: selectedObj.color, fontWeight: 700 }}>{kr.progress}%</span>
+                                <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{kr.id}</span>
+                                <span style={{ fontSize: '0.85rem', color: selectedObj.color, fontWeight: 700 }}>{kr.progress}%</span>
                             </div>
-                            <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', marginBottom: 8 }}>{kr.title}</div>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: 8 }}>{kr.title}</div>
                             <ProgressBar value={kr.current} target={kr.target} color={selectedObj.color} />
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 6 }}>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 6 }}>
                                 ปัจจุบัน: {kr.current} / เป้าหมาย: {kr.target} {kr.unit}
                             </div>
                         </div>

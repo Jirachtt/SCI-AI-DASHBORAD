@@ -365,23 +365,23 @@ export default function DashboardHome() {
                                 background: 'var(--bg-secondary)',
                                 border: '1px solid var(--border-color)', borderTop: '1px dashed var(--border-color)',
                                 borderBottomLeftRadius: 16, borderBottomRightRadius: 16,
-                                padding: '16px 20px', position: 'relative', display: 'flex', flexDirection: 'column', gap: 12
+                                padding: '18px 20px', position: 'relative', display: 'flex', flexDirection: 'column', gap: 14
                             }}>
                                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: sciData.color }} />
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <div style={{ width: 24, height: 24, borderRadius: 6, background: `${sciData.color}20`, color: sciData.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Microscope size={12} />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div style={{ width: 28, height: 28, borderRadius: 7, background: `${sciData.color}20`, color: sciData.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Microscope size={14} />
                                         </div>
-                                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{sciData.label}</span>
+                                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{sciData.label}</span>
                                     </div>
-                                    <div style={{ fontSize: 16, fontWeight: 700, color: sciData.color }}>{sciData.value}</div>
+                                    <div style={{ fontSize: 20, fontWeight: 700, color: sciData.color }}>{sciData.value}</div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     {sciData.details.map((d, j) => (
-                                        <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '8px 6px', textAlign: 'center', border: '1px solid var(--border-color)' }}>
-                                            <div style={{ fontSize: 15, fontWeight: 700, color: d.color }}>{d.value}</div>
-                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, fontWeight: 500 }}>{d.label}</div>
+                                        <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '10px 8px', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                                            <div style={{ fontSize: 18, fontWeight: 700, color: d.color }}>{d.value}</div>
+                                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{d.label}</div>
                                         </div>
                                     ))}
                                 </div>

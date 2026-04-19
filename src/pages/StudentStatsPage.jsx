@@ -269,7 +269,7 @@ export default function StudentStatsPage() {
                     <RotateCcw size={12} /> Reset
                 </button>
                 {isFiltered && (
-                    <span style={{ fontSize: '0.78rem', color: '#00a651', fontWeight: 600, marginLeft: 'auto' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#00a651', fontWeight: 600, marginLeft: 'auto' }}>
                         กรอง: {appliedFaculty !== 'all' ? appliedFaculty : 'ทุกคณะ'} / {appliedLevel !== 'all' ? (appliedLevel === 'bachelor' ? 'ป.ตรี' : appliedLevel === 'master' ? 'ป.โท' : 'ป.เอก') : 'ทุกระดับ'} — ผลลัพธ์: {filteredTotal.toLocaleString()} คน
                     </span>
                 )}
@@ -383,7 +383,7 @@ export default function StudentStatsPage() {
                         alignItems: 'center'
                     }}>
                         <span style={{ fontSize: 22, fontWeight: 800, color: '#00a651' }}>{scienceFaculty.total.toLocaleString()}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>คน ({scienceSharePct}% ของทั้งมหาวิทยาลัย)</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>คน ({scienceSharePct}% ของทั้งมหาวิทยาลัย)</span>
                     </div>
                 </div>
 
@@ -410,11 +410,12 @@ export default function StudentStatsPage() {
                                 </div>
                                 {item.count > 0 && (
                                     <span style={{
-                                        fontSize: 11,
-                                        color: 'var(--text-muted)',
+                                        fontSize: 12,
+                                        color: 'var(--text-secondary)',
                                         background: 'var(--bg-secondary)',
-                                        padding: '2px 8px',
-                                        borderRadius: 8
+                                        padding: '3px 10px',
+                                        borderRadius: 8,
+                                        fontWeight: 600
                                     }}>
                                         {((item.count / scienceFaculty.total) * 100).toFixed(1)}%
                                     </span>
@@ -484,12 +485,12 @@ export default function StudentStatsPage() {
                             <div style={{ display: 'flex', gap: 24, justifyContent: 'center', width: '100%' }}>
                                 <div style={{ textAlign: 'center' }}>
                                     <div style={{ fontSize: 28, fontWeight: 800, color: '#2E86AB' }}>{scienceFaculty.byGender.male}</div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>ชาย ({scienceFaculty.byGender.malePercent}%)</div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>ชาย ({scienceFaculty.byGender.malePercent}%)</div>
                                 </div>
                                 <div style={{ width: 1, background: 'var(--border-color)' }} />
                                 <div style={{ textAlign: 'center' }}>
                                     <div style={{ fontSize: 28, fontWeight: 800, color: '#E91E63' }}>{scienceFaculty.byGender.female}</div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>หญิง ({scienceFaculty.byGender.femalePercent}%)</div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>หญิง ({scienceFaculty.byGender.femalePercent}%)</div>
                                 </div>
                             </div>
                         </div>
@@ -509,9 +510,9 @@ export default function StudentStatsPage() {
                                 background: 'linear-gradient(135deg, rgba(0,104,56,0.15), rgba(0,166,81,0.08))',
                                 border: '1px solid rgba(0,166,81,0.3)', borderRadius: 12
                             }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>อัตราส่วน นศ./อาจารย์</div>
+                                <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>อัตราส่วน นศ./อาจารย์</div>
                                 <div style={{ fontSize: 36, fontWeight: 800, color: '#00a651' }}>{scienceFaculty.studentFacultyRatio.ratio}:1</div>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>({scienceFaculty.studentFacultyRatio.students} นศ. / {scienceFaculty.studentFacultyRatio.academicStaff} อาจารย์)</div>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>({scienceFaculty.studentFacultyRatio.students} นศ. / {scienceFaculty.studentFacultyRatio.academicStaff} อาจารย์)</div>
                             </div>
                             <div className="chart-container" style={{ height: 180 }}>
                                 <Bar data={{
@@ -594,12 +595,12 @@ export default function StudentStatsPage() {
                                         border: '1px solid var(--border-color)'
                                     }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>ปี {intake.year}</span>
-                                            <span style={{ fontSize: 16, fontWeight: 800, color: '#00a651' }}>{intake.total}</span>
+                                            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>ปี {intake.year}</span>
+                                            <span style={{ fontSize: 17, fontWeight: 800, color: '#00a651' }}>{intake.total}</span>
                                         </div>
                                         {growth && (
                                             <span style={{
-                                                fontSize: 10, fontWeight: 600,
+                                                fontSize: 12, fontWeight: 600,
                                                 color: parseFloat(growth) >= 0 ? '#00a651' : '#E91E63'
                                             }}>
                                                 {parseFloat(growth) >= 0 ? '↑' : '↓'} {growth}%
@@ -624,7 +625,7 @@ export default function StudentStatsPage() {
                         </div>
                         <div style={{ padding: '0 20px 20px' }}>
                             <div style={{ marginBottom: 16 }}>
-                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600 }}>ตำแหน่งทางวิชาการ</div>
+                                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>ตำแหน่งทางวิชาการ</div>
                                 {scienceFaculty.personnel.byPosition.map((pos, i) => {
                                     const pct = ((pos.count / scienceFaculty.personnel.total) * 100).toFixed(0);
                                     const colors = ['#006838', '#2E86AB', '#C5A028'];
@@ -649,7 +650,7 @@ export default function StudentStatsPage() {
                             </div>
 
                             <div style={{ marginBottom: 16 }}>
-                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600 }}>ประเภทการจ้าง</div>
+                                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>ประเภทการจ้าง</div>
                                 <div style={{ display: 'flex', gap: 12 }}>
                                     {scienceFaculty.personnel.byType.map((t, i) => (
                                         <div key={i} style={{
@@ -660,15 +661,15 @@ export default function StudentStatsPage() {
                                             textAlign: 'center',
                                             border: '1px solid var(--border-color)'
                                         }}>
-                                            <div style={{ fontSize: 20, fontWeight: 800, color: i === 0 ? '#00a651' : '#C5A028' }}>{t.count}</div>
-                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t.type}</div>
+                                            <div style={{ fontSize: 22, fontWeight: 800, color: i === 0 ? '#00a651' : '#C5A028' }}>{t.count}</div>
+                                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{t.type}</div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
                             <div>
-                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600 }}>ระดับการศึกษา</div>
+                                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>ระดับการศึกษา</div>
                                 <div style={{ display: 'flex', gap: 12 }}>
                                     {scienceFaculty.personnel.byEducation.map((e, i) => (
                                         <div key={i} style={{
@@ -679,8 +680,8 @@ export default function StudentStatsPage() {
                                             textAlign: 'center',
                                             border: '1px solid var(--border-color)'
                                         }}>
-                                            <div style={{ fontSize: 20, fontWeight: 800, color: i === 0 ? '#7B68EE' : '#2E86AB' }}>{e.count}</div>
-                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{e.level}</div>
+                                            <div style={{ fontSize: 22, fontWeight: 800, color: i === 0 ? '#7B68EE' : '#2E86AB' }}>{e.count}</div>
+                                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{e.level}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -714,8 +715,8 @@ export default function StudentStatsPage() {
                                                     {i === 0 ? 'TH' : 'INT'}
                                                 </div>
                                                 <div>
-                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 14 }}>{n.nationality}</div>
-                                                    <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{pct}%</div>
+                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 15 }}>{n.nationality}</div>
+                                                    <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500 }}>{pct}%</div>
                                                 </div>
                                             </div>
                                             <div style={{ fontSize: 24, fontWeight: 800, color }}>
