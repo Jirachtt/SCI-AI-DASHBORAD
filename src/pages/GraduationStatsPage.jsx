@@ -267,14 +267,14 @@ export default function GraduationStatsPage() {
     return (
         <div style={{ padding: '24px 28px', maxWidth: 1400, margin: '0 auto' }}>
             {/* Header */}
-            <div style={{ marginBottom: 28 }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <GraduationCap size={28} color="#7B68EE" />
-                    สถิติการสำเร็จการศึกษา
-                </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 6 }}>
-                    คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้ | ปีการศึกษา {stats.academicYear}
-                </p>
+            <div className="section-header">
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #7B68EE, #5B4FCF)' }}>
+                    <GraduationCap size={22} color="#fff" />
+                </div>
+                <div>
+                    <h1>สถิติการสำเร็จการศึกษา</h1>
+                    <p>คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้ | ปีการศึกษา {stats.academicYear}</p>
+                </div>
             </div>
 
             {/* Summary Cards */}

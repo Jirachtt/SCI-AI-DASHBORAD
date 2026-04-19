@@ -155,9 +155,14 @@ export default function StrategicDashboardPage() {
 
     return (
         <div style={{ padding: '0 4px' }}>
-            <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}><Target size={24} /> ยุทธศาสตร์และการดำเนินงาน</h1>
-                <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Strategic & OKR Monitoring — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+            <div className="section-header">
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #A23B72, #7B2D8E)' }}>
+                    <Target size={22} color="#fff" />
+                </div>
+                <div>
+                    <h1>ยุทธศาสตร์และการดำเนินงาน</h1>
+                    <p>Strategic & OKR Monitoring — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                </div>
             </div>
 
             {/* Strategic Goals Cards */}

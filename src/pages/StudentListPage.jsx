@@ -140,17 +140,15 @@ export default function StudentListPage() {
     return (
         <div className="dashboard-content">
             {/* ── Header ── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-                <div>
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                        <GraduationCap size={24} style={{ verticalAlign: '-4px', marginRight: 8 }} />
-                        รายชื่อนักศึกษา
-                    </h1>
-                    <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: '0.9rem' }}>
-                        ข้อมูลจาก MJU Dashboard (ปี 65 – 69) • ทั้งหมด <strong style={{ color: 'var(--text-primary)' }}>{students.length}</strong> คน
-                    </p>
+            <div className="section-header">
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #7B68EE, #5B4FCF)' }}>
+                    <GraduationCap size={22} color="#fff" />
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div>
+                    <h1>รายชื่อนักศึกษา</h1>
+                    <p>ข้อมูลจาก MJU Dashboard (ปี 65 – 69) • ทั้งหมด <strong style={{ color: 'var(--text-primary)' }}>{students.length}</strong> คน</p>
+                </div>
+                <div className="section-header-actions">
                     <button onClick={exportCSV} style={{
                         display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',
                         borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)',

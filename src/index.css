@@ -2704,30 +2704,35 @@ html {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
 }
 
 .section-header-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  flex-shrink: 0;
   box-shadow: var(--shadow-sm);
 }
 
+.section-header h1,
 .section-header h2 {
-  font-size: 1.45rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0;
   background: linear-gradient(135deg, #fff 40%, var(--mju-green-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
+[data-theme="light"] .section-header h1,
 [data-theme="light"] .section-header h2 {
   background: linear-gradient(135deg, #1A1D26 40%, var(--mju-green));
   -webkit-background-clip: text;
@@ -2736,8 +2741,17 @@ html {
 }
 
 .section-header p {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   color: var(--text-secondary);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+.section-header-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
 }
 
 .back-button {

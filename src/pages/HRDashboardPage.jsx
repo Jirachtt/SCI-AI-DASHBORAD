@@ -185,11 +185,14 @@ export default function HRDashboardPage() {
 
     return (
         <div style={{ padding: '0 4px' }}>
-            <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                    <Users size={24} style={{ marginRight: 8, verticalAlign: 'middle' }} /> บุคลากรและโครงสร้างองค์กร
-                </h1>
-                <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>HR & Faculty Profile — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+            <div className="section-header">
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #2E86AB, #1a5276)' }}>
+                    <Users size={22} color="#fff" />
+                </div>
+                <div>
+                    <h1>บุคลากรและโครงสร้างองค์กร</h1>
+                    <p>HR & Faculty Profile — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                </div>
             </div>
 
             {/* Scorecards */}

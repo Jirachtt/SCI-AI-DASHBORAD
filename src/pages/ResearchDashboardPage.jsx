@@ -106,9 +106,14 @@ export default function ResearchDashboardPage() {
 
     return (
         <div style={{ padding: '0 4px' }}>
-            <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}><Microscope size={24} /> การวิจัยและนวัตกรรม</h1>
-                <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Research & Innovation — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+            <div className="section-header">
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
+                    <Microscope size={22} color="#fff" />
+                </div>
+                <div>
+                    <h1>การวิจัยและนวัตกรรม</h1>
+                    <p>Research & Innovation — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                </div>
             </div>
 
             {/* Scorecards */}

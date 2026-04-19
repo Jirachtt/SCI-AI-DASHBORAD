@@ -55,12 +55,15 @@ export default function GraduationCheckPage() {
 
     return (
         <div className="dashboard-content">
-            <header className="page-header">
+            <div className="section-header">
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #A23B72, #7B2D8E)' }}>
+                    <CheckCircle size={22} color="#fff" />
+                </div>
                 <div>
                     <h1>ตรวจสอบเงื่อนไขการสำเร็จการศึกษา</h1>
                     <p>Requirements Check for Graduation</p>
                 </div>
-            </header>
+            </div>
 
             {/* ── Top 3 Status Cards ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '28px' }}>

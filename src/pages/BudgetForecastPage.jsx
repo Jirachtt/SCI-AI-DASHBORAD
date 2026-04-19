@@ -190,16 +190,15 @@ export default function BudgetForecastPage() {
     return (
         <div className="dashboard-content">
             {/* ── Header ── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-                <div>
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <BarChart3 size={24} /> งบประมาณคณะวิทยาศาสตร์
-                    </h1>
-                    <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: '0.95rem' }}>
-                        ข้อมูลจริง ปีงบประมาณ 2560 – ปัจจุบัน + พยากรณ์ • Faculty of Science Budget
-                    </p>
+            <div className="section-header">
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #C5A028, #9a7d1e)' }}>
+                    <BarChart3 size={22} color="#fff" />
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div>
+                    <h1>งบประมาณคณะวิทยาศาสตร์</h1>
+                    <p>ข้อมูลจริง ปีงบประมาณ 2560 – ปัจจุบัน + พยากรณ์ • Faculty of Science Budget</p>
+                </div>
+                <div className="section-header-actions">
                     <button onClick={exportCSV} style={{
                         display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',
                         borderRadius: '10px', border: 'none',
