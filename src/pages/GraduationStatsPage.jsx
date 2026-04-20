@@ -277,32 +277,32 @@ export default function GraduationStatsPage() {
                 </div>
             </div>
 
-            {/* Summary Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 24, alignItems: 'stretch' }}>
+            {/* Summary Cards — matches Research page compact style */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 24, alignItems: 'stretch' }}>
                 {summaryCards.map((card, i) => {
                     const Icon = card.icon;
                     return (
                         <div key={i} style={{
                             ...cardStyle,
-                            padding: '18px 20px',
+                            padding: '16px 18px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 14,
-                            minHeight: 118,
+                            gap: 12,
+                            minHeight: 92,
                             height: '100%',
                         }}>
                             <div style={{
-                                width: 44, height: 44, borderRadius: 12,
+                                width: 40, height: 40, borderRadius: 10,
                                 background: card.bg,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 flexShrink: 0,
                             }}>
-                                <Icon size={22} color={card.color} />
+                                <Icon size={20} color={card.color} />
                             </div>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: card.color, lineHeight: 1.1 }}>{card.value}</div>
-                                <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: 4, lineHeight: 1.3 }}>{card.label}</div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.3 }}>{card.sub}</div>
+                            <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                                <div style={{ fontSize: '1.35rem', fontWeight: 700, color: card.color, lineHeight: 1.1 }}>{card.value}</div>
+                                <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: 4, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={card.label}>{card.label}</div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={card.sub}>{card.sub}</div>
                             </div>
                         </div>
                     );
