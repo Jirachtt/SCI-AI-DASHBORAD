@@ -14,15 +14,22 @@ if (!API_KEY) {
     console.warn('[Gemini] ⚠️ VITE_GEMINI_API_KEY is not set.');
 }
 
-// Models ordered by free-tier quota: highest RPM first
+// Models ordered by free-tier quota: highest RPM / lite first to preserve heavier models
 const MODELS = [
-    'gemini-2.0-flash-lite',   // 30 RPM free — no google_search support
-    'gemini-2.0-flash',        // 15 RPM free — supports google_search
-    'gemini-2.5-flash',        // 10 RPM free — supports google_search
+    'gemini-2.0-flash-lite',    // 30 RPM free — no google_search support
+    'gemini-2.5-flash-lite',    // fallback lite — independent quota pool
+    'gemini-flash-lite-latest', // alias to latest lite — extra headroom
+    'gemini-2.0-flash',         // 15 RPM free — supports google_search
+    'gemini-2.5-flash',         // 10 RPM free — supports google_search
+    'gemini-flash-latest',      // alias fallback — supports google_search
 ];
 
 // Models that support Google Search grounding for real-time web data
-const SEARCH_CAPABLE_MODELS = new Set(['gemini-2.0-flash', 'gemini-2.5-flash']);
+const SEARCH_CAPABLE_MODELS = new Set([
+    'gemini-2.0-flash',
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
+]);
 
 // Detect if query should use Google Search for real Maejo website data
 function shouldUseWebSearch(msg) {
