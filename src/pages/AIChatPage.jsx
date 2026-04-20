@@ -10,6 +10,7 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { sendMessageToGemini, resetConversation, getWaitSeconds } from '../services/geminiService';
+import * as XLSX from 'xlsx';
 import {
     studentStatsData, universityBudgetData, scienceFacultyBudgetData,
     dashboardSummary,
@@ -808,6 +809,31 @@ function parseCSVContent(text) {
     return { headers, rows, numericCols, labelCol, rowCount: rows.length };
 }
 
+// Parse .xlsx into the same shape parseCSVContent returns.
+// Reads the first worksheet only.
+function parseXLSXContent(arrayBuffer) {
+    const wb = XLSX.read(arrayBuffer, { type: 'array' });
+    const sheetName = wb.SheetNames[0];
+    if (!sheetName) return null;
+    const ws = wb.Sheets[sheetName];
+    const rowsArr = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+    if (!rowsArr || rowsArr.length < 2) return null;
+
+    const headers = rowsArr[0].map(h => String(h ?? '').trim()).filter((_, i, arr) => arr[i] !== undefined);
+    const dataRows = rowsArr.slice(1).filter(r => r.some(v => String(v ?? '').trim() !== ''));
+    const rows = dataRows.map(r => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = String(r[i] ?? '').trim(); });
+        return obj;
+    });
+    const numericCols = headers.filter(h => {
+        const vals = rows.map(r => parseFloat(String(r[h]).replace(/,/g, ''))).filter(v => !isNaN(v));
+        return vals.length >= rows.length * 0.5;
+    });
+    const labelCol = headers.find(h => !numericCols.includes(h)) || headers[0];
+    return { headers, rows, numericCols, labelCol, rowCount: rows.length };
+}
+
 function generateChartFromFile(parsed, fileName) {
     if (!parsed || parsed.numericCols.length === 0) return null;
 
@@ -875,7 +901,7 @@ export default function AIChatPage() {
     const [messages, setMessages] = useState([
         {
             role: 'bot',
-            text: 'สวัสดีครับ! ผม **MJU AI Assistant** (Powered by Gemini ✨)\n\nพร้อมช่วยตอบ **ทุกเรื่องเกี่ยวกับมหาวิทยาลัยแม่โจ้** ถามมาได้เลยครับ!\n\n🔮 **ฟีเจอร์ทั้งหมด:**\n• 💬 ถาม-ตอบทุกเรื่องแม่โจ้ (ประวัติ, คณะ, หลักสูตร, รับสมัคร, สถานที่, วิจัย)\n• 📊 สร้างกราฟจำนวนนักศึกษา, เกรด, งบประมาณ และพยากรณ์\n• 🔍 ค้นหานักศึกษาตามรหัส, ชื่อ, สาขา, GPA\n• 🎤 สั่งงานด้วยเสียง\n• 📎 **อัปโหลดไฟล์ CSV** เพื่อวิเคราะห์และสร้างกราฟ\n\nลองเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ!',
+            text: 'สวัสดีครับ! ผม **MJU AI Assistant** (Powered by Gemini ✨)\n\nพร้อมช่วยตอบ **ทุกเรื่องเกี่ยวกับมหาวิทยาลัยแม่โจ้** ถามมาได้เลยครับ!\n\n🔮 **ฟีเจอร์ทั้งหมด:**\n• 💬 ถาม-ตอบทุกเรื่องแม่โจ้ (ประวัติ, คณะ, หลักสูตร, รับสมัคร, สถานที่, วิจัย)\n• 📊 สร้างกราฟจำนวนนักศึกษา, เกรด, งบประมาณ และพยากรณ์\n• 🔍 ค้นหานักศึกษาตามรหัส, ชื่อ, สาขา, GPA\n• 🎤 สั่งงานด้วยเสียง\n• 📎 **อัปโหลดไฟล์ CSV / Excel (.xlsx)** เพื่อวิเคราะห์และสร้างกราฟ\n\nลองเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ!',
             chart: null
         }
     ]);
@@ -933,10 +959,10 @@ export default function AIChatPage() {
         const fileName = file.name;
         const ext = fileName.split('.').pop().toLowerCase();
 
-        if (!['csv', 'txt', 'tsv'].includes(ext)) {
+        if (!['csv', 'txt', 'tsv', 'xlsx', 'xls'].includes(ext)) {
             setMessages(prev => [...prev, {
                 role: 'bot',
-                text: `⚠️ **รองรับเฉพาะไฟล์ CSV, TSV, TXT**\n\nไฟล์ "${fileName}" ไม่รองรับ กรุณาแปลงเป็นไฟล์ .csv ก่อนอัปโหลด`,
+                text: `⚠️ **รองรับเฉพาะไฟล์ CSV, TSV, TXT, XLSX, XLS**\n\nไฟล์ "${fileName}" ไม่รองรับ`,
                 chart: null
             }]);
             return;
@@ -946,8 +972,9 @@ export default function AIChatPage() {
         setTyping(true);
 
         try {
-            const text = await file.text();
-            const parsed = parseCSVContent(text);
+            const parsed = (ext === 'xlsx' || ext === 'xls')
+                ? parseXLSXContent(await file.arrayBuffer())
+                : parseCSVContent(await file.text());
 
             if (!parsed || parsed.rows.length === 0) {
                 setMessages(prev => [...prev, {
@@ -1166,7 +1193,7 @@ export default function AIChatPage() {
         { icon: Bot, title: 'ถาม-ตอบ AI', desc: 'ตอบทุกเรื่องแม่โจ้: ประวัติ, คณะ, หลักสูตร, รับสมัคร, วิจัย', color: '#00e676' },
         { icon: ChartLine, title: 'พยากรณ์ข้อมูล', desc: 'สร้างกราฟพยากรณ์งบประมาณ/จำนวนนิสิต', color: '#00e5ff' },
         { icon: Search, title: 'ค้นหานักศึกษา', desc: 'ค้นหาตามรหัส, ชื่อ, สาขา, ชั้นปี, GPA', color: '#7B68EE' },
-        { icon: Paperclip, title: 'อัปโหลดไฟล์', desc: 'แนบ CSV เพื่อวิเคราะห์และสร้างกราฟอัตโนมัติ', color: '#C5A028' },
+        { icon: Paperclip, title: 'อัปโหลดไฟล์', desc: 'แนบ CSV/Excel (.xlsx) เพื่อวิเคราะห์และสร้างกราฟอัตโนมัติ', color: '#C5A028' },
         { icon: AudioLines, title: 'สั่งงานด้วยเสียง', desc: 'กดปุ่มไมค์แล้วพูดคำสั่งเป็นภาษาไทย', color: '#E91E63' },
         { icon: Maximize2, title: 'ขยาย/ซูมกราฟ', desc: 'คลิก "ขยาย" เพื่อดูกราฟเต็มจอพร้อมซูม', color: '#FF6B6B' },
     ];
@@ -1248,7 +1275,7 @@ export default function AIChatPage() {
                                 className="ai-chat-page-mic"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={typing}
-                                title="อัปโหลดไฟล์ CSV เพื่อวิเคราะห์"
+                                title="อัปโหลดไฟล์ CSV/Excel เพื่อวิเคราะห์"
                                 style={{ color: '#C5A028' }}
                             >
                                 <Paperclip size={20} />
@@ -1257,12 +1284,12 @@ export default function AIChatPage() {
                                 type="file"
                                 ref={fileInputRef}
                                 onChange={handleFileUpload}
-                                accept=".csv,.tsv,.txt"
+                                accept=".csv,.tsv,.txt,.xlsx,.xls"
                                 style={{ display: 'none' }}
                             />
                             <input
                                 type="text"
-                                placeholder={isListening ? "🎤 กำลังฟัง..." : "พิมพ์คำถามที่นี่... หรือ 📎 แนบไฟล์ CSV เพื่อวิเคราะห์"}
+                                placeholder={isListening ? "🎤 กำลังฟัง..." : "พิมพ์คำถามที่นี่... หรือ 📎 แนบไฟล์ CSV/Excel เพื่อวิเคราะห์"}
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
@@ -1273,7 +1300,7 @@ export default function AIChatPage() {
                             </button>
                         </div>
                         <div className="ai-chat-page-input-hint">
-                            กด Enter เพื่อส่ง • 📎 แนบไฟล์ CSV/TSV • 🎤 สั่งด้วยเสียง • AI อาจตอบผิดพลาดได้
+                            กด Enter เพื่อส่ง • 📎 แนบไฟล์ CSV/TSV/Excel • 🎤 สั่งด้วยเสียง • AI อาจตอบผิดพลาดได้
                         </div>
                     </div>
                 </div>
