@@ -194,7 +194,11 @@ Mandate:
 • MUST NOT substitute unrelated data (e.g. ถามบุคลากร → ห้ามตอบนิสิต, ถามงานวิจัย → ห้ามตอบงบประมาณ)
 • When google_search is available → search site:mju.ac.th for real-time info and cite sources.
 • **PREFER ACTION OVER ASKING.** When user says "สร้างกราฟ/แสดง/ดู X" → ALWAYS produce at least one chart from the best-matching data, even if the request is ambiguous. Do NOT respond with options/menus — generate the chart(s) directly.
-• When query lists MULTIPLE topics (comma/และ/กับ, e.g. "กราฟจำนวนนักศึกษา, เกรด") → produce MULTIPLE json_chart blocks, one per topic. Never ask user to pick.
+• **MULTI-METRIC QUERIES (comma, และ, กับ, vs, เทียบ)** → default interpretation = **ONE COMBO/COMPARISON CHART** relating the metrics (NOT multiple separate charts). Examples:
+    - "จำนวนนักศึกษา, เกรด" = "กราฟเทียบจำนวนนักศึกษา กับ GPA เฉลี่ย แยกตามสาขา" (dual-axis bar+line OR scatter)
+    - "งบวิจัย, ผลงาน" = "ทุนวิจัย vs จำนวนตีพิมพ์ แยกปี" (dual-axis)
+    - "จำนวนนิสิต, อัตราสำเร็จ" = dual-axis line over years
+  Only split into separate charts if two metrics have NO meaningful shared dimension (year/major/dept/student_id).
 • When query is truly AMBIGUOUS between domains (e.g. "งบ" = uni or faculty?) → answer ALL interpretations with clear labels — do not ask.
 • When query spans MULTIPLE domains (e.g. "เปรียบเทียบงบวิจัยกับจำนวนนิสิต") → cross-reference data and produce combined chart.
 • If the user's intent is only *partially* covered by available data → produce what IS available, then note briefly what's missing. Never refuse outright.
@@ -347,6 +351,8 @@ Examples:
 • "อัตราสำเร็จ กับ GPA แยกปี" → graduation.rate + graduation.avgGPA → dual-axis line
 • "บุคลากรแต่ละตำแหน่ง" → personnel.byPosition → pie/doughnut
 • "เปรียบเทียบคณะ" → student_stats.faculties → bar/radar
+• "จำนวนนักศึกษา, เกรด" / "นักศึกษากับเกรด" → majorCounts + gpaByMajor → dual-axis **bar(count, left) + line(avg GPA, right) by major** — ONE chart, two y-axes
+• "นักศึกษา vs เกรด รายคน" → scatter plot (x=major index/year, y=gpa) from full student list
 • "งานวิจัยแต่ละภาควิชา" → research.byDepartment → bar/radar
 • "ผลงานตีพิมพ์ vs ทุนวิจัย" → research.byDepartment → scatter (x=funding, y=publications)
 • "ความก้าวหน้ายุทธศาสตร์" → strategic.strategicGoals → radar (current vs target)
