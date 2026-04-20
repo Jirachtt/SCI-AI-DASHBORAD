@@ -327,7 +327,12 @@ Output format: MUST use \`\`\`json_chart\`\`\` (NEVER \`\`\`json\`\`\`):
 | Forecast + actual | **line** (solid+dashed) | พยากรณ์, forecast, คาดการณ์ |
 | Dual-metric compare | **bar+line** (mixed) | เปรียบเทียบ 2 หน่วยต่างกัน |
 
-### AUTO-SELECT RULE: When user asks "สร้างกราฟ" or "แสดงกราฟ" WITHOUT specifying chart type, choose the BEST type from the matrix above based on the data characteristics. Prefer scatter for 2-variable relationships, line for time series, bar for category comparisons, pie/doughnut for proportions.
+### AUTO-SELECT RULES:
+1. No chart type specified → choose from matrix based on data shape
+2. Labels are long Thai category names (majors, departments) → **horizontal bar** (\`indexAxis:"y"\`)
+3. Comparing 2 metrics with DIFFERENT units/scales (e.g. count vs GPA, budget vs %) → **dual-axis bar+line** — NEVER put both on one linear y-axis
+4. Time series → line, Composition → doughnut, Ranking → horizontal bar
+5. NEVER crowd more than 10 categories on a vertical bar chart — switch to horizontal
 
 ### Scatter Chart Format (NO labels array):
 \`\`\`json_chart
@@ -337,6 +342,18 @@ Output format: MUST use \`\`\`json_chart\`\`\` (NEVER \`\`\`json\`\`\`):
 ### Bubble Chart Format (NO labels array, r = radius):
 \`\`\`json_chart
 {"chartType":"bubble","data":{"datasets":[{"label":"Departments","data":[{"x":52,"y":48,"r":15,"label":"Dept A"},{"x":30,"y":20,"r":8,"label":"Dept B"}],"backgroundColor":"rgba(0,166,81,0.6)"}]}}
+\`\`\`
+
+### DUAL-AXIS Bar + Line Format (CRITICAL — use this template EXACTLY for "A, B" comparison queries):
+The bar dataset sits on the LEFT y-axis ("y"). The line dataset has \`type:"line"\` and \`yAxisID:"y1"\` pointing to the RIGHT y-axis ("y1"). Both share the same x-axis labels.
+\`\`\`json_chart
+{"chartType":"bar","data":{"labels":["สาขา1","สาขา2","สาขา3"],"datasets":[{"type":"bar","label":"จำนวนนักศึกษา","data":[120,95,80],"backgroundColor":"#00a651","yAxisID":"y","order":2},{"type":"line","label":"GPA เฉลี่ย","data":[3.25,3.10,2.95],"borderColor":"#7B68EE","backgroundColor":"rgba(123,104,238,0.2)","yAxisID":"y1","tension":0.4,"pointRadius":5,"order":1}]},"options":{"scales":{"y":{"type":"linear","position":"left","title":{"display":true,"text":"จำนวนนักศึกษา (คน)"},"beginAtZero":true},"y1":{"type":"linear","position":"right","title":{"display":true,"text":"GPA เฉลี่ย"},"min":0,"max":4,"grid":{"drawOnChartArea":false}}}}}
+\`\`\`
+
+### HORIZONTAL Bar Format (USE WHEN category labels are long Thai text like major/department names):
+When labels average >8 Thai characters OR >6 categories, use \`indexAxis:"y"\` so names read horizontally without rotation/truncation.
+\`\`\`json_chart
+{"chartType":"bar","data":{"labels":["เทคโนโลยีสารสนเทศ","นวัตกรรมเคมีอุตสาหกรรม","วิทยาการข้อมูล"],"datasets":[{"label":"จำนวนนักศึกษา","data":[120,95,80],"backgroundColor":["#00a651","#7B68EE","#2E86AB"]}]},"options":{"indexAxis":"y","scales":{"x":{"beginAtZero":true,"title":{"display":true,"text":"จำนวน (คน)"}}}}}
 \`\`\`
 
 ### Cross-Table JOIN:

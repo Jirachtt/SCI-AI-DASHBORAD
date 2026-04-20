@@ -647,20 +647,31 @@ function parseAIResponse(text) {
                 };
             }
 
+            // Merge AI-provided scales into defaults so y1 / indexAxis / titles apply
+            // without losing our dark-theme tick/grid styling.
+            const aiScales = rawJson.options?.scales || {};
+            const mergedScales = { ...defaultScales };
+            for (const k of Object.keys(aiScales)) {
+                mergedScales[k] = { ...(defaultScales[k] || defaultScales.y || {}), ...aiScales[k] };
+            }
+
             chartConfig = {
                 chartType: rawJson.chartType || 'bar',
                 data: rawJson.data,
-                options: rawJson.options || {
-                    responsive: true, maintainAspectRatio: false,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: rawJson.options?.indexAxis,
                     elements: isRadar ? { line: { tension: 0.1 } } : undefined,
                     plugins: {
                         legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12, font: { size: 11 } } },
                         zoom: {
                             pan: { enabled: true, mode: 'xy' },
                             zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
-                        }
+                        },
+                        ...(rawJson.options?.plugins || {})
                     },
-                    scales: defaultScales
+                    scales: mergedScales
                 }
             };
         } catch (e) {

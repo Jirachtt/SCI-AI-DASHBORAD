@@ -430,30 +430,43 @@ function parseAIResponse(text) {
                 });
             }
 
+            const defaultScales = isRadar ? {
+                r: {
+                    angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    pointLabels: { color: '#e5e7eb', font: { size: 11, weight: 'bold' } },
+                    ticks: { display: false, min: 0, max: 100 }
+                }
+            } : (rawJson.chartType === 'pie' || rawJson.chartType === 'doughnut') ? {} : {
+                x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { display: false } },
+                y: { ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            };
+
+            // Merge AI-provided scales into defaults so y1 / indexAxis / titles apply
+            // without losing our dark-theme tick/grid styling.
+            const aiScales = rawJson.options?.scales || {};
+            const mergedScales = { ...defaultScales };
+            for (const k of Object.keys(aiScales)) {
+                mergedScales[k] = { ...(defaultScales[k] || defaultScales.y || {}), ...aiScales[k] };
+            }
+
             chartConfig = {
                 chartType: rawJson.chartType || 'bar',
                 data: rawJson.data,
-                options: rawJson.options || {
-                    responsive: true, maintainAspectRatio: false,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: rawJson.options?.indexAxis,
                     elements: isRadar ? { line: { tension: 0.1 } } : undefined,
                     plugins: {
                         legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12, font: { size: 10 } } },
                         zoom: {
                             pan: { enabled: true, mode: 'xy' },
                             zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
-                        }
+                        },
+                        ...(rawJson.options?.plugins || {})
                     },
-                    scales: isRadar ? {
-                        r: {
-                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                            pointLabels: { color: '#e5e7eb', font: { size: 11, weight: 'bold' } },
-                            ticks: { display: false, min: 0, max: 100 }
-                        }
-                    } : (rawJson.chartType === 'pie' || rawJson.chartType === 'doughnut') ? {} : {
-                        x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { display: false } },
-                        y: { ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' } }
-                    }
+                    scales: mergedScales
                 }
             };
         } catch (e) {
