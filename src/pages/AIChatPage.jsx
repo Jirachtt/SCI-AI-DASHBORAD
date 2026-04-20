@@ -760,22 +760,45 @@ function ChatMessage({ msg, onExpand }) {
 
 // ==================== Main AIChatPage Component ====================
 // ==================== CSV/File Parser ====================
+// RFC-4180 style splitter: respects "quoted, fields" and "" escapes.
+function splitCSVLine(line, delimiter) {
+    const out = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+            if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+            else if (ch === '"') { inQuotes = false; }
+            else { cur += ch; }
+        } else {
+            if (ch === '"') inQuotes = true;
+            else if (ch === delimiter) { out.push(cur); cur = ''; }
+            else cur += ch;
+        }
+    }
+    out.push(cur);
+    return out.map(v => v.trim());
+}
+
 function parseCSVContent(text) {
-    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+    // Strip UTF-8 BOM emitted by Excel exports, then trim + split lines
+    const clean = text.replace(/^\uFEFF/, '').trim();
+    const lines = clean.split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 2) return null;
 
     const delimiter = lines[0].includes('\t') ? '\t' : ',';
-    const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
+    const headers = splitCSVLine(lines[0], delimiter);
     const rows = lines.slice(1).map(line => {
-        const vals = line.split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
+        const vals = splitCSVLine(line, delimiter);
         const obj = {};
-        headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+        headers.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
         return obj;
     });
 
-    // Auto-detect numeric columns
+    // Auto-detect numeric columns — require ≥50% parseable numbers
     const numericCols = headers.filter(h => {
-        const vals = rows.map(r => parseFloat(r[h])).filter(v => !isNaN(v));
+        const vals = rows.map(r => parseFloat(String(r[h]).replace(/,/g, ''))).filter(v => !isNaN(v));
         return vals.length >= rows.length * 0.5;
     });
 
@@ -789,10 +812,11 @@ function generateChartFromFile(parsed, fileName) {
     if (!parsed || parsed.numericCols.length === 0) return null;
 
     const colors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
-    const labels = parsed.rows.map(r => r[parsed.labelCol]);
+    const labels = parsed.rows.map(r => String(r[parsed.labelCol] ?? ''));
+    const toNum = v => parseFloat(String(v).replace(/,/g, '')) || 0;
     const datasets = parsed.numericCols.slice(0, 6).map((col, i) => ({
         label: col,
-        data: parsed.rows.map(r => parseFloat(r[col]) || 0),
+        data: parsed.rows.map(r => toNum(r[col])),
         borderColor: colors[i % colors.length],
         backgroundColor: colors[i % colors.length] + '40',
         fill: false,
@@ -802,20 +826,26 @@ function generateChartFromFile(parsed, fileName) {
         borderRadius: 6,
     }));
 
-    const chartType = parsed.numericCols.length <= 2 ? 'bar' : 'line';
+    // Decide time-series vs category: labels look like years → line, otherwise bar.
+    const looksLikeYear = labels.every(l => /^\d{4}$/.test(l) || /^25\d{2}$/.test(l));
+    // Long Thai labels or many categories → horizontal bar for readability.
+    const avgLen = labels.reduce((a, l) => a + l.length, 0) / Math.max(1, labels.length);
+    const useHorizontal = !looksLikeYear && (avgLen > 8 || labels.length > 10);
+    const chartType = looksLikeYear ? 'line' : 'bar';
 
     return {
         chartType,
         data: { labels, datasets },
         options: {
             responsive: true, maintainAspectRatio: false,
+            indexAxis: useHorizontal ? 'y' : 'x',
             plugins: {
                 legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 8, font: { size: 11 } } },
                 title: { display: true, text: `📁 ${fileName}`, color: '#fff', font: { size: 14 } },
             },
             scales: {
-                x: { ticks: { color: '#9ca3af', maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                x: { ticks: { color: '#9ca3af', maxRotation: useHorizontal ? 0 : 45 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true },
             },
         },
     };
