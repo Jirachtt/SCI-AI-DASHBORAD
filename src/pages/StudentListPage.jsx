@@ -355,28 +355,28 @@ export default function StudentListPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             {/* Student ID */}
                             <div>
-                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>รหัสนักศึกษา *</label>
-                                <input value={newStudent.id} onChange={e => setNewStudent(p => ({ ...p, id: e.target.value }))}
+                                <label htmlFor="new-student-id" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>รหัสนักศึกษา *</label>
+                                <input id="new-student-id" name="studentId" value={newStudent.id} onChange={e => setNewStudent(p => ({ ...p, id: e.target.value }))}
                                     placeholder="เช่น 65010050" style={inputBase} />
                             </div>
                             {/* Name */}
                             <div>
-                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>ชื่อ-นามสกุล *</label>
-                                <input value={newStudent.name} onChange={e => setNewStudent(p => ({ ...p, name: e.target.value }))}
+                                <label htmlFor="new-student-name" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>ชื่อ-นามสกุล *</label>
+                                <input id="new-student-name" name="studentName" value={newStudent.name} onChange={e => setNewStudent(p => ({ ...p, name: e.target.value }))}
                                     placeholder="เช่น สมชาย ใจดี" style={inputBase} />
                             </div>
                             {/* Major & Year */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                 <div>
-                                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>สาขาวิชา</label>
-                                    <select value={newStudent.major} onChange={e => setNewStudent(p => ({ ...p, major: e.target.value }))}
+                                    <label htmlFor="new-student-major" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>สาขาวิชา</label>
+                                    <select id="new-student-major" name="major" value={newStudent.major} onChange={e => setNewStudent(p => ({ ...p, major: e.target.value }))}
                                         style={selectStyle}>
                                         {MAJORS.map(m => <option key={m} value={m} style={optionStyle}>{m}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>ชั้นปี</label>
-                                    <select value={newStudent.year} onChange={e => setNewStudent(p => ({ ...p, year: e.target.value }))}
+                                    <label htmlFor="new-student-year" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>ชั้นปี</label>
+                                    <select id="new-student-year" name="year" value={newStudent.year} onChange={e => setNewStudent(p => ({ ...p, year: e.target.value }))}
                                         style={selectStyle}>
                                         {[1, 2, 3, 4].map(y => <option key={y} value={y} style={optionStyle}>ปี {y}</option>)}
                                     </select>
@@ -384,8 +384,8 @@ export default function StudentListPage() {
                             </div>
                             {/* GPA */}
                             <div>
-                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>เกรดเฉลี่ย (GPA) *</label>
-                                <input type="number" step="0.01" min="0" max="4"
+                                <label htmlFor="new-student-gpa" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>เกรดเฉลี่ย (GPA) *</label>
+                                <input id="new-student-gpa" name="gpa" type="number" step="0.01" min="0" max="4"
                                     value={newStudent.gpa} onChange={e => setNewStudent(p => ({ ...p, gpa: e.target.value }))}
                                     placeholder="0.00 - 4.00" style={inputBase} />
                             </div>
