@@ -1,4 +1,15 @@
-const API_KEY = 'AIzaSyA60bIf7WQrTynTxQ9o8hk5NiLgeCJVzIs';
+import { readFileSync } from 'fs';
+
+// อ่าน API key จาก .env (ห้าม hardcode ลงไฟล์เด็ดขาด — จะถูก Google ยกเลิก key อัตโนมัติ)
+const env = Object.fromEntries(
+    readFileSync('.env', 'utf8')
+        .split('\n')
+        .filter(l => l.includes('='))
+        .map(l => l.split('='))
+        .map(([k, ...v]) => [k.trim(), v.join('=').trim()])
+);
+const API_KEY = env.VITE_GEMINI_API_KEY;
+if (!API_KEY) { console.error('VITE_GEMINI_API_KEY not found in .env'); process.exit(1); }
 
 async function testModel(version, model) {
     const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${API_KEY}`;
