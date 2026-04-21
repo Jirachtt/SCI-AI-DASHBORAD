@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Download, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap, Users, AlertTriangle } from 'lucide-react';
 
-/* ────────────── Student Data from MJU Dashboard ────────────── */
-import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
+/* ────────────── Student Data (live from Firestore, mock fallback) ────────────── */
+import { SCIENCE_MAJORS } from '../data/studentListData';
+import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
 const MAJORS = SCIENCE_MAJORS;
 
 /* ────────────── Styles ────────────── */
@@ -39,8 +40,16 @@ export default function StudentListPage() {
     const { user } = useAuth();
     const canManage = user?.role === 'dean' || user?.role === 'admin';
 
-    const [students, setStudents] = useState(scienceStudentList);
+    const [students, setStudents] = useState(() => getStudentListSync());
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Load live data on mount; re-sync when an admin uploads a new dataset.
+    useEffect(() => {
+        let cancelled = false;
+        ensureStudentList().then(list => { if (!cancelled) setStudents(list); });
+        const unsub = onStudentDataChange(list => { if (!cancelled && list) setStudents(list); });
+        return () => { cancelled = true; unsub(); };
+    }, []);
     const [yearFilter, setYearFilter] = useState('all');
     const [majorFilter, setMajorFilter] = useState('all');
     const [page, setPage] = useState(1);

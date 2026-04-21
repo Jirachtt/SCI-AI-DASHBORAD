@@ -10,12 +10,13 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { sendMessageToGemini, resetConversation, getWaitSeconds } from '../services/geminiService';
-import * as XLSX from 'xlsx';
+import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import {
     studentStatsData, universityBudgetData, scienceFacultyBudgetData,
     dashboardSummary,
 } from '../data/mockData';
-import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
+import { SCIENCE_MAJORS } from '../data/studentListData';
+import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
 import { graduationHistory } from '../data/graduationData';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
@@ -299,10 +300,12 @@ function generateForecastResponse(parsed) {
 
 // ==================== Student Data (Real from MJU) ====================
 const MAJORS = SCIENCE_MAJORS;
-const ALL_STUDENTS = scienceStudentList;
+// Live-backed: resolves to Firestore-uploaded list when available, falls back to mock.
+const getAllStudents = () => getStudentListSync();
 
 // ==================== Smart Student Search ====================
 function searchStudents(query) {
+    const ALL_STUDENTS = getAllStudents();
     const q = query.toLowerCase();
     let limit = 0;
     const limitMatch = q.match(/(\d+)\s*(คน|ราย|รายการ)/);
@@ -760,80 +763,6 @@ function ChatMessage({ msg, onExpand }) {
 
 
 // ==================== Main AIChatPage Component ====================
-// ==================== CSV/File Parser ====================
-// RFC-4180 style splitter: respects "quoted, fields" and "" escapes.
-function splitCSVLine(line, delimiter) {
-    const out = [];
-    let cur = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        if (inQuotes) {
-            if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-            else if (ch === '"') { inQuotes = false; }
-            else { cur += ch; }
-        } else {
-            if (ch === '"') inQuotes = true;
-            else if (ch === delimiter) { out.push(cur); cur = ''; }
-            else cur += ch;
-        }
-    }
-    out.push(cur);
-    return out.map(v => v.trim());
-}
-
-function parseCSVContent(text) {
-    // Strip UTF-8 BOM emitted by Excel exports, then trim + split lines
-    const clean = text.replace(/^\uFEFF/, '').trim();
-    const lines = clean.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length < 2) return null;
-
-    const delimiter = lines[0].includes('\t') ? '\t' : ',';
-    const headers = splitCSVLine(lines[0], delimiter);
-    const rows = lines.slice(1).map(line => {
-        const vals = splitCSVLine(line, delimiter);
-        const obj = {};
-        headers.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
-        return obj;
-    });
-
-    // Auto-detect numeric columns — require ≥50% parseable numbers
-    const numericCols = headers.filter(h => {
-        const vals = rows.map(r => parseFloat(String(r[h]).replace(/,/g, ''))).filter(v => !isNaN(v));
-        return vals.length >= rows.length * 0.5;
-    });
-
-    // Auto-detect label column (first non-numeric column)
-    const labelCol = headers.find(h => !numericCols.includes(h)) || headers[0];
-
-    return { headers, rows, numericCols, labelCol, rowCount: rows.length };
-}
-
-// Parse .xlsx into the same shape parseCSVContent returns.
-// Reads the first worksheet only.
-function parseXLSXContent(arrayBuffer) {
-    const wb = XLSX.read(arrayBuffer, { type: 'array' });
-    const sheetName = wb.SheetNames[0];
-    if (!sheetName) return null;
-    const ws = wb.Sheets[sheetName];
-    const rowsArr = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
-    if (!rowsArr || rowsArr.length < 2) return null;
-
-    const headers = rowsArr[0].map(h => String(h ?? '').trim()).filter((_, i, arr) => arr[i] !== undefined);
-    const dataRows = rowsArr.slice(1).filter(r => r.some(v => String(v ?? '').trim() !== ''));
-    const rows = dataRows.map(r => {
-        const obj = {};
-        headers.forEach((h, i) => { obj[h] = String(r[i] ?? '').trim(); });
-        return obj;
-    });
-    const numericCols = headers.filter(h => {
-        const vals = rows.map(r => parseFloat(String(r[h]).replace(/,/g, ''))).filter(v => !isNaN(v));
-        return vals.length >= rows.length * 0.5;
-    });
-    const labelCol = headers.find(h => !numericCols.includes(h)) || headers[0];
-    return { headers, rows, numericCols, labelCol, rowCount: rows.length };
-}
-
 function generateChartFromFile(parsed, fileName) {
     if (!parsed || parsed.numericCols.length === 0) return null;
 

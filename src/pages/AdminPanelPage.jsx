@@ -5,9 +5,11 @@ import { db } from '../firebase';
 import { collection, getDocs, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import {
     Shield, Users, Clock, Briefcase, Building, Check, X, Search, Filter,
-    RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays
+    RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
+    Database
 } from 'lucide-react';
 import { canAccess, getRoleBadgeColor, getRoleInfo } from '../utils/accessControl';
+import AdminDataUpload from '../components/AdminDataUpload';
 
 const MANAGEABLE_ROLES = ['dean', 'chair', 'staff', 'general', 'student'];
 const ROLE_LABELS = {
@@ -251,6 +253,12 @@ export default function AdminPanelPage() {
                     <UserCog size={16} /> ผู้ใช้ทั้งหมด
                     <span className="admin-tab-badge neutral">{stats.total}</span>
                 </button>
+                <button
+                    className={`admin-tab ${activeTab === 'data' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('data')}
+                >
+                    <Database size={16} /> ข้อมูลระบบ
+                </button>
             </div>
 
             {/* Pending tab */}
@@ -421,6 +429,13 @@ export default function AdminPanelPage() {
                             </table>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Data management tab */}
+            {activeTab === 'data' && (
+                <div className="admin-tab-panel">
+                    <AdminDataUpload onToast={showToast} />
                 </div>
             )}
 

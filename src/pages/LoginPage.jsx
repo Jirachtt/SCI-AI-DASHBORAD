@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Lock, Mail, ShieldCheck, X, Sun, Moon } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 export default function LoginPage() {
     const { loginWithEmail, loginWithGoogle, loginWithAdminCode } = useAuth();
     const { theme, toggleTheme } = useTheme();
-    const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -15,25 +14,29 @@ export default function LoginPage() {
     const [showAdminModal, setShowAdminModal] = useState(false);
     const [adminCode, setAdminCode] = useState('');
 
+    // NOTE on navigation: we DO NOT call navigate('/dashboard') here.
+    // <PublicRoute> in App.jsx watches the auth context and redirects to
+    // /dashboard automatically once the user object is populated. Navigating
+    // here races against Firebase's onAuthStateChanged callback — on Google
+    // popup login the context often hasn't updated yet, so ProtectedRoute
+    // would bounce back to /, and the user would have to hit refresh.
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         const result = await loginWithEmail(email, password);
-        if (result.success) {
-            navigate('/dashboard');
-        } else {
+        if (!result.success) {
             setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+            setLoading(false);
         }
-        setLoading(false);
+        // On success: leave loading=true; PublicRoute will redirect once user resolves.
     };
 
     const handleGoogleLogin = async () => {
         setError('');
         const result = await loginWithGoogle();
-        if (result.success) {
-            navigate('/dashboard');
-        } else {
+        if (!result.success) {
             setError('Google ล้มเหลว: ' + (result.error || 'ไม่ทราบสาเหตุ'));
         }
     };
@@ -41,9 +44,7 @@ export default function LoginPage() {
     const handleAdminCodeSubmit = async (e) => {
         e.preventDefault();
         const result = await loginWithAdminCode(adminCode);
-        if (result.success) {
-            navigate('/dashboard');
-        } else {
+        if (!result.success) {
             setError('รหัสผ่านผู้บริหารไม่ถูกต้อง');
             setTimeout(() => setError(''), 3000);
         }

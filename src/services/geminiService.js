@@ -3,7 +3,8 @@ import {
     studentStatsData, universityBudgetData, scienceFacultyBudgetData,
     tuitionData, financialData, studentLifeData, dashboardSummary
 } from '../data/mockData';
-import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
+import { SCIENCE_MAJORS } from '../data/studentListData';
+import { getStudentListSync } from './studentDataService';
 import { graduationHistory, currentGraduationStats, graduationByMajor, honorsData, gpaDistribution } from '../data/graduationData';
 import { researchData } from '../data/researchData';
 import { hrData } from '../data/hrData';
@@ -157,9 +158,10 @@ async function fetchSmart(url, options) {
 // ═══════════════════════════════════════════════════════════════
 function buildBaseInstruction() {
     // ── Pre-compute aggregated data ──
+    const studentList = getStudentListSync();
     const majorCounts = {}, yearCounts = {}, gpaByMajor = {};
     let statusNormal = 0, statusAtRisk = 0;
-    scienceStudentList.forEach(s => {
+    studentList.forEach(s => {
         majorCounts[s.major] = (majorCounts[s.major] || 0) + 1;
         yearCounts[s.year] = (yearCounts[s.year] || 0) + 1;
         if (s.status === 'รอพินิจ') statusAtRisk++; else statusNormal++;
@@ -208,7 +210,7 @@ Mandate:
 ═══════════════════════════════════════════
 
 ### TABLE: students (คณะวิทยาศาสตร์)
-Total: ${scienceStudentList.length} records
+Total: ${studentList.length} records
 Columns: student_id, prefix, name, major, level, year, status, gpa
 Aggregated Stats:
 - สาขา: ${Object.entries(majorCounts).map(([m, c]) => `${m}:${c}คน`).join(', ')}
@@ -415,7 +417,7 @@ Always: responsive=true, maintainAspectRatio=false
 // Full student list — only included when query is about students
 function buildStudentData() {
     return '\n\n## รายชื่อนักศึกษา(id=รหัส,n=ชื่อ,m=สาขา,y=ปี,g=GPA,s=สถานะ):\n' +
-        JSON.stringify(scienceStudentList.map(s => ({
+        JSON.stringify(getStudentListSync().map(s => ({
             id: s.id, n: s.name, m: s.major, y: s.year, g: s.gpa, s: s.status
         })));
 }

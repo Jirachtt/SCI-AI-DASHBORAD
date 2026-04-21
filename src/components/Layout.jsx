@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Menu, Sun, Moon } from 'lucide-react';
 import { dashboardSummary } from '../data/mockData';
+import { ensureStudentList } from '../services/studentDataService';
 
 export default function Layout() {
     const { user } = useAuth();
@@ -14,6 +15,11 @@ export default function Layout() {
     const location = useLocation();
     const [isTransitioning, setIsTransitioning] = useState(false);
     const prevPath = useRef(location.pathname);
+
+    // Pre-warm live student data once the user is authenticated.
+    // Gemini + page consumers read it synchronously after this resolves;
+    // falls back to mock silently if Firestore doesn't have the doc.
+    useEffect(() => { ensureStudentList(); }, []);
 
     // Smooth page transition on route change — briefly unmount-style fade
     // (set to 'enter' on navigation, next frame animate to 'enter-active').

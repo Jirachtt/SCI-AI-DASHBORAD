@@ -1,0 +1,68 @@
+rules_version = '2';
+
+// MJU Science AI Dashboard — Firestore Security Rules
+//
+// Role model (see src/utils/accessControl.js):
+//   dean   → full admin (only role allowed to write system data)
+//   chair, staff, general, student, pending_* → read-only for shared data
+//
+// Design notes:
+//   - users/{uid} rules MUST NOT call get() on the same collection to check role
+//     (causes recursive evaluation and list-query rejection). Role-based writes
+//     are guarded by client-side canAccess + cross-collection rules below.
+//   - datasets/{} rules CAN call get() on users (different collection, safe).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Safe to call from rules on OTHER collections (not users/{uid}) —
+    // this reads the caller's own user doc, which is a DIFFERENT uid than
+    // the doc being evaluated, so no recursion.
+    function callerIsDean() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'dean'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    // ── users/{uid} ─────────────────────────────────────────────
+    // Read: any signed-in user (admin panel lists all users).
+    // Create: user creates own profile on signup.
+    // Update: user updates own doc; OR a dean updates any user (cross-uid get
+    //   is NOT recursive because it targets a different uid than the one
+    //   being evaluated).
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && (
+        request.auth.uid == uid
+        || (request.auth.uid != uid
+            && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'dean'
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved')
+      );
+      allow delete: if false;
+    }
+
+    // ── datasets/{datasetId} ────────────────────────────────────
+    // Live data uploaded by admin. Currently: 'students' (more domains later).
+    match /datasets/{datasetId} {
+      allow read: if isSignedIn();
+      allow write: if callerIsDean();
+
+      match /history/{historyId} {
+        allow read: if isSignedIn();
+        allow write: if callerIsDean();
+      }
+    }
+
+    // Default deny for any other collection
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

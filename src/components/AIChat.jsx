@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, BarChart3, TrendingUp, Maximize2, Mic, MicOff } from 'lucide-react';
-import { scienceStudentList, SCIENCE_MAJORS } from '../data/studentListData';
+import { SCIENCE_MAJORS } from '../data/studentListData';
+import { getStudentListSync } from '../services/studentDataService';
 import { Chart as ReactChart } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale,
@@ -223,10 +224,10 @@ function generateForecastResponse(parsed) {
 
 // ==================== Student Data (Real from MJU) ====================
 const MAJORS = SCIENCE_MAJORS;
-const ALL_STUDENTS = scienceStudentList;
 
 // ==================== Smart Student Search ====================
 function searchStudents(query) {
+    const ALL_STUDENTS = getStudentListSync();
     const q = query.toLowerCase();
     let limit = 0;
     const limitMatch = q.match(/(\d+)\s*(คน|ราย|รายการ)/);
