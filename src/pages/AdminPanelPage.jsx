@@ -6,10 +6,11 @@ import { collection, getDocs, orderBy, query, doc, updateDoc } from 'firebase/fi
 import {
     Shield, Users, Clock, Briefcase, Building, Check, X, Search, Filter,
     RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
-    Database
+    Database, ScrollText
 } from 'lucide-react';
 import { canAccess, getRoleBadgeColor, getRoleInfo } from '../utils/accessControl';
 import AdminDataUpload from '../components/AdminDataUpload';
+import AdminAuditLog from '../components/AdminAuditLog';
 
 const MANAGEABLE_ROLES = ['dean', 'chair', 'staff', 'general', 'student'];
 const ROLE_LABELS = {
@@ -259,6 +260,12 @@ export default function AdminPanelPage() {
                 >
                     <Database size={16} /> ข้อมูลระบบ
                 </button>
+                <button
+                    className={`admin-tab ${activeTab === 'audit' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('audit')}
+                >
+                    <ScrollText size={16} /> ประวัติการเปลี่ยนแปลง
+                </button>
             </div>
 
             {/* Pending tab */}
@@ -436,6 +443,13 @@ export default function AdminPanelPage() {
             {activeTab === 'data' && (
                 <div className="admin-tab-panel">
                     <AdminDataUpload onToast={showToast} />
+                </div>
+            )}
+
+            {/* Audit log tab */}
+            {activeTab === 'audit' && (
+                <div className="admin-tab-panel">
+                    <AdminAuditLog />
                 </div>
             )}
 

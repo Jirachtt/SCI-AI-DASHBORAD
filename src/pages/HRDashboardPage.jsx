@@ -9,6 +9,7 @@ import {
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { Users, UserCheck, Award, TrendingUp, Building2, GraduationCap } from 'lucide-react';
+import ExportPDFButton from '../components/ExportPDFButton';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
@@ -192,6 +193,9 @@ export default function HRDashboardPage() {
                 <div>
                     <h1>บุคลากรและโครงสร้างองค์กร</h1>
                     <p>HR & Faculty Profile — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                    <ExportPDFButton title="บุคลากรและโครงสร้างองค์กร" />
                 </div>
             </div>
 

@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { studentStatsData } from '../data/mockData';
-import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText, BarChart3, Microscope } from 'lucide-react';
+import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
+import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText, BarChart3, Microscope, X, MousePointerClick } from 'lucide-react';
+import ExportPDFButton from '../components/ExportPDFButton';
 import { Doughnut, Line, Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
@@ -20,6 +22,14 @@ export default function StudentStatsPage() {
     const [selectedLevel, setSelectedLevel] = useState('all');
     const [appliedFaculty, setAppliedFaculty] = useState('all');
     const [appliedLevel, setAppliedLevel] = useState('all');
+    const [drillYear, setDrillYear] = useState(null); // e.g. '2565'
+    const [, forceTick] = useState(0);
+
+    useEffect(() => {
+        ensureStudentList().then(() => forceTick(t => t + 1));
+        const unsub = onStudentDataChange(() => forceTick(t => t + 1));
+        return () => unsub && unsub();
+    }, []);
 
     if (!canAccess(user?.role, 'student_stats')) return <AccessDenied />;
 
@@ -209,10 +219,21 @@ export default function StudentStatsPage() {
     const enrollmentBarOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        onClick: (_evt, elements) => {
+            if (!elements || elements.length === 0) return;
+            const idx = elements[0].index;
+            const year = scienceFaculty.byEnrollmentYear[idx]?.year;
+            if (year) setDrillYear(year);
+        },
+        onHover: (evt, elements) => {
+            if (evt?.native?.target) {
+                evt.native.target.style.cursor = elements?.length ? 'pointer' : 'default';
+            }
+        },
         plugins: {
             legend: { display: false },
             tooltip: {
-                callbacks: { label: (ctx) => `${ctx.parsed.y.toLocaleString()} คน` }
+                callbacks: { label: (ctx) => `${ctx.parsed.y.toLocaleString()} คน (คลิกเพื่อดูรายชื่อ)` }
             }
         },
         scales: {
@@ -223,6 +244,11 @@ export default function StudentStatsPage() {
             }
         }
     };
+
+    // Drill-down: students whose id starts with 2-digit intake code matching drillYear
+    const drillStudents = drillYear
+        ? getStudentListSync().filter(s => String(s.id || '').slice(0, 2) === String(drillYear).slice(-2))
+        : [];
 
     const scienceSharePct = ((scienceFaculty.total / current.total) * 100).toFixed(1);
 
@@ -239,6 +265,9 @@ export default function StudentStatsPage() {
                 <div>
                     <h2>สถิตินิสิตปัจจุบัน</h2>
                     <p>Current Student Statistics — อ้างอิง มหาวิทยาลัยแม่โจ้</p>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                    <ExportPDFButton title="สถิตินิสิตปัจจุบัน" />
                 </div>
             </div>
 
@@ -447,6 +476,14 @@ export default function StudentStatsPage() {
                                 <div className="chart-card-title">จำนวนนิสิตแยกตามรหัสนักศึกษา</div>
                                 <div className="chart-card-subtitle">คณะวิทยาศาสตร์ — แยกตามปีที่เข้าศึกษา</div>
                             </div>
+                            <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                fontSize: '0.75rem', color: '#7B68EE', fontWeight: 600,
+                                padding: '4px 10px', background: 'rgba(123,104,238,0.12)',
+                                borderRadius: 999
+                            }}>
+                                <MousePointerClick size={12} /> คลิกแท่งเพื่อดูรายชื่อ
+                            </span>
                         </div>
                         <div className="chart-container">
                             <Bar data={enrollmentBarData} options={enrollmentBarOptions} />
@@ -753,6 +790,94 @@ export default function StudentStatsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Drill-down modal */}
+            {drillYear && (
+                <div
+                    className="admin-modal-overlay no-print"
+                    onClick={() => setDrillYear(null)}
+                    style={{ padding: 20 }}
+                >
+                    <div
+                        className="admin-modal"
+                        onClick={e => e.stopPropagation()}
+                        style={{ maxWidth: 900, width: '100%', textAlign: 'left' }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                            <div style={{
+                                width: 44, height: 44, borderRadius: 12,
+                                background: 'linear-gradient(135deg, #7B68EE, #5B4FCF)',
+                                color: '#fff', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <GraduationCap size={22} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <h2 style={{ margin: 0, fontSize: '1.15rem' }}>
+                                    นักศึกษารหัส {String(drillYear).slice(-2)} (ปี {drillYear})
+                                </h2>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                    พบ {drillStudents.length.toLocaleString('th-TH')} รายการจากข้อมูลหลัก
+                                </p>
+                            </div>
+                            <button
+                                className="admin-btn-ghost"
+                                onClick={() => setDrillYear(null)}
+                                style={{ padding: '6px 10px' }}
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        {drillStudents.length === 0 ? (
+                            <div className="admin-empty-state" style={{ padding: 24 }}>
+                                <p>ไม่พบรายชื่อนักศึกษาที่มีรหัสขึ้นต้นด้วย {String(drillYear).slice(-2)} ในข้อมูลหลัก</p>
+                                <p style={{ fontSize: '0.85rem' }}>
+                                    อาจเพราะยังไม่ได้อัพโหลดข้อมูลจริง หรือข้อมูลที่อัพโหลดไม่ครอบคลุมปีนี้
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="data-table-container" style={{ maxHeight: '60vh', overflow: 'auto' }}>
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>รหัส</th>
+                                            <th>ชื่อ-นามสกุล</th>
+                                            <th>สาขา</th>
+                                            <th>ชั้นปี</th>
+                                            <th>สถานะ</th>
+                                            <th style={{ textAlign: 'right' }}>GPA</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {drillStudents.slice(0, 500).map((s, i) => (
+                                            <tr key={s.id || i}>
+                                                <td>{s.id}</td>
+                                                <td>{s.prefix || ''} {s.name}</td>
+                                                <td>{s.major}</td>
+                                                <td>{s.year || '-'}</td>
+                                                <td>{s.status || '-'}</td>
+                                                <td style={{
+                                                    textAlign: 'right',
+                                                    color: s.gpa < 2 ? '#ef4444' : 'inherit',
+                                                    fontWeight: 700
+                                                }}>
+                                                    {typeof s.gpa === 'number' ? s.gpa.toFixed(2) : '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {drillStudents.length > 500 && (
+                                    <div style={{ padding: 10, textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                        แสดง 500 รายการแรกจาก {drillStudents.length.toLocaleString('th-TH')}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -155,7 +155,16 @@ export default function AdminDataUpload({ onToast }) {
 
         setSaving(true);
         try {
-            await uploadStudentList(finalRows, { fileName, uid: user?.uid || user?.email || 'admin' });
+            await uploadStudentList(finalRows, {
+                fileName,
+                uid: user?.uid || 'admin',
+                who: user?.email || user?.uid || 'admin',
+                meta: {
+                    originalRowCount: parsed.rowCount,
+                    dedupedRowCount: finalRows.length,
+                    skippedDuplicates: Math.max(0, parsed.rowCount - finalRows.length),
+                },
+            });
             onToast?.('success', `อัพโหลดข้อมูล ${finalRows.length} รายการสำเร็จ`);
             resetUpload();
             await loadMeta();

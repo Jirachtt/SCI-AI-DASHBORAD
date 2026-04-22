@@ -10,6 +10,7 @@ import {
     GraduationCap, Award, Users, TrendingUp, AlertTriangle,
     CheckCircle, XCircle, Clock, Search, Download
 } from 'lucide-react';
+import ExportPDFButton from '../components/ExportPDFButton';
 import { Bar, Line, Doughnut, Pie } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
@@ -274,6 +275,9 @@ export default function GraduationStatsPage() {
                 <div>
                     <h1>สถิติการสำเร็จการศึกษา</h1>
                     <p>คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้ | ปีการศึกษา {stats.academicYear}</p>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                    <ExportPDFButton title="สถิติการสำเร็จการศึกษา" />
                 </div>
             </div>
 

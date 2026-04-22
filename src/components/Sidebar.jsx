@@ -6,7 +6,7 @@ import {
     Home, CreditCard, DollarSign, Users, LogOut, Lock, FileText,
     GraduationCap, CheckCircle, BarChart3,
     Microscope, Target, UserCheck, BookOpen, Award,
-    MessageCircle, Shield, UserCog, Clock
+    MessageCircle, Shield, UserCog, Clock, Bell, TrendingDown
 } from 'lucide-react';
 
 const menuGroups = [
@@ -15,6 +15,7 @@ const menuGroups = [
         label: 'OVERVIEW',
         items: [
             { path: '/dashboard', label: 'ภาพรวม (Overview)', icon: Home, section: 'dashboard' },
+            { path: '/dashboard/alerts', label: 'ศูนย์แจ้งเตือน', icon: Bell, section: 'alert_center' },
         ]
     },
     {
@@ -33,6 +34,7 @@ const menuGroups = [
             { path: '/dashboard/graduation', label: 'ตรวจสอบการจบ', icon: CheckCircle, section: 'graduation_check' },
             { path: '/dashboard/student-life', label: 'กิจกรรม/พฤติกรรม', icon: Users, section: 'student_life' },
             { path: '/dashboard/graduation-stats', label: 'สถิติสำเร็จการศึกษา', icon: Award, section: 'graduation_stats' },
+            { path: '/dashboard/retention', label: 'Retention / ตกออก', icon: TrendingDown, section: 'retention' },
         ]
     },
     {

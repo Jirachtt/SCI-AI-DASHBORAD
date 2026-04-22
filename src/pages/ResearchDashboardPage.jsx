@@ -9,6 +9,7 @@ import {
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { FileText, DollarSign, Award, BookOpen, Globe2, TrendingUp, Microscope } from 'lucide-react';
+import ExportPDFButton from '../components/ExportPDFButton';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
@@ -113,6 +114,9 @@ export default function ResearchDashboardPage() {
                 <div>
                     <h1>การวิจัยและนวัตกรรม</h1>
                     <p>Research & Innovation — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                    <ExportPDFButton title="การวิจัยและนวัตกรรม" />
                 </div>
             </div>
 

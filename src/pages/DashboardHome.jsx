@@ -9,6 +9,7 @@ import {
     TrendingUp, Lock, BarChart3, Sparkles, Settings2, Target,
     UserCheck, LineChart, Microscope, Wallet, FileBarChart2, ArrowUpRight
 } from 'lucide-react';
+import ExportPDFButton from '../components/ExportPDFButton';
 
 const topics = [
     {
@@ -162,7 +163,9 @@ export default function DashboardHome() {
                     </p>
                 </div>
 
-                {/* Forecasting Button — clean professional style */}
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <ExportPDFButton title="ภาพรวม Science AI Dashboard" label="Export PDF" />
                 <button
                     onClick={() => setShowForecast(!showForecast)}
                     style={{
@@ -181,6 +184,7 @@ export default function DashboardHome() {
                     <LineChart size={18} />
                     Predictive Analytics
                 </button>
+                </div>
             </div>
 
             {/* Forecast Panel (Toggle) */}

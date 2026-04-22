@@ -21,6 +21,7 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { scienceStudentList } from '../data/studentListData';
+import { writeAuditLog } from './auditLogService';
 
 const DOC_PATH = ['datasets', 'students'];
 
@@ -67,7 +68,7 @@ export async function ensureStudentList() {
     return _loadPromise;
 }
 
-export async function uploadStudentList(rows, { fileName, uid } = {}) {
+export async function uploadStudentList(rows, { fileName, uid, who, meta } = {}) {
     if (!Array.isArray(rows) || rows.length === 0) {
         throw new Error('rows must be a non-empty array');
     }
@@ -83,6 +84,15 @@ export async function uploadStudentList(rows, { fileName, uid } = {}) {
     _isLive = true;
     _loadPromise = Promise.resolve(rows);
     notify();
+    // Fire-and-forget audit log; failures are swallowed inside the service.
+    writeAuditLog({
+        action: 'upload_students',
+        who: who || uid || 'unknown',
+        fileName: fileName || 'unknown',
+        rowCount: rows.length,
+        version: 1,
+        meta: meta || {},
+    });
     return { rowCount: rows.length };
 }
 

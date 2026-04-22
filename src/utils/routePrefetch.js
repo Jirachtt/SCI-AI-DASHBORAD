@@ -16,6 +16,8 @@ export const routeLoaders = {
     '/dashboard/strategic': () => import('../pages/StrategicDashboardPage'),
     '/dashboard/ai-chat': () => import('../pages/AIChatPage'),
     '/dashboard/admin': () => import('../pages/AdminPanelPage'),
+    '/dashboard/alerts': () => import('../pages/AlertCenterPage'),
+    '/dashboard/retention': () => import('../pages/RetentionPage'),
 };
 
 const prefetched = new Set();

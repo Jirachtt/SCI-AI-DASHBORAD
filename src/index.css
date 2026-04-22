@@ -4748,3 +4748,87 @@ select option:checked {
   .signup-card-wide { padding: 28px 20px; }
   .signup-step-line { width: 14px; margin: 0 4px; }
 }
+
+/* ==================== Print / Export PDF ==================== */
+/* Triggered by the ExportPDFButton component via window.print(). */
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+
+  html, body {
+    background: #fff !important;
+    color: #111 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide chrome that shouldn't be in the PDF */
+  .sidebar,
+  .topbar,
+  .sidebar-toggle,
+  .floating-ai-button,
+  .ai-chat-widget,
+  .admin-toast,
+  .filter-bar,
+  .back-button,
+  .no-print,
+  .page-loader,
+  button.no-print {
+    display: none !important;
+  }
+
+  /* Expand main content full width */
+  .main-layout,
+  .main-content,
+  .dashboard-content,
+  .app-main,
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Cards & charts on white background */
+  .stat-card,
+  .chart-card,
+  .data-table-container,
+  .admin-data-status-card,
+  .admin-pending-card {
+    background: #fff !important;
+    border: 1px solid #d1d5db !important;
+    box-shadow: none !important;
+    color: #111 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .stat-card-value,
+  .stat-card-label,
+  .chart-card-title,
+  .chart-card-subtitle,
+  .data-table th,
+  .data-table td,
+  h1, h2, h3, h4, p, span, div, strong, label {
+    color: #111 !important;
+  }
+
+  .section-header { border-bottom: 1px solid #d1d5db; margin-bottom: 14px; }
+
+  /* Tables: readable on white */
+  .data-table th { background: #f3f4f6 !important; color: #111 !important; }
+  .data-table tr:hover td { background: transparent !important; }
+
+  /* Charts: Chart.js canvases render fine; just let them print as-is */
+  canvas { max-width: 100% !important; height: auto !important; }
+
+  /* Compact link underlines */
+  a, a:visited { color: #111 !important; text-decoration: none !important; }
+
+  /* Avoid animation jank during print snapshot */
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
