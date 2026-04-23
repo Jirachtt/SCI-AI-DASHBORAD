@@ -1,6 +1,6 @@
 // Import ให้ครบทั้ง Login และ Database
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 // import { getAnalytics } from "firebase/analytics";
 
@@ -21,7 +21,13 @@ const app = initializeApp(firebaseConfig);
 // ตัวแปรสำหรับใช้งานในโปรเจกต์
 // const analytics = getAnalytics(app);
 export const auth = getAuth(app);                // ระบบล็อคอิน
+// Persist auth state in localStorage so refreshes / new tabs reuse the
+// session without bouncing the user back to the login screen.
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.warn('[firebase] setPersistence failed:', err?.message || err);
+});
 export const googleProvider = new GoogleAuthProvider(); // ล็อคอินด้วย Google
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 export const db = getFirestore(app);             // ฐานข้อมูล
 
 export default app;

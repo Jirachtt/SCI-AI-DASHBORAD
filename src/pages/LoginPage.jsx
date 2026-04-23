@@ -1,25 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Lock, Mail, ShieldCheck, X, Sun, Moon } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
-    const { loginWithEmail, loginWithGoogle, loginWithAdminCode } = useAuth();
+    const { user, loginWithEmail, loginWithGoogle, loginWithAdminCode } = useAuth();
     const { theme, toggleTheme } = useTheme();
+    const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
     const [showAdminModal, setShowAdminModal] = useState(false);
     const [adminCode, setAdminCode] = useState('');
 
-    // NOTE on navigation: we DO NOT call navigate('/dashboard') here.
-    // <PublicRoute> in App.jsx watches the auth context and redirects to
-    // /dashboard automatically once the user object is populated. Navigating
-    // here races against Firebase's onAuthStateChanged callback — on Google
-    // popup login the context often hasn't updated yet, so ProtectedRoute
-    // would bounce back to /, and the user would have to hit refresh.
+    // Belt-and-suspenders navigation: <PublicRoute> also watches the auth
+    // context and redirects to /dashboard, but in some Google-popup timings
+    // that path didn't fire and the user had to refresh. Explicit effect on
+    // `user` guarantees we leave the login screen as soon as auth resolves.
+    useEffect(() => {
+        if (user) navigate('/dashboard', { replace: true });
+    }, [user, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -27,18 +30,22 @@ export default function LoginPage() {
         setLoading(true);
         const result = await loginWithEmail(email, password);
         if (!result.success) {
-            setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+            setError(result.error || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
             setLoading(false);
         }
-        // On success: leave loading=true; PublicRoute will redirect once user resolves.
+        // On success: leave loading=true; the useEffect above redirects once user resolves.
     };
 
     const handleGoogleLogin = async () => {
+        if (googleLoading) return;
         setError('');
+        setGoogleLoading(true);
         const result = await loginWithGoogle();
         if (!result.success) {
             setError('Google ล้มเหลว: ' + (result.error || 'ไม่ทราบสาเหตุ'));
+            setGoogleLoading(false);
         }
+        // On success: auth listener will populate user; useEffect navigates.
     };
 
     const handleAdminCodeSubmit = async (e) => {
@@ -116,6 +123,7 @@ export default function LoginPage() {
                         type="button"
                         className="google-login-btn"
                         onClick={handleGoogleLogin}
+                        disabled={googleLoading || loading}
                     >
                         <div className="google-btn-inner">
                             <div className="google-icon-box">
@@ -126,7 +134,9 @@ export default function LoginPage() {
                                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                                 </svg>
                             </div>
-                            <span className="google-btn-text">เข้าสู่ระบบด้วย Google</span>
+                            <span className="google-btn-text">
+                                {googleLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วย Google'}
+                            </span>
                         </div>
                         <div className="google-btn-shine" />
                     </button>

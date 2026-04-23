@@ -44,58 +44,46 @@ export function AuthProvider({ children }) {
 
         if (checkBypass()) return;
 
-        // Handle Google redirect result
-        getRedirectResult(auth).then(async (result) => {
-            if (result?.user) {
-                const u = result.user;
-                const userDocRef = doc(db, "users", u.uid);
-                const userDoc = await getDoc(userDocRef);
-                if (!userDoc.exists()) {
-                    await setDoc(userDocRef, {
-                        name: u.displayName,
-                        email: u.email,
-                        role: 'student',
-                        roleLabel: 'นักศึกษา (Student)',
-                        avatar: u.photoURL || '👤',
-                        status: 'approved',
-                        createdAt: serverTimestamp()
-                    });
-                }
-            }
-        }).catch((err) => console.error('Redirect result error:', err));
+        // Handle Google redirect result — we log errors but don't create
+        // the user doc here; that's onAuthStateChanged's job (single source
+        // of truth, avoids racing setDoc between callers).
+        getRedirectResult(auth).catch((err) => {
+            console.error('Redirect result error:', err);
+        });
 
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            console.log("Auth state changed:", currentUser);
             if (!mounted) return;
 
             if (currentUser) {
-                // 1. Set basic user info IMMEDIATELLY to allow app access
+                // 1. Set basic user info IMMEDIATELY so PublicRoute can
+                //    redirect away from the login page without waiting on
+                //    the Firestore round-trip.
                 const basicUser = {
                     uid: currentUser.uid,
                     email: currentUser.email,
                     name: currentUser.displayName || 'User',
                     avatar: currentUser.photoURL || '👤',
-                    role: 'general', // Default role until fetched
+                    role: 'general',
                     roleLabel: 'ทั่วไป'
                 };
 
                 setUser(basicUser);
-                setLoading(false); // Unblock UI immediately!
+                setLoading(false);
 
-                // 2. Fetch role data in background
+                // 2. Fetch (or create) the user doc in the background.
                 try {
-                    const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-                    if (mounted && userDoc.exists()) {
+                    const userDocRef = doc(db, "users", currentUser.uid);
+                    const userDoc = await getDoc(userDocRef);
+
+                    if (!mounted) return;
+
+                    if (userDoc.exists()) {
                         const userData = userDoc.data();
-
-                        // Merge firestore data with current user state
-                        // Ensure role is valid or fallback to 'student'
                         const role = userData.role || 'student';
-
                         setUser(prev => ({
                             ...prev,
                             ...userData,
-                            role: role,
+                            role,
                             roleLabel: userData.roleLabel || 'นักศึกษา (Student)',
                             isPending: isPendingRole(role),
                             requestedRole: userData.requestedRole || null,
@@ -105,9 +93,23 @@ export function AuthProvider({ children }) {
                             approvedBy: userData.approvedBy || null,
                             approvedAt: userData.approvedAt || null
                         }));
+                    } else if (currentUser.providerData?.some(p => p.providerId === 'google.com')) {
+                        // First-time Google sign-in — provision a student doc.
+                        const newDoc = {
+                            name: currentUser.displayName || 'User',
+                            email: currentUser.email,
+                            role: 'student',
+                            roleLabel: 'นักศึกษา (Student)',
+                            avatar: currentUser.photoURL || '👤',
+                            status: 'approved',
+                            createdAt: serverTimestamp()
+                        };
+                        await setDoc(userDocRef, newDoc);
+                        if (!mounted) return;
+                        setUser(prev => ({ ...prev, ...newDoc, role: 'student' }));
                     }
                 } catch (err) {
-                    console.error("Error fetching user data in background:", err);
+                    console.error("Error fetching user data:", err);
                 }
             } else {
                 setUser(null);
@@ -118,16 +120,18 @@ export function AuthProvider({ children }) {
             if (mounted) setLoading(false);
         });
 
-        // Safety timeout in case Firebase is blocked or slow
+        // Safety timeout — if Firebase is blocked by ad blocker / network
+        // issue we don't want the AuthLoader to spin forever. We use the
+        // functional setState so we read the *current* loading value, not
+        // the stale closure from when this effect first ran.
         const timeoutId = setTimeout(() => {
-            if (loading && mounted) {
-                // Try bypass one last time before giving up
-                if (checkBypass()) return;
-
-                console.warn("Auth listener timed out - Forcing loading false");
-                setLoading(false);
-            }
-        }, 5000); // 5 seconds timeout
+            if (!mounted) return;
+            if (checkBypass()) return;
+            setLoading(prev => {
+                if (prev) console.warn("Auth listener timed out — forcing loading=false");
+                return false;
+            });
+        }, 5000);
 
         return () => {
             mounted = false;
@@ -158,41 +162,30 @@ export function AuthProvider({ children }) {
             await signInWithEmailAndPassword(auth, email, password);
             return { success: true };
         } catch (error) {
-            return { success: false, error: error.message };
+            const code = error?.code || '';
+            let friendly = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+            if (code === 'auth/user-not-found') friendly = 'ไม่พบบัญชีผู้ใช้นี้ในระบบ';
+            else if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') friendly = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+            else if (code === 'auth/invalid-email') friendly = 'รูปแบบอีเมลไม่ถูกต้อง';
+            else if (code === 'auth/user-disabled') friendly = 'บัญชีนี้ถูกระงับการใช้งาน';
+            else if (code === 'auth/too-many-requests') friendly = 'พยายามเข้าสู่ระบบหลายครั้งเกินไป กรุณารอสักครู่';
+            else if (code === 'auth/network-request-failed') friendly = 'ไม่สามารถเชื่อมต่อเครือข่ายได้ กรุณาลองใหม่';
+            return { success: false, error: friendly, code };
         }
     };
 
     const loginWithGoogle = async () => {
         try {
-            // Always use popup first — signInWithRedirect has known issues
-            // with third-party cookie restrictions in modern browsers
-            const result = await signInWithPopup(auth, googleProvider);
-            const user = result.user;
-
-            // Save user document to Firestore
-            try {
-                const userDocRef = doc(db, "users", user.uid);
-                const userDoc = await getDoc(userDocRef);
-                if (!userDoc.exists()) {
-                    await setDoc(userDocRef, {
-                        name: user.displayName,
-                        email: user.email,
-                        role: 'student',
-                        roleLabel: 'นักศึกษา (Student)',
-                        avatar: user.photoURL || '👤',
-                        status: 'approved',
-                        createdAt: serverTimestamp()
-                    });
-                }
-            } catch (firestoreError) {
-                console.warn('Firestore save skipped:', firestoreError.message);
-            }
-
+            // Popup first — redirect has cookie-policy issues on modern
+            // browsers. The popup resolution triggers onAuthStateChanged,
+            // which creates the Firestore user doc if needed. We don't
+            // await Firestore here so the caller returns as soon as auth
+            // is established, letting <PublicRoute> navigate immediately.
+            await signInWithPopup(auth, googleProvider);
             return { success: true };
         } catch (error) {
             console.error('Google login error:', error.code, error.message);
 
-            // Handle specific errors
             if (error.code === 'auth/unauthorized-domain') {
                 return {
                     success: false,
@@ -200,8 +193,9 @@ export function AuthProvider({ children }) {
                 };
             }
 
-            // If popup is blocked, fall back to redirect
-            if (error.code === 'auth/popup-blocked') {
+            // Popup blocked or otherwise unusable — fall back to redirect.
+            if (error.code === 'auth/popup-blocked' ||
+                error.code === 'auth/operation-not-supported-in-this-environment') {
                 try {
                     await signInWithRedirect(auth, googleProvider);
                     return { success: true };
@@ -210,8 +204,13 @@ export function AuthProvider({ children }) {
                 }
             }
 
-            if (error.code === 'auth/popup-closed-by-user') {
+            if (error.code === 'auth/popup-closed-by-user' ||
+                error.code === 'auth/cancelled-popup-request') {
                 return { success: false, error: 'คุณปิดหน้าต่าง Google Login กรุณาลองใหม่' };
+            }
+
+            if (error.code === 'auth/network-request-failed') {
+                return { success: false, error: 'ไม่สามารถเชื่อมต่อเครือข่ายได้ กรุณาลองใหม่' };
             }
 
             return { success: false, error: error.message };
