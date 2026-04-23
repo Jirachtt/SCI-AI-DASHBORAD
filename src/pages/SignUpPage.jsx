@@ -68,7 +68,7 @@ const ROLE_OPTIONS = [
 ];
 
 export default function SignUpPage() {
-    const { signup } = useAuth();
+    const { signup, checkEmailExists } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
 
@@ -85,6 +85,7 @@ export default function SignUpPage() {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [checkingEmail, setCheckingEmail] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
     const roleMeta = ROLE_OPTIONS.find(r => r.value === selectedRole) || null;
@@ -110,11 +111,19 @@ export default function SignUpPage() {
         return null;
     };
 
-    const nextStep = () => {
+    const nextStep = async () => {
         setError('');
         if (step === 1) {
             const err = validateStep1();
             if (err) return setError(err);
+            // Duplicate-email guard — catch it here so the user doesn't
+            // waste time on later steps only to fail at createUser.
+            setCheckingEmail(true);
+            const { exists } = await checkEmailExists(formData.email.trim());
+            setCheckingEmail(false);
+            if (exists) {
+                return setError('อีเมลนี้ถูกใช้สมัครไปแล้ว — กรุณาเข้าสู่ระบบหรือใช้อีเมลอื่น');
+            }
             setStep(2);
             return;
         }
@@ -163,6 +172,11 @@ export default function SignUpPage() {
 
         if (!result.success) {
             setError(result.error);
+            // If the root cause is a duplicate email, bounce back to step 1
+            // so the user can change it without re-picking a role.
+            if (result.code === 'auth/email-already-in-use' || result.code === 'auth/invalid-email') {
+                setStep(1);
+            }
             return;
         }
 
@@ -395,9 +409,9 @@ export default function SignUpPage() {
                             type="button"
                             className="login-btn signup-btn-next"
                             onClick={nextStep}
-                            disabled={loading || (step === 2 && !selectedRole)}
+                            disabled={loading || checkingEmail || (step === 2 && !selectedRole)}
                         >
-                            {loading ? 'กำลังสร้างบัญชี...' : (
+                            {loading ? 'กำลังสร้างบัญชี...' : checkingEmail ? 'กำลังตรวจสอบอีเมล...' : (
                                 step === totalSteps
                                     ? <>ยืนยันและสมัคร <Check size={16} /></>
                                     : <>ถัดไป <ChevronRight size={16} /></>

@@ -344,13 +344,14 @@ function tryLocalResponse(question) {
 
 // ==================== Parse AI Generated Chart ====================
 function parseAIResponse(text) {
-    // Try json_chart first, then fall back to json blocks that contain chartType
-    let regex = /```json_chart\s*([\s\S]*?)\s*```/;
+    // Accept 1-3 backticks on the fence — Gemini occasionally emits a single
+    // backtick which renders as inline code instead of a block.
+    let regex = /`{1,3}json_chart\s*([\s\S]*?)\s*`{1,3}/;
     let match = text.match(regex);
 
     // Fallback: detect ```json blocks that contain chart data (chartType + data)
     if (!match) {
-        const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
+        const jsonRegex = /`{1,3}json\s*([\s\S]*?)\s*`{1,3}/;
         const jsonMatch = text.match(jsonRegex);
         if (jsonMatch) {
             try {
@@ -389,8 +390,12 @@ function parseAIResponse(text) {
     if (match) {
         try {
             const rawJson = JSON.parse(match[1] || match[0]);
-            cleanText = text.replace(match[0].includes('```') ? regex : match[0], '').trim();
-            cleanText = cleanText.replace(/```\s*```/g, '').trim();
+            cleanText = text.replace(match[0].includes('`') ? regex : match[0], '').trim();
+            cleanText = cleanText
+                .replace(/`{1,3}\s*`{1,3}/g, '')
+                .replace(/`{1,3}\s*json_chart\s*`{0,3}/g, '')
+                .replace(/`{1,3}\s*json\s*`{0,3}/g, '')
+                .trim();
 
             const isRadar = rawJson.chartType === 'radar' || rawJson.chartType === 'polarArea';
 

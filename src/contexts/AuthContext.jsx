@@ -7,7 +7,8 @@ import {
     signInWithRedirect,
     getRedirectResult,
     signOut,
-    onAuthStateChanged
+    onAuthStateChanged,
+    fetchSignInMethodsForEmail
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { isPendingRole } from '../utils/accessControl';
@@ -217,6 +218,22 @@ export function AuthProvider({ children }) {
         }
     };
 
+    // Check if an email is already registered (used to catch duplicates
+    // at step 1 of signup before the user fills out later steps).
+    // Returns: { exists: boolean, methods: string[] } — `methods` is empty
+    // for new emails and lists providers (password, google.com, …) otherwise.
+    // On network/policy errors we return exists=false so signup can still
+    // proceed and Firebase will surface the real error on createUser.
+    const checkEmailExists = async (email) => {
+        try {
+            const methods = await fetchSignInMethodsForEmail(auth, email);
+            return { exists: methods.length > 0, methods };
+        } catch (error) {
+            console.warn('[checkEmailExists] failed:', error?.message || error);
+            return { exists: false, methods: [] };
+        }
+    };
+
     const signup = async (email, password, userData) => {
         try {
             const result = await createUserWithEmailAndPassword(auth, email, password);
@@ -246,7 +263,13 @@ export function AuthProvider({ children }) {
 
             return { success: true, isPending: userData.status === 'pending' };
         } catch (error) {
-            return { success: false, error: error.message };
+            const code = error?.code || '';
+            let friendly = error.message;
+            if (code === 'auth/email-already-in-use') friendly = 'อีเมลนี้ถูกใช้สมัครไปแล้ว — กรุณาเข้าสู่ระบบหรือใช้อีเมลอื่น';
+            else if (code === 'auth/invalid-email') friendly = 'รูปแบบอีเมลไม่ถูกต้อง';
+            else if (code === 'auth/weak-password') friendly = 'รหัสผ่านอ่อนเกินไป (อย่างน้อย 6 ตัวอักษร)';
+            else if (code === 'auth/network-request-failed') friendly = 'ไม่สามารถเชื่อมต่อเครือข่ายได้ กรุณาลองใหม่';
+            return { success: false, error: friendly, code };
         }
     };
 
@@ -277,6 +300,7 @@ export function AuthProvider({ children }) {
             loginWithGoogle,
             loginWithAdminCode,
             signup,
+            checkEmailExists,
             logout,
             loading,
             updateUserDoc
