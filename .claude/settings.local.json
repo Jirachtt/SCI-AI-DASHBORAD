@@ -75,7 +75,8 @@
       "Bash(cp \"C:\\\\Users\\\\JR\\\\Downloads\\\\B3.jfif\" \"C:\\\\Users\\\\JR\\\\Downloads\\\\B3.jpg\")",
       "Bash(python -c \"from PIL import Image; img = Image.open\\(r'C:\\\\Users\\\\JR\\\\Downloads\\\\B3.jpg'\\); img.thumbnail\\(\\(1200, 1200\\)\\); img.save\\(r'C:\\\\Users\\\\JR\\\\Downloads\\\\B3_small.jpg', quality=85\\)\")",
       "Bash(magick \"C:\\\\Users\\\\JR\\\\Downloads\\\\B3.jfif\" -resize 1000x1000 \"C:\\\\Users\\\\JR\\\\Downloads\\\\B3_small.jpg\")",
-      "Bash(ffmpeg -i \"C:\\\\Users\\\\JR\\\\Downloads\\\\B3.jfif\" -vf \"scale=1000:-1\" \"C:\\\\Users\\\\JR\\\\Downloads\\\\B3_small.jpg\" -y)"
+      "Bash(ffmpeg -i \"C:\\\\Users\\\\JR\\\\Downloads\\\\B3.jfif\" -vf \"scale=1000:-1\" \"C:\\\\Users\\\\JR\\\\Downloads\\\\B3_small.jpg\" -y)",
+      "Bash(npx --yes eslint src/pages/AIChatPage.jsx src/services/geminiService.js)"
     ]
   },
   "enabledPlugins": {

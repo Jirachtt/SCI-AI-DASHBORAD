@@ -683,7 +683,83 @@ function parseAIResponse(text) {
             console.error('Failed to parse Generative Chart JSON:', e);
         }
     }
+
+    // Safety net: strip raw dataset dumps the model sometimes emits
+    // (e.g. `[{"id":"...","n":"..."}, ...]`) after json_chart extraction.
+    // json_chart blocks were already removed above, so anything left is unwanted.
+    cleanText = stripRawDatasetDumps(cleanText);
+
     return { text: cleanText, chart: chartConfig };
+}
+
+// Remove raw JSON arrays-of-objects and ```json fenced data lists.
+// Preserves normal prose and short inline code.
+function stripRawDatasetDumps(text) {
+    if (!text) return text;
+    let out = text;
+
+    // 1. Drop any remaining fenced ```json / ```jsonl blocks that weren't charts.
+    out = out.replace(/`{3}json[l]?\s*[\s\S]*?`{3}/gi, '');
+    out = out.replace(/`{3}\s*\[\s*\{[\s\S]*?\}\s*\]\s*`{3}/g, '');
+
+    // 2. Drop bare JSON arrays of objects (>= 2 objects or 1 big object with >3 fields).
+    //    Use brace-counting to find balanced array spans instead of regex (JSON can be long).
+    const stripped = [];
+    let i = 0;
+    while (i < out.length) {
+        const ch = out[i];
+        if (ch === '[') {
+            const end = findBalancedArrayEnd(out, i);
+            if (end > i) {
+                const candidate = out.slice(i, end);
+                if (looksLikeDatasetDump(candidate)) {
+                    i = end;
+                    continue;
+                }
+            }
+        }
+        stripped.push(ch);
+        i++;
+    }
+    out = stripped.join('');
+
+    // 3. Collapse stray empty lines left behind.
+    out = out.replace(/\n{3,}/g, '\n\n').trim();
+    return out;
+}
+
+function findBalancedArrayEnd(s, start) {
+    let depth = 0, inStr = false, esc = false;
+    for (let i = start; i < s.length; i++) {
+        const c = s[i];
+        if (esc) { esc = false; continue; }
+        if (c === '\\') { esc = true; continue; }
+        if (c === '"') { inStr = !inStr; continue; }
+        if (inStr) continue;
+        if (c === '[') depth++;
+        else if (c === ']') { depth--; if (depth === 0) return i + 1; }
+    }
+    return -1;
+}
+
+function looksLikeDatasetDump(s) {
+    if (s.length < 40) return false;
+    try {
+        const parsed = JSON.parse(s);
+        if (!Array.isArray(parsed)) return false;
+        if (parsed.length === 0) return false;
+        // Array of objects with common dataset keys → dump
+        const first = parsed[0];
+        if (first && typeof first === 'object' && !Array.isArray(first)) {
+            const keys = Object.keys(first);
+            if (keys.length >= 2) return true;
+        }
+        // Long flat array of primitives (> 10 items) → likely data dump too
+        if (parsed.length > 10 && parsed.every(x => typeof x !== 'object')) return true;
+        return false;
+    } catch (_) {
+        return false;
+    }
 }
 
 // ==================== Chat Message Component ====================
