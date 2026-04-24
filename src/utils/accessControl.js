@@ -17,7 +17,7 @@ const ACCESS_LEVELS = {
             'student_stats', 'budget_forecast',
             'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
             'graduation_stats',
-            'alert_center', 'retention',
+            'alert_center',
             'admin_panel'
         ]
     },
@@ -33,7 +33,7 @@ const ACCESS_LEVELS = {
             'student_stats', 'budget_forecast',
             'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
             'graduation_stats',
-            'alert_center', 'retention'
+            'alert_center'
         ]
     },
     staff: {
@@ -45,7 +45,7 @@ const ACCESS_LEVELS = {
             'dashboard', 'financial',
             'student_stats', 'graduation_stats', 'budget_forecast',
             'hr_overview', 'research_overview', 'ai_chat',
-            'alert_center', 'retention'
+            'alert_center'
         ]
     },
     general: {

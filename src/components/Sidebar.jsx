@@ -6,8 +6,15 @@ import {
     Home, CreditCard, DollarSign, Users, LogOut, Lock, FileText,
     GraduationCap, CheckCircle, BarChart3,
     Microscope, Target, UserCheck, BookOpen, Award,
-    MessageCircle, Shield, UserCog, Clock, Bell, TrendingDown
+    Shield, UserCog, Clock, Bell, Sparkles
 } from 'lucide-react';
+
+const FEATURED_AI_CHAT = {
+    path: '/dashboard/ai-chat',
+    label: 'แชทกับ AI',
+    subtitle: 'ผู้ช่วยอัจฉริยะของคณะ',
+    section: 'ai_chat',
+};
 
 const menuGroups = [
     {
@@ -34,7 +41,6 @@ const menuGroups = [
             { path: '/dashboard/graduation', label: 'ตรวจสอบการจบ', icon: CheckCircle, section: 'graduation_check' },
             { path: '/dashboard/student-life', label: 'กิจกรรม/พฤติกรรม', icon: Users, section: 'student_life' },
             { path: '/dashboard/graduation-stats', label: 'สถิติสำเร็จการศึกษา', icon: Award, section: 'graduation_stats' },
-            { path: '/dashboard/retention', label: 'Retention / ตกออก', icon: TrendingDown, section: 'retention' },
         ]
     },
     {
@@ -58,13 +64,6 @@ const menuGroups = [
         label: 'ยุทธศาสตร์ · OKR',
         items: [
             { path: '/dashboard/strategic', label: 'เป้าหมายยุทธศาสตร์', icon: Target, section: 'strategic_overview' },
-        ]
-    },
-    {
-        id: 'ai_chat',
-        label: 'ผู้ช่วย AI · AI',
-        items: [
-            { path: '/dashboard/ai-chat', label: 'แชทกับ AI', icon: MessageCircle, section: 'ai_chat' },
         ]
     },
     {
@@ -98,6 +97,34 @@ export default function Sidebar({ isOpen, onClose }) {
             </div>
 
             <nav className="sidebar-nav">
+                {(() => {
+                    const hasAccess = canAccess(user?.role, FEATURED_AI_CHAT.section);
+                    const warm = () => { if (hasAccess) prefetchRoute(FEATURED_AI_CHAT.path); };
+                    return (
+                        <NavLink
+                            to={hasAccess ? FEATURED_AI_CHAT.path : '#'}
+                            className={({ isActive }) =>
+                                `nav-featured ${isActive && hasAccess ? 'active' : ''} ${!hasAccess ? 'locked' : ''}`
+                            }
+                            onClick={(e) => { if (!hasAccess) e.preventDefault(); onClose(); }}
+                            onMouseEnter={warm}
+                            onFocus={warm}
+                            onTouchStart={warm}
+                        >
+                            <span className="nav-featured-icon">
+                                <Sparkles size={20} />
+                            </span>
+                            <span className="nav-featured-body">
+                                <span className="nav-featured-title">{FEATURED_AI_CHAT.label}</span>
+                                <span className="nav-featured-sub">{FEATURED_AI_CHAT.subtitle}</span>
+                            </span>
+                            {hasAccess
+                                ? <span className="nav-featured-badge">หลัก</span>
+                                : <Lock className="lock-icon" size={14} />}
+                        </NavLink>
+                    );
+                })()}
+
                 {menuGroups.map((group) => {
                     const hasAnyAccess = group.items.some(item => canAccess(user?.role, item.section));
                     if (!hasAnyAccess && group.id !== 'home') {
