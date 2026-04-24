@@ -6,7 +6,7 @@ import {
     Home, CreditCard, DollarSign, Users, LogOut, Lock, FileText,
     GraduationCap, CheckCircle, BarChart3,
     Microscope, Target, UserCheck, BookOpen, Award,
-    Shield, UserCog, Clock, Bell, Sparkles
+    Shield, UserCog, Clock, Bell, Bot
 } from 'lucide-react';
 
 const FEATURED_AI_CHAT = {
@@ -112,7 +112,7 @@ export default function Sidebar({ isOpen, onClose }) {
                             onTouchStart={warm}
                         >
                             <span className="nav-featured-icon">
-                                <Sparkles size={20} />
+                                <Bot size={22} strokeWidth={2.2} />
                             </span>
                             <span className="nav-featured-body">
                                 <span className="nav-featured-title">{FEATURED_AI_CHAT.label}</span>
