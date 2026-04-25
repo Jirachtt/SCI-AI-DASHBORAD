@@ -13,10 +13,12 @@
 //
 // Callers use:
 //   ensureStudentList()    — async, loads once and caches; returns live list (or mock)
-//   getStudentListSync()   — synchronous accessor (returns cached / mock); safe anywhere
+//   getStudentListSync()   — synchronous accessor (returns cached / mock + manual adds); safe anywhere
 //   uploadStudentList()    — admin writes new dataset
 //   getStudentListMeta()   — lightweight metadata fetch for admin panel
 //   onStudentDataChange()  — subscribe to in-session updates after an upload
+//   addStudent()           — persist a single manually added student (localStorage)
+//   removeStudent()        — remove a manually added student by ID
 
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -24,20 +26,83 @@ import { scienceStudentList } from '../data/studentListData';
 import { writeAuditLog } from './auditLogService';
 
 const DOC_PATH = ['datasets', 'students'];
+const MANUAL_STUDENTS_KEY = 'sci_dashboard_manual_students';
 
 let _cache = null;
 let _isLive = false;           // true once Firestore has returned a valid dataset
 let _loadPromise = null;
 const _listeners = new Set();
 
+// ─── Manual Students (localStorage) ───
+function loadManualStudents() {
+    try {
+        const raw = localStorage.getItem(MANUAL_STUDENTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveManualStudents(list) {
+    try {
+        localStorage.setItem(MANUAL_STUDENTS_KEY, JSON.stringify(list));
+    } catch (e) {
+        console.warn('[studentDataService] localStorage save failed:', e);
+    }
+}
+
+/**
+ * Add a single student manually. Persisted in localStorage and immediately
+ * visible to getStudentListSync() and AI chat.
+ */
+export function addStudent(student) {
+    const manual = loadManualStudents();
+    // Prevent duplicates by ID
+    const exists = manual.findIndex(s => s.id === student.id);
+    if (exists >= 0) {
+        manual[exists] = student; // Update existing
+    } else {
+        manual.push(student);
+    }
+    saveManualStudents(manual);
+    notify();
+    return manual;
+}
+
+/**
+ * Remove a manually added student by ID.
+ */
+export function removeStudent(studentId) {
+    const manual = loadManualStudents().filter(s => s.id !== studentId);
+    saveManualStudents(manual);
+    notify();
+    return manual;
+}
+
+/**
+ * Get all manually added students (for UI to distinguish them).
+ */
+export function getManualStudents() {
+    return loadManualStudents();
+}
+
+// ─── Core data functions ───
+
 function notify() {
+    const all = getStudentListSync();
     for (const cb of _listeners) {
-        try { cb(_cache); } catch (e) { console.error('[studentDataService] listener error', e); }
+        try { cb(all); } catch (e) { console.error('[studentDataService] listener error', e); }
     }
 }
 
 export function getStudentListSync() {
-    return _cache || scienceStudentList;
+    const base = _cache || scienceStudentList;
+    const manual = loadManualStudents();
+    if (manual.length === 0) return base;
+    // Merge: manual students override base by ID
+    const manualIds = new Set(manual.map(s => s.id));
+    const filtered = base.filter(s => !manualIds.has(s.id));
+    return [...filtered, ...manual];
 }
 
 export function isLiveData() {
@@ -45,7 +110,7 @@ export function isLiveData() {
 }
 
 export async function ensureStudentList() {
-    if (_cache) return _cache;
+    if (_cache) return getStudentListSync();
     if (_loadPromise) return _loadPromise;
     _loadPromise = (async () => {
         try {
@@ -55,7 +120,7 @@ export async function ensureStudentList() {
                 if (Array.isArray(data.rows) && data.rows.length > 0) {
                     _cache = data.rows;
                     _isLive = true;
-                    return _cache;
+                    return getStudentListSync();
                 }
             }
         } catch (err) {
@@ -63,7 +128,7 @@ export async function ensureStudentList() {
         }
         _cache = scienceStudentList;
         _isLive = false;
-        return _cache;
+        return getStudentListSync();
     })();
     return _loadPromise;
 }
@@ -118,3 +183,4 @@ export function onStudentDataChange(callback) {
     _listeners.add(callback);
     return () => _listeners.delete(callback);
 }
+

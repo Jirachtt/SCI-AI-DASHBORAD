@@ -4,7 +4,7 @@ import { Search, Download, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap
 
 /* ────────────── Student Data (live from Firestore, mock fallback) ────────────── */
 import { SCIENCE_MAJORS } from '../data/studentListData';
-import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
+import { ensureStudentList, getStudentListSync, onStudentDataChange, addStudent } from '../services/studentDataService';
 const MAJORS = SCIENCE_MAJORS;
 
 /* ────────────── Styles ────────────── */
@@ -103,19 +103,20 @@ export default function StudentListPage() {
         if (!newStudent.id || !newStudent.name || !newStudent.gpa) return;
         const gpa = parseFloat(newStudent.gpa);
         if (isNaN(gpa) || gpa < 0 || gpa > 4) return;
-        setStudents(prev => [
-            ...prev,
-            {
-                id: newStudent.id,
-                prefix: '',
-                name: newStudent.name,
-                major: newStudent.major,
-                level: 'ปริญญาตรี',
-                year: parseInt(newStudent.year),
-                gpa,
-                status: gpa < 2.0 ? 'รอพินิจ' : 'กำลังศึกษา'
-            }
-        ]);
+        const student = {
+            id: newStudent.id,
+            prefix: '',
+            name: newStudent.name,
+            major: newStudent.major,
+            level: 'ปริญญาตรี',
+            year: parseInt(newStudent.year),
+            gpa,
+            status: gpa < 2.0 ? 'รอพินิจ' : 'กำลังศึกษา'
+        };
+        // Persist to localStorage so it survives page changes and AI chat can see it
+        addStudent(student);
+        // Update local state immediately
+        setStudents(getStudentListSync());
         setNewStudent({ id: '', name: '', major: MAJORS[0], year: '1', gpa: '' });
         setShowModal(false);
     };
