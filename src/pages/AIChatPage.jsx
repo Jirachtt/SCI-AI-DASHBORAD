@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, BarChart3, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet } from 'lucide-react';
+import { MessageCircle, Send, BarChart3, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import {
+    createChatSession, updateChatSession, listUserSessions,
+    loadChatSession, deleteChatSession,
+} from '../services/chatHistoryService';
 import { Chart as ReactChart } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
@@ -338,7 +343,7 @@ function searchStudents(query) {
         }
     }
 
-    const majorKeywords = { 'คอม': 'วิทยาการคอมพิวเตอร์', 'ไอที': 'เทคโนโลยีสารสนเทศ', 'it': 'เทคโนโลยีสารสนเทศ', 'คณิต': 'คณิตศาสตร์', 'เคมี': 'เคมี', 'ฟิสิกส์': 'ฟิสิกส์', 'ชีว': 'ชีววิทยา', 'ข้อมูล': 'วิทยาการข้อมูล', 'data': 'วิทยาการข้อมูล', 'สถิติ': 'สถิติ' };
+    const majorKeywords = { 'คอม': 'วิทยาการคอมพิวเตอร์', 'ไอที': 'เทคโนโลยีสารสนเทศ', 'it': 'เทคโนโลยีสารสนเทศ', 'คณิต': 'คณิตศาสตร์', 'เคมี': 'เคมี', 'ฟิสิกส์': 'ฟิสิกส์ประยุกต์', 'ชีว': 'เทคโนโลยีชีวภาพ', 'วัสดุ': 'วัสดุศาสตร์', 'สิ่งทอ': 'เคมีอุตสาหกรรมและเทคโนโลยีสิ่งทอ', 'สถิติ': 'สถิติ' };
     if (results.length === 0) {
         for (const [kw, major] of Object.entries(majorKeywords)) {
             if (q.includes(kw) && (q.includes('สาขา') || q.includes('นักศึกษา') || q.includes('นิสิต') || q.includes('คน') || q.includes('รายชื่อ') || q.includes('ใคร'))) {
@@ -797,7 +802,7 @@ function ChatMessage({ msg, onExpand }) {
 
     return (
         <div className="ai-page-msg ai-page-msg-bot">
-            <div className="ai-page-msg-avatar">🤖</div>
+            <div className="ai-page-msg-avatar"><Sparkles size={18} style={{ color: '#00e676' }} /></div>
             <div className="ai-page-msg-content">
                 <div className="ai-page-msg-bubble bot">{formatText(msg.text)}</div>
 
@@ -884,11 +889,19 @@ function generateChartFromFile(parsed, fileName) {
 }
 
 export default function AIChatPage() {
+    const { user } = useAuth();
     const [expandedChart, setExpandedChart] = useState(null);
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef(null);
     const fileInputRef = useRef(null);
     const [uploadedFileData, setUploadedFileData] = useState(null);
+    // Chat history state
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [sessions, setSessions] = useState([]);
+    const [sessionsLoading, setSessionsLoading] = useState(false);
+    const sessionIdRef = useRef(null);
+    const saveTimerRef = useRef(null);
+    const lastSavedRef = useRef(null);
     // Dashboard summary data for merge context
     const dashboardMergeSummary = (() => {
         const trendActual = studentStatsData.trend.filter(t => t.type === 'actual');
@@ -949,11 +962,103 @@ export default function AIChatPage() {
 
     const handleNewChat = useCallback(() => {
         resetConversation();
+        // Drop session pointer so the next first user message creates a new doc.
+        sessionIdRef.current = null;
+        lastSavedRef.current = null;
+        if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
         setMessages([{
             role: 'bot',
             text: '🔄 **เริ่มบทสนทนาใหม่แล้ว!**\n\nถามมาได้เลยครับ ผมพร้อมช่วยเสมอ!',
             chart: null
         }]);
+    }, []);
+
+    // ── Chat History: auto-save on message changes ──
+    // Skip if not signed in with a real Firebase uid (admin-bypass uids start
+    // with 'admin-bypass-' and don't have Firestore permission).
+    const canPersist = !!user?.uid && !user.uid.startsWith('admin-bypass-');
+
+    useEffect(() => {
+        if (!canPersist) return;
+        // Only persist after the user has actually said something.
+        const hasUserMsg = messages.some(m => m.role === 'user');
+        if (!hasUserMsg) return;
+        // Cheap dedupe — avoid writing identical snapshots.
+        const sig = messages.length + ':' + (messages[messages.length - 1]?.text || '').slice(0, 80);
+        if (sig === lastSavedRef.current) return;
+
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(async () => {
+            try {
+                if (sessionIdRef.current) {
+                    await updateChatSession(sessionIdRef.current, messages);
+                } else {
+                    const id = await createChatSession({
+                        uid: user.uid,
+                        email: user.email,
+                        messages,
+                    });
+                    sessionIdRef.current = id;
+                }
+                lastSavedRef.current = sig;
+            } catch (err) {
+                console.warn('[chatHistory] save failed:', err?.message || err);
+            }
+        }, 1200); // debounce 1.2s — covers typing/streaming bursts
+
+        return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+    }, [messages, canPersist, user?.uid, user?.email]);
+
+    const refreshSessions = useCallback(async () => {
+        if (!canPersist) return;
+        setSessionsLoading(true);
+        try {
+            const list = await listUserSessions(user.uid, 50);
+            setSessions(list);
+        } catch (err) {
+            console.warn('[chatHistory] list failed:', err?.message || err);
+        } finally {
+            setSessionsLoading(false);
+        }
+    }, [canPersist, user?.uid]);
+
+    const openHistory = useCallback(() => {
+        setHistoryOpen(true);
+        refreshSessions();
+    }, [refreshSessions]);
+
+    const handleLoadSession = useCallback(async (sessionId) => {
+        try {
+            const session = await loadChatSession(sessionId);
+            if (!session) return;
+            // Replace current conversation with the loaded one.
+            // Reset Gemini's in-memory turn history so it starts fresh on next send.
+            resetConversation();
+            sessionIdRef.current = session.id;
+            lastSavedRef.current = null;
+            setMessages(session.messages.length > 0 ? session.messages : [{
+                role: 'bot', text: 'แชทเดิมว่างเปล่า — เริ่มถามใหม่ได้เลย', chart: null
+            }]);
+            setHistoryOpen(false);
+        } catch (err) {
+            console.warn('[chatHistory] load failed:', err?.message || err);
+        }
+    }, []);
+
+    const handleDeleteSession = useCallback(async (sessionId, e) => {
+        e?.stopPropagation();
+        if (!confirm('ลบประวัติแชทนี้ถาวร?')) return;
+        try {
+            await deleteChatSession(sessionId);
+            // If user deletes the active session, drop the pointer.
+            if (sessionIdRef.current === sessionId) {
+                sessionIdRef.current = null;
+                lastSavedRef.current = null;
+            }
+            setSessions(prev => prev.filter(s => s.id !== sessionId));
+        } catch (err) {
+            console.warn('[chatHistory] delete failed:', err?.message || err);
+        }
     }, []);
 
     // ── File Upload Handler ──
@@ -1196,12 +1301,12 @@ export default function AIChatPage() {
     };
 
     const featureCards = [
-        { icon: Bot, title: 'ถาม-ตอบ AI', desc: 'ตอบทุกเรื่องแม่โจ้: ประวัติ, คณะ, หลักสูตร, รับสมัคร, วิจัย', color: '#00e676' },
-        { icon: ChartLine, title: 'พยากรณ์ข้อมูล', desc: 'สร้างกราฟพยากรณ์งบประมาณ/จำนวนนิสิต', color: '#00e5ff' },
-        { icon: Search, title: 'ค้นหานักศึกษา', desc: 'ค้นหาตามรหัส, ชื่อ, สาขา, ชั้นปี, GPA', color: '#7B68EE' },
-        { icon: Paperclip, title: 'อัปโหลดไฟล์', desc: 'แนบ CSV/Excel (.xlsx) เพื่อวิเคราะห์และสร้างกราฟอัตโนมัติ', color: '#C5A028' },
-        { icon: AudioLines, title: 'สั่งงานด้วยเสียง', desc: 'กดปุ่มไมค์แล้วพูดคำสั่งเป็นภาษาไทย', color: '#E91E63' },
-        { icon: Maximize2, title: 'ขยาย/ซูมกราฟ', desc: 'คลิก "ขยาย" เพื่อดูกราฟเต็มจอพร้อมซูม', color: '#FF6B6B' },
+        { icon: Bot, title: 'ถาม-ตอบ AI', desc: 'ตอบทุกเรื่องแม่โจ้: ประวัติ, คณะ, หลักสูตร, รับสมัคร, วิจัย', color: '#10b981', gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' },
+        { icon: ChartLine, title: 'พยากรณ์ข้อมูล', desc: 'สร้างกราฟพยากรณ์งบประมาณ/จำนวนนิสิต', color: '#06b6d4', gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)' },
+        { icon: Search, title: 'ค้นหานักศึกษา', desc: 'ค้นหาตามรหัส, ชื่อ, สาขา, ชั้นปี, GPA', color: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' },
+        { icon: Paperclip, title: 'อัปโหลดไฟล์', desc: 'แนบ CSV/Excel (.xlsx) เพื่อวิเคราะห์และสร้างกราฟอัตโนมัติ', color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' },
+        { icon: AudioLines, title: 'สั่งงานด้วยเสียง', desc: 'กดปุ่มไมค์แล้วพูดคำสั่งเป็นภาษาไทย', color: '#ec4899', gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)' },
+        { icon: Maximize2, title: 'ขยาย/ซูมกราฟ', desc: 'คลิก "ขยาย" เพื่อดูกราฟเต็มจอพร้อมซูม', color: '#f43f5e', gradient: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)' },
     ];
 
     return (
@@ -1210,17 +1315,96 @@ export default function AIChatPage() {
             <div className="ai-chat-page-header">
                 <div className="ai-chat-page-header-left">
                     <div className="ai-chat-page-header-icon">
-                        <Bot size={24} />
+                        <Sparkles size={22} />
                     </div>
                     <div>
                         <h1>MJU AI Assistant</h1>
                         <p>Powered by Gemini ✨ — ระบบ AI อัจฉริยะสำหรับคณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
                     </div>
                 </div>
-                <button className="ai-chat-page-new-chat" onClick={handleNewChat}>
-                    <RotateCcw size={16} /> เริ่มใหม่
-                </button>
+                <div className="ai-chat-page-header-actions">
+                    {canPersist && (
+                        <button
+                            className="ai-chat-page-history-btn"
+                            onClick={openHistory}
+                            title="ประวัติการสนทนา"
+                        >
+                            <History size={15} /> ประวัติ
+                        </button>
+                    )}
+                    <button className="ai-chat-page-new-chat" onClick={handleNewChat}>
+                        <RotateCcw size={15} /> เริ่มใหม่
+                    </button>
+                </div>
             </div>
+
+            {/* Chat History Drawer */}
+            {historyOpen && (
+                <div className="chat-history-overlay" onClick={() => setHistoryOpen(false)}>
+                    <aside className="chat-history-drawer" onClick={(e) => e.stopPropagation()}>
+                        <div className="chat-history-header">
+                            <div className="chat-history-title">
+                                <History size={18} />
+                                <span>ประวัติการสนทนา</span>
+                            </div>
+                            <button
+                                className="chat-history-close"
+                                onClick={() => setHistoryOpen(false)}
+                                aria-label="ปิด"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="chat-history-body">
+                            <button
+                                className="chat-history-new-btn"
+                                onClick={() => { handleNewChat(); setHistoryOpen(false); }}
+                            >
+                                <MessageSquarePlus size={15} /> เริ่มแชทใหม่
+                            </button>
+
+                            {sessionsLoading ? (
+                                <div className="chat-history-empty">กำลังโหลด…</div>
+                            ) : sessions.length === 0 ? (
+                                <div className="chat-history-empty">
+                                    ยังไม่มีประวัติแชท<br />
+                                    <small>ส่งข้อความครั้งแรกเพื่อเริ่มบันทึก</small>
+                                </div>
+                            ) : (
+                                <ul className="chat-history-list">
+                                    {sessions.map(s => {
+                                        const active = s.id === sessionIdRef.current;
+                                        const ts = s.updatedAt ? s.updatedAt.toLocaleString('th-TH', {
+                                            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                                        }) : '';
+                                        return (
+                                            <li
+                                                key={s.id}
+                                                className={`chat-history-item ${active ? 'active' : ''}`}
+                                                onClick={() => handleLoadSession(s.id)}
+                                            >
+                                                <div className="chat-history-item-main">
+                                                    <div className="chat-history-item-title">{s.title}</div>
+                                                    <div className="chat-history-item-meta">
+                                                        {ts} · {s.messageCount} ข้อความ
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    className="chat-history-item-del"
+                                                    onClick={(e) => handleDeleteSession(s.id, e)}
+                                                    title="ลบ"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
+                    </aside>
+                </div>
+            )}
 
             <div className="ai-chat-page-body">
                 {/* Main Chat Area */}
@@ -1229,7 +1413,7 @@ export default function AIChatPage() {
                     {messages.length <= 2 && (
                         <div className="ai-chat-page-quick-actions">
                             <div className="ai-chat-page-quick-label">
-                                <Zap size={14} /> Quick Actions — คลิกเพื่อลองใช้งาน
+                                <Zap size={13} /> QUICK ACTIONS — คลิกเพื่อลองใช้งาน
                             </div>
                             <div className="ai-chat-page-quick-grid">
                                 {quickActions.map((action, i) => (
@@ -1248,7 +1432,7 @@ export default function AIChatPage() {
                         ))}
                         {typing && (
                             <div className="ai-page-msg ai-page-msg-bot">
-                                <div className="ai-page-msg-avatar">🤖</div>
+                                <div className="ai-page-msg-avatar"><Sparkles size={18} style={{ color: '#00e676' }} /></div>
                                 <div className="ai-page-msg-content">
                                     <div className="ai-page-typing">
                                         <span /><span /><span />
@@ -1319,7 +1503,7 @@ export default function AIChatPage() {
                             const Icon = card.icon;
                             return (
                                 <div key={i} className="ai-chat-page-feature-card">
-                                    <div className="ai-chat-page-feature-icon" style={{ background: card.color + '22', color: card.color }}>
+                                    <div className="ai-chat-page-feature-icon" style={{ background: card.color + '18', color: card.color, boxShadow: `0 2px 8px ${card.color}15` }}>
                                         <Icon size={18} />
                                     </div>
                                     <div>

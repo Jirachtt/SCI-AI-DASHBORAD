@@ -50,15 +50,15 @@ export const hrData = {
             { level: 'ปริญญาโท', count: 17, color: '#2E86AB', icon: 'MSc' }
         ],
 
-        // ข้อมูลบุคลากรแยกตามภาควิชา (scaled ตามสัดส่วน total 173)
+        // 7 ภาควิชาจริงของคณะวิทยาศาสตร์ มจ. — รวม academic 104 / support 69 / total 173
         byDepartment: [
-            { dept: 'ภาควิชาเคมี', academic: 21, support: 13, total: 34 },
-            { dept: 'ภาควิชาชีววิทยา', academic: 18, support: 11, total: 29 },
-            { dept: 'ภาควิชาฟิสิกส์', academic: 15, support: 10, total: 25 },
-            { dept: 'ภาควิชาคณิตศาสตร์', academic: 15, support: 8, total: 23 },
-            { dept: 'ภาควิชาสถิติ', academic: 12, support: 8, total: 20 },
-            { dept: 'ภาควิชาวิทยาการคอมพิวเตอร์', academic: 14, support: 11, total: 25 },
-            { dept: 'ภาควิชาวิทยาศาสตร์สิ่งแวดล้อม', academic: 9, support: 8, total: 17 }
+            { dept: 'ภาควิชาเคมี', academic: 19, support: 13, total: 32 },
+            { dept: 'ภาควิชาเทคโนโลยีชีวภาพ', academic: 18, support: 11, total: 29 },
+            { dept: 'ภาควิชาฟิสิกส์', academic: 13, support: 10, total: 23 },
+            { dept: 'ภาควิชาคณิตศาสตร์และสถิติ', academic: 22, support: 14, total: 36 },
+            { dept: 'ภาควิชาวิทยาการคอมพิวเตอร์', academic: 13, support: 9, total: 22 },
+            { dept: 'ภาควิชาเทคโนโลยีสารสนเทศ', academic: 11, support: 7, total: 18 },
+            { dept: 'ภาควิชาเคมีประยุกต์', academic: 8, support: 5, total: 13 }
         ],
 
         // แนวโน้มจำนวนบุคลากรย้อนหลัง

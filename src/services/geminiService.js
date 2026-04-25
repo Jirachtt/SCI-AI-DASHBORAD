@@ -355,7 +355,7 @@ The bar dataset sits on the LEFT y-axis ("y"). The line dataset has \`type:"line
 ### HORIZONTAL Bar Format (USE WHEN category labels are long Thai text like major/department names):
 When labels average >8 Thai characters OR >6 categories, use \`indexAxis:"y"\` so names read horizontally without rotation/truncation.
 \`\`\`json_chart
-{"chartType":"bar","data":{"labels":["เทคโนโลยีสารสนเทศ","นวัตกรรมเคมีอุตสาหกรรม","วิทยาการข้อมูล"],"datasets":[{"label":"จำนวนนักศึกษา","data":[120,95,80],"backgroundColor":["#00a651","#7B68EE","#2E86AB"]}]},"options":{"indexAxis":"y","scales":{"x":{"beginAtZero":true,"title":{"display":true,"text":"จำนวน (คน)"}}}}}
+{"chartType":"bar","data":{"labels":["เทคโนโลยีสารสนเทศ","เคมีอุตสาหกรรมและเทคโนโลยีสิ่งทอ","วัสดุศาสตร์"],"datasets":[{"label":"จำนวนนักศึกษา","data":[120,95,80],"backgroundColor":["#00a651","#7B68EE","#2E86AB"]}]},"options":{"indexAxis":"y","scales":{"x":{"beginAtZero":true,"title":{"display":true,"text":"จำนวน (คน)"}}}}}
 \`\`\`
 
 ### Cross-Table JOIN:

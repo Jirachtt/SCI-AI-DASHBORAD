@@ -25,15 +25,15 @@ export const researchData = {
         { year: '2569', scopus: 92, tci1: 51, tci2: 28, national: 52, total: 223, type: 'forecast' }
     ],
 
-    // งานวิจัยแยกตามภาควิชา (funding ล้านบาท รวม 28.3 ตาม MJU Dashboard 2568)
+    // งานวิจัยแยกตามภาควิชา — 7 ภาควิชาจริงของคณะวิทย์ มจ. (funding รวม 28.3 ลบ.)
     byDepartment: [
         { dept: 'ภาควิชาเคมี', publications: 48, funding: 6.0, patents: 5, citations: 2150 },
-        { dept: 'ภาควิชาชีววิทยา', publications: 42, funding: 5.3, patents: 4, citations: 1890 },
+        { dept: 'ภาควิชาเทคโนโลยีชีวภาพ', publications: 42, funding: 5.3, patents: 4, citations: 1890 },
         { dept: 'ภาควิชาฟิสิกส์', publications: 35, funding: 4.4, patents: 3, citations: 1520 },
         { dept: 'ภาควิชาวิทยาการคอมพิวเตอร์', publications: 28, funding: 4.1, patents: 4, citations: 1280 },
-        { dept: 'ภาควิชาคณิตศาสตร์', publications: 18, funding: 2.5, patents: 0, citations: 650 },
-        { dept: 'ภาควิชาสถิติ', publications: 12, funding: 2.1, patents: 1, citations: 480 },
-        { dept: 'ภาควิชาวิทยาศาสตร์สิ่งแวดล้อม', publications: 12, funding: 3.9, patents: 1, citations: 975 }
+        { dept: 'ภาควิชาคณิตศาสตร์และสถิติ', publications: 30, funding: 4.6, patents: 1, citations: 1130 },
+        { dept: 'ภาควิชาเทคโนโลยีสารสนเทศ', publications: 18, funding: 2.5, patents: 1, citations: 650 },
+        { dept: 'ภาควิชาเคมีประยุกต์', publications: 12, funding: 1.4, patents: 1, citations: 380 }
     ],
 
     // งบประมาณวิจัย (ล้านบาท) — อ้างอิงจริง: dashboard.mju.ac.th?dep=20300
@@ -59,11 +59,11 @@ export const researchData = {
 
     // สิทธิบัตรและนวัตกรรม
     patents: [
-        { id: 'PAT-001', title: 'สารสกัดจากสมุนไพรต้านเชื้อรา', dept: 'ภาควิชาชีววิทยา', year: '2566', status: 'ได้รับแล้ว', type: 'อนุสิทธิบัตร' },
+        { id: 'PAT-001', title: 'สารสกัดจากสมุนไพรต้านเชื้อรา', dept: 'ภาควิชาเทคโนโลยีชีวภาพ', year: '2566', status: 'ได้รับแล้ว', type: 'อนุสิทธิบัตร' },
         { id: 'PAT-002', title: 'เซ็นเซอร์ตรวจวัดคุณภาพน้ำ IoT', dept: 'ภาควิชาฟิสิกส์', year: '2566', status: 'ได้รับแล้ว', type: 'สิทธิบัตร' },
         { id: 'PAT-003', title: 'ระบบ AI วิเคราะห์โรคพืช', dept: 'ภาควิชาวิทยาการคอมพิวเตอร์', year: '2567', status: 'ได้รับแล้ว', type: 'อนุสิทธิบัตร' },
         { id: 'PAT-004', title: 'วัสดุนาโนดูดซับสารพิษ', dept: 'ภาควิชาเคมี', year: '2567', status: 'ได้รับแล้ว', type: 'สิทธิบัตร' },
-        { id: 'PAT-005', title: 'สูตรปุ๋ยชีวภาพจากจุลินทรีย์', dept: 'ภาควิชาชีววิทยา', year: '2567', status: 'รอพิจารณา', type: 'อนุสิทธิบัตร' },
+        { id: 'PAT-005', title: 'สูตรปุ๋ยชีวภาพจากจุลินทรีย์', dept: 'ภาควิชาเทคโนโลยีชีวภาพ', year: '2567', status: 'รอพิจารณา', type: 'อนุสิทธิบัตร' },
         { id: 'PAT-006', title: 'แอปพลิเคชันติดตามสุขภาพ', dept: 'ภาควิชาวิทยาการคอมพิวเตอร์', year: '2567', status: 'รอพิจารณา', type: 'ลิขสิทธิ์ซอฟต์แวร์' }
     ],
 
