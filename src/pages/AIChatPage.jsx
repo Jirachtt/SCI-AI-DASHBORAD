@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot } from 'lucide-react';
+import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
     createChatSession, updateChatSession, listUserSessions,
@@ -237,18 +237,23 @@ function generateForecastResponse(parsed) {
 
         allDatasets.push({
             label: `${ds.label} (ข้อมูลจริง)`, data: actualValues,
-            borderColor: ds.color, backgroundColor: ds.color + '20',
+            borderColor: ds.color, backgroundColor: ds.color + '25',
             fill: parsed.chartType === 'line', tension: 0.4,
-            pointBackgroundColor: ds.color, pointRadius: 5, borderWidth: 2.5,
-            borderRadius: parsed.chartType === 'bar' ? 6 : 0,
+            pointBackgroundColor: ds.color, pointBorderColor: '#fff',
+            pointBorderWidth: 2, pointRadius: 6, pointHoverRadius: 9,
+            borderWidth: 2.5,
+            borderRadius: parsed.chartType === 'bar' ? 8 : 0,
             yAxisID,
+            // Premium shadow effect for bars
+            ...(parsed.chartType === 'bar' ? { hoverBackgroundColor: ds.color + '90' } : {}),
         });
         allDatasets.push({
             label: `${ds.label} (พยากรณ์)`, data: forecastValues,
-            borderColor: ds.color, borderDash: [6, 3], backgroundColor: ds.color + '40',
-            tension: 0.4, pointBackgroundColor: ds.color + 'cc', pointRadius: 5,
+            borderColor: ds.color + 'bb', borderDash: [8, 4], backgroundColor: ds.color + '18',
+            tension: 0.4, pointBackgroundColor: ds.color + 'cc', pointBorderColor: '#fff',
+            pointBorderWidth: 2, pointRadius: 6, pointHoverRadius: 9,
             pointStyle: 'triangle', borderWidth: 2,
-            borderRadius: parsed.chartType === 'bar' ? 6 : 0,
+            borderRadius: parsed.chartType === 'bar' ? 8 : 0,
             yAxisID,
         });
 
@@ -263,11 +268,11 @@ function generateForecastResponse(parsed) {
 
     // Build scales config — support dual Y-axis
     const scalesConfig = {
-        x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { display: false } },
+        x: { ticks: { color: '#9ca3af', font: { size: 11, weight: '500' } }, grid: { display: false } },
         y: {
             ticks: { color: '#9ca3af', font: { size: 11 } },
-            grid: { color: 'rgba(255,255,255,0.04)' },
-            title: needsDualAxis ? { display: true, text: 'จำนวน (คน)', color: '#9ca3af', font: { size: 11 } } : {},
+            grid: { color: 'rgba(255,255,255,0.04)', lineWidth: 0.5 },
+            title: needsDualAxis ? { display: true, text: 'จำนวน (คน)', color: '#9ca3af', font: { size: 11, weight: '600' } } : {},
         },
     };
     if (needsDualAxis) {
@@ -275,7 +280,7 @@ function generateForecastResponse(parsed) {
             position: 'right',
             ticks: { color: '#C5A028', font: { size: 11 } },
             grid: { drawOnChartArea: false },
-            title: { display: true, text: 'เกรดเฉลี่ย / %', color: '#C5A028', font: { size: 11 } },
+            title: { display: true, text: 'เกรดเฉลี่ย / %', color: '#C5A028', font: { size: 11, weight: '600' } },
         };
     }
 
@@ -284,17 +289,41 @@ function generateForecastResponse(parsed) {
         data: { labels: allLabels, datasets: allDatasets },
         options: {
             responsive: true, maintainAspectRatio: false,
+            animation: { duration: 800, easing: 'easeOutQuart' },
             plugins: {
-                legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 8, font: { size: 11 } } },
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#9ca3af', padding: 14, font: { size: 11, weight: '500' }, usePointStyle: true, pointStyleWidth: 10 }
+                },
                 tooltip: {
+                    backgroundColor: 'rgba(15, 20, 35, 0.92)',
+                    titleColor: '#fff',
+                    bodyColor: '#e5e7eb',
+                    borderColor: 'rgba(0, 230, 118, 0.2)',
+                    borderWidth: 1,
+                    cornerRadius: 10,
+                    padding: 12,
+                    titleFont: { weight: '700', size: 12 },
+                    bodyFont: { size: 11 },
+                    displayColors: true,
+                    boxPadding: 4,
                     callbacks: {
                         label: (ctx) => {
                             const dsIdx = Math.floor(ctx.datasetIndex / 2);
                             const ds = DATASETS[parsed.datasets[dsIdx]] || DATASETS[parsed.datasets[0]];
-                            return `${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() || '-'} ${ds?.unit || ''}`;
+                            return ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() || '-'} ${ds?.unit || ''}`;
                         }
                     }
-                }
+                },
+                zoom: {
+                    pan: { enabled: true, mode: 'x', modifierKey: null },
+                    zoom: {
+                        wheel: { enabled: true, speed: 0.08 },
+                        pinch: { enabled: true },
+                        mode: 'x',
+                    },
+                    limits: { x: { minRange: 2 } },
+                },
             },
             scales: scalesConfig,
         }
@@ -690,16 +719,40 @@ function parseAIResponse(text) {
                     if (!ds.borderColor && !ds.backgroundColor) {
                         const c = defaultColors[i % defaultColors.length];
                         ds.borderColor = c;
-                        ds.backgroundColor = isPointChart ? c + '99' : c + '40';
+                        ds.backgroundColor = isPointChart ? c + '99' : c + '25';
                     }
                     // Ensure bar charts have borderRadius for modern look
                     if ((rawJson.chartType === 'bar') && !ds.borderRadius) {
-                        ds.borderRadius = 6;
+                        ds.borderRadius = 8;
+                    }
+                    // Ensure line charts have smooth tension and fill
+                    if (rawJson.chartType === 'line') {
+                        if (ds.tension == null) ds.tension = 0.4;
+                        if (ds.pointRadius == null) ds.pointRadius = 5;
+                        if (ds.pointHoverRadius == null) ds.pointHoverRadius = 8;
+                        if (ds.pointBorderColor == null) ds.pointBorderColor = '#fff';
+                        if (ds.pointBorderWidth == null) ds.pointBorderWidth = 2;
+                        if (ds.borderWidth == null) ds.borderWidth = 2.5;
+                        if (ds.fill == null) ds.fill = true;
+                    }
+                    // Bar enhancement
+                    if (rawJson.chartType === 'bar') {
+                        if (ds.borderWidth == null) ds.borderWidth = 0;
+                        if (ds.hoverBackgroundColor == null && ds.backgroundColor) {
+                            const baseColor = typeof ds.backgroundColor === 'string' ? ds.backgroundColor.slice(0, 7) : '';
+                            if (baseColor) ds.hoverBackgroundColor = baseColor + 'cc';
+                        }
                     }
                     // Ensure scatter/bubble have visible point sizes
                     if (isPointChart && !ds.pointRadius) {
                         ds.pointRadius = isScatter ? 7 : undefined;
                         ds.pointHoverRadius = isScatter ? 10 : undefined;
+                    }
+                    // Pie/doughnut enhancement
+                    if ((rawJson.chartType === 'pie' || rawJson.chartType === 'doughnut') && Array.isArray(ds.backgroundColor)) {
+                        ds.borderWidth = ds.borderWidth || 2;
+                        ds.borderColor = ds.borderColor || 'rgba(15, 20, 35, 0.8)';
+                        ds.hoverOffset = ds.hoverOffset || 8;
                     }
                 });
             }
@@ -772,13 +825,35 @@ function parseAIResponse(text) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 800, easing: 'easeOutQuart' },
                     indexAxis: rawJson.options?.indexAxis,
                     elements: isRadar ? { line: { tension: 0.1 } } : undefined,
                     plugins: {
-                        legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12, font: { size: 11 } } },
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#9ca3af', padding: 14, font: { size: 11, weight: '500' }, usePointStyle: true, pointStyleWidth: 10 }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 20, 35, 0.92)',
+                            titleColor: '#fff',
+                            bodyColor: '#e5e7eb',
+                            borderColor: 'rgba(0, 230, 118, 0.2)',
+                            borderWidth: 1,
+                            cornerRadius: 10,
+                            padding: 12,
+                            titleFont: { weight: '700', size: 12 },
+                            bodyFont: { size: 11 },
+                            displayColors: true,
+                            boxPadding: 4,
+                        },
                         zoom: {
-                            pan: { enabled: true, mode: 'xy' },
-                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
+                            pan: { enabled: true, mode: 'xy', modifierKey: null },
+                            zoom: {
+                                wheel: { enabled: true, speed: 0.08 },
+                                pinch: { enabled: true },
+                                mode: 'xy'
+                            },
+                            limits: { x: { minRange: 2 }, y: { minRange: 1 } },
                         },
                         ...(rawJson.options?.plugins || {})
                     },
@@ -1086,6 +1161,19 @@ function availableChartTypes(chart) {
     return opts;
 }
 
+// ==================== Deep Clone Helper ====================
+function deepCloneChart(chart) {
+    if (!chart) return null;
+    try {
+        const cloned = JSON.parse(JSON.stringify(chart));
+        // Restore any function-based callbacks that JSON.stringify lost
+        // (tooltip callbacks etc. — we use static config so this is safe)
+        return cloned;
+    } catch {
+        return { ...chart };
+    }
+}
+
 // ==================== Chat Message Component ====================
 function ChatMessage({ msg, onExpand }) {
     // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
@@ -1100,6 +1188,7 @@ function ChatMessage({ msg, onExpand }) {
         || renderedChart?.data?.datasets?.[0]?.data?.length
         || 0;
     const wrapperHeight = computeChartHeight(chartType, categoryCount);
+    const chartRef = useRef(null);
 
     if (msg.role === 'user') {
         return (
@@ -1130,6 +1219,12 @@ function ChatMessage({ msg, onExpand }) {
 
     const chartData = renderedChart;
 
+    // Deep clone chart for expand to prevent zoom state mutation
+    const handleExpand = () => {
+        const cloned = deepCloneChart(chartData);
+        if (cloned) onExpand(cloned);
+    };
+
     return (
         <div className="ai-page-msg ai-page-msg-bot">
             <div className="ai-page-msg-avatar"><Sparkles size={18} style={{ color: '#00e676' }} /></div>
@@ -1149,21 +1244,27 @@ function ChatMessage({ msg, onExpand }) {
                                             onClick={() => setChartType(opt.id)}
                                             title={opt.label}
                                         >
-                                            <Icon size={14} /> {opt.label}
+                                            <Icon size={13} /> {opt.label}
                                         </button>
                                     );
                                 })}
                             </div>
                             <button
-                                className="ai-page-chart-btn"
-                                onClick={() => onExpand(chartData)}
+                                className="ai-page-chart-btn ai-page-chart-expand-btn"
+                                onClick={handleExpand}
                                 style={{ marginLeft: 'auto' }}
                             >
-                                <Maximize2 size={14} /> ขยาย
+                                <Maximize2 size={13} /> ขยาย
                             </button>
                         </div>
                         <div className="ai-page-chart-wrapper" style={{ height: wrapperHeight }}>
-                            <ReactChart type={renderType} data={chartData.data} options={chartData.options} />
+                            <ReactChart
+                                ref={chartRef}
+                                type={renderType}
+                                data={chartData.data}
+                                options={chartData.options}
+                                redraw={false}
+                            />
                         </div>
                     </div>
                 )}
@@ -1945,21 +2046,146 @@ export default function AIChatPage() {
 
             {/* Expanded Chart Modal */}
             {expandedChart && (
-                <div className="ai-page-chart-modal-overlay" onClick={() => setExpandedChart(null)}>
-                    <div className="ai-page-chart-modal" onClick={e => e.stopPropagation()}>
-                        <button className="ai-page-chart-modal-close" onClick={() => setExpandedChart(null)}>
-                            <X size={24} />
+                <ExpandedChartModal
+                    chart={expandedChart}
+                    onClose={() => setExpandedChart(null)}
+                />
+            )}
+        </div>
+    );
+}
+
+// ==================== Expanded Chart Modal Component ====================
+function ExpandedChartModal({ chart, onClose }) {
+    const chartRef = useRef(null);
+    const [modalKey, setModalKey] = useState(0);
+
+    // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
+    const initialUiType = chart?.chartType === 'bar' && chart?.options?.indexAxis === 'y'
+        ? 'hbar'
+        : (chart?.chartType || 'line');
+    const [chartType, setChartType] = useState(initialUiType);
+    const renderedChart = deriveChartConfig(chart, chartType);
+    const renderType = realChartType(chartType);
+    const switchOptions = availableChartTypes(chart);
+
+    // Reset zoom handler
+    const handleResetZoom = () => {
+        if (chartRef.current) {
+            chartRef.current.resetZoom();
+        }
+    };
+
+    // Force re-render with fresh data on chart type change
+    const handleChartTypeChange = (newType) => {
+        setChartType(newType);
+        setModalKey(prev => prev + 1);
+    };
+
+    // Enhanced options for expanded view — larger fonts, better grid
+    const expandedOptions = renderedChart ? {
+        ...renderedChart.options,
+        animation: { duration: 600, easing: 'easeOutQuart' },
+        plugins: {
+            ...(renderedChart.options?.plugins || {}),
+            legend: {
+                position: 'bottom',
+                labels: {
+                    color: '#9ca3af',
+                    padding: 18,
+                    font: { size: 12, weight: '500' },
+                    usePointStyle: true,
+                    pointStyleWidth: 12,
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(15, 20, 35, 0.95)',
+                titleColor: '#fff',
+                bodyColor: '#e5e7eb',
+                borderColor: 'rgba(0, 230, 118, 0.25)',
+                borderWidth: 1,
+                cornerRadius: 12,
+                padding: 14,
+                titleFont: { weight: '700', size: 13 },
+                bodyFont: { size: 12 },
+                displayColors: true,
+                boxPadding: 6,
+                ...(renderedChart.options?.plugins?.tooltip || {}),
+            },
+            zoom: {
+                pan: { enabled: true, mode: 'xy', modifierKey: null },
+                zoom: {
+                    wheel: { enabled: true, speed: 0.06 },
+                    pinch: { enabled: true },
+                    drag: { enabled: false },
+                    mode: 'xy',
+                },
+                limits: { x: { minRange: 2 }, y: { minRange: 1 } },
+            },
+        },
+    } : {};
+
+    return (
+        <div className="ai-page-chart-modal-overlay" onClick={onClose}>
+            <div className="ai-page-chart-modal" onClick={e => e.stopPropagation()}>
+                <div className="ai-page-chart-modal-header">
+                    <h3><ZoomIn size={20} style={{ color: '#00e676' }} /> กราฟขยาย</h3>
+                    <div className="ai-page-chart-modal-actions">
+                        <button
+                            className="ai-page-chart-modal-reset"
+                            onClick={handleResetZoom}
+                            title="รีเซ็ตการซูม"
+                        >
+                            <RotateCw size={15} /> รีเซ็ตซูม
                         </button>
-                        <h3>📊 กราฟขยาย (รองรับการซูมและแพน)</h3>
-                        <div className="ai-page-chart-modal-body">
-                            <ReactChart type={expandedChart.chartType} data={expandedChart.data} options={expandedChart.options} />
-                        </div>
-                        <div className="ai-page-chart-modal-hint">
-                            💡 เลื่อนลูกกลิ้งเมาส์ (Scroll) หรือ Pinch นิ้วเพื่อซูม และคลิกค้างเพื่อเลื่อนซ้าย/ขวา
-                        </div>
+                        <button className="ai-page-chart-modal-close" onClick={onClose}>
+                            <X size={22} />
+                        </button>
                     </div>
                 </div>
-            )}
+
+                {/* Chart type switcher in modal */}
+                {switchOptions.length > 0 && (
+                    <div className="ai-page-chart-modal-toolbar">
+                        {switchOptions.map(opt => {
+                            const Icon = opt.icon;
+                            return (
+                                <button
+                                    key={opt.id}
+                                    className={`ai-page-chart-btn ${chartType === opt.id ? 'active' : ''}`}
+                                    onClick={() => handleChartTypeChange(opt.id)}
+                                    title={opt.label}
+                                >
+                                    <Icon size={14} /> {opt.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                <div className="ai-page-chart-modal-body">
+                    {renderedChart && (
+                        <ReactChart
+                            key={modalKey}
+                            ref={chartRef}
+                            type={renderType}
+                            data={renderedChart.data}
+                            options={expandedOptions}
+                            redraw
+                        />
+                    )}
+                </div>
+                <div className="ai-page-chart-modal-hint">
+                    <span className="ai-page-chart-modal-hint-icon">🖱️</span>
+                    เลื่อนลูกกลิ้งเมาส์เพื่อซูม
+                    <span className="ai-page-chart-modal-hint-sep">•</span>
+                    <span className="ai-page-chart-modal-hint-icon">👆</span>
+                    คลิกค้างเพื่อเลื่อน
+                    <span className="ai-page-chart-modal-hint-sep">•</span>
+                    <span className="ai-page-chart-modal-hint-icon">🔄</span>
+                    กดปุ่มรีเซ็ตเพื่อกลับเริ่มต้น
+                </div>
+            </div>
         </div>
     );
 }

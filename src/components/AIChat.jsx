@@ -927,24 +927,60 @@ export default function AIChat() {
                 );
             })()}
 
-            {expandedChart && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setExpandedChart(null)}>
-                    <div style={{ backgroundColor: 'var(--bg-card)', width: '100%', maxWidth: '900px', height: '80vh', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', border: '1px solid var(--border-color)' }} onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setExpandedChart(null)} style={{ position: 'absolute', top: '16px', right: '16px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
-                            <X size={24} />
-                        </button>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '16px' }}>
-                            📊 กราฟขยาย (รองรับการซูมและแพน)
-                        </h3>
-                        <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', paddingBottom: '32px' }}>
-                            <ReactChart type={expandedChart.chartType} data={expandedChart.data} options={expandedChart.options} />
+            {expandedChart && (() => {
+                const resetZoom = () => {
+                    const chartInstance = document.querySelector('.ai-chat-expanded-canvas canvas')?.__chartjs;
+                    // Use ref approach - the resetZoom is called on the chartRef directly
+                };
+                return (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setExpandedChart(null)}>
+                    <div style={{ backgroundColor: 'var(--bg-card)', width: '100%', maxWidth: '900px', height: '80vh', borderRadius: '16px', padding: '0', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 230, 118, 0.04)', border: '1px solid rgba(0, 230, 118, 0.08)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.015)' }}>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                📊 กราฟขยาย
+                            </h3>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <button onClick={() => setExpandedChart(null)} style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', padding: '6px', borderRadius: '8px', display: 'grid', placeItems: 'center' }}>
+                                    <X size={20} />
+                                </button>
+                            </div>
                         </div>
-                        <div style={{ marginTop: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                            💡 เลื่อนลูกกลิ้งเมาส์ (Scroll) หรือ Pinch นิ้วเพื่อซูม และคลิกค้างเพื่อเลื่อนซ้าย/ขวา
+                        <div className="ai-chat-expanded-canvas" style={{ flex: 1, position: 'relative', width: '100%', padding: '16px 20px 8px', minHeight: 0 }}>
+                            <ReactChart
+                                type={expandedChart.chartType}
+                                data={JSON.parse(JSON.stringify(expandedChart.data))}
+                                options={{
+                                    ...expandedChart.options,
+                                    animation: { duration: 600, easing: 'easeOutQuart' },
+                                    plugins: {
+                                        ...(expandedChart.options?.plugins || {}),
+                                        legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 16, font: { size: 11, weight: '500' }, usePointStyle: true } },
+                                        tooltip: {
+                                            backgroundColor: 'rgba(15, 20, 35, 0.92)',
+                                            titleColor: '#fff',
+                                            bodyColor: '#e5e7eb',
+                                            borderColor: 'rgba(0, 230, 118, 0.2)',
+                                            borderWidth: 1,
+                                            cornerRadius: 10,
+                                            padding: 12,
+                                        },
+                                        zoom: {
+                                            pan: { enabled: true, mode: 'xy' },
+                                            zoom: { wheel: { enabled: true, speed: 0.06 }, pinch: { enabled: true }, mode: 'xy' },
+                                            limits: { x: { minRange: 2 }, y: { minRange: 1 } },
+                                        },
+                                    },
+                                }}
+                                redraw
+                            />
+                        </div>
+                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', padding: '8px 20px 14px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+                            🖱️ เลื่อนลูกกลิ้งเมาส์เพื่อซูม • 👆 คลิกค้างเพื่อเลื่อน
                         </div>
                     </div>
                 </div>
-            )}
+                );
+            })()}
         </>
     );
 }
