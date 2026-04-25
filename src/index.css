@@ -146,11 +146,19 @@ body, .sidebar, .main-header, .stat-card, .chart-card,
   background: #FFFFFF;
   border-color: rgba(0, 0, 0, 0.06);
   box-shadow: var(--shadow-sm);
+  backdrop-filter: none;
+}
+
+[data-theme="light"] .stat-card .stat-card-value {
+  background: linear-gradient(180deg, #1a202c 40%, #4a5568);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 [data-theme="light"] .stat-card:hover {
   border-color: rgba(0, 166, 81, 0.25);
-  box-shadow: var(--shadow-md), 0 0 0 1px rgba(0, 166, 81, 0.08);
+  box-shadow: var(--shadow-md), 0 8px 32px rgba(0, 166, 81, 0.08), 0 0 0 1px rgba(0, 166, 81, 0.06);
 }
 
 [data-theme="light"] .chart-card {
@@ -1816,12 +1824,13 @@ html {
 
 .stat-card {
   background: rgba(19, 25, 41, 0.85);
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--border-radius);
   padding: 24px;
-  transition: transform 0.25s ease,
-              box-shadow 0.25s ease,
-              border-color 0.25s ease;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.35s ease;
   position: relative;
   overflow: hidden;
   will-change: transform;
@@ -1835,25 +1844,28 @@ html {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--mju-green), var(--mju-gold));
+  background: linear-gradient(90deg, var(--mju-green), var(--mju-green-light), var(--mju-gold));
   opacity: 0;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.4s ease;
 }
 
 .stat-card::after {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: var(--border-radius);
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(0, 166, 81, 0.03) 60deg, transparent 120deg);
   opacity: 0;
-  background: radial-gradient(circle at 50% 0%, rgba(0, 166, 81, 0.06), transparent 70%);
-  transition: opacity 0.35s ease;
+  transition: opacity 0.5s ease;
   pointer-events: none;
+  animation: shimmerRotate 4s linear infinite paused;
 }
 
 .stat-card:hover {
-  transform: translate3d(0, -4px, 0);
-  box-shadow: var(--shadow-md), 0 0 24px rgba(0, 166, 81, 0.08);
+  transform: translate3d(0, -5px, 0);
+  box-shadow: var(--shadow-md), 0 8px 32px rgba(0, 166, 81, 0.1), 0 0 0 1px rgba(0, 166, 81, 0.06);
   border-color: rgba(0, 166, 81, 0.2);
 }
 
@@ -1863,6 +1875,7 @@ html {
 
 .stat-card:hover::after {
   opacity: 1;
+  animation-play-state: running;
 }
 
 .stat-card-header {
@@ -1879,6 +1892,12 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+}
+
+.stat-card:hover .stat-card-icon {
+  transform: scale(1.05);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 .stat-card-icon svg {
@@ -1890,17 +1909,18 @@ html {
 .stat-card-trend {
   font-size: 0.75rem;
   padding: 3px 8px;
-  border-radius: 4px;
-  font-weight: 500;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .stat-card-trend.up {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.12);
   color: var(--success);
 }
 
 .stat-card-trend.down {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.12);
   color: var(--danger);
 }
 
@@ -1909,12 +1929,20 @@ html {
   font-weight: 800;
   margin-bottom: 4px;
   letter-spacing: -0.03em;
+  background: linear-gradient(180deg, var(--text-primary) 40%, var(--text-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .stat-card-label {
   font-size: 0.82rem;
   color: var(--text-secondary);
   letter-spacing: 0.01em;
+}
+
+@keyframes shimmerRotate {
+  to { transform: rotate(360deg); }
 }
 
 /* ==================== DASHBOARD TOPIC CARDS ==================== */
@@ -1960,13 +1988,14 @@ html {
 
 .topic-card {
   background: rgba(19, 25, 41, 0.8);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--border-radius-lg);
   padding: 28px;
   cursor: pointer;
-  transition: transform 0.25s ease,
-              box-shadow 0.25s ease,
-              border-color 0.25s ease;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.35s ease;
   position: relative;
   overflow: hidden;
   text-decoration: none;
@@ -1986,7 +2015,7 @@ html {
   height: 3px;
   background: var(--topic-accent, linear-gradient(90deg, var(--mju-green), var(--mju-green-light)));
   opacity: 0;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.4s ease, height 0.4s ease;
 }
 
 .topic-card::after {
@@ -2001,13 +2030,14 @@ html {
 }
 
 .topic-card:hover {
-  transform: translate3d(0, -5px, 0) scale(1.008);
-  box-shadow: var(--shadow-md), 0 0 30px var(--topic-shadow, rgba(0, 166, 81, 0.1));
+  transform: translate3d(0, -6px, 0) scale(1.01);
+  box-shadow: var(--shadow-md), 0 12px 40px var(--topic-shadow, rgba(0, 166, 81, 0.1)), 0 0 0 1px var(--topic-border, rgba(0, 166, 81, 0.08));
   border-color: var(--topic-border, rgba(0, 166, 81, 0.22));
 }
 
 .topic-card:hover::before {
   opacity: 1;
+  height: 4px;
 }
 
 .topic-card:hover::after {
@@ -2024,12 +2054,14 @@ html {
   margin-bottom: 18px;
   font-size: 28px;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.35s ease;
+  position: relative;
 }
 
 .topic-card:hover .topic-card-icon {
-  transform: scale(1.08);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transform: scale(1.1) rotate(-2deg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
 .topic-card h3 {
@@ -2037,6 +2069,11 @@ html {
   font-weight: 700;
   margin-bottom: 6px;
   letter-spacing: -0.01em;
+  transition: color 0.3s ease;
+}
+
+.topic-card:hover h3 {
+  color: var(--text-primary);
 }
 
 .topic-card .topic-card-subtitle {
@@ -2069,15 +2106,16 @@ html {
 
 .topic-card-footer .view-more {
   color: var(--mju-green-light);
-  font-weight: 500;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 4px;
-  transition: gap 0.25s ease;
+  transition: gap 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.3s ease;
 }
 
 .topic-card:hover .topic-card-footer .view-more {
   gap: 8px;
+  color: #00e676;
 }
 
 /* ==================== CHART CARDS ==================== */
