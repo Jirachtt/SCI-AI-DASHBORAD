@@ -422,11 +422,20 @@ function searchStudents(query) {
     let results = [];
     let searchDesc = '';
 
-    const idPrefixMatch = q.match(/(?:รหัส|id)\s*(\d{2,8})/i) || q.match(/\b(6[0-9]\d{0,6})\b/);
-    if (idPrefixMatch) {
-        const prefix = idPrefixMatch[1];
-        results = ALL_STUDENTS.filter(s => s.id.startsWith(prefix));
-        searchDesc = `รหัสขึ้นต้นด้วย "${prefix}"`;
+    // Full 10-digit ID first (exact match), then prefix-based search
+    const fullIdMatch = q.match(/\b(6\d{9})\b/);
+    if (fullIdMatch) {
+        const fullId = fullIdMatch[1];
+        results = ALL_STUDENTS.filter(s => s.id === fullId);
+        searchDesc = `รหัสนักศึกษา "${fullId}"`;
+    }
+    if (results.length === 0) {
+        const idPrefixMatch = q.match(/(?:รหัส|id)\s*(\d{2,8})/i) || q.match(/\b(6[0-9]\d{0,6})\b/);
+        if (idPrefixMatch) {
+            const prefix = idPrefixMatch[1];
+            results = ALL_STUDENTS.filter(s => s.id.startsWith(prefix));
+            searchDesc = `รหัสขึ้นต้นด้วย "${prefix}"`;
+        }
     }
 
     if (results.length === 0) {
@@ -605,7 +614,8 @@ function tryLocalResponse(question) {
 
     // 2. Student search — only for specific structured lookups (ID, name, GPA filter)
     const isStudentLookup =
-        (q.match(/(?:รหัส|id)\s*\d{2,}/i)) ||  // search by ID
+        (q.match(/(?:รหัส|id)\s*\d{2,}/i)) ||  // search by ID with prefix
+        (/\b6\d{9}\b/.test(q)) ||              // bare 10-digit student ID
         (q.includes('รอพินิจ') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
         (q.includes('เกรดต่ำ') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
         (q.includes('เกรดสูง') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
@@ -1707,6 +1717,16 @@ export default function AIChatPage() {
                     context += `[บริบทนักศึกษา: ข้อมูลรวม ${allStudents.length} คน (ข้อมูลระบบ + ข้อมูลที่อัปโหลด)\n`;
                     context += `สรุปตามสาขา:\n${majorStats}\n`;
                     context += `สรุปตามชั้นปี: ${yearStats}\n`;
+                    // If user pasted a specific student ID, include that exact row
+                    const idMentioned = userMsg.match(/\b6\d{9}\b/);
+                    if (idMentioned) {
+                        const found = allStudents.find(s => s.id === idMentioned[0]);
+                        if (found) {
+                            context += `รหัสที่ผู้ใช้ระบุ ${found.id}: ${found.prefix}${found.name}, สาขา${found.major}, ปี ${found.year}, ${found.level}, GPA ${found.gpa}, ${found.status}\n`;
+                        } else {
+                            context += `รหัสที่ผู้ใช้ระบุ ${idMentioned[0]}: ไม่พบในฐานข้อมูล\n`;
+                        }
+                    }
                     // Include sample rows for AI to reference
                     const sample = allStudents.slice(0, 15).map(s => `${s.id},${s.name},${s.major},ปี ${s.year},GPA ${s.gpa},${s.status}`).join('\n');
                     context += `ตัวอย่างข้อมูล (15 คนแรก):\n${sample}]\n\n`;

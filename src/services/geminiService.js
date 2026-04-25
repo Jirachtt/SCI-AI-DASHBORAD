@@ -470,6 +470,10 @@ function needsStudentDetail(msg) {
         'ยุทธศาสตร์', 'okr', 'kpi', 'บุคลากร', 'ตำแหน่งวิชาการ', 'เกษียณ', 'ภาควิชา'];
     if (skipDomains.some(k => q.includes(k))) return false;
 
+    // Bare student-id pattern (10 digits starting with 6) — user pasting an ID
+    // to look someone up should always inject row-level data.
+    if (/\b6\d{9}\b/.test(msg)) return true;
+
     // Row-level keywords ONLY — anything that requires looking at individual records.
     const keywords = ['รายชื่อ', 'ชื่อนักศึกษา', 'ชื่อนิสิต', 'ค้นหานักศึกษา', 'หานักศึกษา', 'รหัส 6',
         'ใครบ้าง', 'คนไหน', 'gpa สูง', 'เกรดสูง', 'รอพินิจ', 'เกรดต่ำ', 'เกียรตินิยม'];
