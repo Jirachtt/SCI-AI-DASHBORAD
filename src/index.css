@@ -406,8 +406,8 @@ body, .sidebar, .main-header, .stat-card, .chart-card,
 
 [data-theme="light"] .ai-page-msg-bubble.bot {
   background: linear-gradient(135deg, #FFFFFF 0%, #FAFFFE 100%);
-  border-color: rgba(0, 104, 56, 0.1);
-  box-shadow: 0 4px 16px rgba(0, 104, 56, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 104, 56, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 6px 24px rgba(0, 104, 56, 0.08), 0 0 0 1px rgba(0, 104, 56, 0.04);
 }
 
 [data-theme="light"] .ai-page-msg-bubble.user {
