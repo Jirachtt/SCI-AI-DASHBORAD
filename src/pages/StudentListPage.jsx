@@ -181,19 +181,20 @@ export default function StudentListPage() {
 
 
             {/* ── Year Stat Cards ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' }}>
                 {yearStats.map(ys => (
                     <div key={ys.year} onClick={() => { setYearFilter(String(ys.year)); setPage(1); }}
                         style={{
-                            ...card, cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                            ...card, padding: '16px', cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                            minWidth: 0,
                             borderColor: yearFilter === String(ys.year) ? 'var(--border-active, rgba(0,104,56,0.5))' : 'var(--border-color)',
                             transition: 'border-color 0.2s',
                         }}>
-                        <div style={{ position: 'absolute', top: 0, right: 0, width: '60px', height: '60px', background: ys.gradient, borderRadius: '0 16px 0 40px', opacity: 0.25 }} />
-                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '6px' }}>
+                        <div style={{ position: 'absolute', top: 0, right: 0, width: '48px', height: '48px', background: ys.gradient, borderRadius: '0 16px 0 32px', opacity: 0.25 }} />
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px', whiteSpace: 'nowrap' }}>
                             {ys.icon} นักศึกษาปี {ys.year}
                         </div>
-                        <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{ys.count} <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-muted)' }}>คน</span></div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, whiteSpace: 'nowrap' }}>{ys.count} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)' }}>คน</span></div>
                     </div>
                 ))}
             </div>
