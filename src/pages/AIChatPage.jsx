@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, BarChart3, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus } from 'lucide-react';
+import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
     createChatSession, updateChatSession, listUserSessions,
@@ -21,7 +21,7 @@ import {
     dashboardSummary,
 } from '../data/mockData';
 import { SCIENCE_MAJORS } from '../data/studentListData';
-import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
+import { ensureStudentList, getStudentListSync, onStudentDataChange, isLiveData } from '../services/studentDataService';
 import { graduationHistory } from '../data/graduationData';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
@@ -874,12 +874,25 @@ function looksLikeDatasetDump(s) {
     }
 }
 
-// Re-derive chart data/options when the user toggles between line/bar.
+// `hbar` is a UI-only sentinel meaning "bar with indexAxis='y'". It maps
+// back to chartType='bar' when handed to Chart.js.
+const PALETTE = ['#00a651', '#7B68EE', '#E91E63', '#C5A028', '#2E86AB', '#F18F01', '#06b6d4', '#a855f7', '#22c55e', '#f97316', '#ef4444', '#14b8a6', '#A23B72', '#0ea5e9', '#84cc16', '#ec4899', '#8b5cf6', '#fb923c'];
+
+function realChartType(uiType) {
+    return uiType === 'hbar' ? 'bar' : uiType;
+}
+
+// Re-derive chart data/options when the user toggles chart type.
 // Without this, leftover `indexAxis:'y'`, per-dataset `type` fields, and
 // y1 axis references from the original config make the switcher a no-op.
-function deriveChartConfig(originalChart, targetType) {
+function deriveChartConfig(originalChart, uiTargetType) {
     if (!originalChart) return originalChart;
-    if (targetType === originalChart.chartType) return originalChart;
+    const targetType = realChartType(uiTargetType);
+    const wantsHorizontal = uiTargetType === 'hbar';
+    const sourceWasHorizontal = originalChart.chartType === 'bar' && originalChart.options?.indexAxis === 'y';
+    const sameShape = targetType === originalChart.chartType
+        && wantsHorizontal === sourceWasHorizontal;
+    if (sameShape) return originalChart;
 
     // Deep-clone via JSON (safe — no functions in chart data after parse).
     const data = JSON.parse(JSON.stringify(originalChart.data || {}));
@@ -887,28 +900,57 @@ function deriveChartConfig(originalChart, targetType) {
 
     // Strip per-dataset `type` so all datasets inherit the parent type.
     if (Array.isArray(data.datasets)) {
-        data.datasets.forEach(ds => {
+        data.datasets.forEach((ds, idx) => {
             delete ds.type;
             // y1 axis is for dual-axis bar+line; collapse to default y when
             // switching to a homogeneous chart.
             if (ds.yAxisID === 'y1') delete ds.yAxisID;
+
             if (targetType === 'line') {
                 delete ds.borderRadius;
                 if (ds.tension == null) ds.tension = 0.4;
                 if (ds.pointRadius == null) ds.pointRadius = 4;
-                // Solid stroke; convert thick fill to lighter alpha so lines read clearly.
                 if (typeof ds.backgroundColor === 'string' && ds.backgroundColor.length === 9) {
-                    // hex8 like #RRGGBBAA → drop alpha to keep just stroke color contrast
                     ds.backgroundColor = ds.backgroundColor.slice(0, 7) + '33';
                 }
             } else if (targetType === 'bar') {
                 if (ds.borderRadius == null) ds.borderRadius = 6;
+                // For horizontal bar, single color reads better than rainbow.
+                if (wantsHorizontal && !Array.isArray(ds.backgroundColor)) {
+                    ds.backgroundColor = ds.backgroundColor || PALETTE[idx % PALETTE.length];
+                }
+            } else if (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') {
+                // Pie/doughnut need an array of slice colors and no border radius.
+                const n = ds.data?.length || 0;
+                if (!Array.isArray(ds.backgroundColor)) {
+                    ds.backgroundColor = Array.from({ length: n }, (_, i) => PALETTE[i % PALETTE.length]);
+                }
+                ds.borderColor = '#ffffff';
+                ds.borderWidth = 2;
+                delete ds.borderRadius;
+                delete ds.tension;
+            } else if (targetType === 'radar') {
+                ds.borderColor = ds.borderColor || PALETTE[idx % PALETTE.length];
+                ds.backgroundColor = (ds.borderColor || PALETTE[idx % PALETTE.length]) + '33';
+                ds.pointBackgroundColor = ds.borderColor || PALETTE[idx % PALETTE.length];
+                ds.pointBorderColor = '#fff';
+                ds.borderWidth = 2;
+                ds.pointRadius = 4;
+                delete ds.borderRadius;
             }
         });
     }
 
-    // Line charts are always vertical — drop `indexAxis:'y'` if present.
-    if (targetType === 'line') {
+    // For pie/doughnut, only the first dataset is meaningful; keep it alone
+    // so legend doesn't overflow with stacked series labels.
+    if ((targetType === 'pie' || targetType === 'doughnut') && data.datasets?.length > 1) {
+        data.datasets = [data.datasets[0]];
+    }
+
+    // Axis tweaks per type.
+    if (targetType === 'line' || targetType === 'bar') {
+        options.indexAxis = wantsHorizontal ? 'y' : undefined;
+    } else {
         delete options.indexAxis;
     }
 
@@ -918,16 +960,74 @@ function deriveChartConfig(originalChart, targetType) {
         if (options.scales.y?.grid) options.scales.y.grid.drawOnChartArea = true;
     }
 
+    // Pie/doughnut/radar don't use cartesian scales.
+    if (targetType === 'pie' || targetType === 'doughnut') {
+        options.scales = {};
+    } else if (targetType === 'radar') {
+        options.scales = {
+            r: {
+                angleLines: { color: 'rgba(127,127,127,0.18)' },
+                grid: { color: 'rgba(127,127,127,0.18)' },
+                pointLabels: { color: '#9ca3af', font: { size: 11, weight: 'bold' } },
+                ticks: { display: false, beginAtZero: true }
+            }
+        };
+    }
+
     return { ...originalChart, chartType: targetType, data, options };
+}
+
+// Compute a chart container height that scales with category count for
+// horizontal bars and a sane fixed height for everything else. Without
+// this, 18-faculty horizontal charts cram labels into ~14px each.
+function computeChartHeight(uiType, categoryCount = 0) {
+    if (uiType === 'hbar') {
+        // ~28px per row + headroom for axis/legend.
+        return Math.min(900, Math.max(320, categoryCount * 28 + 110));
+    }
+    if (uiType === 'pie' || uiType === 'doughnut' || uiType === 'radar') {
+        return 380;
+    }
+    return 320;
+}
+
+// Pick the toggleable chart options that make sense for the data shape.
+function availableChartTypes(chart) {
+    if (!chart) return [];
+    const dsCount = chart.data?.datasets?.length || 0;
+    const catCount = chart.data?.labels?.length || chart.data?.datasets?.[0]?.data?.length || 0;
+    const isPoint = chart.chartType === 'scatter' || chart.chartType === 'bubble';
+    if (isPoint) return []; // scatter/bubble don't switch sensibly
+
+    const opts = [
+        { id: 'line', label: 'เส้น', icon: TrendingUp },
+        { id: 'bar', label: 'แท่ง', icon: BarChart3 },
+        { id: 'hbar', label: 'แท่งแนวนอน', icon: BarChart2 },
+    ];
+    if (dsCount === 1 && catCount > 0 && catCount <= 10) {
+        opts.push({ id: 'pie', label: 'พาย', icon: PieChart });
+        opts.push({ id: 'doughnut', label: 'โดนัท', icon: CircleDot });
+    }
+    if (catCount >= 3 && catCount <= 12) {
+        opts.push({ id: 'radar', label: 'เรดาร์', icon: Hexagon });
+    }
+    return opts;
 }
 
 // ==================== Chat Message Component ====================
 function ChatMessage({ msg, onExpand }) {
-    const [chartType, setChartType] = useState(msg.chart?.chartType || 'line');
-    // Re-derive when chartType differs from what was parsed.
-    const renderedChart = chartType === msg.chart?.chartType
-        ? msg.chart
-        : deriveChartConfig(msg.chart, chartType);
+    // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
+    const initialUiType = msg.chart?.chartType === 'bar' && msg.chart?.options?.indexAxis === 'y'
+        ? 'hbar'
+        : (msg.chart?.chartType || 'line');
+    const [chartType, setChartType] = useState(initialUiType);
+    const renderedChart = deriveChartConfig(msg.chart, chartType);
+    const renderType = realChartType(chartType);
+    const switchOptions = availableChartTypes(msg.chart);
+    const categoryCount = renderedChart?.data?.labels?.length
+        || renderedChart?.data?.datasets?.[0]?.data?.length
+        || 0;
+    const wrapperHeight = computeChartHeight(chartType, categoryCount);
 
     if (msg.role === 'user') {
         return (
@@ -957,10 +1057,6 @@ function ChatMessage({ msg, onExpand }) {
     };
 
     const chartData = renderedChart;
-    const originalType = msg.chart?.chartType;
-    // Show switcher only when source chart is bar/line (other types — radar,
-    // pie, scatter, bubble — don't have a meaningful toggle target).
-    const canSwitch = originalType === 'line' || originalType === 'bar';
 
     return (
         <div className="ai-page-msg ai-page-msg-bot">
@@ -971,22 +1067,21 @@ function ChatMessage({ msg, onExpand }) {
                 {chartData && (
                     <div className="ai-page-chart-container">
                         <div className="ai-page-chart-toolbar">
-                            {canSwitch && (
-                                <>
-                                    <button
-                                        className={`ai-page-chart-btn ${chartType === 'line' ? 'active' : ''}`}
-                                        onClick={() => setChartType('line')}
-                                    >
-                                        <TrendingUp size={14} /> กราฟเส้น
-                                    </button>
-                                    <button
-                                        className={`ai-page-chart-btn ${chartType === 'bar' ? 'active' : ''}`}
-                                        onClick={() => setChartType('bar')}
-                                    >
-                                        <BarChart3 size={14} /> กราฟแท่ง
-                                    </button>
-                                </>
-                            )}
+                            <div className="ai-page-chart-type-row">
+                                {switchOptions.map(opt => {
+                                    const Icon = opt.icon;
+                                    return (
+                                        <button
+                                            key={opt.id}
+                                            className={`ai-page-chart-btn ${chartType === opt.id ? 'active' : ''}`}
+                                            onClick={() => setChartType(opt.id)}
+                                            title={opt.label}
+                                        >
+                                            <Icon size={14} /> {opt.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                             <button
                                 className="ai-page-chart-btn"
                                 onClick={() => onExpand(chartData)}
@@ -995,8 +1090,8 @@ function ChatMessage({ msg, onExpand }) {
                                 <Maximize2 size={14} /> ขยาย
                             </button>
                         </div>
-                        <div className="ai-page-chart-wrapper">
-                            <ReactChart type={chartType} data={chartData.data} options={chartData.options} />
+                        <div className="ai-page-chart-wrapper" style={{ height: wrapperHeight }}>
+                            <ReactChart type={renderType} data={chartData.data} options={chartData.options} />
                         </div>
                     </div>
                 )}
@@ -1089,6 +1184,23 @@ export default function AIChatPage() {
     const [input, setInput] = useState('');
     const [typing, setTyping] = useState(false);
     const messagesEnd = useRef(null);
+    // Tracks whether AI is using live uploaded students vs the mock fallback,
+    // so we can show a small banner and re-render once the live data arrives.
+    const [studentDataReady, setStudentDataReady] = useState(false);
+
+    // ── Ensure the live student dataset is loaded before the user can chat ──
+    // Layout already calls this on mount, but if the user lands directly on
+    // /dashboard/ai-chat we trigger it here too so the very first AI request
+    // sees real Firestore data instead of the mock fallback.
+    useEffect(() => {
+        let cancelled = false;
+        ensureStudentList().then(() => { if (!cancelled) setStudentDataReady(true); });
+        // Refresh local state when an admin uploads new data while the chat
+        // is open — geminiService rebuilds the prompt fresh on every send,
+        // so this is mainly to update the status banner.
+        const off = onStudentDataChange(() => { if (!cancelled) setStudentDataReady(prev => !prev || true); });
+        return () => { cancelled = true; off?.(); };
+    }, []);
 
     // ── Speech Recognition Setup ──
     useEffect(() => {
@@ -1571,6 +1683,22 @@ export default function AIChatPage() {
             <div className="ai-chat-page-body">
                 {/* Main Chat Area */}
                 <div className="ai-chat-page-main">
+                    {/* Data status banner — tells the user whether AI is using
+                        live uploaded student data or the mock fallback. */}
+                    {studentDataReady && (() => {
+                        const live = isLiveData();
+                        const count = getStudentListSync().length;
+                        return (
+                            <div className={`ai-chat-data-status ${live ? 'live' : 'mock'}`}>
+                                <span className="ai-chat-data-status-dot" />
+                                {live
+                                    ? <>AI ใช้ <strong>ข้อมูลนักศึกษาจริง {count.toLocaleString('th-TH')} คน</strong> ที่อัปโหลดเข้าระบบ + ข้อมูลคณะ/งบ/วิจัย/บุคลากร/ยุทธศาสตร์</>
+                                    : <>AI ใช้ <strong>ข้อมูลตัวอย่าง {count.toLocaleString('th-TH')} คน</strong> — ผู้ดูแลยังไม่ได้อัปโหลดรายชื่อจริง</>
+                                }
+                            </div>
+                        );
+                    })()}
+
                     {/* Quick Actions Bar */}
                     {messages.length <= 2 && (
                         <div className="ai-chat-page-quick-actions">

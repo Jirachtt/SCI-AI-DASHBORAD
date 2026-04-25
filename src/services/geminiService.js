@@ -9,6 +9,7 @@ import { graduationHistory, currentGraduationStats, graduationByMajor, honorsDat
 import { researchData } from '../data/researchData';
 import { hrData } from '../data/hrData';
 import { strategicData } from '../data/strategicData';
+import { isLiveData } from './studentDataService';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 if (!API_KEY) {
@@ -210,7 +211,7 @@ Mandate:
 ═══════════════════════════════════════════
 
 ### TABLE: students (คณะวิทยาศาสตร์)
-Total: ${studentList.length} records
+Total: ${studentList.length} records (${isLiveData() ? 'ข้อมูลจริงจากการอัปโหลด' : 'ข้อมูลตัวอย่าง mock — ผู้ดูแลยังไม่ได้อัปโหลด'})
 Columns: student_id, prefix, name, major, level, year, status, gpa
 Aggregated Stats:
 - สาขา: ${Object.entries(majorCounts).map(([m, c]) => `${m}:${c}คน`).join(', ')}
@@ -245,12 +246,15 @@ ${sciBudgetAll.map(y => {
     return s;
 }).join('\n')}
 
-### TABLE: student_stats (ทั้งมหาวิทยาลัย)
+### TABLE: student_stats (ทั้งมหาวิทยาลัย — ตัวเลขจริงจาก dashboard.mju.ac.th)
 - total: ${dashboardSummary.totalStudents}, GPA: ${dashboardSummary.avgGPA}, gradRate: ${dashboardSummary.graduationRate}%
 - byLevel: ${studentStatsData.current.byLevel.map(l => `${l.level}:${l.count}`).join(', ')}
 - trend: ${studentStatsData.trend.map(t => `${t.year}:total=${t.total},bach=${t.bachelor},master=${t.master},doc=${t.doctoral}(${t.type})`).join(', ')}
 - byFaculty: ${studentStatsData.byFaculty.map(f => `${f.name}(ตรี${f.bachelor},โท${f.master},เอก${f.doctoral})`).join(' | ')}
 - faculties(GPA,gradRate): ${dashboardSummary.faculties.map(f => `${f.name}(${f.totalStudents}คน,GPA${f.avgGPA.toFixed(2)},สำเร็จ${f.graduationRate}%)`).join(' | ')}
+- byCampus: ${(studentStatsData.byCampus || []).map(c => `${c.campus}:${c.count}คน`).join(', ')}
+- byNationality: ${(studentStatsData.byNationality || []).map(n => `${n.nationality}:${n.count}คน`).join(', ')}
+- universityIntakeRecent: ${(studentStatsData.byEnrollmentYear || []).map(e => `รหัส${e.year}:${e.count}คน`).join(', ')}
 
 ### TABLE: personnel (คณะวิทยาศาสตร์)
 - total: ${personnel.total} (ชาย${personnel.male}, หญิง${personnel.female})
