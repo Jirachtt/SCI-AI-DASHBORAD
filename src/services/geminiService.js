@@ -365,6 +365,19 @@ When labels average >8 Thai characters OR >6 categories, use \`indexAxis:"y"\` s
 4. **ห้ามใช้ \`indexAxis:"y"\` ร่วมกับ dual-axis** (yAxisID:"y1" หรือ datasets ผสม bar+line) — Chart.js เรนเดอร์ออกมาแกน y เป็นเลข อ่านไม่ได้
 5. **เรียงข้อมูลก่อนเสมอ** — bar/horizontal bar ควรเรียงค่ามากไปน้อย (descending) เพื่อความชัดเจน
 
+### FENCING RULES (เด็ดขาด — ห้ามผิด):
+6. **ทุก JSON ของกราฟ ต้องอยู่ใน triple-backtick fence \`\`\`json_chart … \`\`\` เสมอ** — ห้ามเขียนคำว่า \`json_chart\` ลอยๆ ในข้อความตอบ ห้ามวาง \`{ "chartType": ... }\` แบบเปลือย ห้ามใส่ใน inline backtick เดี่ยว
+7. **JSON ต้องครบสมบูรณ์ในบรรทัดเดียวกัน 1 บรรทัด หรือ pretty-print ที่ valid 100%** — ห้ามตัดกลางคัน, ห้ามเว้น "labels":, หรือ "datasets": ที่ไม่มีค่า, ห้าม syntax error
+8. **หลัง \`\`\` ปิด fence แล้ว ห้ามมี JSON อื่นในคำตอบ** — ถ้ามีหลายกราฟให้ใช้หลาย fence แต่ละ fence จบด้วย \`\`\` ก่อนเริ่มอันใหม่
+9. ตัวอย่างที่ถูกต้อง:
+   \`\`\`json_chart
+   {"chartType":"bar","data":{"labels":["A","B"],"datasets":[{"label":"X","data":[1,2]}]}}
+   \`\`\`
+   ตัวอย่างที่ **ผิด** (ห้ามทำ):
+   - \`json_chart\` พิมพ์ลอยๆ ตามด้วย { ... } ไม่มี backticks
+   - \`{"chartType":"bar",...}\` แปะในย่อหน้าคำอธิบาย
+   - JSON ที่ขาด value เช่น \`"labels":,\` หรือ \`"datasets":\` ตามด้วย }
+
 ### Cross-Table JOIN:
 When user asks about RELATIONSHIPS between 2+ data domains:
 1. Identify which tables contain the variables

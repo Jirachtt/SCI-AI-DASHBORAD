@@ -726,18 +726,33 @@ function parseAIResponse(text) {
     return { text: cleanText, chart: chartConfig };
 }
 
-// Remove raw JSON arrays-of-objects and ```json fenced data lists.
+// Remove raw JSON arrays-of-objects, ```json fenced data lists, and any
+// stray json_chart blocks/labels the AI may emit unwrapped.
 // Preserves normal prose and short inline code.
 function stripRawDatasetDumps(text) {
     if (!text) return text;
     let out = text;
 
-    // 1. Drop any remaining fenced ```json / ```jsonl blocks that weren't charts.
-    out = out.replace(/`{3}json[l]?\s*[\s\S]*?`{3}/gi, '');
-    out = out.replace(/`{3}\s*\[\s*\{[\s\S]*?\}\s*\]\s*`{3}/g, '');
+    // 1a. Strip any fenced ```json_chart``` / ```json``` / ```jsonl``` block.
+    out = out.replace(/`{3}json[_a-z]*\s*[\s\S]*?`{3}/gi, '');
+    // 1b. Strip JSON-array-of-objects fenced blocks (any language tag).
+    out = out.replace(/`{3}[a-z]*\s*\[\s*\{[\s\S]*?\}\s*\]\s*`{3}/gi, '');
 
-    // 2. Drop bare JSON arrays of objects (>= 2 objects or 1 big object with >3 fields).
-    //    Use brace-counting to find balanced array spans instead of regex (JSON can be long).
+    // 2. Strip BARE chart configs (no backticks): the model sometimes emits
+    //    `json_chart\n{ "chartType": ... }` without a fence. Detect the keyword
+    //    and balance-count braces forward to remove the entire object.
+    out = stripBareChartConfigs(out);
+
+    // 3. Strip any standalone {"chartType":...} object even without a label —
+    //    these never belong in user-visible prose.
+    out = stripStandaloneChartObjects(out);
+
+    // 4. Strip orphan `json_chart` / `json` labels left behind, with or
+    //    without surrounding backticks/whitespace.
+    out = out.replace(/`{0,3}\s*json_chart\s*`{0,3}/gi, '');
+    out = out.replace(/`{1,3}\s*json[l]?\s*`{1,3}/gi, '');
+
+    // 5. Drop bare JSON arrays-of-objects (dataset dumps).
     const stripped = [];
     let i = 0;
     while (i < out.length) {
@@ -757,9 +772,72 @@ function stripRawDatasetDumps(text) {
     }
     out = stripped.join('');
 
-    // 3. Collapse stray empty lines left behind.
-    out = out.replace(/\n{3,}/g, '\n\n').trim();
+    // 6. Collapse leftover empty lines and trim.
+    out = out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
     return out;
+}
+
+// Find `json_chart` / `json` keywords (with or without backticks) followed
+// by `{` and remove the keyword + the balanced `{...}` that follows.
+function stripBareChartConfigs(text) {
+    const re = /`{0,3}\s*json(?:_chart)?\s*`{0,3}\s*\n?\s*\{/gi;
+    let out = text;
+    let match;
+    // Iterate via a cursor since out length changes on each removal.
+    while ((match = re.exec(out)) !== null) {
+        const braceStart = match.index + match[0].length - 1; // points at `{`
+        const end = findBalancedObjectEnd(out, braceStart);
+        if (end <= braceStart) break;
+        // Try to validate it looks like a chart config before removing.
+        const slice = out.slice(braceStart, end);
+        const looksLikeChart = /["']?chartType["']?\s*:/i.test(slice)
+            || /["']?datasets["']?\s*:/i.test(slice);
+        if (!looksLikeChart) {
+            re.lastIndex = end;
+            continue;
+        }
+        out = out.slice(0, match.index) + out.slice(end);
+        re.lastIndex = match.index;
+    }
+    return out;
+}
+
+// Strip standalone `{"chartType": ...}` JSON objects that have no label,
+// catching any leftover after the primary parser missed them.
+function stripStandaloneChartObjects(text) {
+    let out = text;
+    let idx = out.indexOf('{"chartType"');
+    while (idx !== -1) {
+        const end = findBalancedObjectEnd(out, idx);
+        if (end <= idx) break;
+        out = out.slice(0, idx) + out.slice(end);
+        idx = out.indexOf('{"chartType"');
+    }
+    // Also handle the spaced variant `{ "chartType"`.
+    idx = out.search(/\{\s*"chartType"/);
+    while (idx !== -1) {
+        const end = findBalancedObjectEnd(out, idx);
+        if (end <= idx) break;
+        out = out.slice(0, idx) + out.slice(end);
+        idx = out.search(/\{\s*"chartType"/);
+    }
+    return out;
+}
+
+function findBalancedObjectEnd(s, start) {
+    let depth = 0, inStr = false, esc = false;
+    for (let i = start; i < s.length; i++) {
+        const c = s[i];
+        if (esc) { esc = false; continue; }
+        if (c === '\\') { esc = true; continue; }
+        if (c === '"') { inStr = !inStr; continue; }
+        if (inStr) continue;
+        if (c === '{') depth++;
+        else if (c === '}') { depth--; if (depth === 0) return i + 1; }
+    }
+    // Best-effort: even if JSON is malformed/unbalanced (truncated by AI),
+    // assume the rest of the buffer is the broken config and drop it.
+    return depth > 0 ? s.length : -1;
 }
 
 function findBalancedArrayEnd(s, start) {
