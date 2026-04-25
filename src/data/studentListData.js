@@ -396,7 +396,8 @@ function generatePaddedStudents() {
     return padded;
 }
 
-export const scienceStudentList = [...curatedStudentList, ...generatePaddedStudents()];
+const _generatedStudents = generatePaddedStudents();
+export const scienceStudentList = curatedStudentList.concat(_generatedStudents);
 
 // สรุปสถิติ
 export const studentListSummary = {

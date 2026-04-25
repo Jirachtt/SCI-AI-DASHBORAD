@@ -1,7 +1,7 @@
 // ข้อมูลสถิติการสำเร็จการศึกษา คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้
 // อ้างอิงจากข้อมูลนักศึกษาในระบบ + ข้อมูลสถิติย้อนหลัง
 
-import { scienceStudentList } from './studentListData';
+import { scienceStudentList } from './studentListData.js';
 
 // ข้อมูลผู้สำเร็จการศึกษาย้อนหลัง (แยกตามปีการศึกษา)
 export const graduationHistory = [
