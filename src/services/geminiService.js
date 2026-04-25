@@ -449,26 +449,30 @@ Always: responsive=true, maintainAspectRatio=false
 - 18 คณะ/วิทยาลัย (เน้น: เกษตรอินทรีย์#1ไทย)`;
 }
 
-// Full student list — only included when query is about students
+// Full student list — only included when query needs row-level detail
+// (search by name/id, top-N GPA, etc.). Aggregate queries are already
+// covered by the per-major / per-year stats in the base instruction.
 function buildStudentData() {
+    const list = getStudentListSync();
+    // Compact JSON keeps tokens low even at ~1,450 rows.
     return '\n\n## รายชื่อนักศึกษา(id=รหัส,n=ชื่อ,m=สาขา,y=ปี,g=GPA,s=สถานะ):\n' +
-        JSON.stringify(getStudentListSync().map(s => ({
+        JSON.stringify(list.map(s => ({
             id: s.id, n: s.name, m: s.major, y: s.year, g: s.gpa, s: s.status
         })));
 }
 
-// Check if user message needs student detail data
+// Check if user message needs student detail data (row-level only).
+// Aggregate-style queries (counts, charts, by-major) are answered from
+// the precomputed stats already inlined in the base instruction.
 function needsStudentDetail(msg) {
     const q = msg.toLowerCase();
-    // Skip student data injection for research/HR/strategic queries to save token space
     const skipDomains = ['งานวิจัย', 'ตีพิมพ์', 'scopus', 'สิทธิบัตร', 'ทุนวิจัย', 'citation',
         'ยุทธศาสตร์', 'okr', 'kpi', 'บุคลากร', 'ตำแหน่งวิชาการ', 'เกษียณ', 'ภาควิชา'];
     if (skipDomains.some(k => q.includes(k))) return false;
 
+    // Row-level keywords ONLY — anything that requires looking at individual records.
     const keywords = ['รายชื่อ', 'ชื่อนักศึกษา', 'ชื่อนิสิต', 'ค้นหานักศึกษา', 'หานักศึกษา', 'รหัส 6',
-        'ใครบ้าง', 'คนไหน', 'gpa สูง', 'เกรดสูง', 'รอพินิจ', 'เกรดต่ำ', 'เกียรตินิยม',
-        'กราฟเกรด', 'กราฟนักศึกษา', 'จำนวนนักศึกษา', 'สถิตินักศึกษา', 'เกรดแต่ละสาขา',
-        'นักศึกษาแต่ละสาขา', 'นิสิตแต่ละสาขา', 'กราฟนิสิต', 'สาขาไหน'];
+        'ใครบ้าง', 'คนไหน', 'gpa สูง', 'เกรดสูง', 'รอพินิจ', 'เกรดต่ำ', 'เกียรตินิยม'];
     return keywords.some(k => q.includes(k));
 }
 

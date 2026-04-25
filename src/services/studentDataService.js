@@ -22,7 +22,7 @@
 
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { scienceStudentList } from '../data/studentListData';
+import { scienceStudentList } from '../data/studentListData.js';
 import { writeAuditLog } from './auditLogService';
 
 const DOC_PATH = ['datasets', 'students'];

@@ -60,6 +60,17 @@ service cloud.firestore {
       }
     }
 
+    // ── ai_chat_history/{sessionId} ──────────────────────────────
+    // Each session doc carries `uid` of the owner. Only that user (or a
+    // dean for support purposes) can read/update/delete; only the owner
+    // can create their own sessions.
+    match /ai_chat_history/{sessionId} {
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow read, update, delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+    }
+
     // Default deny for any other collection
     match /{document=**} {
       allow read, write: if false;
