@@ -790,16 +790,23 @@ function parseAIResponse(text) {
                 const labels = rawJson.data.labels;
                 const datasets = rawJson.data.datasets || [];
                 const dataLen = datasets[0]?.data?.length || 0;
-                const labelsBad = !Array.isArray(labels) || labels.length === 0
-                    || labels.length !== dataLen
-                    || labels.every(l => typeof l === 'number' || /^\d+$/.test(String(l)));
+                const labelsAllNumeric = Array.isArray(labels) && labels.length === dataLen
+                    && labels.every(l => typeof l === 'number' || /^\d+$/.test(String(l)));
+                const labelsMissing = !Array.isArray(labels) || labels.length === 0
+                    || labels.length !== dataLen;
 
-                if (labelsBad && dataLen > 0) {
-                    // Try to recover names from a `categories` field, dataset names,
-                    // or fall back to "หมวดที่ N" so the axis isn't numeric.
+                if (labelsAllNumeric && dataLen > 0) {
+                    // Numeric labels that look like years (e.g. 2564, 2565) → "ปี 2564"
+                    const nums = labels.map(Number);
+                    const looksLikeYears = nums.every(n => n >= 2500 && n <= 2600);
+                    rawJson.data.labels = looksLikeYears
+                        ? nums.map(n => `ปี ${n}`)
+                        : nums.map(String);
+                } else if (labelsMissing && dataLen > 0) {
+                    // Try to recover labels from other fields
                     const recovered = rawJson.data.categories
                         || (datasets.length === 1 && Array.isArray(datasets[0].labels) ? datasets[0].labels : null)
-                        || Array.from({ length: dataLen }, (_, i) => `หมวดที่ ${i + 1}`);
+                        || Array.from({ length: dataLen }, (_, i) => `รายการที่ ${i + 1}`);
                     rawJson.data.labels = recovered;
                 }
 
