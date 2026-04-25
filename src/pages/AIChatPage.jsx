@@ -21,7 +21,7 @@ import {
     dashboardSummary,
 } from '../data/mockData';
 import { SCIENCE_MAJORS } from '../data/studentListData';
-import { ensureStudentList, getStudentListSync, onStudentDataChange, isLiveData } from '../services/studentDataService';
+import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
 import { graduationHistory } from '../data/graduationData';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
@@ -306,7 +306,79 @@ function generateForecastResponse(parsed) {
 // ==================== Student Data (Real from MJU) ====================
 const MAJORS = SCIENCE_MAJORS;
 // Live-backed: resolves to Firestore-uploaded list when available, falls back to mock.
-const getAllStudents = () => getStudentListSync();
+// Uploaded CSV/XLSX rows that look like student data are merged here.
+let _uploadedStudentRows = [];
+
+// Detection: does an uploaded file look like student data?
+// We check for common column-name patterns.
+const STUDENT_HEADER_HINTS = [
+    'รหัสนักศึกษา', 'student_id', 'studentid', 'รหัส',
+    'ชื่อ-นามสกุล', 'ชื่อ', 'name',
+    'สาขาวิชา', 'สาขา', 'major',
+    'เกรดเฉลี่ย', 'gpa', 'เกรด',
+];
+
+function isStudentFile(headers) {
+    if (!Array.isArray(headers)) return false;
+    const lc = headers.map(h => h.toLowerCase().trim());
+    // Need at least 2 student-like columns to treat it as a student file
+    let hits = 0;
+    for (const hint of STUDENT_HEADER_HINTS) {
+        if (lc.some(h => h.includes(hint.toLowerCase()))) hits++;
+    }
+    return hits >= 2;
+}
+
+// Normalize a raw CSV/XLSX row (keyed by original headers) to our standard schema.
+function normalizeStudentRow(row, headers) {
+    const lc = {};
+    for (const h of headers) lc[h.toLowerCase().trim()] = h;
+
+    const find = (...hints) => {
+        for (const hint of hints) {
+            const key = Object.keys(lc).find(k => k.includes(hint.toLowerCase()));
+            if (key) return row[lc[key]];
+        }
+        return undefined;
+    };
+
+    const rawId = find('รหัสนักศึกษา', 'student_id', 'studentid', 'รหัส') || '';
+    const prefix = find('คำนำหน้า', 'prefix') || '';
+    const rawName = find('ชื่อ-นามสกุล', 'ชื่อ', 'name') || '';
+    const major = find('สาขาวิชา', 'สาขา', 'major') || 'ไม่ระบุ';
+    const level = find('ระดับการศึกษา', 'ระดับ', 'level') || 'ปริญญาตรี';
+    const year = parseInt(find('ชั้นปี', 'year', 'ปี') || '1') || 1;
+    const status = find('สถานะ', 'status') || 'กำลังศึกษา';
+    const gpa = parseFloat(find('เกรดเฉลี่ย', 'gpa', 'เกรด') || '0') || 0;
+
+    const id = String(rawId).trim();
+    const name = prefix ? `${prefix}${rawName}` : rawName;
+
+    if (!id && !rawName) return null; // skip empty rows
+
+    return { id: id || `uploaded_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, prefix, name: name.trim(), major: major.trim(), level, year, status, gpa };
+}
+
+// Parse uploaded rows → normalized student array
+function parseUploadedStudents(parsed) {
+    if (!parsed || !isStudentFile(parsed.headers)) return [];
+    const results = [];
+    for (const row of parsed.rows) {
+        const normalized = normalizeStudentRow(row, parsed.headers);
+        if (normalized) results.push(normalized);
+    }
+    return results;
+}
+
+// Combined student list: mock/Firestore + any uploaded student rows (deduplicated by ID)
+const getAllStudents = () => {
+    const base = getStudentListSync();
+    if (_uploadedStudentRows.length === 0) return base;
+    // Merge: uploaded takes priority on duplicate IDs
+    const idSet = new Set(_uploadedStudentRows.map(s => s.id));
+    const filtered = base.filter(s => !idSet.has(s.id));
+    return [...filtered, ..._uploadedStudentRows];
+};
 
 // ==================== Smart Student Search ====================
 function searchStudents(query) {
@@ -1184,22 +1256,14 @@ export default function AIChatPage() {
     const [input, setInput] = useState('');
     const [typing, setTyping] = useState(false);
     const messagesEnd = useRef(null);
-    // Tracks whether AI is using live uploaded students vs the mock fallback,
-    // so we can show a small banner and re-render once the live data arrives.
-    const [studentDataReady, setStudentDataReady] = useState(false);
 
     // ── Ensure the live student dataset is loaded before the user can chat ──
     // Layout already calls this on mount, but if the user lands directly on
     // /dashboard/ai-chat we trigger it here too so the very first AI request
     // sees real Firestore data instead of the mock fallback.
     useEffect(() => {
-        let cancelled = false;
-        ensureStudentList().then(() => { if (!cancelled) setStudentDataReady(true); });
-        // Refresh local state when an admin uploads new data while the chat
-        // is open — geminiService rebuilds the prompt fresh on every send,
-        // so this is mainly to update the status banner.
-        const off = onStudentDataChange(() => { if (!cancelled) setStudentDataReady(prev => !prev || true); });
-        return () => { cancelled = true; off?.(); };
+        ensureStudentList();
+        return onStudentDataChange(() => {});
     }, []);
 
     // ── Speech Recognition Setup ──
@@ -1236,6 +1300,9 @@ export default function AIChatPage() {
 
     const handleNewChat = useCallback(() => {
         resetConversation();
+        // Clear uploaded data so next conversation starts fresh
+        _uploadedStudentRows = [];
+        setUploadedFileData(null);
         // Drop session pointer so the next first user message creates a new doc.
         sessionIdRef.current = null;
         lastSavedRef.current = null;
@@ -1371,6 +1438,13 @@ export default function AIChatPage() {
             }
 
             setUploadedFileData(parsed);
+
+            // ── Detect and merge student data ──
+            const uploadedStudents = parseUploadedStudents(parsed);
+            if (uploadedStudents.length > 0) {
+                _uploadedStudentRows = uploadedStudents;
+            }
+
             const chart = generateChartFromFile(parsed, fileName);
 
             // Build summary text
@@ -1379,20 +1453,32 @@ export default function AIChatPage() {
             summaryText += `📌 **คอลัมน์:** ${parsed.headers.join(', ')}\n`;
             summaryText += `📈 **คอลัมน์ตัวเลข:** ${parsed.numericCols.join(', ') || 'ไม่พบ'}\n\n`;
 
-            // Show sample data
-            summaryText += `🔍 **ตัวอย่างข้อมูล (5 แถวแรก):**\n`;
-            parsed.rows.slice(0, 5).forEach((row, i) => {
-                summaryText += `${i + 1}. ${parsed.headers.map(h => `${h}: ${row[h]}`).join(' | ')}\n`;
-            });
-
-            if (parsed.numericCols.length > 0) {
-                summaryText += `\n✅ **สร้างกราฟจากข้อมูลให้แล้ว!**`;
-                summaryText += `\n\n🔗 **รวมกับข้อมูล Dashboard ได้!** ลองถาม:`;
-                summaryText += `\n• "เปรียบเทียบข้อมูลไฟล์กับจำนวนนิสิตในระบบ"`;
-                summaryText += `\n• "รวมข้อมูลไฟล์กับงบประมาณเป็นกราฟ"`;
-                summaryText += `\n• "สร้างกราฟเปรียบเทียบไฟล์กับข้อมูล Dashboard"`;
+            // Notify about student data merge
+            if (uploadedStudents.length > 0) {
+                const allNow = getAllStudents();
+                summaryText += `🎓 **ตรวจพบข้อมูลนักศึกษา ${uploadedStudents.length} คน** — รวมกับข้อมูลระบบแล้ว!\n`;
+                summaryText += `📊 **รวมนักศึกษาทั้งหมดในระบบ:** ${allNow.length} คน\n\n`;
+                summaryText += `💡 **ลองถาม:**\n`;
+                summaryText += `• "แสดงรายชื่อนักศึกษาสาขาคอม"\n`;
+                summaryText += `• "สร้างกราฟจำนวนนักศึกษาแต่ละสาขา"\n`;
+                summaryText += `• "นักศึกษาที่มี GPA สูงสุด 10 คน"\n`;
+                summaryText += `• "เปรียบเทียบ GPA แต่ละสาขา"\n`;
             } else {
-                summaryText += `\n⚠️ ไม่พบคอลัมน์ตัวเลข จึงไม่สามารถสร้างกราฟอัตโนมัติได้`;
+                // Show sample data for non-student files
+                summaryText += `🔍 **ตัวอย่างข้อมูล (5 แถวแรก):**\n`;
+                parsed.rows.slice(0, 5).forEach((row, i) => {
+                    summaryText += `${i + 1}. ${parsed.headers.map(h => `${h}: ${row[h]}`).join(' | ')}\n`;
+                });
+
+                if (parsed.numericCols.length > 0) {
+                    summaryText += `\n✅ **สร้างกราฟจากข้อมูลให้แล้ว!**`;
+                    summaryText += `\n\n🔗 **รวมกับข้อมูล Dashboard ได้!** ลองถาม:`;
+                    summaryText += `\n• "เปรียบเทียบข้อมูลไฟล์กับจำนวนนิสิตในระบบ"`;
+                    summaryText += `\n• "รวมข้อมูลไฟล์กับงบประมาณเป็นกราฟ"`;
+                    summaryText += `\n• "สร้างกราฟเปรียบเทียบไฟล์กับข้อมูล Dashboard"`;
+                } else {
+                    summaryText += `\n⚠️ ไม่พบคอลัมน์ตัวเลข จึงไม่สามารถสร้างกราฟอัตโนมัติได้`;
+                }
             }
 
             setMessages(prev => [...prev, { role: 'bot', text: summaryText, chart }]);
@@ -1486,12 +1572,46 @@ export default function AIChatPage() {
                 return;
             }
             const buildMsg = () => {
-                if (uploadedFileData) {
+                // Always include student data summary for student-related questions
+                const allStudents = getAllStudents();
+                const qLower = userMsg.toLowerCase();
+                const isStudentQ = /นักศึกษา|นิสิต|gpa|เกรด|สาขา|ชั้นปี|รายชื่อ|จำนวนนักศึกษา|student/.test(qLower);
+
+                let context = '';
+
+                if (isStudentQ && allStudents.length > 0) {
+                    // Build a compact student stats summary for Gemini
+                    const byMajor = {};
+                    const byYear = {};
+                    allStudents.forEach(s => {
+                        byMajor[s.major] = byMajor[s.major] || { count: 0, gpas: [] };
+                        byMajor[s.major].count++;
+                        byMajor[s.major].gpas.push(s.gpa);
+                        const yKey = `ชั้นปี ${s.year}`;
+                        byYear[yKey] = (byYear[yKey] || 0) + 1;
+                    });
+                    const majorStats = Object.entries(byMajor).map(([m, v]) => {
+                        const avg = (v.gpas.reduce((a, b) => a + b, 0) / v.gpas.length).toFixed(2);
+                        return `${m}: ${v.count} คน, GPA เฉลี่ย ${avg}`;
+                    }).join('\n');
+                    const yearStats = Object.entries(byYear).map(([y, c]) => `${y}: ${c} คน`).join(', ');
+
+                    context += `[บริบทนักศึกษา: ข้อมูลรวม ${allStudents.length} คน (ข้อมูลระบบ + ข้อมูลที่อัปโหลด)\n`;
+                    context += `สรุปตามสาขา:\n${majorStats}\n`;
+                    context += `สรุปตามชั้นปี: ${yearStats}\n`;
+                    // Include sample rows for AI to reference
+                    const sample = allStudents.slice(0, 15).map(s => `${s.id},${s.name},${s.major},ปี ${s.year},GPA ${s.gpa},${s.status}`).join('\n');
+                    context += `ตัวอย่างข้อมูล (15 คนแรก):\n${sample}]\n\n`;
+                }
+
+                if (uploadedFileData && !isStudentFile(uploadedFileData.headers)) {
+                    // Non-student uploaded file
                     const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
                     const dashPreview = dashboardMergeSummary.rows.map(r => Object.values(r).join(', ')).join('\n');
-                    return `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nข้อมูล Dashboard สำหรับเปรียบเทียบ (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}\n\nสามารถรวมข้อมูลไฟล์กับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้ ถ้าผู้ใช้ขอ]\n\nคำถาม: ${userMsg}`;
+                    context += `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nข้อมูล Dashboard สำหรับเปรียบเทียบ (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}\n\nสามารถรวมข้อมูลไฟล์กับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้ ถ้าผู้ใช้ขอ]\n\n`;
                 }
-                return userMsg;
+
+                return context ? `${context}คำถาม: ${userMsg}` : userMsg;
             };
             const aiText = await sendMessageToGemini(buildMsg());
             const parsedAI = parseAIResponse(aiText);
@@ -1506,12 +1626,30 @@ export default function AIChatPage() {
                     role: 'bot', text: '⏳ **API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
                 }]);
                 const buildMsg = () => {
-                    if (uploadedFileData) {
+                    // Reuse the same enriched context builder as handleSend
+                    const allStudents = getAllStudents();
+                    const qLower = userMsg.toLowerCase();
+                    const isStudentQ = /นักศึกษา|นิสิต|gpa|เกรด|สาขา|ชั้นปี|รายชื่อ|จำนวนนักศึกษา|student/.test(qLower);
+                    let context = '';
+                    if (isStudentQ && allStudents.length > 0) {
+                        const byMajor = {};
+                        allStudents.forEach(s => {
+                            byMajor[s.major] = byMajor[s.major] || { count: 0, gpas: [] };
+                            byMajor[s.major].count++;
+                            byMajor[s.major].gpas.push(s.gpa);
+                        });
+                        const majorStats = Object.entries(byMajor).map(([m, v]) => {
+                            const avg = (v.gpas.reduce((a, b) => a + b, 0) / v.gpas.length).toFixed(2);
+                            return `${m}: ${v.count} คน, GPA เฉลี่ย ${avg}`;
+                        }).join('\n');
+                        context += `[บริบทนักศึกษาทั้งหมด ${allStudents.length} คน:\n${majorStats}]\n\n`;
+                    }
+                    if (uploadedFileData && !isStudentFile(uploadedFileData.headers)) {
                         const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
                         const dashPreview = dashboardMergeSummary.rows.map(r => Object.values(r).join(', ')).join('\n');
-                        return `[บริบท: ข้อมูลไฟล์ คอลัมน์: ${uploadedFileData.headers.join(', ')} ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nDashboard (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}]\n\nคำถาม: ${userMsg}`;
+                        context += `[บริบท: ข้อมูลไฟล์ คอลัมน์: ${uploadedFileData.headers.join(', ')} ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nDashboard (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}]\n\n`;
                     }
-                    return userMsg;
+                    return context ? `${context}คำถาม: ${userMsg}` : userMsg;
                 };
                 await retryWithCountdown(buildMsg, retryId);
             } else {
@@ -1683,22 +1821,6 @@ export default function AIChatPage() {
             <div className="ai-chat-page-body">
                 {/* Main Chat Area */}
                 <div className="ai-chat-page-main">
-                    {/* Data status banner — tells the user whether AI is using
-                        live uploaded student data or the mock fallback. */}
-                    {studentDataReady && (() => {
-                        const live = isLiveData();
-                        const count = getStudentListSync().length;
-                        return (
-                            <div className={`ai-chat-data-status ${live ? 'live' : 'mock'}`}>
-                                <span className="ai-chat-data-status-dot" />
-                                {live
-                                    ? <>AI ใช้ <strong>ข้อมูลนักศึกษาจริง {count.toLocaleString('th-TH')} คน</strong> ที่อัปโหลดเข้าระบบ + ข้อมูลคณะ/งบ/วิจัย/บุคลากร/ยุทธศาสตร์</>
-                                    : <>AI ใช้ <strong>ข้อมูลตัวอย่าง {count.toLocaleString('th-TH')} คน</strong> — ผู้ดูแลยังไม่ได้อัปโหลดรายชื่อจริง</>
-                                }
-                            </div>
-                        );
-                    })()}
-
                     {/* Quick Actions Bar */}
                     {messages.length <= 2 && (
                         <div className="ai-chat-page-quick-actions">
