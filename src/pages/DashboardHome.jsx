@@ -283,129 +283,141 @@ export default function DashboardHome() {
                 </div>
             )}
 
-            {/* Daily Insights — Compact popup */}
+            {/* Daily Insights — Premium collapsible panel */}
             {insights && (
-                <>
+                <div style={{ marginBottom: showInsights ? 24 : 20 }}>
                     <button
                         onClick={() => setShowInsights(!showInsights)}
                         style={{
                             display: 'inline-flex', alignItems: 'center', gap: 8,
-                            background: showInsights ? 'rgba(0,166,81,0.15)' : 'var(--bg-card)',
-                            border: showInsights ? '1px solid rgba(0,166,81,0.3)' : '1px solid var(--border-color)',
+                            background: showInsights
+                                ? 'linear-gradient(135deg, rgba(0,166,81,0.12), rgba(0,230,118,0.08))'
+                                : 'var(--bg-card)',
+                            border: showInsights
+                                ? '1px solid rgba(0,166,81,0.25)'
+                                : '1px solid var(--border-color)',
                             color: showInsights ? '#00a651' : 'var(--text-secondary)',
-                            padding: '8px 18px', borderRadius: 10, cursor: 'pointer',
-                            fontSize: '0.92rem', fontWeight: 600, marginBottom: 20,
-                            transition: 'all 0.25s ease',
-                            boxShadow: showInsights ? '0 2px 12px rgba(0,166,81,0.12)' : 'none',
+                            padding: '9px 20px', borderRadius: 12, cursor: 'pointer',
+                            fontSize: '0.9rem', fontWeight: 600,
+                            transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
+                            boxShadow: showInsights
+                                ? '0 4px 16px rgba(0,166,81,0.15), inset 0 1px 0 rgba(255,255,255,0.05)'
+                                : '0 1px 3px rgba(0,0,0,0.06)',
                         }}
                     >
-                        <Sparkles size={15} />
+                        <Sparkles size={15} style={{
+                            transition: 'transform 0.3s ease',
+                            transform: showInsights ? 'rotate(15deg) scale(1.1)' : 'rotate(0)',
+                        }} />
                         Daily Insights
                         <span style={{
-                            background: '#00a651', color: '#fff', fontSize: '0.7rem',
-                            padding: '1px 7px', borderRadius: 10, fontWeight: 700, lineHeight: '18px',
+                            background: showInsights
+                                ? 'linear-gradient(135deg, #00a651, #00c853)'
+                                : '#00a651',
+                            color: '#fff', fontSize: '0.68rem',
+                            padding: '2px 8px', borderRadius: 10, fontWeight: 700,
+                            transition: 'all 0.3s',
                         }}>{insights.length}</span>
+                        <ChevronRight size={14} style={{
+                            transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+                            transform: showInsights ? 'rotate(90deg)' : 'rotate(0)',
+                            opacity: 0.6,
+                        }} />
                     </button>
 
-                    {showInsights && (
+                    {/* Collapsible insights panel */}
+                    <div style={{
+                        maxHeight: showInsights ? 600 : 0,
+                        opacity: showInsights ? 1 : 0,
+                        overflow: 'hidden',
+                        transition: 'max-height 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.4s ease',
+                        marginTop: showInsights ? 14 : 0,
+                    }}>
                         <div style={{
-                            position: 'fixed', inset: 0, zIndex: 9999,
-                            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            animation: 'fadeIn 0.2s ease',
-                        }}
-                            onClick={() => setShowInsights(false)}
-                        >
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 16,
+                            overflow: 'hidden',
+                            boxShadow: '0 4px 24px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,166,81,0.04)',
+                            position: 'relative',
+                        }}>
+                            {/* Green accent bar */}
                             <div style={{
-                                background: 'var(--bg-card)',
-                                border: '1px solid rgba(0,166,81,0.15)',
-                                borderRadius: 18, padding: 0,
-                                width: '100%', maxWidth: 520,
-                                boxShadow: '0 20px 50px rgba(0,0,0,0.3), 0 0 30px rgba(0,166,81,0.06)',
-                                animation: 'modalSlideIn 0.3s ease',
-                                overflow: 'hidden',
-                            }}
-                                onClick={e => e.stopPropagation()}
-                            >
-                                {/* Header */}
-                                <div style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '18px 24px', borderBottom: '1px solid var(--border-color)',
-                                    background: 'rgba(0,166,81,0.04)',
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{
-                                            width: 34, height: 34, borderRadius: 10,
-                                            background: 'rgba(0,166,81,0.12)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}>
-                                            <Sparkles size={17} color="#00a651" />
-                                        </div>
-                                        <div>
-                                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                                                Daily Insights
-                                            </h3>
-                                            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                                                AI-generated analysis from today's data
-                                            </p>
-                                        </div>
+                                position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
+                                background: 'linear-gradient(180deg, #00a651, #00c853, #00e676)',
+                                borderRadius: '3px 0 0 3px',
+                            }} />
+
+                            {/* Header */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '14px 20px 14px 24px',
+                                borderBottom: '1px solid var(--border-color)',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{
+                                        width: 30, height: 30, borderRadius: 8,
+                                        background: 'linear-gradient(135deg, rgba(0,166,81,0.15), rgba(0,230,118,0.08))',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <Sparkles size={15} color="#00a651" />
                                     </div>
-                                    <button
-                                        onClick={() => setShowInsights(false)}
-                                        style={{
-                                            background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)',
-                                            color: 'var(--text-muted)', cursor: 'pointer',
-                                            width: 32, height: 32, borderRadius: 8,
-                                            display: 'grid', placeItems: 'center',
-                                            transition: 'all 0.2s',
-                                        }}
-                                        onMouseOver={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; }}
-                                        onMouseOut={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
-                                    >
-                                        ✕
-                                    </button>
+                                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                        AI-Generated Insights
+                                    </span>
                                 </div>
-
-                                {/* Body */}
-                                <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                    {insights.map((insight, idx) => (
-                                        <div key={idx} style={{
-                                            display: 'flex', alignItems: 'flex-start', gap: 12,
-                                            padding: '14px 16px', borderRadius: 12,
-                                            background: 'var(--bg-secondary)',
-                                            border: '1px solid var(--border-color)',
-                                            transition: 'border-color 0.2s',
-                                        }}
-                                            onMouseOver={e => e.currentTarget.style.borderColor = 'rgba(0,166,81,0.25)'}
-                                            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
-                                        >
-                                            <div style={{
-                                                width: 24, height: 24, borderRadius: 6,
-                                                background: 'rgba(0,166,81,0.1)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                flexShrink: 0, marginTop: 1,
-                                            }}>
-                                                <TrendingUp size={13} color="#00a651" />
-                                            </div>
-                                            <span style={{
-                                                color: 'var(--text-secondary)', fontSize: '0.9rem',
-                                                lineHeight: 1.6, flex: 1,
-                                            }}>{insight}</span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Footer */}
-                                <div style={{
-                                    padding: '12px 24px', borderTop: '1px solid var(--border-color)',
-                                    textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem',
+                                <span style={{
+                                    fontSize: '0.72rem', color: 'var(--text-muted)',
+                                    background: 'var(--bg-secondary)', padding: '3px 10px',
+                                    borderRadius: 6, border: '1px solid var(--border-color)',
                                 }}>
-                                    Powered by Gemini AI — ข้อมูลวิเคราะห์อัตโนมัติจากระบบ
-                                </div>
+                                    Powered by Gemini
+                                </span>
+                            </div>
+
+                            {/* Insight items with staggered animation */}
+                            <div style={{ padding: '16px 20px 16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {insights.map((insight, idx) => (
+                                    <div key={idx} style={{
+                                        display: 'flex', alignItems: 'flex-start', gap: 12,
+                                        padding: '12px 14px', borderRadius: 10,
+                                        background: 'var(--bg-secondary)',
+                                        border: '1px solid var(--border-color)',
+                                        transition: 'all 0.25s ease',
+                                        cursor: 'default',
+                                        animation: showInsights
+                                            ? `insightSlideIn 0.4s cubic-bezier(0.22,1,0.36,1) ${idx * 0.1}s both`
+                                            : 'none',
+                                    }}
+                                        onMouseOver={e => {
+                                            e.currentTarget.style.borderColor = 'rgba(0,166,81,0.25)';
+                                            e.currentTarget.style.background = 'rgba(0,166,81,0.03)';
+                                            e.currentTarget.style.transform = 'translateX(4px)';
+                                        }}
+                                        onMouseOut={e => {
+                                            e.currentTarget.style.borderColor = 'var(--border-color)';
+                                            e.currentTarget.style.background = 'var(--bg-secondary)';
+                                            e.currentTarget.style.transform = 'translateX(0)';
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: 22, height: 22, borderRadius: 6,
+                                            background: 'linear-gradient(135deg, rgba(0,166,81,0.15), rgba(0,230,118,0.08))',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            flexShrink: 0, marginTop: 2,
+                                        }}>
+                                            <TrendingUp size={12} color="#00a651" />
+                                        </div>
+                                        <span style={{
+                                            color: 'var(--text-secondary)', fontSize: '0.85rem',
+                                            lineHeight: 1.6, flex: 1,
+                                        }}>{insight}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    )}
-                </>
+                    </div>
+                </div>
             )}
 
             {/* Quick Stats Toolbar */}

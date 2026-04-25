@@ -3174,6 +3174,17 @@ html {
   }
 }
 
+@keyframes insightSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* ==================== FILTER BAR ==================== */
 .filter-bar {
   display: flex;
