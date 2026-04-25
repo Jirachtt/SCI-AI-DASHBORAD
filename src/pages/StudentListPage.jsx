@@ -181,7 +181,7 @@ export default function StudentListPage() {
 
 
             {/* ── Year Stat Cards ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                 {yearStats.map(ys => (
                     <div key={ys.year} onClick={() => { setYearFilter(String(ys.year)); setPage(1); }}
                         style={{
