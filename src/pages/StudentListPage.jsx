@@ -328,17 +328,33 @@ export default function StudentListPage() {
                                     style={{ ...inputBase, width: 36, padding: '6px', textAlign: 'center', cursor: page === 1 ? 'default' : 'pointer', opacity: page === 1 ? 0.3 : 1 }}>
                                     <ChevronLeft size={16} />
                                 </button>
-                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                                    <button key={p} onClick={() => setPage(p)}
-                                        style={{
-                                            ...inputBase, width: 36, padding: '6px', textAlign: 'center', cursor: 'pointer',
-                                            background: p === page ? 'rgba(0,104,56,0.4)' : inputBase.background,
-                                            borderColor: p === page ? '#006838' : inputBase.borderColor,
-                                            fontWeight: p === page ? 700 : 400,
-                                        }}>
-                                        {p}
-                                    </button>
-                                ))}
+                                {(() => {
+                                    // Compact page list: 1, …, p-1, p, p+1, …, last
+                                    const pages = [];
+                                    const add = (p) => pages.push(p);
+                                    add(1);
+                                    const start = Math.max(2, page - 1);
+                                    const end = Math.min(totalPages - 1, page + 1);
+                                    if (start > 2) add('…l');
+                                    for (let p = start; p <= end; p++) add(p);
+                                    if (end < totalPages - 1) add('…r');
+                                    if (totalPages > 1) add(totalPages);
+                                    return pages.map((p, idx) =>
+                                        typeof p === 'number' ? (
+                                            <button key={p} onClick={() => setPage(p)}
+                                                style={{
+                                                    ...inputBase, width: 36, padding: '6px', textAlign: 'center', cursor: 'pointer',
+                                                    background: p === page ? 'rgba(0,104,56,0.4)' : inputBase.background,
+                                                    borderColor: p === page ? '#006838' : inputBase.borderColor,
+                                                    fontWeight: p === page ? 700 : 400,
+                                                }}>
+                                                {p}
+                                            </button>
+                                        ) : (
+                                            <span key={`${p}-${idx}`} style={{ padding: '0 4px', color: 'var(--text-muted)' }}>…</span>
+                                        )
+                                    );
+                                })()}
                                 <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
                                     style={{ ...inputBase, width: 36, padding: '6px', textAlign: 'center', cursor: page === totalPages ? 'default' : 'pointer', opacity: page === totalPages ? 0.3 : 1 }}>
                                     <ChevronRight size={16} />
