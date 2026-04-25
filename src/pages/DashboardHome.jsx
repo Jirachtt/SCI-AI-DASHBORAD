@@ -80,6 +80,7 @@ export default function DashboardHome() {
     const [insights, setInsights] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
     const [showForecast, setShowForecast] = useState(false);
+    const [showInsights, setShowInsights] = useState(false);
     const [cardOrder, setCardOrder] = useState([0, 1, 2, 3]);
     const dragItem = useRef(null);
     const dragOverItem = useRef(null);
@@ -282,33 +283,129 @@ export default function DashboardHome() {
                 </div>
             )}
 
-            {/* Daily Insights */}
+            {/* Daily Insights — Compact popup */}
             {insights && (
-                <div style={{
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-color)',
-                    borderLeft: '3px solid #006838',
-                    borderRadius: 16, padding: '20px 24px', marginBottom: 28,
-                    boxShadow: 'var(--shadow-sm)',
-                }}>
-                    <h3 style={{
-                        color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 600,
-                        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14
-                    }}>
-                        <Sparkles size={16} color="#00a651" /> Daily Insights
-                    </h3>
-                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {insights.map((insight, idx) => (
-                            <li key={idx} style={{
-                                display: 'flex', alignItems: 'flex-start', gap: 10,
-                                color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.5
-                            }}>
-                                <span style={{ color: '#006838', marginTop: 2 }}>—</span>
-                                <span>{insight}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                <>
+                    <button
+                        onClick={() => setShowInsights(!showInsights)}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 8,
+                            background: showInsights ? 'rgba(0,166,81,0.15)' : 'var(--bg-card)',
+                            border: showInsights ? '1px solid rgba(0,166,81,0.3)' : '1px solid var(--border-color)',
+                            color: showInsights ? '#00a651' : 'var(--text-secondary)',
+                            padding: '8px 18px', borderRadius: 10, cursor: 'pointer',
+                            fontSize: '0.92rem', fontWeight: 600, marginBottom: 20,
+                            transition: 'all 0.25s ease',
+                            boxShadow: showInsights ? '0 2px 12px rgba(0,166,81,0.12)' : 'none',
+                        }}
+                    >
+                        <Sparkles size={15} />
+                        Daily Insights
+                        <span style={{
+                            background: '#00a651', color: '#fff', fontSize: '0.7rem',
+                            padding: '1px 7px', borderRadius: 10, fontWeight: 700, lineHeight: '18px',
+                        }}>{insights.length}</span>
+                    </button>
+
+                    {showInsights && (
+                        <div style={{
+                            position: 'fixed', inset: 0, zIndex: 9999,
+                            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            animation: 'fadeIn 0.2s ease',
+                        }}
+                            onClick={() => setShowInsights(false)}
+                        >
+                            <div style={{
+                                background: 'var(--bg-card)',
+                                border: '1px solid rgba(0,166,81,0.15)',
+                                borderRadius: 18, padding: 0,
+                                width: '100%', maxWidth: 520,
+                                boxShadow: '0 20px 50px rgba(0,0,0,0.3), 0 0 30px rgba(0,166,81,0.06)',
+                                animation: 'modalSlideIn 0.3s ease',
+                                overflow: 'hidden',
+                            }}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                {/* Header */}
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '18px 24px', borderBottom: '1px solid var(--border-color)',
+                                    background: 'rgba(0,166,81,0.04)',
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div style={{
+                                            width: 34, height: 34, borderRadius: 10,
+                                            background: 'rgba(0,166,81,0.12)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}>
+                                            <Sparkles size={17} color="#00a651" />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                Daily Insights
+                                            </h3>
+                                            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                                AI-generated analysis from today's data
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowInsights(false)}
+                                        style={{
+                                            background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)',
+                                            color: 'var(--text-muted)', cursor: 'pointer',
+                                            width: 32, height: 32, borderRadius: 8,
+                                            display: 'grid', placeItems: 'center',
+                                            transition: 'all 0.2s',
+                                        }}
+                                        onMouseOver={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; }}
+                                        onMouseOut={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                {/* Body */}
+                                <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    {insights.map((insight, idx) => (
+                                        <div key={idx} style={{
+                                            display: 'flex', alignItems: 'flex-start', gap: 12,
+                                            padding: '14px 16px', borderRadius: 12,
+                                            background: 'var(--bg-secondary)',
+                                            border: '1px solid var(--border-color)',
+                                            transition: 'border-color 0.2s',
+                                        }}
+                                            onMouseOver={e => e.currentTarget.style.borderColor = 'rgba(0,166,81,0.25)'}
+                                            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
+                                        >
+                                            <div style={{
+                                                width: 24, height: 24, borderRadius: 6,
+                                                background: 'rgba(0,166,81,0.1)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                flexShrink: 0, marginTop: 1,
+                                            }}>
+                                                <TrendingUp size={13} color="#00a651" />
+                                            </div>
+                                            <span style={{
+                                                color: 'var(--text-secondary)', fontSize: '0.9rem',
+                                                lineHeight: 1.6, flex: 1,
+                                            }}>{insight}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Footer */}
+                                <div style={{
+                                    padding: '12px 24px', borderTop: '1px solid var(--border-color)',
+                                    textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem',
+                                }}>
+                                    Powered by Gemini AI — ข้อมูลวิเคราะห์อัตโนมัติจากระบบ
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Quick Stats Toolbar */}
