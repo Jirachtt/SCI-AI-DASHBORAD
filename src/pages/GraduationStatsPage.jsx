@@ -138,7 +138,7 @@ export default function GraduationStatsPage() {
     // By major bar chart
     const majorColors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
     const majorChartData = {
-        labels: graduationByMajor.map(m => m.major.length > 12 ? m.major.slice(0, 12) + '...' : m.major),
+        labels: graduationByMajor.map(m => m.major),
         datasets: [
             {
                 label: 'คาดว่าสำเร็จ',
@@ -162,6 +162,9 @@ export default function GraduationStatsPage() {
         responsive: true,
         maintainAspectRatio: false,
         indexAxis: 'y',
+        layout: {
+            padding: { left: 4, right: 16 }
+        },
         plugins: {
             legend: { labels: { color: 'var(--text-muted)', font: { size: 11 } } },
             tooltip: {
@@ -172,7 +175,18 @@ export default function GraduationStatsPage() {
         },
         scales: {
             x: { stacked: true, ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } },
-            y: { stacked: true, ticks: { color: 'var(--text-muted)', font: { size: 11 } }, grid: { display: false } }
+            y: {
+                stacked: true,
+                ticks: {
+                    color: 'var(--text-muted)',
+                    font: { size: 12 },
+                    autoSkip: false,
+                },
+                grid: { display: false },
+                afterFit: (axis) => {
+                    axis.width = Math.max(axis.width, 160);
+                }
+            }
         }
     };
 
@@ -349,7 +363,7 @@ export default function GraduationStatsPage() {
                         <Users size={18} color="#3b82f6" />
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>แยกตามสาขาวิชา</span>
                     </div>
-                    <div style={{ height: Math.max(280, graduationByMajor.length * 35) }}>
+                    <div style={{ height: Math.max(320, graduationByMajor.length * 42) }}>
                         <Bar data={majorChartData} options={majorChartOptions} />
                     </div>
                 </div>
