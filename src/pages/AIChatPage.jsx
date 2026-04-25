@@ -657,6 +657,35 @@ function parseAIResponse(text) {
                 };
             }
 
+            // ── Validator: ensure category charts have proper labels ──
+            // If labels are missing/empty/all-numeric, derive sensible ones from
+            // datasets so users see real names instead of 1..N tick numbers.
+            const isCategorical = !isPointChart && !['pie', 'doughnut'].includes(rawJson.chartType);
+            if (isCategorical && rawJson.data) {
+                const labels = rawJson.data.labels;
+                const datasets = rawJson.data.datasets || [];
+                const dataLen = datasets[0]?.data?.length || 0;
+                const labelsBad = !Array.isArray(labels) || labels.length === 0
+                    || labels.length !== dataLen
+                    || labels.every(l => typeof l === 'number' || /^\d+$/.test(String(l)));
+
+                if (labelsBad && dataLen > 0) {
+                    // Try to recover names from a `categories` field, dataset names,
+                    // or fall back to "หมวดที่ N" so the axis isn't numeric.
+                    const recovered = rawJson.data.categories
+                        || (datasets.length === 1 && Array.isArray(datasets[0].labels) ? datasets[0].labels : null)
+                        || Array.from({ length: dataLen }, (_, i) => `หมวดที่ ${i + 1}`);
+                    rawJson.data.labels = recovered;
+                }
+
+                // Dual-axis horizontal bars over many categories are unreadable
+                // (the screenshot bug). Force vertical when we detect that combo.
+                const hasDualAxis = datasets.some(ds => ds.yAxisID === 'y1' || ds.type === 'line');
+                if (hasDualAxis && rawJson.options?.indexAxis === 'y' && dataLen > 6) {
+                    if (rawJson.options) rawJson.options.indexAxis = undefined;
+                }
+            }
+
             // Merge AI-provided scales into defaults so y1 / indexAxis / titles apply
             // without losing our dark-theme tick/grid styling.
             const aiScales = rawJson.options?.scales || {};
@@ -767,9 +796,60 @@ function looksLikeDatasetDump(s) {
     }
 }
 
+// Re-derive chart data/options when the user toggles between line/bar.
+// Without this, leftover `indexAxis:'y'`, per-dataset `type` fields, and
+// y1 axis references from the original config make the switcher a no-op.
+function deriveChartConfig(originalChart, targetType) {
+    if (!originalChart) return originalChart;
+    if (targetType === originalChart.chartType) return originalChart;
+
+    // Deep-clone via JSON (safe — no functions in chart data after parse).
+    const data = JSON.parse(JSON.stringify(originalChart.data || {}));
+    const options = JSON.parse(JSON.stringify(originalChart.options || {}));
+
+    // Strip per-dataset `type` so all datasets inherit the parent type.
+    if (Array.isArray(data.datasets)) {
+        data.datasets.forEach(ds => {
+            delete ds.type;
+            // y1 axis is for dual-axis bar+line; collapse to default y when
+            // switching to a homogeneous chart.
+            if (ds.yAxisID === 'y1') delete ds.yAxisID;
+            if (targetType === 'line') {
+                delete ds.borderRadius;
+                if (ds.tension == null) ds.tension = 0.4;
+                if (ds.pointRadius == null) ds.pointRadius = 4;
+                // Solid stroke; convert thick fill to lighter alpha so lines read clearly.
+                if (typeof ds.backgroundColor === 'string' && ds.backgroundColor.length === 9) {
+                    // hex8 like #RRGGBBAA → drop alpha to keep just stroke color contrast
+                    ds.backgroundColor = ds.backgroundColor.slice(0, 7) + '33';
+                }
+            } else if (targetType === 'bar') {
+                if (ds.borderRadius == null) ds.borderRadius = 6;
+            }
+        });
+    }
+
+    // Line charts are always vertical — drop `indexAxis:'y'` if present.
+    if (targetType === 'line') {
+        delete options.indexAxis;
+    }
+
+    // Remove the right-hand y1 scale since dual-axis is gone.
+    if (options.scales && options.scales.y1) {
+        delete options.scales.y1;
+        if (options.scales.y?.grid) options.scales.y.grid.drawOnChartArea = true;
+    }
+
+    return { ...originalChart, chartType: targetType, data, options };
+}
+
 // ==================== Chat Message Component ====================
 function ChatMessage({ msg, onExpand }) {
     const [chartType, setChartType] = useState(msg.chart?.chartType || 'line');
+    // Re-derive when chartType differs from what was parsed.
+    const renderedChart = chartType === msg.chart?.chartType
+        ? msg.chart
+        : deriveChartConfig(msg.chart, chartType);
 
     if (msg.role === 'user') {
         return (
@@ -798,7 +878,11 @@ function ChatMessage({ msg, onExpand }) {
         });
     };
 
-    const chartData = msg.chart;
+    const chartData = renderedChart;
+    const originalType = msg.chart?.chartType;
+    // Show switcher only when source chart is bar/line (other types — radar,
+    // pie, scatter, bubble — don't have a meaningful toggle target).
+    const canSwitch = originalType === 'line' || originalType === 'bar';
 
     return (
         <div className="ai-page-msg ai-page-msg-bot">
@@ -809,7 +893,7 @@ function ChatMessage({ msg, onExpand }) {
                 {chartData && (
                     <div className="ai-page-chart-container">
                         <div className="ai-page-chart-toolbar">
-                            {(chartType === 'line' || chartType === 'bar') && (
+                            {canSwitch && (
                                 <>
                                     <button
                                         className={`ai-page-chart-btn ${chartType === 'line' ? 'active' : ''}`}
@@ -827,7 +911,7 @@ function ChatMessage({ msg, onExpand }) {
                             )}
                             <button
                                 className="ai-page-chart-btn"
-                                onClick={() => onExpand({ ...chartData, chartType })}
+                                onClick={() => onExpand(chartData)}
                                 style={{ marginLeft: 'auto' }}
                             >
                                 <Maximize2 size={14} /> ขยาย

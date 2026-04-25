@@ -358,6 +358,13 @@ When labels average >8 Thai characters OR >6 categories, use \`indexAxis:"y"\` s
 {"chartType":"bar","data":{"labels":["เทคโนโลยีสารสนเทศ","เคมีอุตสาหกรรมและเทคโนโลยีสิ่งทอ","วัสดุศาสตร์"],"datasets":[{"label":"จำนวนนักศึกษา","data":[120,95,80],"backgroundColor":["#00a651","#7B68EE","#2E86AB"]}]},"options":{"indexAxis":"y","scales":{"x":{"beginAtZero":true,"title":{"display":true,"text":"จำนวน (คน)"}}}}}
 \`\`\`
 
+### CRITICAL CHART RULES (เพื่อความอ่านง่าย — ห้ามผิด):
+1. **\`data.labels\` ต้องเป็นชื่อจริง** เสมอ (ชื่อคณะ/สาขา/ปี) — ห้ามเป็น array ว่าง, ห้ามเป็นเลข [1,2,3], ห้ามขาด เพราะแกนจะกลายเป็น 1..N
+2. **dual-axis bar+line ใช้ได้ก็ต่อเมื่อ ≤ 6 categories และ vertical (NO indexAxis:"y")** เท่านั้น
+3. **ถ้า > 6 categories และต้องเทียบ 2 metrics** (เช่น "GPA + อัตราสำเร็จ ของทุกคณะ") → **ห้ามใช้ dual-axis** ให้ออก **2 json_chart blocks แยกกัน** อันละ metric พร้อม horizontal bar เรียงค่ามากไปน้อย
+4. **ห้ามใช้ \`indexAxis:"y"\` ร่วมกับ dual-axis** (yAxisID:"y1" หรือ datasets ผสม bar+line) — Chart.js เรนเดอร์ออกมาแกน y เป็นเลข อ่านไม่ได้
+5. **เรียงข้อมูลก่อนเสมอ** — bar/horizontal bar ควรเรียงค่ามากไปน้อย (descending) เพื่อความชัดเจน
+
 ### Cross-Table JOIN:
 When user asks about RELATIONSHIPS between 2+ data domains:
 1. Identify which tables contain the variables
@@ -370,7 +377,8 @@ Examples:
 • "อัตราสำเร็จ กับ GPA แยกปี" → graduation.rate + graduation.avgGPA → dual-axis line
 • "บุคลากรแต่ละตำแหน่ง" → personnel.byPosition → pie/doughnut
 • "เปรียบเทียบคณะ" → student_stats.faculties → bar/radar
-• "จำนวนนักศึกษา, เกรด" / "นักศึกษากับเกรด" → majorCounts + gpaByMajor → dual-axis **bar(count, left) + line(avg GPA, right) by major** — ONE chart, two y-axes
+• "เทียบ GPA + อัตราสำเร็จ ของทุกคณะ" → > 6 คณะ → **2 json_chart แยก** (horizontal bar เรียง descending อันละ metric) ห้าม dual-axis
+• "จำนวนนักศึกษา, เกรด" / "นักศึกษากับเกรด" — ถ้า ≤ 6 สาขา → dual-axis vertical bar+line; ถ้า > 6 → 2 charts แยก
 • "นักศึกษา vs เกรด รายคน" → scatter plot (x=major index/year, y=gpa) from full student list
 • "งานวิจัยแต่ละภาควิชา" → research.byDepartment → bar/radar
 • "ผลงานตีพิมพ์ vs ทุนวิจัย" → research.byDepartment → scatter (x=funding, y=publications)
