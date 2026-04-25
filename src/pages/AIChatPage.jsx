@@ -1936,11 +1936,14 @@ export default function AIChatPage() {
                                 <Zap size={13} /> QUICK ACTIONS — คลิกเพื่อลองใช้งาน
                             </div>
                             <div className="ai-chat-page-quick-grid">
-                                {quickActions.map((action, i) => (
-                                    <button key={i} className="ai-chat-page-quick-btn" onClick={() => handleQuickAction(action.query)}>
-                                        {action.label}
-                                    </button>
-                                ))}
+                                {quickActions.map((action, i) => {
+                                    const ActionIcon = action.icon;
+                                    return (
+                                        <button key={i} className="ai-chat-page-quick-btn" onClick={() => handleQuickAction(action.query)}>
+                                            <ActionIcon size={14} /> {action.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
