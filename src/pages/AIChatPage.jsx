@@ -208,10 +208,10 @@ function generateForecastResponse(parsed) {
         const ds = DATASETS[dsKey];
         if (!ds) continue;
         const dataPoints = ds.getData();
-        if (dataPoints.length < 3) { results.push(`⚠️ ${ds.label}: ข้อมูลไม่เพียงพอ`); continue; }
+        if (dataPoints.length < 3) { results.push(`${ds.label}: ข้อมูลไม่เพียงพอสำหรับการพยากรณ์`); continue; }
 
         const model = linearRegression(dataPoints);
-        if (!model) { results.push(`⚠️ ${ds.label}: ไม่สามารถสร้างโมเดลพยากรณ์ได้`); continue; }
+        if (!model) { results.push(`${ds.label}: ไม่สามารถสร้างโมเดลพยากรณ์ได้`); continue; }
 
         const existingYears = dataPoints.map(d => d.x);
         const allYears = [...new Set([...existingYears, ...parsed.years])].sort();
@@ -263,7 +263,7 @@ function generateForecastResponse(parsed) {
                 : model.predict(y).toLocaleString();
             return `   ปี ${y}: ~${val} ${ds.unit}`;
         }).join('\n');
-        results.push(`📊 **${ds.label}**\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}`);
+        results.push(`**${ds.label}**\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}`);
     }
 
     // Build scales config — support dual Y-axis
@@ -329,7 +329,7 @@ function generateForecastResponse(parsed) {
         }
     } : null;
 
-    return { text: results.join('\n\n') + '\n\n💡 _อ้างอิงจากข้อมูลในระบบเท่านั้น (Linear Regression)_', chart: chartConfig };
+    return { text: results.join('\n\n') + '\n\n_หมายเหตุ: อ้างอิงจากข้อมูลในระบบเท่านั้น (Linear Regression)_', chart: chartConfig };
 }
 
 // ==================== Student Data (Real from MJU) ====================
@@ -479,14 +479,14 @@ function searchStudents(query) {
     const total = results.length;
     if (limit > 0) results = results.slice(0, limit);
 
-    let text = `📋 **พบนักศึกษา ${searchDesc}** จำนวน ${total} คน`;
+    let text = `**พบนักศึกษา ${searchDesc}** จำนวน ${total} คน`;
     if (limit > 0 && total > limit) text += ` (แสดง ${limit} คน)`;
     text += '\n\n';
 
     results.forEach((s, i) => {
-        const gpaColor = s.gpa >= 3.5 ? '🟢' : s.gpa >= 2.5 ? '🟡' : s.gpa >= 2.0 ? '🟠' : '🔴';
+        const gpaColor = s.gpa >= 3.5 ? '[ดีมาก]' : s.gpa >= 2.5 ? '[ดี]' : s.gpa >= 2.0 ? '[พอใช้]' : '[ต่ำ]';
         text += `**${i + 1}.** \`${s.id}\` ${s.name}\n`;
-        text += `   📚 ${s.major} | ชั้นปี ${s.year} | ${gpaColor} GPA ${s.gpa} | ${s.status}\n`;
+        text += `   ${s.major} | ชั้นปี ${s.year} | ${gpaColor} GPA ${s.gpa} | ${s.status}\n`;
     });
 
     if (total > results.length) {
@@ -567,21 +567,21 @@ function generateComboChart() {
         }
     };
 
-    let text = `📊 **Combo Chart: จำนวนนิสิต vs อัตราสำเร็จการศึกษา (แยกตามคณะ)**\n\n`;
-    text += `📌 **หมายเหตุ:** จำนวนนิสิตถูก Normalize เป็น Index (0-100) เพื่อให้เปรียบเทียบกับ % อัตราสำเร็จได้ในแกน Y เดียวกัน\n`;
+    let text = `**Combo Chart: จำนวนนิสิต vs อัตราสำเร็จการศึกษา (แยกตามคณะ)**\n\n`;
+    text += `**หมายเหตุ:** จำนวนนิสิตถูก Normalize เป็น Index (0-100) เพื่อให้เปรียบเทียบกับ % อัตราสำเร็จได้ในแกน Y เดียวกัน\n`;
     text += `โดยคณะที่มีนิสิตมากสุด = 100 (${faculties.reduce((a, b) => a.totalStudents > b.totalStudents ? a : b).name}: ${maxStudents.toLocaleString()} คน)\n\n`;
 
-    text += `📋 **จำนวนนิสิตจริง (ก่อน Normalize):**\n`;
+    text += `**จำนวนนิสิตจริง (ก่อน Normalize):**\n`;
     faculties.forEach(f => {
         const idx = normalizedStudents[faculties.indexOf(f)];
         text += `• ${f.name}: **${f.totalStudents.toLocaleString()}** คน (Index: ${idx}) | สำเร็จ: ${f.graduationRate}%\n`;
     });
 
-    text += `\n🔍 **Insight:**\n`;
+    text += `\n**Insight:**\n`;
     const topGrad = [...faculties].sort((a, b) => b.graduationRate - a.graduationRate)[0];
     const lowGrad = [...faculties].sort((a, b) => a.graduationRate - b.graduationRate)[0];
-    text += `• 🏆 อัตราสำเร็จสูงสุด: ${topGrad.name} (${topGrad.graduationRate}%)\n`;
-    text += `• ⚠️ อัตราสำเร็จต่ำสุด: ${lowGrad.name} (${lowGrad.graduationRate}%)\n`;
+    text += `• อัตราสำเร็จสูงสุด: ${topGrad.name} (${topGrad.graduationRate}%)\n`;
+    text += `• อัตราสำเร็จต่ำสุด: ${lowGrad.name} (${lowGrad.graduationRate}%)\n`;
     text += `• คณะที่มีนิสิตมากไม่ได้หมายความว่าจะมีอัตราสำเร็จสูงเสมอไป`;
 
     return { text, chart };
@@ -1350,7 +1350,7 @@ export default function AIChatPage() {
     const [messages, setMessages] = useState([
         {
             role: 'bot',
-            text: 'สวัสดีครับ! ผม **MJU AI Assistant** (Powered by Gemini ✨)\n\nพร้อมช่วยตอบ **ทุกเรื่องเกี่ยวกับมหาวิทยาลัยแม่โจ้** ถามมาได้เลยครับ!\n\n🔮 **ฟีเจอร์ทั้งหมด:**\n• 💬 ถาม-ตอบทุกเรื่องแม่โจ้ (ประวัติ, คณะ, หลักสูตร, รับสมัคร, สถานที่, วิจัย)\n• 📊 สร้างกราฟจำนวนนักศึกษา, เกรด, งบประมาณ และพยากรณ์\n• 🔍 ค้นหานักศึกษาตามรหัส, ชื่อ, สาขา, GPA\n• 🎤 สั่งงานด้วยเสียง\n• 📎 **อัปโหลดไฟล์ CSV / Excel (.xlsx)** เพื่อวิเคราะห์และสร้างกราฟ\n\nลองเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ!',
+            text: 'สวัสดีครับ ผม **MJU AI Assistant** (Powered by Gemini)\n\nพร้อมช่วยตอบ **ทุกเรื่องเกี่ยวกับมหาวิทยาลัยแม่โจ้** ถามมาได้เลยครับ\n\n**ฟีเจอร์ทั้งหมด:**\n• ถาม-ตอบทุกเรื่องแม่โจ้ (ประวัติ, คณะ, หลักสูตร, รับสมัคร, สถานที่, วิจัย)\n• สร้างกราฟจำนวนนักศึกษา, เกรด, งบประมาณ และพยากรณ์\n• ค้นหานักศึกษาตามรหัส, ชื่อ, สาขา, GPA\n• สั่งงานด้วยเสียง\n• **อัปโหลดไฟล์ CSV / Excel (.xlsx)** เพื่อวิเคราะห์และสร้างกราฟ\n\nเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ',
             chart: null
         }
     ]);
@@ -1410,7 +1410,7 @@ export default function AIChatPage() {
         if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
         setMessages([{
             role: 'bot',
-            text: '🔄 **เริ่มบทสนทนาใหม่แล้ว!**\n\nถามมาได้เลยครับ ผมพร้อมช่วยเสมอ!',
+            text: '**เริ่มบทสนทนาใหม่แล้ว**\n\nถามมาได้เลยครับ พร้อมช่วยเสมอ',
             chart: null
         }]);
     }, []);
@@ -1515,13 +1515,13 @@ export default function AIChatPage() {
         if (!['csv', 'txt', 'tsv', 'xlsx', 'xls'].includes(ext)) {
             setMessages(prev => [...prev, {
                 role: 'bot',
-                text: `⚠️ **รองรับเฉพาะไฟล์ CSV, TSV, TXT, XLSX, XLS**\n\nไฟล์ "${fileName}" ไม่รองรับ`,
+                text: `**รองรับเฉพาะไฟล์ CSV, TSV, TXT, XLSX, XLS**\n\nไฟล์ "${fileName}" ไม่รองรับ`,
                 chart: null
             }]);
             return;
         }
 
-        setMessages(prev => [...prev, { role: 'user', text: `📎 อัปโหลดไฟล์: **${fileName}**` }]);
+        setMessages(prev => [...prev, { role: 'user', text: `อัปโหลดไฟล์: **${fileName}**` }]);
         setTyping(true);
 
         try {
@@ -1532,7 +1532,7 @@ export default function AIChatPage() {
             if (!parsed || parsed.rows.length === 0) {
                 setMessages(prev => [...prev, {
                     role: 'bot',
-                    text: `⚠️ ไม่สามารถอ่านข้อมูลจากไฟล์ "${fileName}" ได้\n\nตรวจสอบว่าไฟล์มีหัวคอลัมน์ (header row) และข้อมูลอย่างน้อย 1 แถว`,
+                    text: `ไม่สามารถอ่านข้อมูลจากไฟล์ "${fileName}" ได้\n\nตรวจสอบว่าไฟล์มีหัวคอลัมน์ (header row) และข้อมูลอย่างน้อย 1 แถว`,
                     chart: null
                 }]);
                 return;
@@ -1549,36 +1549,36 @@ export default function AIChatPage() {
             const chart = generateChartFromFile(parsed, fileName);
 
             // Build summary text
-            let summaryText = `📊 **วิเคราะห์ไฟล์: ${fileName}**\n\n`;
-            summaryText += `📋 **ข้อมูล:** ${parsed.rowCount} แถว × ${parsed.headers.length} คอลัมน์\n`;
-            summaryText += `📌 **คอลัมน์:** ${parsed.headers.join(', ')}\n`;
-            summaryText += `📈 **คอลัมน์ตัวเลข:** ${parsed.numericCols.join(', ') || 'ไม่พบ'}\n\n`;
+            let summaryText = `**วิเคราะห์ไฟล์: ${fileName}**\n\n`;
+            summaryText += `**ข้อมูล:** ${parsed.rowCount} แถว × ${parsed.headers.length} คอลัมน์\n`;
+            summaryText += `**คอลัมน์:** ${parsed.headers.join(', ')}\n`;
+            summaryText += `**คอลัมน์ตัวเลข:** ${parsed.numericCols.join(', ') || 'ไม่พบ'}\n\n`;
 
             // Notify about student data merge
             if (uploadedStudents.length > 0) {
                 const allNow = getAllStudents();
-                summaryText += `🎓 **ตรวจพบข้อมูลนักศึกษา ${uploadedStudents.length} คน** — รวมกับข้อมูลระบบแล้ว!\n`;
-                summaryText += `📊 **รวมนักศึกษาทั้งหมดในระบบ:** ${allNow.length} คน\n\n`;
-                summaryText += `💡 **ลองถาม:**\n`;
+                summaryText += `**ตรวจพบข้อมูลนักศึกษา ${uploadedStudents.length} คน** — รวมกับข้อมูลระบบแล้ว\n`;
+                summaryText += `**รวมนักศึกษาทั้งหมดในระบบ:** ${allNow.length} คน\n\n`;
+                summaryText += `**ลองถาม:**\n`;
                 summaryText += `• "แสดงรายชื่อนักศึกษาสาขาคอม"\n`;
                 summaryText += `• "สร้างกราฟจำนวนนักศึกษาแต่ละสาขา"\n`;
                 summaryText += `• "นักศึกษาที่มี GPA สูงสุด 10 คน"\n`;
                 summaryText += `• "เปรียบเทียบ GPA แต่ละสาขา"\n`;
             } else {
                 // Show sample data for non-student files
-                summaryText += `🔍 **ตัวอย่างข้อมูล (5 แถวแรก):**\n`;
+                summaryText += `**ตัวอย่างข้อมูล (5 แถวแรก):**\n`;
                 parsed.rows.slice(0, 5).forEach((row, i) => {
                     summaryText += `${i + 1}. ${parsed.headers.map(h => `${h}: ${row[h]}`).join(' | ')}\n`;
                 });
 
                 if (parsed.numericCols.length > 0) {
-                    summaryText += `\n✅ **สร้างกราฟจากข้อมูลให้แล้ว!**`;
-                    summaryText += `\n\n🔗 **รวมกับข้อมูล Dashboard ได้!** ลองถาม:`;
+                    summaryText += `\n**สร้างกราฟจากข้อมูลให้แล้ว**`;
+                    summaryText += `\n\n**รวมกับข้อมูล Dashboard ได้** ลองถาม:`;
                     summaryText += `\n• "เปรียบเทียบข้อมูลไฟล์กับจำนวนนิสิตในระบบ"`;
                     summaryText += `\n• "รวมข้อมูลไฟล์กับงบประมาณเป็นกราฟ"`;
                     summaryText += `\n• "สร้างกราฟเปรียบเทียบไฟล์กับข้อมูล Dashboard"`;
                 } else {
-                    summaryText += `\n⚠️ ไม่พบคอลัมน์ตัวเลข จึงไม่สามารถสร้างกราฟอัตโนมัติได้`;
+                    summaryText += `\nไม่พบคอลัมน์ตัวเลข จึงไม่สามารถสร้างกราฟอัตโนมัติได้`;
                 }
             }
 
@@ -1593,7 +1593,7 @@ export default function AIChatPage() {
                 const parsedAI = parseAIResponse(aiText);
                 setMessages(prev => [...prev, {
                     role: 'bot',
-                    text: `🤖 **AI วิเคราะห์เพิ่มเติม:**\n\n${parsedAI.text}`,
+                    text: `**AI วิเคราะห์เพิ่มเติม:**\n\n${parsedAI.text}`,
                     chart: parsedAI.chart
                 }]);
             } catch (err) {
@@ -1603,7 +1603,7 @@ export default function AIChatPage() {
         } catch (err) {
             setMessages(prev => [...prev, {
                 role: 'bot',
-                text: `❌ อ่านไฟล์ล้มเหลว: ${err.message}`,
+                text: `อ่านไฟล์ล้มเหลว: ${err.message}`,
                 chart: null
             }]);
         } finally {
@@ -1622,7 +1622,7 @@ export default function AIChatPage() {
                 const update = () => {
                     setMessages(prev => prev.map(m =>
                         m._retryId === retryId
-                            ? { ...m, text: `⏳ **API ถูกใช้งานบ่อยเกินไป** — รอ ${remaining} วินาที แล้วจะลองใหม่อัตโนมัติ (ครั้งที่ ${attempt}/${MAX_RETRIES})\n\n🔄 กรุณารอสักครู่ ระบบจะลองส่งคำถามให้ใหม่เองค่ะ` }
+                            ? { ...m, text: `**API ถูกใช้งานบ่อยเกินไป** — รอ ${remaining} วินาที แล้วจะลองใหม่อัตโนมัติ (ครั้งที่ ${attempt}/${MAX_RETRIES})\n\nกรุณารอสักครู่ ระบบจะลองส่งคำถามให้ใหม่โดยอัตโนมัติ` }
                             : m
                     ));
                 };
@@ -1638,7 +1638,7 @@ export default function AIChatPage() {
                 const parsedAI = parseAIResponse(aiText);
                 setMessages(prev => prev.map(m =>
                     m._retryId === retryId
-                        ? { role: 'bot', text: `✅ _ลองใหม่สำเร็จ!_\n\n${parsedAI.text}`, chart: parsedAI.chart }
+                        ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart }
                         : m
                 ));
                 return;
@@ -1646,8 +1646,8 @@ export default function AIChatPage() {
                 const isStillQuota = /รอ|quota|API ถูกใช้งาน|QUOTA/.test(retryErr.message || '');
                 if (!isStillQuota || attempt === MAX_RETRIES) {
                     const finalMsg = isStillQuota
-                        ? `❌ **ไม่สามารถเชื่อมต่อ AI ได้หลังจากลอง ${MAX_RETRIES} ครั้ง**\n\nAPI ถูกจำกัดการใช้งาน กรุณารอ 3-5 นาทีแล้วลองใหม่ค่ะ 🙏\n\n💡 _ระหว่างรอ ลองใช้ฟีเจอร์พยากรณ์หรือค้นหานักศึกษา ซึ่งทำงานได้โดยไม่ต้องใช้ AI_`
-                        : `⚠️ ${retryErr.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`;
+                        ? `**ไม่สามารถเชื่อมต่อ AI ได้หลังจากลอง ${MAX_RETRIES} ครั้ง**\n\nAPI ถูกจำกัดการใช้งาน กรุณารอ 3-5 นาทีแล้วลองใหม่\n\n_ระหว่างรอ ลองใช้ฟีเจอร์พยากรณ์หรือค้นหานักศึกษา ซึ่งทำงานได้โดยไม่ต้องใช้ AI_`
+                        : `${retryErr.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\nลองถามคำถามใหม่อีกครั้ง`;
                     setMessages(prev => prev.map(m =>
                         m._retryId === retryId ? { role: 'bot', text: finalMsg, chart: null } : m
                     ));
@@ -1724,7 +1724,7 @@ export default function AIChatPage() {
             if (isQuota) {
                 const retryId = `retry_${Date.now()}`;
                 setMessages(prev => [...prev, {
-                    role: 'bot', text: '⏳ **API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
+                    role: 'bot', text: '**API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
                 }]);
                 const buildMsg = () => {
                     // Reuse the same enriched context builder as handleSend
@@ -1756,7 +1756,7 @@ export default function AIChatPage() {
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
-                    text: `⚠️ ${errMsg}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                    text: `${errMsg}\n\nลองถามคำถามใหม่อีกครั้ง`,
                     chart: null
                 }]);
             }
@@ -1768,12 +1768,12 @@ export default function AIChatPage() {
     const handleKeyDown = (e) => { if (e.key === 'Enter') handleSend(); };
 
     const quickActions = [
-        { label: '📊 กราฟนิสิตแยกคณะ', query: 'สร้างกราฟแท่งแสดงจำนวนนิสิตแยกตามคณะ พร้อมเรียงลำดับจากมากไปน้อย', icon: BarChart3 },
-        { label: '📈 เปรียบเทียบ GPA ทุกคณะ', query: 'สร้างกราฟเปรียบเทียบ GPA เฉลี่ยและอัตราสำเร็จการศึกษาของทุกคณะ', icon: TrendingUp },
-        { label: '👩‍🏫 บุคลากรคณะวิทย์', query: 'แสดงกราฟข้อมูลบุคลากรคณะวิทยาศาสตร์ ตำแหน่งวิชาการ วุฒิการศึกษา และพยากรณ์เกษียณ', icon: Search },
-        { label: '💰 วิเคราะห์งบประมาณ', query: 'วิเคราะห์งบประมาณมหาวิทยาลัยแม่โจ้ ย้อนหลัง 4 ปี แสดงกราฟรายรับ-รายจ่าย พร้อมสรุปแนวโน้ม', icon: ChartLine },
-        { label: '🎓 สถิติสำเร็จการศึกษา', query: 'แสดงกราฟแนวโน้มอัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ย้อนหลัง 5 ปี', icon: Sparkles },
-        { label: '🔮 พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: ChartLine },
+        { label: 'กราฟนิสิตแยกคณะ', query: 'สร้างกราฟแท่งแสดงจำนวนนิสิตแยกตามคณะ พร้อมเรียงลำดับจากมากไปน้อย', icon: BarChart3 },
+        { label: 'เปรียบเทียบ GPA ทุกคณะ', query: 'สร้างกราฟเปรียบเทียบ GPA เฉลี่ยและอัตราสำเร็จการศึกษาของทุกคณะ', icon: TrendingUp },
+        { label: 'บุคลากรคณะวิทย์', query: 'แสดงกราฟข้อมูลบุคลากรคณะวิทยาศาสตร์ ตำแหน่งวิชาการ วุฒิการศึกษา และพยากรณ์เกษียณ', icon: Search },
+        { label: 'วิเคราะห์งบประมาณ', query: 'วิเคราะห์งบประมาณมหาวิทยาลัยแม่โจ้ ย้อนหลัง 4 ปี แสดงกราฟรายรับ-รายจ่าย พร้อมสรุปแนวโน้ม', icon: ChartLine },
+        { label: 'สถิติสำเร็จการศึกษา', query: 'แสดงกราฟแนวโน้มอัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ย้อนหลัง 5 ปี', icon: Sparkles },
+        { label: 'พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: ChartLine },
     ];
 
     const handleQuickAction = async (query) => {
@@ -1798,13 +1798,13 @@ export default function AIChatPage() {
             if (isQuota) {
                 const retryId = `retry_${Date.now()}`;
                 setMessages(prev => [...prev, {
-                    role: 'bot', text: '⏳ **API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
+                    role: 'bot', text: '**API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
                 }]);
                 await retryWithCountdown(() => query, retryId);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
-                    text: `⚠️ ${errMsg || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                    text: `${errMsg || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\nลองถามคำถามใหม่อีกครั้ง`,
                     chart: null
                 }]);
             }
@@ -1832,7 +1832,7 @@ export default function AIChatPage() {
                     </div>
                     <div>
                         <h1>MJU AI Assistant</h1>
-                        <p>Powered by Gemini ✨ — ระบบ AI อัจฉริยะสำหรับคณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                        <p>Powered by Gemini — ระบบ AI อัจฉริยะสำหรับคณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
                     </div>
                 </div>
                 <div className="ai-chat-page-header-actions">
@@ -1961,7 +1961,7 @@ export default function AIChatPage() {
                         {uploadedFileData && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', marginBottom: 6, borderRadius: '8px', background: 'rgba(0,166,81,0.12)', border: '1px solid rgba(0,166,81,0.25)', fontSize: '0.85rem', color: '#00a651' }}>
                                 <FileSpreadsheet size={14} />
-                                <span>📎 ไฟล์ที่โหลด: {uploadedFileData.rowCount} แถว × {uploadedFileData.headers.length} คอลัมน์ — ถามคำถามเกี่ยวกับข้อมูลนี้ได้เลย</span>
+                                <span>ไฟล์ที่โหลด: {uploadedFileData.rowCount} แถว × {uploadedFileData.headers.length} คอลัมน์ — ถามคำถามเกี่ยวกับข้อมูลนี้ได้เลย</span>
                                 <button onClick={() => setUploadedFileData(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}><X size={14} /></button>
                             </div>
                         )}
@@ -1992,7 +1992,7 @@ export default function AIChatPage() {
                             />
                             <input
                                 type="text"
-                                placeholder={isListening ? "🎤 กำลังฟัง..." : "พิมพ์คำถามที่นี่... หรือ 📎 แนบไฟล์ CSV/Excel เพื่อวิเคราะห์"}
+                                placeholder={isListening ? "กำลังฟัง..." : "พิมพ์คำถามที่นี่... หรือแนบไฟล์ CSV/Excel เพื่อวิเคราะห์"}
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
@@ -2003,7 +2003,7 @@ export default function AIChatPage() {
                             </button>
                         </div>
                         <div className="ai-chat-page-input-hint">
-                            กด Enter เพื่อส่ง • 📎 แนบไฟล์ CSV/TSV/Excel • 🎤 สั่งด้วยเสียง • AI อาจตอบผิดพลาดได้
+                            กด Enter เพื่อส่ง • แนบไฟล์ CSV/TSV/Excel • สั่งด้วยเสียง • AI อาจตอบผิดพลาดได้
                         </div>
                     </div>
                 </div>
@@ -2029,7 +2029,7 @@ export default function AIChatPage() {
                     </div>
 
                     <div className="ai-chat-page-tips">
-                        <h4>💡 ตัวอย่างคำถาม</h4>
+                        <h4>ตัวอย่างคำถาม</h4>
                         <ul>
                             <li>"สร้างกราฟจำนวนนักศึกษาและเกรด"</li>
                             <li>"แม่โจ้มีกี่คณะ แต่ละคณะมีสาขาอะไร"</li>
@@ -2176,13 +2176,10 @@ function ExpandedChartModal({ chart, onClose }) {
                     )}
                 </div>
                 <div className="ai-page-chart-modal-hint">
-                    <span className="ai-page-chart-modal-hint-icon">🖱️</span>
-                    เลื่อนลูกกลิ้งเมาส์เพื่อซูม
+                    Scroll เพื่อซูม
                     <span className="ai-page-chart-modal-hint-sep">•</span>
-                    <span className="ai-page-chart-modal-hint-icon">👆</span>
                     คลิกค้างเพื่อเลื่อน
                     <span className="ai-page-chart-modal-hint-sep">•</span>
-                    <span className="ai-page-chart-modal-hint-icon">🔄</span>
                     กดปุ่มรีเซ็ตเพื่อกลับเริ่มต้น
                 </div>
             </div>

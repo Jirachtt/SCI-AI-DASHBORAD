@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, X, Send, BarChart3, TrendingUp, Maximize2, Mic, MicOff } from 'lucide-react';
+import { MessageCircle, X, Send, BarChart3, TrendingUp, Maximize2, Mic, MicOff, Bot } from 'lucide-react';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import { getStudentListSync } from '../services/studentDataService';
 import { Chart as ReactChart } from 'react-chartjs-2';
@@ -142,11 +142,11 @@ function parseForecastRequest(question) {
 function generateForecastResponse(parsed) {
     if (!parsed || parsed.datasets.length === 0) {
         return {
-            text: '⚠️ **ข้อมูลไม่เพียงพอในการคาดการณ์**\n\nระบบมีข้อมูลสำหรับพยากรณ์ดังนี้:\n' +
-                '• 📈 งบประมาณมหาวิทยาลัย (รายรับ/รายจ่าย)\n' +
-                '• 🔬 งบประมาณคณะวิทยาศาสตร์ (รายรับ/รายจ่าย)\n' +
+            text: '**ข้อมูลไม่เพียงพอในการคาดการณ์**\n\nระบบมีข้อมูลสำหรับพยากรณ์ดังนี้:\n' +
+                '• งบประมาณมหาวิทยาลัย (รายรับ/รายจ่าย)\n' +
+                '• งบประมาณคณะวิทยาศาสตร์ (รายรับ/รายจ่าย)\n' +
                 '• จำนวนนิสิตมหาวิทยาลัย\n' +
-                '• 🧪 จำนวนนิสิตคณะวิทยาศาสตร์\n\n' +
+                '• จำนวนนิสิตคณะวิทยาศาสตร์\n\n' +
                 'ลองถามใหม่ เช่น "พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 แบบกราฟ"',
             chart: null
         };
@@ -159,10 +159,10 @@ function generateForecastResponse(parsed) {
     for (const dsKey of parsed.datasets) {
         const ds = DATASETS[dsKey];
         const dataPoints = ds.getData();
-        if (dataPoints.length < 3) { results.push(`⚠️ ${ds.label}: ข้อมูลไม่เพียงพอ`); continue; }
+        if (dataPoints.length < 3) { results.push(`${ds.label}: ข้อมูลไม่เพียงพอ`); continue; }
 
         const model = linearRegression(dataPoints);
-        if (!model) { results.push(`⚠️ ${ds.label}: ไม่สามารถสร้างโมเดลพยากรณ์ได้`); continue; }
+        if (!model) { results.push(`${ds.label}: ไม่สามารถสร้างโมเดลพยากรณ์ได้`); continue; }
 
         const existingYears = dataPoints.map(d => d.x);
         const allYears = [...new Set([...existingYears, ...parsed.years])].sort();
@@ -193,7 +193,7 @@ function generateForecastResponse(parsed) {
         });
 
         const forecastSummary = parsed.years.map(y => `   ปี ${y}: ~${model.predict(y).toLocaleString()} ${ds.unit}`).join('\n');
-        results.push(`📊 **${ds.label}**\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}`);
+        results.push(`**${ds.label}**\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}`);
     }
 
     const chartConfig = allDatasets.length > 0 ? {
@@ -219,7 +219,7 @@ function generateForecastResponse(parsed) {
         }
     } : null;
 
-    return { text: results.join('\n\n') + '\n\n💡 _อ้างอิงจากข้อมูลในระบบเท่านั้น (Linear Regression)_', chart: chartConfig };
+    return { text: results.join('\n\n') + '\n\n_หมายเหตุ: อ้างอิงจากข้อมูลในระบบเท่านั้น (Linear Regression)_', chart: chartConfig };
 }
 
 // ==================== Student Data (Real from MJU) ====================
@@ -295,14 +295,14 @@ function searchStudents(query) {
     const total = results.length;
     if (limit > 0) results = results.slice(0, limit);
 
-    let text = `📋 **พบนักศึกษา ${searchDesc}** จำนวน ${total} คน`;
+    let text = `**พบนักศึกษา ${searchDesc}** จำนวน ${total} คน`;
     if (limit > 0 && total > limit) text += ` (แสดง ${limit} คน)`;
     text += '\n\n';
 
     results.forEach((s, i) => {
-        const gpaColor = s.gpa >= 3.5 ? '🟢' : s.gpa >= 2.5 ? '🟡' : s.gpa >= 2.0 ? '🟠' : '🔴';
+        const gpaColor = s.gpa >= 3.5 ? '[ดีมาก]' : s.gpa >= 2.5 ? '[ดี]' : s.gpa >= 2.0 ? '[พอใช้]' : '[ต่ำ]';
         text += `**${i + 1}.** \`${s.id}\` ${s.name}\n`;
-        text += `   📚 ${s.major} | ชั้นปี ${s.year} | ${gpaColor} GPA ${s.gpa} | ${s.status}\n`;
+        text += `   ${s.major} | ชั้นปี ${s.year} | ${gpaColor} GPA ${s.gpa} | ${s.status}\n`;
     });
 
     if (total > results.length) {
@@ -695,7 +695,7 @@ export default function AIChat() {
                 const update = () => {
                     setMessages(prev => prev.map(m =>
                         m._retryId === retryId
-                            ? { ...m, text: `⏳ **API ถูกใช้งานบ่อยเกินไป** — รอ ${remaining} วินาที แล้วจะลองใหม่อัตโนมัติ (ครั้งที่ ${attempt}/${MAX_RETRIES})\n\n🔄 กรุณารอสักครู่ ระบบจะลองส่งคำถามให้ใหม่เองค่ะ` }
+                            ? { ...m, text: `**API ถูกใช้งานบ่อยเกินไป** — รอ ${remaining} วินาที แล้วจะลองใหม่อัตโนมัติ (ครั้งที่ ${attempt}/${MAX_RETRIES})\n\nกรุณารอสักครู่ ระบบจะลองส่งคำถามให้ใหม่โดยอัตโนมัติ` }
                             : m
                     ));
                 };
@@ -719,8 +719,8 @@ export default function AIChat() {
                 const isStillQuota = /รอ|quota|API ถูกใช้งาน|QUOTA/.test(retryErr.message || '');
                 if (!isStillQuota || attempt === MAX_RETRIES) {
                     const finalMsg = isStillQuota
-                        ? `❌ **ไม่สามารถเชื่อมต่อ AI ได้หลังจากลอง ${MAX_RETRIES} ครั้ง**\n\nAPI ถูกจำกัดการใช้งาน กรุณารอ 3-5 นาทีแล้วลองใหม่ค่ะ 🙏\n\n💡 _ระหว่างรอ ลองใช้ฟีเจอร์พยากรณ์หรือค้นหานักศึกษา ซึ่งทำงานได้โดยไม่ต้องใช้ AI_`
-                        : `⚠️ ${retryErr.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`;
+                        ? `**ไม่สามารถเชื่อมต่อ AI ได้หลังจากลอง ${MAX_RETRIES} ครั้ง**\n\nAPI ถูกจำกัดการใช้งาน กรุณารอ 3-5 นาทีแล้วลองใหม่\n\n_ระหว่างรอ ลองใช้ฟีเจอร์พยากรณ์หรือค้นหานักศึกษา ซึ่งทำงานได้โดยไม่ต้องใช้ AI_`
+                        : `${retryErr.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\nลองถามคำถามใหม่อีกครั้ง`;
                     setMessages(prev => prev.map(m =>
                         m._retryId === retryId ? { role: 'bot', text: finalMsg, chart: null } : m
                     ));
@@ -755,13 +755,13 @@ export default function AIChat() {
             if (isQuota) {
                 const retryId = `retry_${Date.now()}`;
                 setMessages(prev => [...prev, {
-                    role: 'bot', text: '⏳ **API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
+                    role: 'bot', text: '**API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
                 }]);
                 await retryWithCountdown(() => userMsg, retryId);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
-                    text: `⚠️ ${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                    text: `${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\nลองถามคำถามใหม่อีกครั้ง`,
                     chart: null
                 }]);
             }
@@ -775,9 +775,9 @@ export default function AIChat() {
     };
 
     const quickActions = [
-        { label: '🔮 พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ' },
-        { label: '📊 คาดการณ์นิสิต', query: 'พยากรณ์จำนวนนิสิตมหาวิทยาลัย ปี 70 71 แบบกราฟแท่ง' },
-        { label: '📈 งบฯ มหาวิทยาลัย', query: 'พยากรณ์งบประมาณมหาวิทยาลัย ปี 2570 2571 เป็นกราฟเส้น' },
+        { label: 'พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ' },
+        { label: 'คาดการณ์นิสิต', query: 'พยากรณ์จำนวนนิสิตมหาวิทยาลัย ปี 70 71 แบบกราฟแท่ง' },
+        { label: 'งบฯ มหาวิทยาลัย', query: 'พยากรณ์งบประมาณมหาวิทยาลัย ปี 2570 2571 เป็นกราฟเส้น' },
     ];
 
     const handleQuickAction = async (query) => {
@@ -802,13 +802,13 @@ export default function AIChat() {
             if (isQuota) {
                 const retryId = `retry_${Date.now()}`;
                 setMessages(prev => [...prev, {
-                    role: 'bot', text: '⏳ **API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
+                    role: 'bot', text: '**API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
                 }]);
                 await retryWithCountdown(() => query, retryId);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
-                    text: `⚠️ ${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\n💡 ลองถามคำถามใหม่อีกครั้ง`,
+                    text: `${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\nลองถามคำถามใหม่อีกครั้ง`,
                     chart: null
                 }]);
             }
@@ -863,10 +863,10 @@ export default function AIChat() {
                     <div className="ai-chat-panel" style={panelStyle}>
                         <div className="ai-chat-header">
                             <div className="ai-chat-header-left">
-                                <div className="ai-chat-header-avatar">🤖</div>
+                                <div className="ai-chat-header-avatar"><Bot size={20} /></div>
                                 <div>
                                     <h3>MJU AI Assistant</h3>
-                                    <p>Powered by Gemini ✨</p>
+                                    <p>Powered by Gemini</p>
                                 </div>
                             </div>
                             <button className="ai-chat-close" onClick={handleClose}>
@@ -937,7 +937,7 @@ export default function AIChat() {
                     <div style={{ backgroundColor: 'var(--bg-card)', width: '100%', maxWidth: '900px', height: '80vh', borderRadius: '16px', padding: '0', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 230, 118, 0.04)', border: '1px solid rgba(0, 230, 118, 0.08)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.015)' }}>
                             <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                📊 กราฟขยาย
+                                กราฟขยาย
                             </h3>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                 <button onClick={() => setExpandedChart(null)} style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', padding: '6px', borderRadius: '8px', display: 'grid', placeItems: 'center' }}>
@@ -975,7 +975,7 @@ export default function AIChat() {
                             />
                         </div>
                         <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', padding: '8px 20px 14px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-                            🖱️ เลื่อนลูกกลิ้งเมาส์เพื่อซูม • 👆 คลิกค้างเพื่อเลื่อน
+                            Scroll เพื่อซูม • คลิกค้างเพื่อเลื่อน
                         </div>
                     </div>
                 </div>
