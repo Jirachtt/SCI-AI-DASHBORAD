@@ -683,6 +683,7 @@ function parseAIResponse(text) {
                         ds.hoverOffset = ds.hoverOffset || 8;
                     }
                 });
+                sanitizeChartDatasetColors(rawJson);
             }
 
             // Build default scales based on chart type
@@ -951,6 +952,107 @@ function looksLikeDatasetDump(s) {
 // `hbar` is a UI-only sentinel meaning "bar with indexAxis='y'". It maps
 // back to chartType='bar' when handed to Chart.js.
 const PALETTE = ['#00a651', '#7B68EE', '#E91E63', '#C5A028', '#2E86AB', '#F18F01', '#06b6d4', '#a855f7', '#22c55e', '#f97316', '#ef4444', '#14b8a6', '#A23B72', '#0ea5e9', '#84cc16', '#ec4899', '#8b5cf6', '#fb923c'];
+const DEFAULT_BAR_ALPHA = 0.72;
+const DEFAULT_HOVER_ALPHA = 0.88;
+
+function parseHexColor(value) {
+    const hex = String(value || '').trim().replace(/^#/, '');
+    if (![3, 4, 6, 8].includes(hex.length)) return null;
+    const expanded = hex.length <= 4
+        ? hex.split('').map(ch => ch + ch).join('')
+        : hex;
+    const rgbHex = expanded.slice(0, 6);
+    if (!/^[0-9a-f]{6}$/i.test(rgbHex)) return null;
+    return {
+        r: parseInt(rgbHex.slice(0, 2), 16),
+        g: parseInt(rgbHex.slice(2, 4), 16),
+        b: parseInt(rgbHex.slice(4, 6), 16),
+    };
+}
+
+function parseRgbColor(value) {
+    const match = String(value || '').trim().match(/rgba?\(\s*([0-9.]+)[,\s]+([0-9.]+)[,\s]+([0-9.]+)/i);
+    if (!match) return null;
+    return {
+        r: Number(match[1]),
+        g: Number(match[2]),
+        b: Number(match[3]),
+    };
+}
+
+function rgbaFromHex(hex, alpha = DEFAULT_BAR_ALPHA) {
+    const rgb = parseHexColor(hex);
+    if (!rgb) return hex;
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
+function isNearBlackColor(value) {
+    if (!value || typeof value !== 'string') return false;
+    const color = value.trim().toLowerCase();
+    if (color === 'black' || color === '#000' || color === '#000000' || color === '#000000ff') return true;
+    const rgb = color.startsWith('#') ? parseHexColor(color) : parseRgbColor(color);
+    if (!rgb) return false;
+    return rgb.r <= 18 && rgb.g <= 18 && rgb.b <= 18;
+}
+
+function safeChartColor(value, fallbackHex, alpha = DEFAULT_BAR_ALPHA) {
+    if (!value || isNearBlackColor(value)) return rgbaFromHex(fallbackHex, alpha);
+    return value;
+}
+
+function safeChartColorList(value, fallbackHex, alpha, count = 0) {
+    if (Array.isArray(value)) {
+        return value.map((color, idx) => safeChartColor(color, PALETTE[idx % PALETTE.length], alpha));
+    }
+    if (value) return safeChartColor(value, fallbackHex, alpha);
+    if (count > 0) {
+        return Array.from({ length: count }, (_, idx) => rgbaFromHex(PALETTE[idx % PALETTE.length], alpha));
+    }
+    return rgbaFromHex(fallbackHex, alpha);
+}
+
+function hoverChartColor(value, fallbackHex) {
+    if (Array.isArray(value)) return value.map((color, idx) => hoverChartColor(color, PALETTE[idx % PALETTE.length]));
+    const safe = safeChartColor(value, fallbackHex, DEFAULT_HOVER_ALPHA);
+    if (typeof safe !== 'string') return safe;
+    if (safe.startsWith('#')) return rgbaFromHex(safe, DEFAULT_HOVER_ALPHA);
+    const rgb = parseRgbColor(safe);
+    if (rgb) return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${DEFAULT_HOVER_ALPHA})`;
+    return rgbaFromHex(fallbackHex, DEFAULT_HOVER_ALPHA);
+}
+
+function sanitizeChartDatasetColors(chart) {
+    const datasets = chart?.data?.datasets;
+    if (!Array.isArray(datasets)) return chart;
+    const chartType = realChartType(chart.chartType || chart.type);
+    const labelCount = chart?.data?.labels?.length || 0;
+
+    datasets.forEach((ds, idx) => {
+        const fallback = PALETTE[idx % PALETTE.length];
+        const effectiveType = realChartType(ds.type || chartType);
+        const isSliceChart = ['pie', 'doughnut', 'polarArea'].includes(chartType);
+        const needsColorArray = isSliceChart && labelCount > 0;
+        const fillAlpha = effectiveType === 'bar' || effectiveType === 'scatter' || effectiveType === 'bubble'
+            ? DEFAULT_BAR_ALPHA
+            : 0.28;
+
+        ds.backgroundColor = safeChartColorList(ds.backgroundColor, fallback, fillAlpha, needsColorArray ? labelCount : 0);
+        ds.borderColor = safeChartColorList(ds.borderColor, fallback, 0.95, Array.isArray(ds.backgroundColor) ? ds.backgroundColor.length : 0);
+
+        if (effectiveType === 'bar' || isSliceChart) {
+            ds.hoverBackgroundColor = hoverChartColor(ds.backgroundColor, fallback);
+            ds.hoverBorderColor = safeChartColor(ds.borderColor, fallback, 0.95);
+        }
+
+        if (effectiveType === 'line' || effectiveType === 'scatter' || effectiveType === 'bubble') {
+            ds.pointBackgroundColor = safeChartColor(ds.pointBackgroundColor || ds.borderColor, fallback, DEFAULT_BAR_ALPHA);
+            ds.pointHoverBackgroundColor = hoverChartColor(ds.pointBackgroundColor, fallback);
+            ds.pointBorderColor = safeChartColor(ds.pointBorderColor || '#ffffff', '#ffffff', 1);
+        }
+    });
+
+    return chart;
+}
 
 function realChartType(uiType) {
     return uiType === 'hbar' ? 'bar' : uiType;
@@ -1391,6 +1493,7 @@ function deriveChartConfig(originalChart, uiTargetType) {
                 delete ds.borderRadius;
             }
         });
+        sanitizeChartDatasetColors({ chartType: targetType, data });
     }
 
     // For pie/doughnut, only the first dataset is meaningful; keep it alone
@@ -1484,8 +1587,12 @@ function chartZoomOptions(chart, uiType, expanded = false) {
 
 function chartOptionsForRender(chart, uiType, expanded = false) {
     if (!chart) return chart;
+    const chartType = realChartType(uiType || chart.chartType);
+    const data = JSON.parse(JSON.stringify(chart.data || {}));
+    sanitizeChartDatasetColors({ chartType, data });
     return {
         ...chart,
+        data,
         options: {
             ...(chart.options || {}),
             responsive: true,

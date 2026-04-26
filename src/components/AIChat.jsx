@@ -16,6 +16,66 @@ import { sendMessageToGemini, resetConversation, getWaitSeconds } from '../servi
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
+const SAFE_CHART_PALETTE = ['#00a651', '#7B68EE', '#E91E63', '#C5A028', '#2E86AB', '#06b6d4', '#a855f7', '#22c55e'];
+
+function parseSafeRgb(value) {
+    const match = String(value || '').trim().match(/rgba?\(\s*([0-9.]+)[,\s]+([0-9.]+)[,\s]+([0-9.]+)/i);
+    if (match) return { r: Number(match[1]), g: Number(match[2]), b: Number(match[3]) };
+    const hex = String(value || '').trim().replace(/^#/, '');
+    if (![3, 4, 6, 8].includes(hex.length)) return null;
+    const expanded = hex.length <= 4 ? hex.split('').map(ch => ch + ch).join('') : hex;
+    if (!/^[0-9a-f]{6}/i.test(expanded)) return null;
+    return {
+        r: parseInt(expanded.slice(0, 2), 16),
+        g: parseInt(expanded.slice(2, 4), 16),
+        b: parseInt(expanded.slice(4, 6), 16),
+    };
+}
+
+function rgbaFromSafeColor(value, alpha) {
+    const rgb = parseSafeRgb(value);
+    return rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})` : value;
+}
+
+function isNearBlackChartColor(value) {
+    if (!value || typeof value !== 'string') return false;
+    const color = value.trim().toLowerCase();
+    if (color === 'black' || color === '#000' || color === '#000000' || color === '#000000ff') return true;
+    const rgb = parseSafeRgb(color);
+    return Boolean(rgb && rgb.r <= 18 && rgb.g <= 18 && rgb.b <= 18);
+}
+
+function safeChartColor(value, fallbackHex, alpha = 0.72) {
+    if (!value || isNearBlackChartColor(value)) return rgbaFromSafeColor(fallbackHex, alpha);
+    return value;
+}
+
+function safeChartHoverColor(value, fallbackHex) {
+    if (Array.isArray(value)) return value.map((color, idx) => safeChartHoverColor(color, SAFE_CHART_PALETTE[idx % SAFE_CHART_PALETTE.length]));
+    const safe = safeChartColor(value, fallbackHex, 0.88);
+    return rgbaFromSafeColor(safe, 0.88);
+}
+
+function sanitizeChartDatasetColors(chart) {
+    if (!Array.isArray(chart?.data?.datasets)) return chart;
+    chart.data.datasets.forEach((ds, idx) => {
+        const fallback = SAFE_CHART_PALETTE[idx % SAFE_CHART_PALETTE.length];
+        if (Array.isArray(ds.backgroundColor)) {
+            ds.backgroundColor = ds.backgroundColor.map((color, colorIdx) => safeChartColor(color, SAFE_CHART_PALETTE[colorIdx % SAFE_CHART_PALETTE.length], 0.72));
+        } else {
+            ds.backgroundColor = safeChartColor(ds.backgroundColor, fallback, chart.chartType === 'bar' ? 0.72 : 0.28);
+        }
+        ds.borderColor = safeChartColor(ds.borderColor, fallback, 0.95);
+        if (chart.chartType === 'bar' || chart.chartType === 'pie' || chart.chartType === 'doughnut') {
+            ds.hoverBackgroundColor = safeChartHoverColor(ds.backgroundColor, fallback);
+            ds.hoverBorderColor = ds.borderColor;
+        }
+        ds.pointBackgroundColor = safeChartColor(ds.pointBackgroundColor || ds.borderColor, fallback, 0.72);
+        ds.pointHoverBackgroundColor = safeChartHoverColor(ds.pointBackgroundColor, fallback);
+    });
+    return chart;
+}
+
 // ==================== Linear Regression Forecasting ====================
 function linearRegression(dataPoints) {
     const n = dataPoints.length;
@@ -434,6 +494,7 @@ function parseAIResponse(text) {
                     }
                     if (rawJson.chartType === 'bar' && !ds.borderRadius) ds.borderRadius = 6;
                 });
+                sanitizeChartDatasetColors(rawJson);
             }
 
             const defaultScales = isRadar ? {
@@ -507,7 +568,7 @@ function ChatMessage({ msg, onExpand }) {
         });
     };
 
-    const chartData = msg.chart;
+    const chartData = msg.chart ? sanitizeChartDatasetColors(JSON.parse(JSON.stringify(msg.chart))) : null;
 
     return (
         <div className="chat-message bot">
