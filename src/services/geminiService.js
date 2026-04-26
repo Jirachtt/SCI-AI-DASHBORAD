@@ -1,7 +1,7 @@
 // Gemini API Service for MJU AI Dashboard Chatbot
 import {
     studentStatsData, universityBudgetData, scienceFacultyBudgetData,
-    tuitionData, financialData, studentLifeData, dashboardSummary
+    tuitionData, studentLifeData, dashboardSummary
 } from '../data/mockData';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import { getStudentListSync } from './studentDataService';
@@ -198,7 +198,7 @@ Mandate:
 • When google_search is available → search site:mju.ac.th for real-time info and cite sources.
 • **PREFER ACTION OVER ASKING.** When user says "สร้างกราฟ/แสดง/ดู X" → ALWAYS produce at least one chart from the best-matching data, even if the request is ambiguous. Do NOT respond with options/menus — generate the chart(s) directly.
 • **MULTI-METRIC QUERIES (comma, และ, กับ, vs, เทียบ)** → default interpretation = **ONE COMBO/COMPARISON CHART** relating the metrics (NOT multiple separate charts). Examples:
-    - "จำนวนนักศึกษา, เกรด" = "กราฟเทียบจำนวนนักศึกษา กับ GPA เฉลี่ย แยกตามสาขา" (dual-axis bar+line OR scatter)
+    - "จำนวนนักศึกษา, เกรด" = "กราฟเทียบจำนวนนักศึกษา กับ GPA เฉลี่ย แยกตามสาขา" (grouped bar OR scatter; line only if x-axis is year/month)
     - "งบวิจัย, ผลงาน" = "ทุนวิจัย vs จำนวนตีพิมพ์ แยกปี" (dual-axis)
     - "จำนวนนิสิต, อัตราสำเร็จ" = dual-axis line over years
   Only split into separate charts if two metrics have NO meaningful shared dimension (year/major/dept/student_id).
@@ -331,14 +331,16 @@ Output format: MUST use \`\`\`json_chart\`\`\` (NEVER \`\`\`json\`\`\`):
 | Correlation 2 variables | **scatter** | ความสัมพันธ์, correlation, กราฟจุด |
 | 3-variable relationship | **bubble** | 3 ตัวแปร, ขนาดตามค่า, bubble |
 | Forecast + actual | **line** (solid+dashed) | พยากรณ์, forecast, คาดการณ์ |
-| Dual-metric compare | **bar+line** (mixed) | เปรียบเทียบ 2 หน่วยต่างกัน |
+| Dual-metric compare over time | **bar+line** (mixed) | เปรียบเทียบ 2 หน่วยต่างกันบนแกนปี/เดือน |
+| Dual-metric compare by category | **grouped bar** or **scatter** | เปรียบเทียบ 2 หน่วยต่างกันตามคณะ/สาขา/ภาควิชา |
 
 ### AUTO-SELECT RULES:
 1. No chart type specified → choose from matrix based on data shape
-2. Labels are long Thai category names (majors, departments) → **horizontal bar** (\`indexAxis:"y"\`)
-3. Comparing 2 metrics with DIFFERENT units/scales (e.g. count vs GPA, budget vs %) → **dual-axis bar+line** — NEVER put both on one linear y-axis
-4. Time series → line, Composition → doughnut, Ranking → horizontal bar
-5. NEVER crowd more than 10 categories on a vertical bar chart — switch to horizontal
+2. **Line charts are ONLY for time series** (ปี/เดือน/วันที่/ไตรมาส). ถ้า labels เป็นคณะ/สาขา/ภาควิชา/หมวดหมู่ → ห้ามใช้ line
+3. Labels are long Thai category names (majors, departments) → **horizontal bar** (\`indexAxis:"y"\`) only for single-unit data
+4. Comparing 2 metrics with DIFFERENT units/scales (e.g. count vs GPA, GPA vs %) → if x-axis is time → **dual-axis bar+line**; if x-axis is category → **grouped bar with dual y-axes OR scatter** — NEVER put both on one linear y-axis
+5. Time series → line, Composition → doughnut, Ranking → horizontal bar
+6. NEVER crowd more than 10 categories on a vertical bar chart unless it is a dual-axis category comparison; dual-axis must stay vertical
 
 ### Scatter Chart Format (NO labels array):
 \`\`\`json_chart
@@ -350,10 +352,16 @@ Output format: MUST use \`\`\`json_chart\`\`\` (NEVER \`\`\`json\`\`\`):
 {"chartType":"bubble","data":{"datasets":[{"label":"Departments","data":[{"x":52,"y":48,"r":15,"label":"Dept A"},{"x":30,"y":20,"r":8,"label":"Dept B"}],"backgroundColor":"rgba(0,166,81,0.6)"}]}}
 \`\`\`
 
-### DUAL-AXIS Bar + Line Format (CRITICAL — use this template EXACTLY for "A, B" comparison queries):
-The bar dataset sits on the LEFT y-axis ("y"). The line dataset has \`type:"line"\` and \`yAxisID:"y1"\` pointing to the RIGHT y-axis ("y1"). Both share the same x-axis labels.
+### DUAL-AXIS Bar + Line Format (TIME SERIES ONLY):
+Use this only when x-axis labels are years/months/dates. The bar dataset sits on the LEFT y-axis ("y"). The line dataset has \`type:"line"\` and \`yAxisID:"y1"\` pointing to the RIGHT y-axis ("y1"). Both share the same x-axis labels.
 \`\`\`json_chart
 {"chartType":"bar","data":{"labels":["สาขา1","สาขา2","สาขา3"],"datasets":[{"type":"bar","label":"จำนวนนักศึกษา","data":[120,95,80],"backgroundColor":"#00a651","yAxisID":"y","order":2},{"type":"line","label":"GPA เฉลี่ย","data":[3.25,3.10,2.95],"borderColor":"#7B68EE","backgroundColor":"rgba(123,104,238,0.2)","yAxisID":"y1","tension":0.4,"pointRadius":5,"order":1}]},"options":{"scales":{"y":{"type":"linear","position":"left","title":{"display":true,"text":"จำนวนนักศึกษา (คน)"},"beginAtZero":true},"y1":{"type":"linear","position":"right","title":{"display":true,"text":"GPA เฉลี่ย"},"min":0,"max":4,"grid":{"drawOnChartArea":false}}}}}
+\`\`\`
+
+### DUAL-AXIS Grouped Bar Format (CATEGORY COMPARISON, NO LINE):
+Use this for category labels such as faculties/majors/departments when comparing different units, e.g. GPA vs graduation rate. Do NOT set \`indexAxis:"y"\`.
+\`\`\`json_chart
+{"chartType":"bar","data":{"labels":["คณะ A","คณะ B","คณะ C"],"datasets":[{"type":"bar","label":"อัตราสำเร็จการศึกษา (%)","data":[91.2,88.5,94.1],"backgroundColor":"rgba(123,104,238,0.65)","yAxisID":"y","order":2},{"type":"bar","label":"GPA เฉลี่ย","data":[3.18,3.05,3.35],"backgroundColor":"rgba(0,166,81,0.72)","yAxisID":"y1","order":1}]},"options":{"scales":{"y":{"type":"linear","position":"left","title":{"display":true,"text":"อัตราสำเร็จการศึกษา (%)"},"min":0,"max":100},"y1":{"type":"linear","position":"right","title":{"display":true,"text":"GPA เฉลี่ย"},"min":0,"max":4,"grid":{"drawOnChartArea":false}}}}}
 \`\`\`
 
 ### HORIZONTAL Bar Format (USE WHEN category labels are long Thai text like major/department names):
@@ -364,10 +372,11 @@ When labels average >8 Thai characters OR >6 categories, use \`indexAxis:"y"\` s
 
 ### CRITICAL CHART RULES (เพื่อความอ่านง่าย — ห้ามผิด):
 1. **\`data.labels\` ต้องเป็นชื่อจริง** เสมอ (ชื่อคณะ/สาขา/ปี) — ห้ามเป็น array ว่าง, ห้ามเป็นเลข [1,2,3], ห้ามขาด เพราะแกนจะกลายเป็น 1..N
-2. **dual-axis bar+line ใช้ได้ก็ต่อเมื่อ ≤ 6 categories และ vertical (NO indexAxis:"y")** เท่านั้น
-3. **ถ้า > 6 categories และต้องเทียบ 2 metrics** (เช่น "GPA + อัตราสำเร็จ ของทุกคณะ") → **ห้ามใช้ dual-axis** ให้ออก **2 json_chart blocks แยกกัน** อันละ metric พร้อม horizontal bar เรียงค่ามากไปน้อย
-4. **ห้ามใช้ \`indexAxis:"y"\` ร่วมกับ dual-axis** (yAxisID:"y1" หรือ datasets ผสม bar+line) — Chart.js เรนเดอร์ออกมาแกน y เป็นเลข อ่านไม่ได้
-5. **เรียงข้อมูลก่อนเสมอ** — bar/horizontal bar ควรเรียงค่ามากไปน้อย (descending) เพื่อความชัดเจน
+2. **line ใช้ได้เฉพาะ time series** — ถ้า labels เป็นชื่อคณะ/สาขา/ภาควิชา/หมวดหมู่ ห้ามใช้ line แม้ผู้ใช้จะไม่ได้ระบุชนิดกราฟ
+3. **dual-axis bar+line ใช้ได้เฉพาะ time series และต้อง vertical (NO indexAxis:"y")**
+4. **ถ้าเป็น category comparison ที่ต้องเทียบ 2 metrics** (เช่น "GPA + อัตราสำเร็จ ของทุกคณะ") → ใช้ **dual-axis grouped bar** หรือ **scatter** เท่านั้น ห้าม line และห้าม horizontal dual-axis
+5. **ห้ามใช้ \`indexAxis:"y"\` ร่วมกับ dual-axis** (yAxisID:"y1" หรือ datasets ผสมหลายแกน) — Chart.js เรนเดอร์แกนผิด อ่านไม่ได้
+6. **เรียงข้อมูลก่อนเสมอ** — bar/horizontal bar ควรเรียงค่ามากไปน้อย (descending) เพื่อความชัดเจน
 
 ### FENCING RULES (เด็ดขาด — ห้ามผิด):
 6. **ทุก JSON ของกราฟ ต้องอยู่ใน triple-backtick fence \`\`\`json_chart … \`\`\` เสมอ** — ห้ามเขียนคำว่า \`json_chart\` ลอยๆ ในข้อความตอบ ห้ามวาง \`{ "chartType": ... }\` แบบเปลือย ห้ามใส่ใน inline backtick เดี่ยว
@@ -394,8 +403,8 @@ Examples:
 • "อัตราสำเร็จ กับ GPA แยกปี" → graduation.rate + graduation.avgGPA → dual-axis line
 • "บุคลากรแต่ละตำแหน่ง" → personnel.byPosition → pie/doughnut
 • "เปรียบเทียบคณะ" → student_stats.faculties → bar/radar
-• "เทียบ GPA + อัตราสำเร็จ ของทุกคณะ" → > 6 คณะ → **2 json_chart แยก** (horizontal bar เรียง descending อันละ metric) ห้าม dual-axis
-• "จำนวนนักศึกษา, เกรด" / "นักศึกษากับเกรด" — ถ้า ≤ 6 สาขา → dual-axis vertical bar+line; ถ้า > 6 → 2 charts แยก
+• "เทียบ GPA + อัตราสำเร็จ ของทุกคณะ" → category comparison → dual-axis grouped bar หรือ scatter; ห้าม line/horizontal dual-axis
+• "จำนวนนักศึกษา, เกรด" / "นักศึกษากับเกรด" — ถ้าแยกตามสาขา/คณะ → grouped bar/scatter; ถ้าแยกตามปี → dual-axis bar+line
 • "นักศึกษา vs เกรด รายคน" → scatter plot (x=major index/year, y=gpa) from full student list
 • "งานวิจัยแต่ละภาควิชา" → research.byDepartment → bar/radar
 • "ผลงานตีพิมพ์ vs ทุนวิจัย" → research.byDepartment → scatter (x=funding, y=publications)

@@ -18,7 +18,6 @@ import { sendMessageToGemini, resetConversation, getWaitSeconds } from '../servi
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import {
     studentStatsData, universityBudgetData, scienceFacultyBudgetData,
-    dashboardSummary,
 } from '../data/mockData';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
@@ -505,97 +504,6 @@ function searchStudents(query) {
     return { text, chart: null };
 }
 
-// ==================== Combo Chart: Students vs Graduation Rate ====================
-function generateComboChart() {
-    const faculties = dashboardSummary.faculties;
-    const maxStudents = Math.max(...faculties.map(f => f.totalStudents));
-
-    const labels = faculties.map(f => {
-        const n = f.name.replace(/^คณะ|^มหาวิทยาลัย|^วิทยาลัย/g, '').trim();
-        return n.length > 14 ? n.slice(0, 14) + '…' : n;
-    });
-
-    const normalizedStudents = faculties.map(f => +((f.totalStudents / maxStudents) * 100).toFixed(1));
-    const gradRates = faculties.map(f => f.graduationRate);
-
-    const chart = {
-        chartType: 'bar',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'จำนวนนิสิต (Index 0-100)',
-                    data: normalizedStudents,
-                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
-                    borderColor: '#22c55e',
-                    borderWidth: 1,
-                    borderRadius: 6,
-                    order: 2,
-                },
-                {
-                    type: 'line',
-                    label: 'อัตราสำเร็จการศึกษา (%)',
-                    data: gradRates,
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                    borderWidth: 2.5,
-                    pointBackgroundColor: '#f59e0b',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    tension: 0.35,
-                    fill: true,
-                    order: 1,
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 14, font: { size: 11 }, usePointStyle: true } },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => {
-                            if (ctx.datasetIndex === 0) {
-                                const actual = faculties[ctx.dataIndex].totalStudents.toLocaleString();
-                                return `${ctx.dataset.label}: ${ctx.parsed.y} (จริง: ${actual} คน)`;
-                            }
-                            return `${ctx.dataset.label}: ${ctx.parsed.y}%`;
-                        }
-                    }
-                },
-                zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } }
-            },
-            scales: {
-                x: { ticks: { color: '#9ca3af', font: { size: 10 }, maxRotation: 45, minRotation: 25 }, grid: { display: false } },
-                y: { min: 0, max: 100, ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => v }, grid: { color: 'rgba(255,255,255,0.05)' } }
-            }
-        }
-    };
-
-    let text = `**Combo Chart: จำนวนนิสิต vs อัตราสำเร็จการศึกษา (แยกตามคณะ)**\n\n`;
-    text += `**หมายเหตุ:** จำนวนนิสิตถูก Normalize เป็น Index (0-100) เพื่อให้เปรียบเทียบกับ % อัตราสำเร็จได้ในแกน Y เดียวกัน\n`;
-    text += `โดยคณะที่มีนิสิตมากสุด = 100 (${faculties.reduce((a, b) => a.totalStudents > b.totalStudents ? a : b).name}: ${maxStudents.toLocaleString()} คน)\n\n`;
-
-    text += `**จำนวนนิสิตจริง (ก่อน Normalize):**\n`;
-    faculties.forEach(f => {
-        const idx = normalizedStudents[faculties.indexOf(f)];
-        text += `• ${f.name}: **${f.totalStudents.toLocaleString()}** คน (Index: ${idx}) | สำเร็จ: ${f.graduationRate}%\n`;
-    });
-
-    text += `\n**Insight:**\n`;
-    const topGrad = [...faculties].sort((a, b) => b.graduationRate - a.graduationRate)[0];
-    const lowGrad = [...faculties].sort((a, b) => a.graduationRate - b.graduationRate)[0];
-    text += `• อัตราสำเร็จสูงสุด: ${topGrad.name} (${topGrad.graduationRate}%)\n`;
-    text += `• อัตราสำเร็จต่ำสุด: ${lowGrad.name} (${lowGrad.graduationRate}%)\n`;
-    text += `• คณะที่มีนิสิตมากไม่ได้หมายความว่าจะมีอัตราสำเร็จสูงเสมอไป`;
-
-    return { text, chart };
-}
-
 // ==================== Check if query needs local handling ====================
 // Only handle queries that local functions SPECIFICALLY excel at:
 // 1. Explicit forecast requests (with "พยากรณ์"/"predict" keywords)
@@ -649,7 +557,7 @@ function parseAIResponse(text) {
                     match = jsonMatch;
                     regex = jsonRegex;
                 }
-            } catch (_) { /* not valid chart JSON */ }
+            } catch { /* not valid chart JSON */ }
         }
     }
 
@@ -671,7 +579,7 @@ function parseAIResponse(text) {
                     match = [jsonStr, jsonStr];
                     regex = new RegExp(jsonStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
                 }
-            } catch (_) { /* not valid */ }
+            } catch { /* not valid */ }
         }
     }
 
@@ -719,6 +627,8 @@ function parseAIResponse(text) {
             }
 
             normalizeStudentGpaComboChart(rawJson);
+            normalizeGpaRateComparisonChart(rawJson);
+            normalizeCategoricalLineChart(rawJson);
 
             // Ensure datasets have decent default colors if missing
             const defaultColors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
@@ -1036,7 +946,7 @@ function looksLikeDatasetDump(s) {
         // Long flat array of primitives (> 10 items) → likely data dump too
         if (parsed.length > 10 && parsed.every(x => typeof x !== 'object')) return true;
         return false;
-    } catch (_) {
+    } catch {
         return false;
     }
 }
@@ -1053,6 +963,35 @@ function datasetLabel(ds) {
     return String(ds?.label || '').toLowerCase();
 }
 
+function chartLabels(chart) {
+    return Array.isArray(chart?.data?.labels) ? chart.data.labels : [];
+}
+
+function isTimeSeriesLabel(label) {
+    const raw = String(label ?? '').trim().toLowerCase();
+    if (!raw) return false;
+    const s = raw.replace(/^ปี\s*/, '').replace(/^พ\.ศ\.\s*/, '').trim();
+    const thaiMonths = /(ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)/;
+
+    return /^(25|20)\d{2}$/.test(s)
+        || /^(25|20)\d{2}[-/]\d{1,2}([-/]\d{1,2})?$/.test(s)
+        || /^\d{1,2}[-/]\d{1,2}[-/](25|20)\d{2}$/.test(s)
+        || /^[1-3]\/(25|20)\d{2}$/.test(s)
+        || /^(q[1-4]|ไตรมาส\s*[1-4])\s*[-/]?\s*(25|20)\d{2}$/.test(s)
+        || /^(25|20)\d{2}\s*[-/]?\s*(q[1-4]|ไตรมาส\s*[1-4])$/.test(s)
+        || (thaiMonths.test(s) && /(25|20)\d{2}/.test(s));
+}
+
+function isTimeSeriesChart(chart) {
+    const xScaleType = chart?.options?.scales?.x?.type;
+    if (xScaleType === 'time' || xScaleType === 'timeseries') return true;
+
+    const labels = chartLabels(chart);
+    if (labels.length < 2) return false;
+    const hits = labels.filter(isTimeSeriesLabel).length;
+    return hits === labels.length || hits >= Math.max(3, Math.ceil(labels.length * 0.8));
+}
+
 function isGpaDataset(ds) {
     return /gpa|เกรด/.test(datasetLabel(ds));
 }
@@ -1060,6 +999,12 @@ function isGpaDataset(ds) {
 function isStudentCountDataset(ds) {
     const label = datasetLabel(ds);
     return /จำนวน|นักศึกษา|นิสิต|student|count|คน/.test(label) && !isGpaDataset(ds);
+}
+
+function isRateDataset(ds) {
+    const label = datasetLabel(ds);
+    return /(อัตรา.*สำเร็จ|อัตรา.*จบ|สำเร็จการศึกษา|graduation|grad\s*rate|rate|%|เปอร์เซ็นต์|ร้อยละ)/.test(label)
+        && !isGpaDataset(ds);
 }
 
 function getStudentGpaDatasets(chart) {
@@ -1075,11 +1020,35 @@ function isStudentGpaComboChart(chart) {
     return Boolean(getStudentGpaDatasets(chart));
 }
 
+function getGpaRateDatasets(chart) {
+    const datasets = chart?.data?.datasets || [];
+    if (datasets.length < 2) return null;
+    const gpaDs = datasets.find(isGpaDataset);
+    const rateDs = datasets.find(isRateDataset);
+    if (!gpaDs || !rateDs) return null;
+    return { gpaDs, rateDs };
+}
+
+function isGpaRateComboChart(chart) {
+    return Boolean(getGpaRateDatasets(chart));
+}
+
+function resetLineOnlyProps(ds) {
+    delete ds.tension;
+    delete ds.fill;
+    delete ds.pointRadius;
+    delete ds.pointHoverRadius;
+    delete ds.pointBackgroundColor;
+    delete ds.pointBorderColor;
+    delete ds.pointBorderWidth;
+}
+
 function normalizeStudentGpaComboChart(chart) {
     const combo = getStudentGpaDatasets(chart);
     if (!combo) return chart;
 
     const { countDs, gpaDs } = combo;
+    const useLineForGpa = isTimeSeriesChart(chart);
     chart.chartType = 'bar';
     chart.options = chart.options || {};
     delete chart.options.indexAxis;
@@ -1092,19 +1061,25 @@ function normalizeStudentGpaComboChart(chart) {
     countDs.borderWidth = 0;
     countDs.borderRadius = countDs.borderRadius || 8;
 
-    gpaDs.type = 'line';
+    gpaDs.type = useLineForGpa ? 'line' : 'bar';
     gpaDs.yAxisID = 'y1';
     gpaDs.order = 1;
     gpaDs.borderColor = gpaDs.borderColor || '#7B68EE';
-    gpaDs.backgroundColor = gpaDs.backgroundColor || 'rgba(123, 104, 238, 0.18)';
-    gpaDs.pointBackgroundColor = gpaDs.pointBackgroundColor || '#7B68EE';
-    gpaDs.pointBorderColor = gpaDs.pointBorderColor || '#fff';
-    gpaDs.pointBorderWidth = gpaDs.pointBorderWidth || 2;
-    gpaDs.pointRadius = gpaDs.pointRadius || 5;
-    gpaDs.pointHoverRadius = gpaDs.pointHoverRadius || 8;
-    gpaDs.borderWidth = gpaDs.borderWidth || 2.5;
-    gpaDs.tension = gpaDs.tension ?? 0.35;
-    gpaDs.fill = false;
+    gpaDs.backgroundColor = gpaDs.backgroundColor || (useLineForGpa ? 'rgba(123, 104, 238, 0.18)' : 'rgba(123, 104, 238, 0.72)');
+    if (useLineForGpa) {
+        gpaDs.pointBackgroundColor = gpaDs.pointBackgroundColor || '#7B68EE';
+        gpaDs.pointBorderColor = gpaDs.pointBorderColor || '#fff';
+        gpaDs.pointBorderWidth = gpaDs.pointBorderWidth || 2;
+        gpaDs.pointRadius = gpaDs.pointRadius || 5;
+        gpaDs.pointHoverRadius = gpaDs.pointHoverRadius || 8;
+        gpaDs.borderWidth = gpaDs.borderWidth || 2.5;
+        gpaDs.tension = gpaDs.tension ?? 0.35;
+        gpaDs.fill = false;
+    } else {
+        resetLineOnlyProps(gpaDs);
+        gpaDs.borderWidth = 0;
+        gpaDs.borderRadius = gpaDs.borderRadius || 8;
+    }
 
     chart.options.scales = {
         ...(chart.options.scales || {}),
@@ -1126,6 +1101,87 @@ function normalizeStudentGpaComboChart(chart) {
             grid: { drawOnChartArea: false },
         },
     };
+
+    return chart;
+}
+
+function normalizeGpaRateComparisonChart(chart) {
+    const combo = getGpaRateDatasets(chart);
+    if (!combo) return chart;
+
+    const { gpaDs, rateDs } = combo;
+    chart.chartType = 'bar';
+    chart.options = chart.options || {};
+    delete chart.options.indexAxis;
+
+    rateDs.type = 'bar';
+    rateDs.yAxisID = 'y';
+    rateDs.order = 2;
+    rateDs.backgroundColor = rateDs.backgroundColor || 'rgba(123, 104, 238, 0.65)';
+    rateDs.borderColor = rateDs.borderColor || '#7B68EE';
+    rateDs.borderWidth = 0;
+    rateDs.borderRadius = rateDs.borderRadius || 8;
+    resetLineOnlyProps(rateDs);
+
+    gpaDs.type = 'bar';
+    gpaDs.yAxisID = 'y1';
+    gpaDs.order = 1;
+    gpaDs.backgroundColor = gpaDs.backgroundColor || 'rgba(0, 166, 81, 0.72)';
+    gpaDs.borderColor = gpaDs.borderColor || '#00a651';
+    gpaDs.borderWidth = 0;
+    gpaDs.borderRadius = gpaDs.borderRadius || 8;
+    resetLineOnlyProps(gpaDs);
+
+    chart.options.scales = {
+        ...(chart.options.scales || {}),
+        x: {
+            ...(chart.options.scales?.x || {}),
+            ticks: {
+                ...(chart.options.scales?.x?.ticks || {}),
+                color: '#9ca3af',
+                font: { size: 10 },
+                maxRotation: 45,
+                minRotation: 25,
+            },
+            grid: { display: false },
+        },
+        y: {
+            type: 'linear',
+            position: 'left',
+            beginAtZero: true,
+            min: 0,
+            max: 100,
+            title: { display: true, text: 'อัตราสำเร็จการศึกษา (%)' },
+            ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => `${v}%` },
+            grid: { color: 'rgba(255,255,255,0.05)' },
+        },
+        y1: {
+            type: 'linear',
+            position: 'right',
+            min: 0,
+            max: 4,
+            title: { display: true, text: 'GPA เฉลี่ย' },
+            ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 1 },
+            grid: { drawOnChartArea: false },
+        },
+    };
+
+    return chart;
+}
+
+function normalizeCategoricalLineChart(chart) {
+    if (!chart || isTimeSeriesChart(chart)) return chart;
+    const datasets = chart.data?.datasets || [];
+    const hasLineShape = chart.chartType === 'line' || datasets.some(ds => ds.type === 'line');
+    if (!hasLineShape) return chart;
+
+    if (chart.chartType === 'line') chart.chartType = 'bar';
+
+    datasets.forEach(ds => {
+        if (ds.type === 'line') delete ds.type;
+        resetLineOnlyProps(ds);
+        if (ds.borderRadius == null) ds.borderRadius = 8;
+    });
 
     return chart;
 }
@@ -1194,16 +1250,97 @@ function buildStudentGpaScatterChart(originalChart) {
     };
 }
 
+function buildGpaRateScatterChart(originalChart) {
+    const chart = JSON.parse(JSON.stringify(originalChart || {}));
+    const combo = getGpaRateDatasets(chart);
+    if (!combo) return chart;
+
+    const labels = chart.data?.labels || [];
+    const points = labels.map((label, idx) => {
+        const x = Number(combo.rateDs.data?.[idx]);
+        const y = Number(combo.gpaDs.data?.[idx]);
+        return Number.isFinite(x) && Number.isFinite(y)
+            ? { x, y, faculty: String(label) }
+            : null;
+    }).filter(Boolean);
+
+    return {
+        ...chart,
+        chartType: 'scatter',
+        data: {
+            datasets: [{
+                label: 'อัตราสำเร็จการศึกษา vs GPA เฉลี่ย',
+                data: points,
+                backgroundColor: 'rgba(0, 166, 81, 0.72)',
+                borderColor: '#00a651',
+                pointRadius: 7,
+                pointHoverRadius: 10,
+            }],
+        },
+        options: {
+            ...(chart.options || {}),
+            indexAxis: undefined,
+            scales: {
+                x: {
+                    type: 'linear',
+                    position: 'bottom',
+                    min: 0,
+                    max: 100,
+                    title: { display: true, text: 'อัตราสำเร็จการศึกษา (%)' },
+                    ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => `${v}%` },
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                },
+                y: {
+                    type: 'linear',
+                    min: 0,
+                    max: 4,
+                    title: { display: true, text: 'GPA เฉลี่ย' },
+                    ticks: { color: '#9ca3af', font: { size: 11 } },
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                },
+            },
+            plugins: {
+                ...(chart.options?.plugins || {}),
+                tooltip: {
+                    ...(chart.options?.plugins?.tooltip || {}),
+                    callbacks: {
+                        label: ctx => {
+                            const raw = ctx.raw || {};
+                            return `${raw.faculty || 'คณะ'}: สำเร็จ ${Number(raw.x || 0).toFixed(1)}%, GPA ${Number(raw.y || 0).toFixed(2)}`;
+                        },
+                    },
+                },
+            },
+        },
+    };
+}
+
+function getInitialUiChartType(chart) {
+    if (!chart) return 'bar';
+    if (isStudentGpaComboChart(chart) || isGpaRateComboChart(chart)) return 'bar';
+    if (chart.chartType === 'bar' && chart.options?.indexAxis === 'y') return 'hbar';
+    if (chart.chartType === 'line' && !isTimeSeriesChart(chart)) return 'bar';
+    return chart.chartType || (isTimeSeriesChart(chart) ? 'line' : 'bar');
+}
+
 // Re-derive chart data/options when the user toggles chart type.
 // Without this, leftover `indexAxis:'y'`, per-dataset `type` fields, and
 // y1 axis references from the original config make the switcher a no-op.
 function deriveChartConfig(originalChart, uiTargetType) {
     if (!originalChart) return originalChart;
-    const targetType = realChartType(uiTargetType);
-    const wantsHorizontal = uiTargetType === 'hbar';
+    let targetType = realChartType(uiTargetType);
+    let wantsHorizontal = uiTargetType === 'hbar';
+    if (targetType === 'line' && !isTimeSeriesChart(originalChart)) {
+        targetType = 'bar';
+        wantsHorizontal = false;
+    }
     if (isStudentGpaComboChart(originalChart)) {
         if (targetType === 'scatter') return buildStudentGpaScatterChart(originalChart);
         return normalizeStudentGpaComboChart(JSON.parse(JSON.stringify(originalChart)));
+    }
+    if (isGpaRateComboChart(originalChart)) {
+        if (targetType === 'scatter') return buildGpaRateScatterChart(originalChart);
+        return normalizeGpaRateComparisonChart(JSON.parse(JSON.stringify(originalChart)));
     }
     const sourceWasHorizontal = originalChart.chartType === 'bar' && originalChart.options?.indexAxis === 'y';
     const sameShape = targetType === originalChart.chartType
@@ -1301,6 +1438,9 @@ function computeChartHeight(uiType, categoryCount = 0) {
         // ~28px per row + headroom for axis/legend.
         return Math.min(900, Math.max(320, categoryCount * 28 + 110));
     }
+    if (uiType === 'bar' && categoryCount > 12) {
+        return 380;
+    }
     if (uiType === 'scatter') {
         return 360;
     }
@@ -1319,16 +1459,25 @@ function availableChartTypes(chart) {
     if (isPoint) return []; // scatter/bubble don't switch sensibly
     if (isStudentGpaComboChart(chart)) {
         return [
-            { id: 'bar', label: 'ผสม', icon: BarChart3 },
+            { id: 'bar', label: isTimeSeriesChart(chart) ? 'ผสม' : 'แท่งคู่', icon: BarChart3 },
+            { id: 'scatter', label: 'จุด', icon: CircleDot },
+        ];
+    }
+    if (isGpaRateComboChart(chart)) {
+        return [
+            { id: 'bar', label: 'แท่งคู่', icon: BarChart3 },
             { id: 'scatter', label: 'จุด', icon: CircleDot },
         ];
     }
 
-    const opts = [
-        { id: 'line', label: 'เส้น', icon: TrendingUp },
+    const opts = [];
+    if (isTimeSeriesChart(chart)) {
+        opts.push({ id: 'line', label: 'เส้น', icon: TrendingUp });
+    }
+    opts.push(
         { id: 'bar', label: 'แท่ง', icon: BarChart3 },
         { id: 'hbar', label: 'แท่งแนวนอน', icon: BarChart2 },
-    ];
+    );
     if (dsCount === 1 && catCount > 0 && catCount <= 10) {
         opts.push({ id: 'pie', label: 'พาย', icon: PieChart });
         opts.push({ id: 'doughnut', label: 'โดนัท', icon: CircleDot });
@@ -1355,11 +1504,7 @@ function deepCloneChart(chart) {
 // ==================== Chat Message Component ====================
 function ChatMessage({ msg, onExpand }) {
     // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
-    const initialUiType = isStudentGpaComboChart(msg.chart)
-        ? 'bar'
-        : msg.chart?.chartType === 'bar' && msg.chart?.options?.indexAxis === 'y'
-            ? 'hbar'
-            : (msg.chart?.chartType || 'line');
+    const initialUiType = getInitialUiChartType(msg.chart);
     const [chartType, setChartType] = useState(initialUiType);
     const renderedChart = deriveChartConfig(msg.chart, chartType);
     const renderType = realChartType(chartType);
@@ -2254,11 +2399,7 @@ function ExpandedChartModal({ chart, onClose }) {
     const [modalKey, setModalKey] = useState(0);
 
     // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
-    const initialUiType = isStudentGpaComboChart(chart)
-        ? 'bar'
-        : chart?.chartType === 'bar' && chart?.options?.indexAxis === 'y'
-            ? 'hbar'
-            : (chart?.chartType || 'line');
+    const initialUiType = getInitialUiChartType(chart);
     const [chartType, setChartType] = useState(initialUiType);
     const renderedChart = deriveChartConfig(chart, chartType);
     const renderType = realChartType(chartType);
