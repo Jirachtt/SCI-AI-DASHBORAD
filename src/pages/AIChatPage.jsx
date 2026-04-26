@@ -1450,6 +1450,55 @@ function computeChartHeight(uiType, categoryCount = 0) {
     return 320;
 }
 
+function isCartesianChartType(chartType) {
+    return ['line', 'bar', 'scatter', 'bubble'].includes(realChartType(chartType));
+}
+
+function chartZoomOptions(chart, uiType, expanded = false) {
+    const chartType = realChartType(uiType || chart?.chartType);
+    if (!isCartesianChartType(chartType)) {
+        return {
+            pan: { enabled: false },
+            zoom: { wheel: { enabled: false }, pinch: { enabled: false }, drag: { enabled: false } },
+            limits: {},
+        };
+    }
+
+    const scaleKeys = Object.keys(chart?.options?.scales || {}).filter(k => k !== 'r');
+    const boundedKeys = scaleKeys.length > 0 ? scaleKeys : ['x', 'y'];
+    const limits = Object.fromEntries(boundedKeys.map(k => [k, { min: 'original', max: 'original' }]));
+    const hasX = boundedKeys.includes('x');
+    const hasY = boundedKeys.some(k => k === 'y' || /^y\d+$/.test(k));
+    const mode = hasX && hasY ? 'xy' : hasX ? 'x' : 'y';
+
+    return {
+        pan: { enabled: true, mode, modifierKey: null },
+        zoom: {
+            wheel: { enabled: true, speed: expanded ? 0.05 : 0.08 },
+            pinch: { enabled: true },
+            drag: { enabled: false },
+            mode,
+        },
+        limits,
+    };
+}
+
+function chartOptionsForRender(chart, uiType, expanded = false) {
+    if (!chart) return chart;
+    return {
+        ...chart,
+        options: {
+            ...(chart.options || {}),
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                ...(chart.options?.plugins || {}),
+                zoom: chartZoomOptions(chart, uiType, expanded),
+            },
+        },
+    };
+}
+
 // Pick the toggleable chart options that make sense for the data shape.
 function availableChartTypes(chart) {
     if (!chart) return [];
@@ -1542,7 +1591,7 @@ function ChatMessage({ msg, onExpand }) {
         });
     };
 
-    const chartData = renderedChart;
+    const chartData = chartOptionsForRender(renderedChart, chartType);
 
     // Deep clone chart for expand to prevent zoom state mutation
     const handleExpand = () => {
@@ -2405,10 +2454,40 @@ function ExpandedChartModal({ chart, onClose }) {
     const renderType = realChartType(chartType);
     const switchOptions = availableChartTypes(chart);
 
+    useEffect(() => {
+        const resizeChart = () => {
+            const instance = chartRef.current;
+            if (!instance) return;
+            try {
+                instance.resize?.();
+                instance.update?.('none');
+            } catch (err) {
+                console.warn('[AIChatPage] chart resize failed:', err?.message || err);
+            }
+        };
+        const raf = requestAnimationFrame(resizeChart);
+        const timeout = setTimeout(resizeChart, 120);
+        return () => {
+            cancelAnimationFrame(raf);
+            clearTimeout(timeout);
+        };
+    }, [chartType, modalKey, renderedChart]);
+
     // Reset zoom handler
     const handleResetZoom = () => {
-        if (chartRef.current) {
-            chartRef.current.resetZoom();
+        const instance = chartRef.current;
+        if (!instance) return;
+        try {
+            if (typeof instance.resetZoom === 'function') {
+                instance.resetZoom();
+            } else {
+                setModalKey(prev => prev + 1);
+            }
+            instance.resize?.();
+            instance.update?.('none');
+        } catch (err) {
+            console.warn('[AIChatPage] reset zoom failed, remounting chart:', err?.message || err);
+            setModalKey(prev => prev + 1);
         }
     };
 
@@ -2419,11 +2498,12 @@ function ExpandedChartModal({ chart, onClose }) {
     };
 
     // Enhanced options for expanded view — larger fonts, better grid
-    const expandedOptions = renderedChart ? {
-        ...renderedChart.options,
+    const expandedChart = chartOptionsForRender(renderedChart, chartType, true);
+    const expandedOptions = expandedChart ? {
+        ...expandedChart.options,
         animation: { duration: 600, easing: 'easeOutQuart' },
         plugins: {
-            ...(renderedChart.options?.plugins || {}),
+            ...(expandedChart.options?.plugins || {}),
             legend: {
                 position: 'bottom',
                 labels: {
@@ -2446,17 +2526,7 @@ function ExpandedChartModal({ chart, onClose }) {
                 bodyFont: { size: 12 },
                 displayColors: true,
                 boxPadding: 6,
-                ...(renderedChart.options?.plugins?.tooltip || {}),
-            },
-            zoom: {
-                pan: { enabled: true, mode: 'xy', modifierKey: null },
-                zoom: {
-                    wheel: { enabled: true, speed: 0.06 },
-                    pinch: { enabled: true },
-                    drag: { enabled: false },
-                    mode: 'xy',
-                },
-                limits: { x: { minRange: 2 }, y: { minRange: 1 } },
+                ...(expandedChart.options?.plugins?.tooltip || {}),
             },
         },
     } : {};
@@ -2500,12 +2570,12 @@ function ExpandedChartModal({ chart, onClose }) {
                 )}
 
                 <div className="ai-page-chart-modal-body">
-                    {renderedChart && (
+                    {expandedChart && (
                         <ReactChart
-                            key={modalKey}
+                            key={`${renderType}-${modalKey}`}
                             ref={chartRef}
                             type={renderType}
-                            data={renderedChart.data}
+                            data={expandedChart.data}
                             options={expandedOptions}
                             redraw
                         />

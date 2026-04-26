@@ -3969,6 +3969,9 @@ html {
 
 /* Chart canvas glow effect */
 .ai-page-chart-wrapper canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
   filter: drop-shadow(0 0 6px rgba(0, 230, 118, 0.03));
 }
 
@@ -4346,10 +4349,14 @@ html {
   width: 100%;
   padding: 20px 24px 12px;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* Chart canvas in modal — subtle glow */
 .ai-page-chart-modal-body canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
   filter: drop-shadow(0 0 8px rgba(0, 230, 118, 0.04));
 }
 
@@ -5724,4 +5731,3 @@ select option:checked {
     transition: none !important;
   }
 }
-
