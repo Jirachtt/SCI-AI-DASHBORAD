@@ -718,6 +718,8 @@ function parseAIResponse(text) {
                 });
             }
 
+            normalizeStudentGpaComboChart(rawJson);
+
             // Ensure datasets have decent default colors if missing
             const defaultColors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
             const isScatter = rawJson.chartType === 'scatter';
@@ -731,22 +733,23 @@ function parseAIResponse(text) {
                         ds.borderColor = c;
                         ds.backgroundColor = isPointChart ? c + '99' : c + '25';
                     }
+                    const effectiveType = ds.type || rawJson.chartType;
                     // Ensure bar charts have borderRadius for modern look
-                    if ((rawJson.chartType === 'bar') && !ds.borderRadius) {
+                    if ((effectiveType === 'bar') && !ds.borderRadius) {
                         ds.borderRadius = 8;
                     }
                     // Ensure line charts have smooth tension and fill
-                    if (rawJson.chartType === 'line') {
+                    if (effectiveType === 'line') {
                         if (ds.tension == null) ds.tension = 0.4;
                         if (ds.pointRadius == null) ds.pointRadius = 5;
                         if (ds.pointHoverRadius == null) ds.pointHoverRadius = 8;
                         if (ds.pointBorderColor == null) ds.pointBorderColor = '#fff';
                         if (ds.pointBorderWidth == null) ds.pointBorderWidth = 2;
                         if (ds.borderWidth == null) ds.borderWidth = 2.5;
-                        if (ds.fill == null) ds.fill = true;
+                        if (ds.fill == null) ds.fill = rawJson.chartType === 'line';
                     }
                     // Bar enhancement
-                    if (rawJson.chartType === 'bar') {
+                    if (effectiveType === 'bar') {
                         if (ds.borderWidth == null) ds.borderWidth = 0;
                         if (ds.hoverBackgroundColor == null && ds.backgroundColor) {
                             const baseColor = typeof ds.backgroundColor === 'string' ? ds.backgroundColor.slice(0, 7) : '';
@@ -1046,6 +1049,151 @@ function realChartType(uiType) {
     return uiType === 'hbar' ? 'bar' : uiType;
 }
 
+function datasetLabel(ds) {
+    return String(ds?.label || '').toLowerCase();
+}
+
+function isGpaDataset(ds) {
+    return /gpa|เกรด/.test(datasetLabel(ds));
+}
+
+function isStudentCountDataset(ds) {
+    const label = datasetLabel(ds);
+    return /จำนวน|นักศึกษา|นิสิต|student|count|คน/.test(label) && !isGpaDataset(ds);
+}
+
+function getStudentGpaDatasets(chart) {
+    const datasets = chart?.data?.datasets || [];
+    if (datasets.length < 2) return null;
+    const countDs = datasets.find(isStudentCountDataset);
+    const gpaDs = datasets.find(isGpaDataset);
+    if (!countDs || !gpaDs) return null;
+    return { countDs, gpaDs };
+}
+
+function isStudentGpaComboChart(chart) {
+    return Boolean(getStudentGpaDatasets(chart));
+}
+
+function normalizeStudentGpaComboChart(chart) {
+    const combo = getStudentGpaDatasets(chart);
+    if (!combo) return chart;
+
+    const { countDs, gpaDs } = combo;
+    chart.chartType = 'bar';
+    chart.options = chart.options || {};
+    delete chart.options.indexAxis;
+
+    countDs.type = 'bar';
+    countDs.yAxisID = 'y';
+    countDs.order = 2;
+    countDs.backgroundColor = countDs.backgroundColor || 'rgba(0, 166, 81, 0.75)';
+    countDs.borderColor = countDs.borderColor || '#00a651';
+    countDs.borderWidth = 0;
+    countDs.borderRadius = countDs.borderRadius || 8;
+
+    gpaDs.type = 'line';
+    gpaDs.yAxisID = 'y1';
+    gpaDs.order = 1;
+    gpaDs.borderColor = gpaDs.borderColor || '#7B68EE';
+    gpaDs.backgroundColor = gpaDs.backgroundColor || 'rgba(123, 104, 238, 0.18)';
+    gpaDs.pointBackgroundColor = gpaDs.pointBackgroundColor || '#7B68EE';
+    gpaDs.pointBorderColor = gpaDs.pointBorderColor || '#fff';
+    gpaDs.pointBorderWidth = gpaDs.pointBorderWidth || 2;
+    gpaDs.pointRadius = gpaDs.pointRadius || 5;
+    gpaDs.pointHoverRadius = gpaDs.pointHoverRadius || 8;
+    gpaDs.borderWidth = gpaDs.borderWidth || 2.5;
+    gpaDs.tension = gpaDs.tension ?? 0.35;
+    gpaDs.fill = false;
+
+    chart.options.scales = {
+        ...(chart.options.scales || {}),
+        y: {
+            type: 'linear',
+            position: 'left',
+            beginAtZero: true,
+            title: { display: true, text: 'จำนวนนักศึกษา (คน)' },
+            ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => v.toLocaleString() },
+            grid: { color: 'rgba(255,255,255,0.05)' },
+        },
+        y1: {
+            type: 'linear',
+            position: 'right',
+            min: 0,
+            max: 4,
+            title: { display: true, text: 'GPA เฉลี่ย' },
+            ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 1 },
+            grid: { drawOnChartArea: false },
+        },
+    };
+
+    return chart;
+}
+
+function buildStudentGpaScatterChart(originalChart) {
+    const chart = JSON.parse(JSON.stringify(originalChart || {}));
+    const combo = getStudentGpaDatasets(chart);
+    if (!combo) return chart;
+
+    const labels = chart.data?.labels || [];
+    const points = labels.map((label, idx) => {
+        const x = Number(combo.countDs.data?.[idx]);
+        const y = Number(combo.gpaDs.data?.[idx]);
+        return Number.isFinite(x) && Number.isFinite(y)
+            ? { x, y, major: String(label) }
+            : null;
+    }).filter(Boolean);
+
+    return {
+        ...chart,
+        chartType: 'scatter',
+        data: {
+            datasets: [{
+                label: 'จำนวนนักศึกษา vs GPA เฉลี่ย',
+                data: points,
+                backgroundColor: 'rgba(0, 166, 81, 0.72)',
+                borderColor: '#00a651',
+                pointRadius: 7,
+                pointHoverRadius: 10,
+            }],
+        },
+        options: {
+            ...(chart.options || {}),
+            indexAxis: undefined,
+            scales: {
+                x: {
+                    type: 'linear',
+                    position: 'bottom',
+                    beginAtZero: true,
+                    title: { display: true, text: 'จำนวนนักศึกษา (คน)' },
+                    ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => v.toLocaleString() },
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                },
+                y: {
+                    type: 'linear',
+                    min: 0,
+                    max: 4,
+                    title: { display: true, text: 'GPA เฉลี่ย' },
+                    ticks: { color: '#9ca3af', font: { size: 11 } },
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                },
+            },
+            plugins: {
+                ...(chart.options?.plugins || {}),
+                tooltip: {
+                    ...(chart.options?.plugins?.tooltip || {}),
+                    callbacks: {
+                        label: ctx => {
+                            const raw = ctx.raw || {};
+                            return `${raw.major || 'สาขา'}: ${Number(raw.x || 0).toLocaleString('th-TH')} คน, GPA ${Number(raw.y || 0).toFixed(2)}`;
+                        },
+                    },
+                },
+            },
+        },
+    };
+}
+
 // Re-derive chart data/options when the user toggles chart type.
 // Without this, leftover `indexAxis:'y'`, per-dataset `type` fields, and
 // y1 axis references from the original config make the switcher a no-op.
@@ -1053,6 +1201,10 @@ function deriveChartConfig(originalChart, uiTargetType) {
     if (!originalChart) return originalChart;
     const targetType = realChartType(uiTargetType);
     const wantsHorizontal = uiTargetType === 'hbar';
+    if (isStudentGpaComboChart(originalChart)) {
+        if (targetType === 'scatter') return buildStudentGpaScatterChart(originalChart);
+        return normalizeStudentGpaComboChart(JSON.parse(JSON.stringify(originalChart)));
+    }
     const sourceWasHorizontal = originalChart.chartType === 'bar' && originalChart.options?.indexAxis === 'y';
     const sameShape = targetType === originalChart.chartType
         && wantsHorizontal === sourceWasHorizontal;
@@ -1149,6 +1301,9 @@ function computeChartHeight(uiType, categoryCount = 0) {
         // ~28px per row + headroom for axis/legend.
         return Math.min(900, Math.max(320, categoryCount * 28 + 110));
     }
+    if (uiType === 'scatter') {
+        return 360;
+    }
     if (uiType === 'pie' || uiType === 'doughnut' || uiType === 'radar') {
         return 380;
     }
@@ -1162,6 +1317,12 @@ function availableChartTypes(chart) {
     const catCount = chart.data?.labels?.length || chart.data?.datasets?.[0]?.data?.length || 0;
     const isPoint = chart.chartType === 'scatter' || chart.chartType === 'bubble';
     if (isPoint) return []; // scatter/bubble don't switch sensibly
+    if (isStudentGpaComboChart(chart)) {
+        return [
+            { id: 'bar', label: 'ผสม', icon: BarChart3 },
+            { id: 'scatter', label: 'จุด', icon: CircleDot },
+        ];
+    }
 
     const opts = [
         { id: 'line', label: 'เส้น', icon: TrendingUp },
@@ -1194,9 +1355,11 @@ function deepCloneChart(chart) {
 // ==================== Chat Message Component ====================
 function ChatMessage({ msg, onExpand }) {
     // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
-    const initialUiType = msg.chart?.chartType === 'bar' && msg.chart?.options?.indexAxis === 'y'
-        ? 'hbar'
-        : (msg.chart?.chartType || 'line');
+    const initialUiType = isStudentGpaComboChart(msg.chart)
+        ? 'bar'
+        : msg.chart?.chartType === 'bar' && msg.chart?.options?.indexAxis === 'y'
+            ? 'hbar'
+            : (msg.chart?.chartType || 'line');
     const [chartType, setChartType] = useState(initialUiType);
     const renderedChart = deriveChartConfig(msg.chart, chartType);
     const renderType = realChartType(chartType);
@@ -2091,9 +2254,11 @@ function ExpandedChartModal({ chart, onClose }) {
     const [modalKey, setModalKey] = useState(0);
 
     // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
-    const initialUiType = chart?.chartType === 'bar' && chart?.options?.indexAxis === 'y'
-        ? 'hbar'
-        : (chart?.chartType || 'line');
+    const initialUiType = isStudentGpaComboChart(chart)
+        ? 'bar'
+        : chart?.chartType === 'bar' && chart?.options?.indexAxis === 'y'
+            ? 'hbar'
+            : (chart?.chartType || 'line');
     const [chartType, setChartType] = useState(initialUiType);
     const renderedChart = deriveChartConfig(chart, chartType);
     const renderType = realChartType(chartType);
