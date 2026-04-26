@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { createElement, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { ensureStudentList, onStudentDataChange } from '../services/studentDataService';
+import { ensureStudentList, getStudentListSync, isLiveData, onStudentDataChange } from '../services/studentDataService';
 import { getAllAlerts, getAlertSummary } from '../utils/alerts';
 import {
     AlertTriangle, Bell, ShieldAlert, Info, ArrowLeft, Filter,
@@ -27,23 +27,31 @@ const DOMAIN_ICON = {
 
 export default function AlertCenterPage() {
     const { user } = useAuth();
-    const [tick, setTick] = useState(0);          // bump to re-run aggregator
+    const [, setTick] = useState(0);              // bump to re-run aggregator
     const [loading, setLoading] = useState(true);
+    const [studentCount, setStudentCount] = useState(() => getStudentListSync().length);
+    const [studentDataLive, setStudentDataLive] = useState(() => isLiveData());
     const [severityFilter, setSeverityFilter] = useState('all');
     const [domainFilter, setDomainFilter] = useState('all');
     const [expanded, setExpanded] = useState(null);
 
     useEffect(() => {
         let active = true;
-        ensureStudentList().then(() => {
-            if (active) { setTick(t => t + 1); setLoading(false); }
-        });
-        const unsub = onStudentDataChange(() => { if (active) setTick(t => t + 1); });
+        const refreshFromStudentData = (list = getStudentListSync()) => {
+            if (!active) return;
+            setStudentCount(list.length);
+            setStudentDataLive(isLiveData());
+            setTick(t => t + 1);
+            setLoading(false);
+        };
+        ensureStudentList().then(refreshFromStudentData);
+        const unsub = onStudentDataChange(refreshFromStudentData);
         return () => { active = false; unsub && unsub(); };
     }, []);
 
-    const alerts = useMemo(() => getAllAlerts(), [tick]);
-    const summary = useMemo(() => getAlertSummary(), [tick]);
+    // Recompute on each render so external student-data cache changes are reflected after tick bumps.
+    const alerts = getAllAlerts();
+    const summary = getAlertSummary();
 
     const domains = useMemo(() => {
         const s = new Set(alerts.map(a => a.domain));
@@ -70,7 +78,11 @@ export default function AlertCenterPage() {
                 </div>
                 <div>
                     <h2>ศูนย์แจ้งเตือน (Alert Center)</h2>
-                    <p>Early-warning dashboard — รวมสัญญาณเตือนจากทุกโดเมนไว้ในหน้าเดียว</p>
+                    <p>
+                        Early-warning dashboard — รวมสัญญาณเตือนจากทุกโดเมนไว้ในหน้าเดียว
+                        {' '}• ข้อมูลนักศึกษา {studentCount.toLocaleString('th-TH')} คน
+                        {' '}• {studentDataLive ? 'อัปเดตสดจาก Firestore' : 'ใช้ข้อมูลตั้งต้นล่าสุด'}
+                    </p>
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                     <ExportPDFButton title="ศูนย์แจ้งเตือน (Alert Center)" />
@@ -205,12 +217,12 @@ export default function AlertCenterPage() {
     );
 }
 
-function SummaryCard({ label, value, color, Icon, pulse }) {
+function SummaryCard({ label, value, color, Icon: IconComponent, pulse }) {
     return (
         <div className={`stat-card animate-in ${pulse ? 'pulse' : ''}`}>
             <div className="stat-card-header">
                 <div className="stat-card-icon" style={{ background: `linear-gradient(135deg, ${color}, ${color}aa)` }}>
-                    <Icon size={20} color="#fff" />
+                    {createElement(IconComponent, { size: 20, color: '#fff' })}
                 </div>
             </div>
             <div className="stat-card-value" style={{ color }}>{value}</div>

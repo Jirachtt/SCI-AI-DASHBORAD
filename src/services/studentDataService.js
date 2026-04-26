@@ -12,25 +12,27 @@
 //     version:    number              — schema version (currently 1)
 //
 // Callers use:
-//   ensureStudentList()    — async, loads once and caches; returns live list (or mock)
+//   ensureStudentList()    — async, attaches realtime listener; returns live list (or mock)
 //   getStudentListSync()   — synchronous accessor (returns cached / mock + manual adds); safe anywhere
 //   uploadStudentList()    — admin writes new dataset
 //   getStudentListMeta()   — lightweight metadata fetch for admin panel
-//   onStudentDataChange()  — subscribe to in-session updates after an upload
+//   onStudentDataChange()  — subscribe to realtime student-data updates
 //   addStudent()           — persist a single manually added student (localStorage)
 //   removeStudent()        — remove a manually added student by ID
 
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { scienceStudentList } from '../data/studentListData.js';
 import { writeAuditLog } from './auditLogService';
 
 const DOC_PATH = ['datasets', 'students'];
 const MANUAL_STUDENTS_KEY = 'sci_dashboard_manual_students';
+const MIN_TRUSTED_LIVE_ROWS = 1000;
 
 let _cache = null;
 let _isLive = false;           // true once Firestore has returned a valid dataset
 let _loadPromise = null;
+let _unsubscribeLive = null;
 const _listeners = new Set();
 
 // ─── Manual Students (localStorage) ───
@@ -88,6 +90,78 @@ export function getManualStudents() {
 
 // ─── Core data functions ───
 
+function studentDocRef() {
+    return doc(db, ...DOC_PATH);
+}
+
+function setBundledFallback() {
+    _cache = scienceStudentList;
+    _isLive = false;
+}
+
+function isTrustedLiveRows(rows) {
+    return Array.isArray(rows) && rows.length >= MIN_TRUSTED_LIVE_ROWS;
+}
+
+function applySnapshot(snap) {
+    if (snap.exists()) {
+        const data = snap.data();
+        const rows = Array.isArray(data.rows) ? data.rows : [];
+        if (isTrustedLiveRows(rows)) {
+            _cache = rows;
+            _isLive = true;
+            return;
+        }
+        if (rows.length > 0) {
+            console.warn(
+                `[studentDataService] Ignoring stale Firestore student dataset (${rows.length} rows); ` +
+                `using bundled ${scienceStudentList.length}-row fallback until a complete upload arrives.`
+            );
+        }
+    }
+    setBundledFallback();
+}
+
+function startRealtimeSubscription() {
+    if (_unsubscribeLive) return;
+
+    _loadPromise = new Promise(resolve => {
+        let settled = false;
+        const settle = () => {
+            if (!settled) {
+                settled = true;
+                resolve(getStudentListSync());
+            }
+        };
+
+        try {
+            _unsubscribeLive = onSnapshot(
+                studentDocRef(),
+                snap => {
+                    const wasSettled = settled;
+                    applySnapshot(snap);
+                    settle();
+                    if (wasSettled) notify();
+                },
+                err => {
+                    console.warn('[studentDataService] Firestore realtime load failed, using mock:', err?.message || err);
+                    setBundledFallback();
+                    _unsubscribeLive = null;
+                    settle();
+                    _loadPromise = null;
+                    notify();
+                }
+            );
+        } catch (err) {
+            console.warn('[studentDataService] Firestore listener setup failed, using mock:', err?.message || err);
+            setBundledFallback();
+            _unsubscribeLive = null;
+            settle();
+            _loadPromise = null;
+        }
+    });
+}
+
 function notify() {
     const all = getStudentListSync();
     for (const cb of _listeners) {
@@ -110,34 +184,16 @@ export function isLiveData() {
 }
 
 export async function ensureStudentList() {
+    if (!_unsubscribeLive && !_loadPromise) startRealtimeSubscription();
     if (_cache) return getStudentListSync();
-    if (_loadPromise) return _loadPromise;
-    _loadPromise = (async () => {
-        try {
-            const snap = await getDoc(doc(db, ...DOC_PATH));
-            if (snap.exists()) {
-                const data = snap.data();
-                if (Array.isArray(data.rows) && data.rows.length > 0) {
-                    _cache = data.rows;
-                    _isLive = true;
-                    return getStudentListSync();
-                }
-            }
-        } catch (err) {
-            console.warn('[studentDataService] Firestore load failed, using mock:', err?.message || err);
-        }
-        _cache = scienceStudentList;
-        _isLive = false;
-        return getStudentListSync();
-    })();
-    return _loadPromise;
+    return _loadPromise || getStudentListSync();
 }
 
 export async function uploadStudentList(rows, { fileName, uid, who, meta } = {}) {
     if (!Array.isArray(rows) || rows.length === 0) {
         throw new Error('rows must be a non-empty array');
     }
-    await setDoc(doc(db, ...DOC_PATH), {
+    await setDoc(studentDocRef(), {
         rows,
         rowCount: rows.length,
         fileName: fileName || 'unknown',
@@ -147,7 +203,7 @@ export async function uploadStudentList(rows, { fileName, uid, who, meta } = {})
     });
     _cache = rows;
     _isLive = true;
-    _loadPromise = Promise.resolve(rows);
+    _loadPromise = Promise.resolve(getStudentListSync());
     notify();
     // Fire-and-forget audit log; failures are swallowed inside the service.
     writeAuditLog({
@@ -163,7 +219,7 @@ export async function uploadStudentList(rows, { fileName, uid, who, meta } = {})
 
 export async function getStudentListMeta() {
     try {
-        const snap = await getDoc(doc(db, ...DOC_PATH));
+        const snap = await getDoc(studentDocRef());
         if (!snap.exists()) return null;
         const d = snap.data();
         return {
@@ -180,7 +236,7 @@ export async function getStudentListMeta() {
 }
 
 export function onStudentDataChange(callback) {
+    if (!_unsubscribeLive && !_loadPromise) startRealtimeSubscription();
     _listeners.add(callback);
     return () => _listeners.delete(callback);
 }
-

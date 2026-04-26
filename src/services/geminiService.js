@@ -454,7 +454,7 @@ Always: responsive=true, maintainAspectRatio=false
 // covered by the per-major / per-year stats in the base instruction.
 function buildStudentData() {
     const list = getStudentListSync();
-    // Compact JSON keeps tokens low even at ~1,450 rows.
+    // Compact JSON keeps tokens low even at ~1,451 rows.
     return '\n\n## รายชื่อนักศึกษา(id=รหัส,n=ชื่อ,m=สาขา,y=ปี,g=GPA,s=สถานะ):\n' +
         JSON.stringify(list.map(s => ({
             id: s.id, n: s.name, m: s.major, y: s.year, g: s.gpa, s: s.status

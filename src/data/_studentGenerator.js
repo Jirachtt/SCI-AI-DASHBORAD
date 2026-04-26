@@ -108,7 +108,7 @@ export function generatePaddedStudents(curated) {
         { cohortCode: '65', year: 4, target: 303 },
         { cohortCode: '66', year: 3, target: 320 },
         { cohortCode: '67', year: 2, target: 409 },
-        { cohortCode: '68', year: 1, target: 396 },
+        { cohortCode: '68', year: 1, target: 397 },
     ];
 
     const padded = [];

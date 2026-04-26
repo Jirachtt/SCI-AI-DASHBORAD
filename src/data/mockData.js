@@ -109,7 +109,7 @@ export const studentLifeData = {
 
 export const dashboardSummary = {
     // อ้างอิงตัวเลขจริง: dashboard.mju.ac.th/student.aspx (ข้อมูลปัจจุบัน 2568)
-    totalStudents: 16838,
+    totalStudents: 16839,
     totalCourses: 847,
     avgGPA: 3.12,
     graduationRate: 89.5,
@@ -119,7 +119,7 @@ export const dashboardSummary = {
     faculties: [
         { name: 'คณะบริหารธุรกิจ', totalStudents: 3707, totalCourses: 210, avgGPA: 2.95, graduationRate: 85.4 },
         { name: 'คณะผลิตกรรมการเกษตร', totalStudents: 2126, totalCourses: 185, avgGPA: 3.02, graduationRate: 86.8 },
-        { name: 'คณะวิทยาศาสตร์', totalStudents: 1450, totalCourses: 156, avgGPA: 3.18, graduationRate: 91.2 },
+        { name: 'คณะวิทยาศาสตร์', totalStudents: 1451, totalCourses: 156, avgGPA: 3.18, graduationRate: 91.2 },
         { name: 'คณะสารสนเทศและการสื่อสาร', totalStudents: 1233, totalCourses: 72, avgGPA: 3.10, graduationRate: 89.5 },
         { name: 'วิทยาลัยบริหารศาสตร์', totalStudents: 1016, totalCourses: 95, avgGPA: 3.08, graduationRate: 87.2 },
         { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ฯ', totalStudents: 955, totalCourses: 110, avgGPA: 3.00, graduationRate: 84.5 },
@@ -140,12 +140,12 @@ export const dashboardSummary = {
 
 // ==================== ข้อมูลสถิตินิสิตปัจจุบัน ====================
 // อ้างอิง: dashboard.mju.ac.th/student.aspx (ข้อมูลนักศึกษาคงอยู่ปัจจุบัน 2568)
-// รวมทั้งสิ้น 16,838 คน — ปริญญาตรี 16,109 / โท 434 / เอก 222 / ประกาศนียบัตร 73
+// รวมทั้งสิ้น 16,839 คน — ปริญญาตรี 16,110 / โท 434 / เอก 222 / ประกาศนียบัตร 73
 export const studentStatsData = {
     current: {
-        total: 16838,
+        total: 16839,
         byLevel: [
-            { level: 'ปริญญาตรี', count: 16109, color: '#006838', icon: 'BSc' },
+            { level: 'ปริญญาตรี', count: 16110, color: '#006838', icon: 'BSc' },
             { level: 'ปริญญาโท', count: 434, color: '#2E86AB', icon: 'MSc' },
             { level: 'ปริญญาเอก', count: 222, color: '#A23B72', icon: 'PhD' },
             { level: 'ประกาศนียบัตร', count: 73, color: '#C5A028', icon: 'Cert' }
@@ -156,7 +156,7 @@ export const studentStatsData = {
     byFaculty: [
         { name: 'คณะบริหารธุรกิจ', bachelor: 3643, master: 56, doctoral: 8 },
         { name: 'คณะผลิตกรรมการเกษตร', bachelor: 1932, master: 98, doctoral: 96 },
-        { name: 'คณะวิทยาศาสตร์', bachelor: 1428, master: 17, doctoral: 5 },
+        { name: 'คณะวิทยาศาสตร์', bachelor: 1429, master: 17, doctoral: 5 },
         { name: 'คณะสารสนเทศและการสื่อสาร', bachelor: 1233, master: 0, doctoral: 0 },
         { name: 'วิทยาลัยบริหารศาสตร์', bachelor: 932, master: 63, doctoral: 21 },
         { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ฯ', bachelor: 892, master: 63, doctoral: 0 },
@@ -190,13 +190,13 @@ export const studentStatsData = {
         { year: '2567', count: 5218, type: 'actual' },
         { year: '2566', count: 4291, type: 'actual' }
     ],
-    // แนวโน้มจำนวนนิสิตทั้งมหาวิทยาลัย (ปรับตามฐานจริง 2568 = 16,838)
+    // แนวโน้มจำนวนนิสิตทั้งมหาวิทยาลัย (ปรับตามฐานจริง 2568 = 16,839)
     trend: [
         { year: '2564', total: 12850, bachelor: 12320, master: 320, doctoral: 210, type: 'actual' },
         { year: '2565', total: 13975, bachelor: 13420, master: 340, doctoral: 215, type: 'actual' },
         { year: '2566', total: 15225, bachelor: 14620, master: 385, doctoral: 220, type: 'actual' },
         { year: '2567', total: 16100, bachelor: 15440, master: 415, doctoral: 220, type: 'actual' },
-        { year: '2568', total: 16838, bachelor: 16109, master: 434, doctoral: 222, type: 'actual' },
+        { year: '2568', total: 16839, bachelor: 16110, master: 434, doctoral: 222, type: 'actual' },
         { year: '2569', total: 17500, bachelor: 16740, master: 455, doctoral: 230, type: 'forecast' }
     ],
     // ==================== ข้อมูลเฉพาะคณะวิทยาศาสตร์ ====================
@@ -204,31 +204,31 @@ export const studentStatsData = {
     // อ้างอิง: dashboard.mju.ac.th/person?dep=20300-20300-20300
     scienceFaculty: {
         name: 'คณะวิทยาศาสตร์',
-        total: 1450,
+        total: 1451,
         byLevel: [
-            { level: 'ปริญญาตรี', count: 1428, color: '#006838', icon: 'BSc' },
+            { level: 'ปริญญาตรี', count: 1429, color: '#006838', icon: 'BSc' },
             { level: 'ปริญญาโท', count: 17, color: '#2E86AB', icon: 'MSc' },
             { level: 'ปริญญาเอก', count: 5, color: '#A23B72', icon: 'PhD' },
             { level: 'ประกาศนียบัตร', count: 0, color: '#C5A028', icon: 'Cert' }
         ],
-        // จำนวนนิสิตแยกตามรหัสปีเข้า — รวม 1,450 (ปรับสัดส่วนจาก dashboard ของจริงล่าสุด)
+        // จำนวนนิสิตแยกตามรหัสปีเข้า — รวม 1,451 (ปรับสัดส่วนจาก dashboard ของจริงล่าสุด)
         byEnrollmentYear: [
             { year: '2563', count: 7 },
             { year: '2564', count: 37 },
             { year: '2565', count: 281 },
             { year: '2566', count: 320 },
             { year: '2567', count: 409 },
-            { year: '2568', count: 396 }
+            { year: '2568', count: 397 }
         ],
-        // สัดส่วนสัญชาติ — สเกลให้รวม 1,450
+        // สัดส่วนสัญชาติ — สเกลให้รวม 1,451
         byNationality: [
-            { nationality: 'ไทย', count: 1428 },
+            { nationality: 'ไทย', count: 1429 },
             { nationality: 'สัญชาติอื่นๆ', count: 22 }
         ],
-        // เพศนักศึกษา — สเกลให้รวม 1,450
+        // เพศนักศึกษา — สเกลให้รวม 1,451
         byGender: {
             male: 566,
-            female: 884,
+            female: 885,
             malePercent: 39.0,
             femalePercent: 61.0,
         },
@@ -238,13 +238,13 @@ export const studentStatsData = {
             { year: '2565', total: 281, bachelor: 274, master: 5, doctoral: 2, channels: { quota: 109, directAdmit: 88, tcas: 70, other: 14 } },
             { year: '2566', total: 320, bachelor: 319, master: 1, doctoral: 0, channels: { quota: 129, directAdmit: 102, tcas: 75, other: 14 } },
             { year: '2567', total: 409, bachelor: 406, master: 3, doctoral: 0, channels: { quota: 162, directAdmit: 127, tcas: 100, other: 20 } },
-            { year: '2568', total: 396, bachelor: 393, master: 2, doctoral: 1, channels: { quota: 159, directAdmit: 122, tcas: 97, other: 18 } },
+            { year: '2568', total: 397, bachelor: 394, master: 2, doctoral: 1, channels: { quota: 159, directAdmit: 122, tcas: 97, other: 18 } },
         ],
-        // อัตราส่วน นศ./อาจารย์ (อ้างอิงนักศึกษาจริง 1,450 / บุคลากรสายวิชาการ 104)
+        // อัตราส่วน นศ./อาจารย์ (อ้างอิงนักศึกษาจริง 1,451 / บุคลากรสายวิชาการ 104)
         studentFacultyRatio: {
-            students: 1450,
+            students: 1451,
             academicStaff: 104,
-            ratio: 13.9, // 1450 / 104
+            ratio: 14.0, // 1451 / 104
             comparison: [
                 { name: 'คณะวิทยาศาสตร์ มจ.', ratio: 14.0, color: '#006838' },
                 { name: 'เกณฑ์ สกอ. (วิทย์)', ratio: 20.0, color: '#C5A028' },
