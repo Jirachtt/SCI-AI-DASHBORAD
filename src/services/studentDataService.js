@@ -10,6 +10,7 @@
 //     updatedAt:  serverTimestamp
 //     updatedBy:  string (uid)        — admin who uploaded
 //     version:    number              — schema version (currently 1)
+//     allowSmallDataset: boolean       — true for intentional demo/test uploads
 //
 // Callers use:
 //   ensureStudentList()    — async, attaches realtime listener; returns live list (or mock)
@@ -107,7 +108,7 @@ function applySnapshot(snap) {
     if (snap.exists()) {
         const data = snap.data();
         const rows = Array.isArray(data.rows) ? data.rows : [];
-        if (isTrustedLiveRows(rows)) {
+        if (isTrustedLiveRows(rows) || data.allowSmallDataset === true) {
             _cache = rows;
             _isLive = true;
             return;
@@ -199,7 +200,8 @@ export async function uploadStudentList(rows, { fileName, uid, who, meta } = {})
         fileName: fileName || 'unknown',
         updatedAt: serverTimestamp(),
         updatedBy: uid || 'unknown',
-        version: 1
+        version: 1,
+        allowSmallDataset: true
     });
     _cache = rows;
     _isLive = true;
