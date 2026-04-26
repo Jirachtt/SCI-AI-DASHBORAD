@@ -25,6 +25,19 @@ import { graduationHistory } from '../data/graduationData';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
+const AI_CHART_TOOLTIP_STYLE = {
+    backgroundColor: 'rgba(248, 247, 255, 0.98)',
+    titleColor: '#11135f',
+    bodyColor: '#343766',
+    borderColor: 'rgba(91, 95, 239, 0.28)',
+    borderWidth: 1,
+    cornerRadius: 12,
+    padding: 12,
+    caretPadding: 8,
+    displayColors: true,
+    boxPadding: 5,
+};
+
 // ==================== Linear Regression Forecasting ====================
 function linearRegression(dataPoints) {
     const n = dataPoints.length;
@@ -295,17 +308,9 @@ function generateForecastResponse(parsed) {
                     labels: { color: '#9ca3af', padding: 14, font: { size: 11, weight: '500' }, usePointStyle: true, pointStyleWidth: 10 }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(15, 20, 35, 0.92)',
-                    titleColor: '#fff',
-                    bodyColor: '#e5e7eb',
-                    borderColor: 'rgba(0, 230, 118, 0.2)',
-                    borderWidth: 1,
-                    cornerRadius: 10,
-                    padding: 12,
+                    ...AI_CHART_TOOLTIP_STYLE,
                     titleFont: { weight: '700', size: 12 },
                     bodyFont: { size: 11 },
-                    displayColors: true,
-                    boxPadding: 4,
                     callbacks: {
                         label: (ctx) => {
                             const dsIdx = Math.floor(ctx.datasetIndex / 2);
@@ -764,17 +769,9 @@ function parseAIResponse(text) {
                             labels: { color: '#9ca3af', padding: 14, font: { size: 11, weight: '500' }, usePointStyle: true, pointStyleWidth: 10 }
                         },
                         tooltip: {
-                            backgroundColor: 'rgba(15, 20, 35, 0.92)',
-                            titleColor: '#fff',
-                            bodyColor: '#e5e7eb',
-                            borderColor: 'rgba(0, 230, 118, 0.2)',
-                            borderWidth: 1,
-                            cornerRadius: 10,
-                            padding: 12,
+                            ...AI_CHART_TOOLTIP_STYLE,
                             titleFont: { weight: '700', size: 12 },
                             bodyFont: { size: 11 },
-                            displayColors: true,
-                            boxPadding: 4,
                         },
                         zoom: {
                             pan: { enabled: true, mode: 'xy', modifierKey: null },
@@ -1238,6 +1235,7 @@ function buildStudentGpaScatterChart(originalChart) {
                 ...(chart.options?.plugins || {}),
                 tooltip: {
                     ...(chart.options?.plugins?.tooltip || {}),
+                    ...AI_CHART_TOOLTIP_STYLE,
                     callbacks: {
                         label: ctx => {
                             const raw = ctx.raw || {};
@@ -1303,6 +1301,7 @@ function buildGpaRateScatterChart(originalChart) {
                 ...(chart.options?.plugins || {}),
                 tooltip: {
                     ...(chart.options?.plugins?.tooltip || {}),
+                    ...AI_CHART_TOOLTIP_STYLE,
                     callbacks: {
                         label: ctx => {
                             const raw = ctx.raw || {};
@@ -1616,7 +1615,7 @@ function ChatMessage({ msg, onExpand }) {
                                             key={opt.id}
                                             className={`ai-page-chart-btn ${chartType === opt.id ? 'active' : ''}`}
                                             onClick={() => setChartType(opt.id)}
-                                            title={opt.label}
+                                            aria-label={opt.label}
                                         >
                                             <Icon size={13} /> {opt.label}
                                         </button>
@@ -2224,7 +2223,7 @@ export default function AIChatPage() {
                         <button
                             className="ai-chat-page-history-btn"
                             onClick={openHistory}
-                            title="ประวัติการสนทนา"
+                            aria-label="ประวัติการสนทนา"
                         >
                             <History size={15} /> ประวัติ
                         </button>
@@ -2289,7 +2288,8 @@ export default function AIChatPage() {
                                                 <button
                                                     className="chat-history-item-del"
                                                     onClick={(e) => handleDeleteSession(s.id, e)}
-                                                    title="ลบ"
+                                                    aria-label="ลบ"
+                                                    data-tooltip="ลบ"
                                                 >
                                                     <Trash2 size={14} />
                                                 </button>
@@ -2357,7 +2357,8 @@ export default function AIChatPage() {
                                 className={`ai-chat-page-mic ${isListening ? 'listening' : ''}`}
                                 onClick={toggleListening}
                                 disabled={typing}
-                                title="สั่งงานด้วยเสียง (ภาษาไทย)"
+                                aria-label="สั่งงานด้วยเสียง (ภาษาไทย)"
+                                data-tooltip="สั่งงานด้วยเสียง"
                             >
                                 {isListening ? <Mic size={20} /> : <MicOff size={20} />}
                             </button>
@@ -2365,7 +2366,8 @@ export default function AIChatPage() {
                                 className="ai-chat-page-mic"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={typing}
-                                title="อัปโหลดไฟล์ CSV/Excel เพื่อวิเคราะห์"
+                                aria-label="อัปโหลดไฟล์ CSV/Excel เพื่อวิเคราะห์"
+                                data-tooltip="อัปโหลดไฟล์"
                                 style={{ color: '#C5A028' }}
                             >
                                 <Paperclip size={20} />
@@ -2515,18 +2517,12 @@ function ExpandedChartModal({ chart, onClose }) {
                 }
             },
             tooltip: {
-                backgroundColor: 'rgba(15, 20, 35, 0.95)',
-                titleColor: '#fff',
-                bodyColor: '#e5e7eb',
-                borderColor: 'rgba(0, 230, 118, 0.25)',
-                borderWidth: 1,
-                cornerRadius: 12,
+                ...(expandedChart.options?.plugins?.tooltip || {}),
+                ...AI_CHART_TOOLTIP_STYLE,
                 padding: 14,
                 titleFont: { weight: '700', size: 13 },
                 bodyFont: { size: 12 },
-                displayColors: true,
                 boxPadding: 6,
-                ...(expandedChart.options?.plugins?.tooltip || {}),
             },
         },
     } : {};
@@ -2540,11 +2536,11 @@ function ExpandedChartModal({ chart, onClose }) {
                         <button
                             className="ai-page-chart-modal-reset"
                             onClick={handleResetZoom}
-                            title="รีเซ็ตการซูม"
+                            aria-label="รีเซ็ตการซูม"
                         >
                             <RotateCw size={15} /> รีเซ็ตซูม
                         </button>
-                        <button className="ai-page-chart-modal-close" onClick={onClose}>
+                        <button className="ai-page-chart-modal-close" onClick={onClose} aria-label="ปิดกราฟขยาย" data-tooltip="ปิด">
                             <X size={22} />
                         </button>
                     </div>
@@ -2560,7 +2556,7 @@ function ExpandedChartModal({ chart, onClose }) {
                                     key={opt.id}
                                     className={`ai-page-chart-btn ${chartType === opt.id ? 'active' : ''}`}
                                     onClick={() => handleChartTypeChange(opt.id)}
-                                    title={opt.label}
+                                    aria-label={opt.label}
                                 >
                                     <Icon size={14} /> {opt.label}
                                 </button>

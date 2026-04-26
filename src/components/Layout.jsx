@@ -2,14 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AIChat from './AIChat';
-import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Menu, Sun, Moon } from 'lucide-react';
-import { dashboardSummary } from '../data/mockData';
 import { ensureStudentList } from '../services/studentDataService';
 
 export default function Layout() {
-    const { user } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
@@ -25,13 +22,18 @@ export default function Layout() {
     // (set to 'enter' on navigation, next frame animate to 'enter-active').
     useEffect(() => {
         if (prevPath.current !== location.pathname) {
-            setIsTransitioning(true);
             prevPath.current = location.pathname;
-            // One frame to apply the initial state, then release to trigger the transition.
-            const raf = requestAnimationFrame(() => {
-                setIsTransitioning(false);
+            let exitRaf = null;
+            const enterRaf = requestAnimationFrame(() => {
+                setIsTransitioning(true);
+                exitRaf = requestAnimationFrame(() => {
+                    setIsTransitioning(false);
+                });
             });
-            return () => cancelAnimationFrame(raf);
+            return () => {
+                cancelAnimationFrame(enterRaf);
+                if (exitRaf) cancelAnimationFrame(exitRaf);
+            };
         }
     }, [location.pathname]);
 
@@ -54,7 +56,8 @@ export default function Layout() {
                         <button
                             className={`theme-toggle ${theme}`}
                             onClick={toggleTheme}
-                            title="เปลี่ยนธีม"
+                            aria-label="เปลี่ยนธีม"
+                            data-tooltip="เปลี่ยนธีม"
                         >
                             <span className="theme-toggle-track">
                                 <Sun size={14} className="theme-icon sun" />

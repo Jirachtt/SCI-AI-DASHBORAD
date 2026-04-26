@@ -8,12 +8,11 @@ export const themeAdaptorPlugin = {
     beforeUpdate(chart) {
         const isLight = document.documentElement.getAttribute('data-theme') === 'light';
         const textColor = isLight ? '#5A6577' : '#9ca3af';
-        const textColorStrong = isLight ? '#374151' : '#d1d5db';
         const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)';
-        const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.96)' : 'rgba(15, 20, 35, 0.95)';
-        const tooltipText = isLight ? '#1A1D26' : '#f1f3f8';
-        const tooltipBody = isLight ? '#4B5563' : '#e5e7eb';
-        const tooltipBorder = isLight ? 'rgba(0, 104, 56, 0.12)' : 'rgba(0, 230, 118, 0.15)';
+        const tooltipBg = isLight ? 'rgba(248, 247, 255, 0.98)' : 'rgba(45, 39, 124, 0.96)';
+        const tooltipText = isLight ? '#11135f' : '#ffffff';
+        const tooltipBody = isLight ? '#343766' : '#e4e0ff';
+        const tooltipBorder = isLight ? 'rgba(91, 95, 239, 0.28)' : 'rgba(167, 139, 250, 0.42)';
 
         // Adapt scales
         const scales = chart.options.scales || {};
@@ -56,10 +55,10 @@ export const themeAdaptorPlugin = {
             if (!tooltip.bodyFont) tooltip.bodyFont = {};
             if (tooltip.displayColors == null) tooltip.displayColors = true;
             if (tooltip.boxPadding == null) tooltip.boxPadding = 4;
-            // Light mode shadow
+            tooltip.caretPadding = tooltip.caretPadding ?? 8;
             if (isLight) {
-                tooltip.backgroundColor = 'rgba(255, 255, 255, 0.97)';
-                tooltip.borderColor = 'rgba(0, 104, 56, 0.15)';
+                tooltip.backgroundColor = tooltipBg;
+                tooltip.borderColor = tooltipBorder;
             }
         }
 

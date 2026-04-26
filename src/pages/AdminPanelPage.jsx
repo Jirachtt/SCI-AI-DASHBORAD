@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { collection, getDocs, orderBy, query, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import {
     Shield, Users, Clock, Briefcase, Building, Check, X, Search, Filter,
     RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
@@ -189,7 +189,8 @@ export default function AdminPanelPage() {
                     className="admin-refresh-btn"
                     onClick={loadUsers}
                     disabled={loading}
-                    title="โหลดข้อมูลใหม่"
+                    aria-label="โหลดข้อมูลใหม่"
+                    data-tooltip="โหลดข้อมูลใหม่"
                 >
                     <RefreshCw size={16} className={loading ? 'spin-animation' : ''} />
                     รีเฟรช

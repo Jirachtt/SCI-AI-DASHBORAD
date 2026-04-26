@@ -360,7 +360,7 @@ function parseAIResponse(text) {
                     match = jsonMatch;
                     regex = jsonRegex;
                 }
-            } catch (_) { /* not valid chart JSON */ }
+            } catch { /* not valid chart JSON */ }
         }
     }
 
@@ -380,7 +380,7 @@ function parseAIResponse(text) {
                     match = [jsonStr, jsonStr];
                     regex = new RegExp(jsonStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
                 }
-            } catch (_) { /* not valid */ }
+            } catch { /* not valid */ }
         }
     }
 
@@ -838,9 +838,8 @@ export default function AIChat() {
             </button>
 
             {isOpen && (() => {
-                const panelW = 400, panelH = 520, fabSize = 60, gap = 10;
+                const panelH = 520, fabSize = 60, gap = 10;
                 const fabX = window.innerWidth - fabPos.right - fabSize;
-                const fabY = window.innerHeight - fabPos.bottom - fabSize;
                 const onRightHalf = (fabX + fabSize / 2) > window.innerWidth / 2;
 
                 const panelStyle = { position: 'fixed', zIndex: 999 };
@@ -907,7 +906,8 @@ export default function AIChat() {
                                     padding: '8px', color: isListening ? '#e91e63' : 'var(--text-muted)',
                                     animation: isListening ? 'pulse 1.5s infinite' : 'none'
                                 }}
-                                title="สั่งงานด้วยเสียง"
+                                aria-label="สั่งงานด้วยเสียง"
+                                data-tooltip="สั่งงานด้วยเสียง"
                             >
                                 {isListening ? <Mic size={20} /> : <MicOff size={20} />}
                             </button>
@@ -928,10 +928,6 @@ export default function AIChat() {
             })()}
 
             {expandedChart && (() => {
-                const resetZoom = () => {
-                    const chartInstance = document.querySelector('.ai-chat-expanded-canvas canvas')?.__chartjs;
-                    // Use ref approach - the resetZoom is called on the chartRef directly
-                };
                 return (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setExpandedChart(null)}>
                     <div style={{ backgroundColor: 'var(--bg-card)', width: '100%', maxWidth: '900px', height: '80vh', borderRadius: '16px', padding: '0', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 230, 118, 0.04)', border: '1px solid rgba(0, 230, 118, 0.08)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>

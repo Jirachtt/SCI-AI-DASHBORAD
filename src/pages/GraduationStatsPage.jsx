@@ -38,8 +38,7 @@ export default function GraduationStatsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterMajor, setFilterMajor] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
-
-    if (!canAccess(user?.role, 'graduation_stats')) return <AccessDenied />;
+    const hasGraduationAccess = canAccess(user?.role, 'graduation_stats');
 
     const stats = currentGraduationStats;
 
@@ -52,6 +51,8 @@ export default function GraduationStatsPage() {
         const matchStatus = filterStatus === 'all' || s.graduationStatus === filterStatus;
         return matchSearch && matchMajor && matchStatus;
     }), [searchTerm, filterMajor, filterStatus]);
+
+    if (!hasGraduationAccess) return <AccessDenied />;
 
     // Summary cards data
     const summaryCards = [
@@ -136,7 +137,6 @@ export default function GraduationStatsPage() {
     };
 
     // By major bar chart
-    const majorColors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
     const majorChartData = {
         labels: graduationByMajor.map(m => m.major),
         datasets: [
@@ -319,8 +319,8 @@ export default function GraduationStatsPage() {
                             </div>
                             <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
                                 <div style={{ fontSize: '1.35rem', fontWeight: 700, color: card.color, lineHeight: 1.1 }}>{card.value}</div>
-                                <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: 4, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={card.label}>{card.label}</div>
-                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={card.sub}>{card.sub}</div>
+                                <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: 4, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} data-tooltip={card.label}>{card.label}</div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} data-tooltip={card.sub}>{card.sub}</div>
                             </div>
                         </div>
                     );

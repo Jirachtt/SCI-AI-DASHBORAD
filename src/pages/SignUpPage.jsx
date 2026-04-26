@@ -197,7 +197,8 @@ export default function SignUpPage() {
             <button
                 className={`theme-toggle ${theme}`}
                 onClick={toggleTheme}
-                title="เปลี่ยนธีม"
+                aria-label="เปลี่ยนธีม"
+                data-tooltip="เปลี่ยนธีม"
                 style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}
             >
                 <span className="theme-toggle-track">

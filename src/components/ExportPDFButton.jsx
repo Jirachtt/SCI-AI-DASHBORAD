@@ -46,7 +46,8 @@ export default function ExportPDFButton({
             onClick={handleClick}
             className={variant === 'ghost' ? 'admin-refresh-btn no-print' : 'filter-apply-btn no-print'}
             disabled={printing}
-            title="บันทึกหน้านี้เป็น PDF (เลือกปลายทาง Save as PDF ในกล่องพิมพ์)"
+            aria-label="บันทึกหน้านี้เป็น PDF"
+            data-tooltip="บันทึก PDF"
             style={{ gap: 6 }}
         >
             <Icon size={14} /> {printing ? 'กำลังเตรียม...' : label}

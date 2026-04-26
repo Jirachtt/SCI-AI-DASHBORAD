@@ -179,12 +179,12 @@ export default function Sidebar({ isOpen, onClose }) {
                             {user?.roleLabel}
                         </span>
                         {user?.isPending && (
-                            <span className="sidebar-pending-badge" title="คำขอของคุณรอผู้ดูแลระบบอนุมัติ">
+                            <span className="sidebar-pending-badge" aria-label="คำขอของคุณรอผู้ดูแลระบบอนุมัติ" data-tooltip="รออนุมัติ">
                                 <Clock size={10} /> รอการอนุมัติ
                             </span>
                         )}
                     </div>
-                    <button className="logout-btn" onClick={handleLogout} title="ออกจากระบบ">
+                    <button className="logout-btn" onClick={handleLogout} aria-label="ออกจากระบบ" data-tooltip="ออกจากระบบ">
                         <LogOut size={18} />
                     </button>
                 </div>

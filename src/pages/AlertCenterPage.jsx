@@ -89,7 +89,8 @@ export default function AlertCenterPage() {
                     <button
                         className="admin-refresh-btn"
                         onClick={() => setTick(t => t + 1)}
-                        title="คำนวณใหม่"
+                        aria-label="คำนวณใหม่"
+                        data-tooltip="คำนวณใหม่"
                     >
                         <RefreshCw size={14} /> รีเฟรช
                     </button>

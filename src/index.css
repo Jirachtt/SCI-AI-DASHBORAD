@@ -79,6 +79,47 @@ body, .sidebar, .main-header, .stat-card, .chart-card,
   transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* Custom tooltip so hover hints stay in the SCI-AI lavender tone instead of native black. */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 9px);
+  z-index: 1200;
+  max-width: min(260px, 70vw);
+  padding: 7px 10px;
+  border: 1px solid rgba(167, 139, 250, 0.42);
+  border-radius: 9px;
+  background: rgba(45, 39, 124, 0.96);
+  color: #ffffff;
+  box-shadow: 0 12px 28px -14px rgba(71, 57, 190, 0.55);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+[data-theme="light"] [data-tooltip]::after {
+  background: rgba(248, 247, 255, 0.98);
+  border-color: rgba(91, 95, 239, 0.28);
+  color: #11135f;
+  box-shadow: 0 14px 30px -18px rgba(91, 95, 239, 0.55);
+}
+
 /* Light theme — component overrides */
 [data-theme="light"] .app-layout {
   background: var(--bg-primary);
