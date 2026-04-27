@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { auth, db, googleProvider } from '../firebase';
+import { auth, db, googleProvider, isFirebaseConfigured } from '../firebase';
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
@@ -15,6 +15,12 @@ import { isPendingRole } from '../utils/accessControl';
 import { buildRoleValidityPatch, getRoleValidity } from '../utils/roleValidity';
 
 const AuthContext = createContext(null);
+
+const firebaseUnavailable = () => ({
+    success: false,
+    code: 'firebase/not-configured',
+    error: 'ระบบ Firebase ยังไม่ได้ตั้งค่า Environment Variables บน Vercel กรุณาตั้งค่า VITE_FIREBASE_* ก่อนใช้ล็อกอิน/สมัครสมาชิก'
+});
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
@@ -47,6 +53,20 @@ export function AuthProvider({ children }) {
         };
 
         if (checkBypass()) return;
+
+        if (!isFirebaseConfigured || !auth) {
+            console.warn('[Auth] Firebase is not configured; rendering app without Firebase auth.');
+            const fallbackId = setTimeout(() => {
+                if (!mounted) return;
+                setUser(null);
+                setLoading(false);
+            }, 0);
+
+            return () => {
+                mounted = false;
+                clearTimeout(fallbackId);
+            };
+        }
 
         // Handle Google redirect result — we log errors but don't create
         // the user doc here; that's onAuthStateChanged's job (single source
@@ -174,6 +194,7 @@ export function AuthProvider({ children }) {
     };
 
     const loginWithEmail = async (email, password) => {
+        if (!auth) return firebaseUnavailable();
         try {
             await signInWithEmailAndPassword(auth, email, password);
             return { success: true };
@@ -191,6 +212,7 @@ export function AuthProvider({ children }) {
     };
 
     const loginWithGoogle = async () => {
+        if (!auth || !googleProvider) return firebaseUnavailable();
         try {
             // Popup first — redirect has cookie-policy issues on modern
             // browsers. The popup resolution triggers onAuthStateChanged,
@@ -240,6 +262,7 @@ export function AuthProvider({ children }) {
     // On network/policy errors we return exists=false so signup can still
     // proceed and Firebase will surface the real error on createUser.
     const checkEmailExists = async (email) => {
+        if (!auth) return { exists: false, methods: [] };
         try {
             const methods = await fetchSignInMethodsForEmail(auth, email);
             return { exists: methods.length > 0, methods };
@@ -250,6 +273,7 @@ export function AuthProvider({ children }) {
     };
 
     const signup = async (email, password, userData) => {
+        if (!auth || !db) return firebaseUnavailable();
         try {
             const result = await createUserWithEmailAndPassword(auth, email, password);
             const user = result.user;
@@ -295,7 +319,7 @@ export function AuthProvider({ children }) {
     const logout = async () => {
         try {
             localStorage.removeItem('admin_bypass');
-            await signOut(auth);
+            if (auth) await signOut(auth);
             setUser(null);
             return { success: true };
         } catch (error) {
@@ -304,6 +328,7 @@ export function AuthProvider({ children }) {
     };
 
     const updateUserDoc = async (uid, patch) => {
+        if (!db) return firebaseUnavailable();
         try {
             await updateDoc(doc(db, 'users', uid), patch);
             return { success: true };

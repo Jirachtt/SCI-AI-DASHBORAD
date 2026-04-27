@@ -14,23 +14,32 @@ const firebaseConfig = {
     measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId || !firebaseConfig.appId) {
+export const isFirebaseConfigured = Boolean(
+    firebaseConfig.apiKey &&
+    firebaseConfig.authDomain &&
+    firebaseConfig.projectId &&
+    firebaseConfig.appId
+);
+
+if (!isFirebaseConfigured) {
     console.warn('[firebase] Missing Vite Firebase env vars. Check .env / Vercel Environment Variables.');
 }
 
-// เริ่มต้นระบบ Firebase
-const app = initializeApp(firebaseConfig);
+// เริ่มต้นระบบ Firebase เฉพาะเมื่อ config พร้อม เพื่อไม่ให้ production ขาวทั้งหน้า
+const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
 
 // ตัวแปรสำหรับใช้งานในโปรเจกต์
 // const analytics = getAnalytics(app);
-export const auth = getAuth(app);                // ระบบล็อคอิน
+export const auth = app ? getAuth(app) : null;                // ระบบล็อคอิน
 // Persist auth state in localStorage so refreshes / new tabs reuse the
 // session without bouncing the user back to the login screen.
-setPersistence(auth, browserLocalPersistence).catch((err) => {
-    console.warn('[firebase] setPersistence failed:', err?.message || err);
-});
-export const googleProvider = new GoogleAuthProvider(); // ล็อคอินด้วย Google
-googleProvider.setCustomParameters({ prompt: 'select_account' });
-export const db = getFirestore(app);             // ฐานข้อมูล
+if (auth) {
+    setPersistence(auth, browserLocalPersistence).catch((err) => {
+        console.warn('[firebase] setPersistence failed:', err?.message || err);
+    });
+}
+export const googleProvider = app ? new GoogleAuthProvider() : null; // ล็อคอินด้วย Google
+if (googleProvider) googleProvider.setCustomParameters({ prompt: 'select_account' });
+export const db = app ? getFirestore(app) : null;             // ฐานข้อมูล
 
 export default app;
