@@ -5,17 +5,17 @@ import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { studentLifeData } from '../data/mockData';
 import { ArrowLeft, Users } from 'lucide-react';
-import { Doughnut, Line } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
-    Title, Tooltip, Legend, ArcElement, Filler
+    Title, Tooltip, Legend, Filler
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, themeAdaptorPlugin);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, themeAdaptorPlugin);
 
 export default function StudentLifePage() {
     const { user } = useAuth();
@@ -27,27 +27,22 @@ export default function StudentLifePage() {
 
     const { activityHours, library, behaviorScore } = studentLifeData;
     const pct = Math.round((activityHours.completed / activityHours.target) * 100);
-
-    const gaugeData = {
-        labels: ['สำเร็จแล้ว', 'คงเหลือ'],
-        datasets: [{
-            data: [activityHours.completed, activityHours.target - activityHours.completed],
-            backgroundColor: ['#22c55e', 'var(--border-color)'],
-            borderWidth: 0,
-            cutout: '75%',
-        }]
-    };
-
-    const gaugeOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed} ชั่วโมง` }
-            }
-        }
-    };
+    const remainingHours = Math.max(activityHours.target - activityHours.completed, 0);
+    const overallPct = Math.min(100, pct);
+    const completedCategoryTotal = activityHours.categories.reduce((sum, cat) => sum + cat.hours, 0);
+    const activityPalette = [
+        { color: '#2563EB', soft: 'rgba(37, 99, 235, 0.14)' },
+        { color: '#D97706', soft: 'rgba(217, 119, 6, 0.16)' },
+        { color: '#7C3AED', soft: 'rgba(124, 58, 237, 0.14)' },
+        { color: '#DB2777', soft: 'rgba(219, 39, 119, 0.14)' },
+    ];
+    const activityBreakdown = activityHours.categories.map((cat, index) => ({
+        ...cat,
+        color: activityPalette[index % activityPalette.length].color,
+        soft: activityPalette[index % activityPalette.length].soft,
+        targetPercent: Math.round((cat.hours / activityHours.target) * 100),
+        completedShare: completedCategoryTotal > 0 ? Math.round((cat.hours / completedCategoryTotal) * 100) : 0,
+    }));
 
     const behaviorLineData = {
         labels: behaviorScore.history.map(h => h.semester),
@@ -92,22 +87,24 @@ export default function StudentLifePage() {
         { key: 'status', label: 'สถานะ' },
     ];
 
-    const gaugeDrilldownOptions = withChartDrilldown(gaugeOptions, gaugeData, setDrillDetail, (point) => ({
-        title: `รายละเอียดชั่วโมงกิจกรรม: ${point.label}`,
-        subtitle: `${activityHours.completed}/${activityHours.target} ชั่วโมง (${pct}%)`,
-        valueLabel: point.label,
-        value: point.value,
+    const openActivityDetail = (selectedCategory = null) => setDrillDetail({
+        title: selectedCategory ? `รายละเอียดกิจกรรม: ${selectedCategory.name}` : 'รายละเอียดชั่วโมงกิจกรรม',
+        subtitle: `${activityHours.completed}/${activityHours.target} ชั่วโมง (${overallPct}%)`,
+        valueLabel: selectedCategory ? selectedCategory.name : 'ทำแล้วทั้งหมด',
+        value: selectedCategory ? selectedCategory.hours : activityHours.completed,
         unit: 'ชั่วโมง',
-        accentColor: point.color,
-        summary: `ทำแล้ว ${activityHours.completed.toLocaleString('th-TH')} ชั่วโมง เหลือ ${Math.max(activityHours.target - activityHours.completed, 0).toLocaleString('th-TH')} ชั่วโมง จากเป้าหมาย ${activityHours.target.toLocaleString('th-TH')} ชั่วโมง`,
-        rows: activityHours.categories.map(cat => ({
+        accentColor: selectedCategory?.color || '#16A34A',
+        summary: selectedCategory
+            ? `${selectedCategory.name} ${selectedCategory.hours.toLocaleString('th-TH')} ชั่วโมง คิดเป็น ${selectedCategory.completedShare}% ของชั่วโมงที่ทำแล้ว`
+            : `ทำแล้ว ${activityHours.completed.toLocaleString('th-TH')} ชั่วโมง เหลือ ${remainingHours.toLocaleString('th-TH')} ชั่วโมง จากเป้าหมาย ${activityHours.target.toLocaleString('th-TH')} ชั่วโมง`,
+        rows: activityBreakdown.map(cat => ({
             name: cat.name,
             hours: cat.hours,
-            percent: `${((cat.hours / activityHours.target) * 100).toFixed(1)}%`,
+            percent: `${cat.targetPercent}% ของเป้าหมายรวม`,
         })),
         columns: activityColumns,
-        note: 'รายละเอียดนี้แยกตามหมวดกิจกรรมที่บันทึกไว้ในระบบ',
-    }));
+        note: 'แยกตามหมวดกิจกรรมที่บันทึกไว้ในระบบ',
+    });
 
     const behaviorDrilldownOptions = withChartDrilldown(behaviorLineOptions, behaviorLineData, setDrillDetail, (point) => {
         const row = behaviorScore.history[point.index];
@@ -155,39 +152,123 @@ export default function StudentLifePage() {
                     <div className="chart-card-header">
                         <div>
                             <div className="chart-card-title">ชั่วโมงกิจกรรม</div>
-                            <div className="chart-card-subtitle">{activityHours.completed}/{activityHours.target} ชั่วโมง ({pct}%)</div>
+                            <div className="chart-card-subtitle">เป้าหมายรวม {activityHours.target} ชั่วโมง แยกความคืบหน้าและหมวดกิจกรรม</div>
                         </div>
                     </div>
-                    <div className="chart-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                        <div style={{ width: '220px', height: '220px', position: 'relative' }}>
-                            <Doughnut data={gaugeData} options={gaugeDrilldownOptions} />
-                            <div style={{
-                                position: 'absolute', inset: 0,
-                                display: 'flex', flexDirection: 'column',
-                                alignItems: 'center', justifyContent: 'center',
-                                pointerEvents: 'none'
-                            }}>
-                                <span style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--mju-green-light)' }}>{pct}%</span>
-                                <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{activityHours.completed}/{activityHours.target} ชม.</span>
-                            </div>
-                        </div>
-                    </div>
-                    {/* Activity breakdown */}
-                    <div style={{ marginTop: 20 }}>
-                        {activityHours.categories.map((cat, i) => (
-                            <div key={i} className="progress-bar-container">
-                                <div className="progress-bar-label">
-                                    <span style={{ color: 'var(--text-secondary)' }}>{cat.name}</span>
-                                    <span style={{ fontWeight: 600 }}>{cat.hours} ชม.</span>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: 12, marginBottom: 18 }}>
+                        {[
+                            { label: 'ทำแล้ว', value: activityHours.completed, unit: 'ชม.', color: '#16A34A' },
+                            { label: 'เป้าหมาย', value: activityHours.target, unit: 'ชม.', color: 'var(--text-primary)' },
+                            { label: remainingHours > 0 ? 'ยังขาด' : 'ครบเกณฑ์', value: remainingHours, unit: 'ชม.', color: remainingHours > 0 ? '#D97706' : '#16A34A' },
+                        ].map((item) => (
+                            <button
+                                key={item.label}
+                                type="button"
+                                onClick={() => openActivityDetail()}
+                                style={{
+                                    textAlign: 'left',
+                                    padding: '14px 16px',
+                                    borderRadius: 10,
+                                    border: '1px solid var(--border-color)',
+                                    background: 'var(--bg-secondary)',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 6 }}>{item.label}</div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, color: item.color }}>
+                                    <span style={{ fontSize: '1.55rem', fontWeight: 800, lineHeight: 1 }}>{item.value}</span>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{item.unit}</span>
                                 </div>
-                                <div className="progress-bar-track">
-                                    <div className="progress-bar-fill" style={{
-                                        width: `${(cat.hours / activityHours.target) * 100}%`,
-                                        background: ['#006838', '#2E86AB', '#C5A028', '#A23B72'][i]
-                                    }} />
-                                </div>
-                            </div>
+                            </button>
                         ))}
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => openActivityDetail()}
+                        style={{
+                            width: '100%',
+                            padding: 0,
+                            border: 0,
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8, fontSize: '0.86rem' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>ความคืบหน้ารวม</span>
+                            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{overallPct}%</span>
+                        </div>
+                        <div style={{
+                            height: 18,
+                            borderRadius: 999,
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border-color)',
+                            overflow: 'hidden',
+                            display: 'flex',
+                        }}>
+                            <div style={{
+                                width: `${overallPct}%`,
+                                background: '#16A34A',
+                                borderRadius: 999,
+                                transition: 'width 0.8s ease',
+                            }} />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                            <span>ทำแล้ว {activityHours.completed} ชม.</span>
+                            <span>ยังขาด {remainingHours} ชม.</span>
+                        </div>
+                    </button>
+
+                    <div style={{ marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>แยกตามประเภทกิจกรรม</span>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>รวม {completedCategoryTotal} ชม.</span>
+                        </div>
+                        <div style={{ display: 'grid', gap: 12 }}>
+                            {activityBreakdown.map((cat) => (
+                                <button
+                                    key={cat.name}
+                                    type="button"
+                                    onClick={() => openActivityDetail(cat)}
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'minmax(96px, 145px) 1fr minmax(92px, auto)',
+                                        alignItems: 'center',
+                                        gap: 12,
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: 10,
+                                        background: cat.soft,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.86rem', textAlign: 'left' }}>{cat.name}</span>
+                                    <span style={{
+                                        height: 10,
+                                        borderRadius: 999,
+                                        background: 'rgba(148, 163, 184, 0.18)',
+                                        overflow: 'hidden',
+                                    }}>
+                                        <span style={{
+                                            display: 'block',
+                                            width: `${cat.targetPercent}%`,
+                                            height: '100%',
+                                            borderRadius: 999,
+                                            background: cat.color,
+                                        }} />
+                                    </span>
+                                    <span style={{ textAlign: 'right', color: cat.color, fontWeight: 800, fontSize: '0.9rem' }}>
+                                        {cat.hours} ชม. ({cat.targetPercent}%)
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                        <div style={{ marginTop: 10, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            เปอร์เซ็นต์ของแต่ละแถบเทียบกับเป้าหมายรวม {activityHours.target} ชั่วโมง
+                        </div>
                     </div>
                 </div>
 
