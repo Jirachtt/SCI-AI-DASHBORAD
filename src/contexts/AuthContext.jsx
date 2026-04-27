@@ -222,36 +222,48 @@ export function AuthProvider({ children }) {
             await signInWithPopup(auth, googleProvider);
             return { success: true };
         } catch (error) {
-            console.error('Google login error:', error.code, error.message);
+            const code = error?.code || 'auth/google-login-failed';
+            console.error('Google login error:', code);
 
-            if (error.code === 'auth/unauthorized-domain') {
+            if (code === 'auth/unauthorized-domain') {
                 return {
                     success: false,
+                    code,
                     error: 'Domain นี้ยังไม่ได้เพิ่มใน Firebase Console → Authentication → Settings → Authorized domains'
                 };
             }
 
             // Popup blocked or otherwise unusable — fall back to redirect.
-            if (error.code === 'auth/popup-blocked' ||
-                error.code === 'auth/operation-not-supported-in-this-environment') {
+            if (code === 'auth/popup-blocked' ||
+                code === 'auth/operation-not-supported-in-this-environment') {
                 try {
                     await signInWithRedirect(auth, googleProvider);
                     return { success: true };
                 } catch (redirectError) {
-                    return { success: false, error: redirectError.message };
+                    const redirectCode = redirectError?.code || 'auth/google-redirect-failed';
+                    console.error('Google redirect error:', redirectCode);
+                    return {
+                        success: false,
+                        code: redirectCode,
+                        error: 'Google Login ล้มเหลว กรุณาตรวจสอบ Firebase Authorized domains แล้วลองใหม่'
+                    };
                 }
             }
 
-            if (error.code === 'auth/popup-closed-by-user' ||
-                error.code === 'auth/cancelled-popup-request') {
-                return { success: false, error: 'คุณปิดหน้าต่าง Google Login กรุณาลองใหม่' };
+            if (code === 'auth/popup-closed-by-user' ||
+                code === 'auth/cancelled-popup-request') {
+                return { success: false, code, error: 'คุณปิดหน้าต่าง Google Login กรุณาลองใหม่' };
             }
 
-            if (error.code === 'auth/network-request-failed') {
-                return { success: false, error: 'ไม่สามารถเชื่อมต่อเครือข่ายได้ กรุณาลองใหม่' };
+            if (code === 'auth/network-request-failed') {
+                return { success: false, code, error: 'ไม่สามารถเชื่อมต่อเครือข่ายได้ กรุณาลองใหม่' };
             }
 
-            return { success: false, error: error.message };
+            return {
+                success: false,
+                code,
+                error: 'Google Login ล้มเหลว กรุณาตรวจสอบ Firebase Authorized domains แล้วลองใหม่'
+            };
         }
     };
 
