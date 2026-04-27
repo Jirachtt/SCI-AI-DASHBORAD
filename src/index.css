@@ -5512,11 +5512,12 @@ select option:checked {
   position: fixed;
   inset: 0;
   z-index: 2200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 24px;
-  background: rgba(4, 10, 18, 0.52);
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: rgba(4, 10, 18, 0.62);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   animation: chart-drilldown-overlay-in 180ms ease-out;
@@ -5524,15 +5525,17 @@ select option:checked {
 
 .chart-drilldown-modal {
   width: min(980px, 100%);
-  max-height: min(82vh, 760px);
+  max-height: min(calc(100dvh - 48px), 760px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: color-mix(in srgb, var(--bg-card) 94%, transparent);
-  border: 1px solid color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 28%, var(--border-color));
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 34%, var(--border-color));
   border-radius: 18px;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.04);
   animation: chart-drilldown-pop 240ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  outline: none;
 }
 
 .chart-drilldown-header {
@@ -5571,8 +5574,9 @@ select option:checked {
 
 .chart-drilldown-title-wrap p {
   margin: 3px 0 0;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 0.86rem;
+  font-weight: 500;
 }
 
 .chart-drilldown-close {
@@ -5606,7 +5610,7 @@ select option:checked {
 .chart-drilldown-summary p,
 .chart-drilldown-note {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 0.9rem;
   line-height: 1.55;
 }
@@ -5623,15 +5627,16 @@ select option:checked {
 .chart-drilldown-value-card span,
 .chart-drilldown-mini-stat span {
   display: block;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .chart-drilldown-value-card strong,
 .chart-drilldown-mini-stat strong {
   display: block;
   margin-top: 3px;
-  color: var(--chart-drilldown-accent, #00a651);
+  color: var(--text-primary);
   font-size: 1.15rem;
   line-height: 1.2;
 }
@@ -5641,12 +5646,14 @@ select option:checked {
   align-items: flex-start;
   gap: 8px;
   padding: 10px 20px;
-  background: color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 7%, transparent);
+  background: color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 10%, var(--bg-card));
   border-bottom: 1px solid var(--border-color);
 }
 
 .chart-drilldown-table-wrap {
   overflow: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .chart-drilldown-table {
@@ -5669,7 +5676,7 @@ select option:checked {
   top: 0;
   z-index: 1;
   background: var(--bg-card);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 0.78rem;
   font-weight: 800;
 }
@@ -5682,7 +5689,7 @@ select option:checked {
 .chart-drilldown-empty,
 .chart-drilldown-limit {
   padding: 18px 20px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   text-align: center;
   font-size: 0.9rem;
 }
@@ -5698,8 +5705,8 @@ select option:checked {
 }
 
 @media (max-width: 720px) {
-  .chart-drilldown-overlay { padding: 12px; align-items: flex-end; }
-  .chart-drilldown-modal { max-height: 88vh; border-radius: 16px; }
+  .chart-drilldown-overlay { padding: 12px; place-items: center; }
+  .chart-drilldown-modal { max-height: calc(100dvh - 24px); border-radius: 16px; }
   .chart-drilldown-header { padding: 14px; gap: 10px; }
   .chart-drilldown-summary { padding: 12px 14px; }
   .chart-drilldown-table th,

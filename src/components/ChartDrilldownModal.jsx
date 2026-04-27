@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { X, TableProperties, Info } from 'lucide-react';
 
 function inferColumns(rows) {
@@ -13,13 +13,24 @@ function renderCell(value) {
 }
 
 export default function ChartDrilldownModal({ detail, onClose }) {
+    const modalRef = useRef(null);
+
     useEffect(() => {
         if (!detail) return undefined;
         const onKeyDown = (event) => {
             if (event.key === 'Escape') onClose();
         };
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
         window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
+        window.requestAnimationFrame(() => {
+            modalRef.current?.scrollIntoView({ block: 'center', inline: 'center' });
+            modalRef.current?.focus({ preventScroll: true });
+        });
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', onKeyDown);
+        };
     }, [detail, onClose]);
 
     if (!detail) return null;
@@ -32,10 +43,12 @@ export default function ChartDrilldownModal({ detail, onClose }) {
     return (
         <div className="chart-drilldown-overlay no-print" onClick={onClose} role="presentation">
             <section
+                ref={modalRef}
                 className="chart-drilldown-modal"
                 role="dialog"
                 aria-modal="true"
                 aria-label={detail.title || 'รายละเอียดกราฟ'}
+                tabIndex={-1}
                 onClick={event => event.stopPropagation()}
                 style={{ '--chart-drilldown-accent': accent }}
             >
