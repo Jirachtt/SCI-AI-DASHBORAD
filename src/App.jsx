@@ -6,25 +6,25 @@ import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import Layout from './components/Layout';
 import DashboardHome from './pages/DashboardHome';
-import { routeLoaders } from './utils/routePrefetch';
+import { lazyRouteLoaders } from './utils/routePrefetch';
 import './index.css';
 
 // Lazy load heavy pages for better performance — shared with prefetchRoute
 // so hovering a sidebar link warms the same chunk cache the router uses.
-const TuitionPage = lazy(routeLoaders['/dashboard/tuition']);
-const StudentStatsPage = lazy(routeLoaders['/dashboard/student-stats']);
-const BudgetForecastPage = lazy(routeLoaders['/dashboard/budget']);
-const FinancialPage = lazy(routeLoaders['/dashboard/financial']);
-const StudentLifePage = lazy(routeLoaders['/dashboard/student-life']);
-const StudentListPage = lazy(routeLoaders['/dashboard/students']);
-const GraduationCheckPage = lazy(routeLoaders['/dashboard/graduation']);
-const HRDashboardPage = lazy(routeLoaders['/dashboard/hr']);
-const ResearchDashboardPage = lazy(routeLoaders['/dashboard/research']);
-const StrategicDashboardPage = lazy(routeLoaders['/dashboard/strategic']);
-const AIChatPage = lazy(routeLoaders['/dashboard/ai-chat']);
-const GraduationStatsPage = lazy(routeLoaders['/dashboard/graduation-stats']);
-const AdminPanelPage = lazy(routeLoaders['/dashboard/admin']);
-const AlertCenterPage = lazy(routeLoaders['/dashboard/alerts']);
+const TuitionPage = lazy(lazyRouteLoaders['/dashboard/tuition']);
+const StudentStatsPage = lazy(lazyRouteLoaders['/dashboard/student-stats']);
+const BudgetForecastPage = lazy(lazyRouteLoaders['/dashboard/budget']);
+const FinancialPage = lazy(lazyRouteLoaders['/dashboard/financial']);
+const StudentLifePage = lazy(lazyRouteLoaders['/dashboard/student-life']);
+const StudentListPage = lazy(lazyRouteLoaders['/dashboard/students']);
+const GraduationCheckPage = lazy(lazyRouteLoaders['/dashboard/graduation']);
+const HRDashboardPage = lazy(lazyRouteLoaders['/dashboard/hr']);
+const ResearchDashboardPage = lazy(lazyRouteLoaders['/dashboard/research']);
+const StrategicDashboardPage = lazy(lazyRouteLoaders['/dashboard/strategic']);
+const AIChatPage = lazy(lazyRouteLoaders['/dashboard/ai-chat']);
+const GraduationStatsPage = lazy(lazyRouteLoaders['/dashboard/graduation-stats']);
+const AdminPanelPage = lazy(lazyRouteLoaders['/dashboard/admin']);
+const AlertCenterPage = lazy(lazyRouteLoaders['/dashboard/alerts']);
 
 const PageLoader = () => (
   <div className="page-loader">
