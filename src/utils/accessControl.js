@@ -5,7 +5,7 @@ const GENERAL_SECTIONS = ['dashboard', 'tuition', 'ai_chat'];
 
 const ACCESS_LEVELS = {
     dean: {
-        label: 'ผจก.คณะ',
+        label: 'คณบดี',
         level: 1,
         dataRows: 1000000,
         color: '#C5A028',

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
@@ -10,11 +11,15 @@ import {
     Title, Tooltip, Legend, ArcElement, Filler
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
+import ExportPDFButton from '../components/ExportPDFButton';
+import ChartDrilldownModal from '../components/ChartDrilldownModal';
+import { withChartDrilldown } from '../utils/chartDrilldown';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, themeAdaptorPlugin);
 
 export default function StudentLifePage() {
     const { user } = useAuth();
+    const [drillDetail, setDrillDetail] = useState(null);
 
     if (!canAccess(user?.role, 'student_life')) return <AccessDenied />;
 
@@ -75,8 +80,58 @@ export default function StudentLifePage() {
         }
     };
 
+    const activityColumns = [
+        { key: 'name', label: 'หมวดกิจกรรม' },
+        { key: 'hours', label: 'ชั่วโมง', align: 'right' },
+        { key: 'percent', label: 'คิดเป็น', align: 'right' },
+    ];
+
+    const behaviorColumns = [
+        { key: 'semester', label: 'ภาคเรียน' },
+        { key: 'score', label: 'คะแนน', align: 'right' },
+        { key: 'status', label: 'สถานะ' },
+    ];
+
+    const gaugeDrilldownOptions = withChartDrilldown(gaugeOptions, gaugeData, setDrillDetail, (point) => ({
+        title: `รายละเอียดชั่วโมงกิจกรรม: ${point.label}`,
+        subtitle: `${activityHours.completed}/${activityHours.target} ชั่วโมง (${pct}%)`,
+        valueLabel: point.label,
+        value: point.value,
+        unit: 'ชั่วโมง',
+        accentColor: point.color,
+        summary: `ทำแล้ว ${activityHours.completed.toLocaleString('th-TH')} ชั่วโมง เหลือ ${Math.max(activityHours.target - activityHours.completed, 0).toLocaleString('th-TH')} ชั่วโมง จากเป้าหมาย ${activityHours.target.toLocaleString('th-TH')} ชั่วโมง`,
+        rows: activityHours.categories.map(cat => ({
+            name: cat.name,
+            hours: cat.hours,
+            percent: `${((cat.hours / activityHours.target) * 100).toFixed(1)}%`,
+        })),
+        columns: activityColumns,
+        note: 'รายละเอียดนี้แยกตามหมวดกิจกรรมที่บันทึกไว้ในระบบ',
+    }));
+
+    const behaviorDrilldownOptions = withChartDrilldown(behaviorLineOptions, behaviorLineData, setDrillDetail, (point) => {
+        const row = behaviorScore.history[point.index];
+        if (!row) return null;
+        return {
+            title: `คะแนนความประพฤติ ${row.semester}`,
+            subtitle: 'แนวโน้มคะแนนความประพฤติรายภาคเรียน',
+            valueLabel: 'คะแนน',
+            value: row.score,
+            unit: `จาก ${behaviorScore.maxScore}`,
+            accentColor: point.color,
+            rows: behaviorScore.history.map(item => ({
+                semester: item.semester,
+                score: item.score,
+                status: item.score >= 90 ? 'ดีมาก' : item.score >= 80 ? 'ดี' : 'ต้องติดตาม',
+            })),
+            columns: behaviorColumns,
+            note: 'คลิกจุดแต่ละภาคเรียนเพื่อดูบริบทคะแนนย้อนหลังทั้งหมด',
+        };
+    });
+
     return (
         <div>
+            <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             <Link to="/dashboard" className="back-button">
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
@@ -88,6 +143,9 @@ export default function StudentLifePage() {
                 <div>
                     <h2>กิจกรรมและพฤติกรรม</h2>
                     <p>Student Life & Activity</p>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                    <ExportPDFButton title="กิจกรรมและพฤติกรรม" />
                 </div>
             </div>
 
@@ -102,7 +160,7 @@ export default function StudentLifePage() {
                     </div>
                     <div className="chart-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                         <div style={{ width: '220px', height: '220px', position: 'relative' }}>
-                            <Doughnut data={gaugeData} options={gaugeOptions} />
+                            <Doughnut data={gaugeData} options={gaugeDrilldownOptions} />
                             <div style={{
                                 position: 'absolute', inset: 0,
                                 display: 'flex', flexDirection: 'column',
@@ -148,7 +206,7 @@ export default function StudentLifePage() {
                             </span>
                         </div>
                         <div className="chart-container">
-                            <Line data={behaviorLineData} options={behaviorLineOptions} />
+                            <Line data={behaviorLineData} options={behaviorDrilldownOptions} />
                         </div>
                     </div>
                 )}

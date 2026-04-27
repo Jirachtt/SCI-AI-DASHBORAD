@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { isPendingRole } from '../utils/accessControl';
+import { buildRoleValidityPatch, getRoleValidity } from '../utils/roleValidity';
 
 const AuthContext = createContext(null);
 
@@ -28,13 +29,16 @@ export function AuthProvider({ children }) {
             const isBypass = localStorage.getItem('admin_bypass');
             if (isBypass === 'true') {
                 console.log("Restoring Admin Bypass session");
+                const validity = buildRoleValidityPatch('dean', new Date());
                 setUser({
                     uid: 'admin-bypass-' + Date.now(),
                     email: 'dean@mju.ac.th',
                     name: 'ผู้บริหาร (Admin)',
                     avatar: '👨‍💼',
                     role: 'dean',
-                    roleLabel: 'ผจก.คณะ (Dean)'
+                    roleLabel: 'คณบดี (Dean)',
+                    ...validity,
+                    roleValidity: getRoleValidity({ role: 'dean', ...validity })
                 });
                 setLoading(false);
                 return true;
@@ -80,12 +84,19 @@ export function AuthProvider({ children }) {
                     if (userDoc.exists()) {
                         const userData = userDoc.data();
                         const role = userData.role || 'student';
+                        const roleValidity = getRoleValidity({ ...userData, role });
+                        const roleExpired = roleValidity.status === 'expired' && role !== 'general' && !isPendingRole(role);
+                        const effectiveRole = roleExpired ? 'general' : role;
                         setUser(prev => ({
                             ...prev,
                             ...userData,
-                            role,
-                            roleLabel: userData.roleLabel || 'นักศึกษา (Student)',
+                            assignedRole: role,
+                            assignedRoleLabel: userData.roleLabel || 'นักศึกษา (Student)',
+                            role: effectiveRole,
+                            roleLabel: roleExpired ? 'ผู้ใช้ทั่วไป (สิทธิ์เดิมหมดอายุ)' : (userData.roleLabel || 'นักศึกษา (Student)'),
                             isPending: isPendingRole(role),
+                            roleExpired,
+                            roleValidity,
                             requestedRole: userData.requestedRole || null,
                             status: userData.status || 'approved',
                             employeeId: userData.employeeId || null,
@@ -95,6 +106,7 @@ export function AuthProvider({ children }) {
                         }));
                     } else if (currentUser.providerData?.some(p => p.providerId === 'google.com')) {
                         // First-time Google sign-in — provision a student doc.
+                        const createdAt = new Date().toISOString();
                         const newDoc = {
                             name: currentUser.displayName || 'User',
                             email: currentUser.email,
@@ -102,7 +114,8 @@ export function AuthProvider({ children }) {
                             roleLabel: 'นักศึกษา (Student)',
                             avatar: currentUser.photoURL || '👤',
                             status: 'approved',
-                            createdAt: serverTimestamp()
+                            createdAt: serverTimestamp(),
+                            ...buildRoleValidityPatch('student', createdAt)
                         };
                         await setDoc(userDocRef, newDoc);
                         if (!mounted) return;
@@ -142,13 +155,16 @@ export function AuthProvider({ children }) {
 
     const loginWithAdminCode = async (code) => {
         if (code === 'admin313') {
+            const validity = buildRoleValidityPatch('dean', new Date());
             const adminUser = {
                 uid: 'admin-bypass-' + Date.now(),
                 email: 'dean@mju.ac.th',
                 name: 'ผู้บริหาร (Admin)',
                 avatar: '👨‍💼',
                 role: 'dean',
-                roleLabel: 'ผจก.คณะ (Dean)'
+                roleLabel: 'คณบดี (Dean)',
+                ...validity,
+                roleValidity: getRoleValidity({ role: 'dean', ...validity })
             };
             localStorage.setItem('admin_bypass', 'true');
             setUser(adminUser);
@@ -239,6 +255,7 @@ export function AuthProvider({ children }) {
             const user = result.user;
 
             // Build base doc and only attach optional pending fields when provided
+            const createdAt = new Date().toISOString();
             const docPayload = {
                 name: userData.name,
                 email: email,
@@ -246,8 +263,11 @@ export function AuthProvider({ children }) {
                 roleLabel: userData.roleLabel,
                 avatar: userData.avatar,
                 status: userData.status || 'approved',
-                createdAt: new Date().toISOString()
+                createdAt
             };
+            if (docPayload.status === 'approved') {
+                Object.assign(docPayload, buildRoleValidityPatch(userData.role, createdAt));
+            }
 
             if (userData.requestedRole) docPayload.requestedRole = userData.requestedRole;
             if (userData.employeeId) docPayload.employeeId = userData.employeeId;
@@ -309,6 +329,7 @@ export function AuthProvider({ children }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) throw new Error('useAuth must be used within AuthProvider');

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
@@ -10,11 +11,15 @@ import {
     Title, Tooltip, Legend, ArcElement
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
+import ExportPDFButton from '../components/ExportPDFButton';
+import ChartDrilldownModal from '../components/ChartDrilldownModal';
+import { withChartDrilldown } from '../utils/chartDrilldown';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, themeAdaptorPlugin);
 
 export default function TuitionPage() {
     const { user } = useAuth();
+    const [drillDetail, setDrillDetail] = useState(null);
 
     if (!canAccess(user?.role, 'tuition')) return <AccessDenied />;
 
@@ -89,8 +94,65 @@ export default function TuitionPage() {
         }
     };
 
+    const tuitionColumns = [
+        { key: 'name', label: 'รายการ' },
+        { key: 'fee', label: 'ค่าเทอม/เทอม', align: 'right' },
+        { key: 'entryFee', label: 'แรกเข้าโดยประมาณ', align: 'right' },
+        { key: 'totalCost', label: 'ตลอดหลักสูตรโดยประมาณ', align: 'right' },
+    ];
+
+    const breakdownColumns = [
+        { key: 'label', label: 'หมวดค่าใช้จ่าย' },
+        { key: 'value', label: 'สัดส่วน', align: 'right' },
+        { key: 'estimatedAmount', label: 'ประมาณการต่อเทอม', align: 'right' },
+    ];
+
+    const barDrilldownOptions = withChartDrilldown(barOptions, barData, setDrillDetail, (point) => {
+        const faculty = tuitionData.byFaculty[point.index];
+        if (!faculty) return null;
+        const avgEntryFee = Math.round((tuitionData.entryFee.min + tuitionData.entryFee.max) / 2);
+        return {
+            title: `ค่าเทอม${faculty.name}`,
+            subtitle: 'เปรียบเทียบค่าเทอมรายคณะ',
+            valueLabel: 'ค่าเทอม/เทอม',
+            value: faculty.fee,
+            unit: 'บาท',
+            accentColor: point.color,
+            rows: [{
+                name: faculty.name,
+                fee: `${faculty.fee.toLocaleString('th-TH')} บาท`,
+                entryFee: `${avgEntryFee.toLocaleString('th-TH')} บาท`,
+                totalCost: `${(faculty.fee * 8 + avgEntryFee).toLocaleString('th-TH')} บาท`,
+            }],
+            columns: tuitionColumns,
+            note: 'คำนวณจากค่าเทอมเหมาจ่ายและค่าธรรมเนียมแรกเข้าในระบบ',
+        };
+    });
+
+    const pieDrilldownOptions = withChartDrilldown(pieOptions, pieData, setDrillDetail, (point) => {
+        const item = tuitionData.breakdown[point.index];
+        if (!item) return null;
+        const avgFee = Math.round((tuitionData.flatRate.min + tuitionData.flatRate.max) / 2);
+        return {
+            title: `รายละเอียด${item.label}`,
+            subtitle: 'สัดส่วนค่าใช้จ่ายต่อเทอม',
+            valueLabel: 'สัดส่วน',
+            value: item.value,
+            unit: '%',
+            accentColor: point.color || item.color,
+            rows: [{
+                label: item.label,
+                value: `${item.value}%`,
+                estimatedAmount: `${Math.round(avgFee * item.value / 100).toLocaleString('th-TH')} บาท`,
+            }],
+            columns: breakdownColumns,
+            note: 'ยอดประมาณการใช้ค่าเฉลี่ยของช่วงค่าเทอมเหมาจ่ายในระบบ',
+        };
+    });
+
     return (
         <div>
+            <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             <Link to="/dashboard" className="back-button">
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
@@ -102,6 +164,9 @@ export default function TuitionPage() {
                 <div>
                     <h2>ค่าธรรมเนียมการศึกษา</h2>
                     <p>Tuition Fees — ระบบเหมาจ่าย (Flat Rate)</p>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                    <ExportPDFButton title="ค่าธรรมเนียมการศึกษา" />
                 </div>
             </div>
 
@@ -147,7 +212,7 @@ export default function TuitionPage() {
                             </div>
                         </div>
                         <div className="chart-container">
-                            <Bar data={barData} options={barOptions} />
+                            <Bar data={barData} options={barDrilldownOptions} />
                         </div>
                     </div>
 
@@ -159,7 +224,7 @@ export default function TuitionPage() {
                             </div>
                         </div>
                         <div className="chart-container">
-                            <Pie data={pieData} options={pieOptions} />
+                            <Pie data={pieData} options={pieDrilldownOptions} />
                         </div>
                     </div>
                 </div>

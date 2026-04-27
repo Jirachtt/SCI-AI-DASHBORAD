@@ -27,7 +27,17 @@ export default function AdminAuditLog() {
         setLoading(false);
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        let active = true;
+        listRecentAuditLogs(100)
+            .then(rows => {
+                if (active) setLogs(rows);
+            })
+            .finally(() => {
+                if (active) setLoading(false);
+            });
+        return () => { active = false; };
+    }, []);
 
     return (
         <div className="admin-data-section">

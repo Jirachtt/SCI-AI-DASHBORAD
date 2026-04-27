@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import { dashboardSummary } from '../data/mockData';
-import { getDashboardInsights } from '../services/geminiService';
 import {
     CreditCard, DollarSign, Users, ChevronRight, GraduationCap, BookOpen,
     TrendingUp, Lock, BarChart3, Sparkles, Settings2, Target,
@@ -74,20 +73,22 @@ const topics = [
     }
 ];
 
+const dashboardInsights = [
+    'คณะวิทยาศาสตร์มีนักศึกษา 1,451 คน คิดเป็น 8.6% ของนักศึกษาทั้งมหาวิทยาลัย',
+    'อัตราสำเร็จการศึกษาคณะวิทยาศาสตร์ 91.2% สูงกว่าค่าเฉลี่ยมหาวิทยาลัย',
+    'ข้อมูลนักศึกษาเชื่อมกับ Alert Center และ AI Chat ทำให้เห็นความเสี่ยง GPA แบบทันที'
+];
+
 export default function DashboardHome() {
     const { user } = useAuth();
     const sci = dashboardSummary.faculties.find(f => f.name === 'คณะวิทยาศาสตร์');
-    const [insights, setInsights] = useState(null);
+    const [insights] = useState(dashboardInsights);
     const [isEditMode, setIsEditMode] = useState(false);
     const [showForecast, setShowForecast] = useState(false);
     const [showInsights, setShowInsights] = useState(false);
     const [cardOrder, setCardOrder] = useState([0, 1, 2, 3]);
     const dragItem = useRef(null);
     const dragOverItem = useRef(null);
-
-    useEffect(() => {
-        getDashboardInsights().then(data => setInsights(data));
-    }, []);
 
     const scienceSubData = [
         {

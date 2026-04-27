@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { CheckCircle, AlertCircle, Calendar, Star, Clock, BookOpen, Award } from 'lucide-react';
 
 export default function GraduationCheckPage() {

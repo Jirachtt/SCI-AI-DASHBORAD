@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
@@ -10,6 +11,9 @@ import {
     Title, Tooltip, Legend, Filler
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
+import ExportPDFButton from '../components/ExportPDFButton';
+import ChartDrilldownModal from '../components/ChartDrilldownModal';
+import { withChartDrilldown } from '../utils/chartDrilldown';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler, themeAdaptorPlugin);
 
@@ -25,6 +29,7 @@ const thStyle = {
 
 export default function BudgetForecastPage() {
     const { user } = useAuth();
+    const [drillDetail, setDrillDetail] = useState(null);
 
     if (!canAccess(user?.role, 'budget_forecast')) return <AccessDenied />;
 
@@ -156,6 +161,63 @@ export default function BudgetForecastPage() {
         }
     };
 
+    const budgetDetailColumns = [
+        { key: 'type', label: 'ประเภท' },
+        { key: 'name', label: 'รายการ' },
+        { key: 'amount', label: 'จำนวน (ล้านบาท)', align: 'right' },
+        { key: 'percent', label: 'สัดส่วน', align: 'right' },
+    ];
+
+    const yearlyDetailColumns = [
+        { key: 'year', label: 'ปีงบประมาณ' },
+        { key: 'status', label: 'สถานะ' },
+        { key: 'revenue', label: 'รายรับ (ล้านบาท)', align: 'right' },
+        { key: 'expense', label: 'รายจ่าย (ล้านบาท)', align: 'right' },
+        { key: 'surplus', label: 'คงเหลือ (ล้านบาท)', align: 'right' },
+        { key: 'usagePercent', label: 'ใช้จ่าย', align: 'right' },
+    ];
+
+    const chartDrilldownOptions = withChartDrilldown(chartOptions, combinedChartData, setDrillDetail, (point) => {
+        const year = yearly[point.index];
+        if (!year) return null;
+
+        const revenueRows = (year.revenueBreakdown || []).map(item => ({
+            type: 'รายรับ',
+            name: item.name,
+            amount: item.amount,
+            percent: `${((item.amount / year.revenue) * 100).toFixed(1)}%`,
+        }));
+        const expenseRows = (year.expenseBreakdown || []).map(item => ({
+            type: 'รายจ่าย',
+            name: item.name,
+            amount: item.amount,
+            percent: `${((item.amount / year.expense) * 100).toFixed(1)}%`,
+        }));
+        const rows = revenueRows.length || expenseRows.length
+            ? [...revenueRows, ...expenseRows]
+            : [{
+                year: year.year,
+                status: year.type === 'actual' ? 'ข้อมูลจริง' : 'พยากรณ์',
+                revenue: year.revenue,
+                expense: year.expense,
+                surplus: year.surplus,
+                usagePercent: `${((year.expense / year.revenue) * 100).toFixed(1)}%`,
+            }];
+
+        return {
+            title: `รายละเอียดงบประมาณปี ${year.year}`,
+            subtitle: point.datasetLabel,
+            valueLabel: point.datasetLabel,
+            value: point.value,
+            unit: 'ล้านบาท',
+            accentColor: point.color,
+            summary: `${year.type === 'actual' ? 'ข้อมูลจริง' : 'ข้อมูลพยากรณ์'} รายรับ ${year.revenue.toLocaleString('th-TH')} ล้านบาท รายจ่าย ${year.expense.toLocaleString('th-TH')} ล้านบาท คงเหลือ ${year.surplus.toLocaleString('th-TH')} ล้านบาท`,
+            rows,
+            columns: revenueRows.length || expenseRows.length ? budgetDetailColumns : yearlyDetailColumns,
+            note: year.type === 'forecast' ? 'จุดนี้เป็นข้อมูลพยากรณ์ จึงควรใช้ประกอบการวางแผน ไม่ใช่ยอดปิดบัญชีจริง' : 'จุดนี้มาจากข้อมูลจริงในชุดข้อมูลงบประมาณของระบบ',
+        };
+    });
+
     /* ── Summary Cards Data ── */
     const statCards = [
         {
@@ -166,7 +228,7 @@ export default function BudgetForecastPage() {
         },
         {
             Icon: TrendingDown, label: 'ใช้จ่ายจริง (ถึงปัจจุบัน)',
-            value: `฿${latestYear.expense.toLocaleString()}`, sub: `${usagePercent}% ของงบประมาณ`,
+            value: `฿${latestYear.expense.toLocaleString()}`, sub: `${usagePercent}% ของงบประมาณ · ${expenseGrowth > 0 ? '+' : ''}${expenseGrowth}% จากปีก่อน`,
             gradient: 'linear-gradient(135deg, #E91E63, #c2185b)',
             valueColor: 'var(--text-primary)',
         },
@@ -189,6 +251,7 @@ export default function BudgetForecastPage() {
 
     return (
         <div className="dashboard-content">
+            <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             {/* ── Header ── */}
             <div className="section-header">
                 <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #C5A028, #9a7d1e)' }}>
@@ -199,6 +262,7 @@ export default function BudgetForecastPage() {
                     <p>ข้อมูลจริง ปีงบประมาณ 2560 – ปัจจุบัน + พยากรณ์ • Faculty of Science Budget</p>
                 </div>
                 <div className="section-header-actions">
+                    <ExportPDFButton title="งบประมาณคณะวิทยาศาสตร์" label="PDF" />
                     <button onClick={exportCSV} style={{
                         display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',
                         borderRadius: '10px', border: 'none',
@@ -238,7 +302,7 @@ export default function BudgetForecastPage() {
                     </p>
                 </div>
                 <div style={{ height: 380, padding: '14px 18px 18px' }}>
-                    <Bar data={combinedChartData} options={chartOptions} />
+                    <Bar data={combinedChartData} options={chartDrilldownOptions} />
                 </div>
             </div>
 

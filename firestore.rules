@@ -71,6 +71,15 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
     }
 
+    // ── auditLogs/{logId} ─────────────────────────────────────
+    // Append-only operational logs for admin uploads. Deans write; signed-in
+    // users can read the recent feed shown in the admin panel.
+    match /auditLogs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if callerIsDean();
+      allow update, delete: if false;
+    }
+
     // Default deny for any other collection
     match /{document=**} {
       allow read, write: if false;

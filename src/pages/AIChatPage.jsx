@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw } from 'lucide-react';
+import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, Settings, Gauge, TableProperties } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import {
     createChatSession, updateChatSession, listUserSessions,
     loadChatSession, deleteChatSession,
@@ -14,14 +15,16 @@ import {
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
-import { sendMessageToGemini, resetConversation, getWaitSeconds } from '../services/geminiService';
-import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import {
-    studentStatsData, universityBudgetData, scienceFacultyBudgetData,
-} from '../data/mockData';
+    sendMessageToGemini, resetConversation, getWaitSeconds,
+    getAIModelSettings, saveAIModelSettings, getAITokenStats,
+    resetAITokenStats, getAIModelCatalog, getAIUserMemory,
+} from '../services/geminiService';
+import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
-import { graduationHistory } from '../data/graduationData';
+import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
+import { exportChartAsCSV, exportChartAsExcel } from '../utils/exportUtils';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -55,44 +58,44 @@ function linearRegression(dataPoints) {
 const DATASETS = {
     universityBudgetRevenue: {
         label: 'รายรับมหาวิทยาลัย', unit: 'ล้านบาท', scope: 'มหาวิทยาลัย',
-        getData: () => universityBudgetData.yearly.filter(y => y.type === 'actual').map(y => ({ x: parseInt(y.year), y: y.revenue })),
+        getData: () => getForecastSeries('universityBudgetRevenue'),
         color: '#00a651', keywords: ['รายรับ', 'revenue'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
     },
     universityBudgetExpense: {
         label: 'รายจ่ายมหาวิทยาลัย', unit: 'ล้านบาท', scope: 'มหาวิทยาลัย',
-        getData: () => universityBudgetData.yearly.filter(y => y.type === 'actual').map(y => ({ x: parseInt(y.year), y: y.expense })),
+        getData: () => getForecastSeries('universityBudgetExpense'),
         color: '#E91E63', keywords: ['รายจ่าย', 'expense', 'ค่าใช้จ่าย'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
     },
     universityBudget: {
         label: 'งบประมาณมหาวิทยาลัย (รายรับ)', unit: 'ล้านบาท', scope: 'มหาวิทยาลัย',
-        getData: () => universityBudgetData.yearly.filter(y => y.type === 'actual').map(y => ({ x: parseInt(y.year), y: y.revenue })),
+        getData: () => getForecastSeries('universityBudget'),
         color: '#00a651', keywords: ['งบประมาณ', 'budget', 'งบ'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
     },
     scienceBudgetRevenue: {
         label: 'รายรับคณะวิทยาศาสตร์', unit: 'ล้านบาท', scope: 'คณะวิทยาศาสตร์',
-        getData: () => scienceFacultyBudgetData.yearly.filter(y => y.type === 'actual').map(y => ({ x: parseInt(y.year), y: y.revenue })),
+        getData: () => getForecastSeries('scienceBudgetRevenue'),
         color: '#006838', keywords: ['รายรับ', 'revenue', 'งบประมาณ', 'budget', 'งบ'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์']
     },
     scienceBudgetExpense: {
         label: 'รายจ่ายคณะวิทยาศาสตร์', unit: 'ล้านบาท', scope: 'คณะวิทยาศาสตร์',
-        getData: () => scienceFacultyBudgetData.yearly.filter(y => y.type === 'actual').map(y => ({ x: parseInt(y.year), y: y.expense })),
+        getData: () => getForecastSeries('scienceBudgetExpense'),
         color: '#A23B72', keywords: ['รายจ่าย', 'expense', 'ค่าใช้จ่าย'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์']
     },
     universityStudents: {
-        label: 'จำนวนนิสิตมหาวิทยาลัย', unit: 'คน', scope: 'มหาวิทยาลัย',
-        getData: () => studentStatsData.trend.filter(t => t.type === 'actual').map(t => ({ x: parseInt(t.year), y: t.total })),
+        label: 'จำนวนนักศึกษาในระบบ', unit: 'คน', scope: 'ข้อมูลนักศึกษาในเว็บ',
+        getData: () => getForecastSeries('universityStudents'),
         color: '#7B68EE', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวนนักศึกษา'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
         yAxisID: 'y',
     },
     scienceStudents: {
         label: 'จำนวนนิสิตคณะวิทยาศาสตร์', unit: 'คน', scope: 'คณะวิทยาศาสตร์',
-        getData: () => studentStatsData.scienceFaculty.byEnrollmentYear.map(e => ({ x: parseInt(e.year), y: e.count })),
+        getData: () => getForecastSeries('scienceStudents'),
         color: '#006838', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวนนักศึกษา'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์'],
         yAxisID: 'y',
@@ -100,21 +103,21 @@ const DATASETS = {
     // ==================== GPA Datasets ====================
     scienceGPA: {
         label: 'เกรดเฉลี่ย (GPA) คณะวิทยาศาสตร์', unit: '', scope: 'คณะวิทยาศาสตร์',
-        getData: () => graduationHistory.map(g => ({ x: g.year, y: g.avgGPA })),
+        getData: () => getForecastSeries('scienceGPA'),
         color: '#C5A028', keywords: ['เกรด', 'gpa', 'เกรดเฉลี่ย', 'ผลการเรียน', 'grade'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์', 'มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
         yAxisID: 'y1',
     },
     scienceGraduationRate: {
         label: 'อัตราสำเร็จการศึกษา คณะวิทยาศาสตร์', unit: '%', scope: 'คณะวิทยาศาสตร์',
-        getData: () => graduationHistory.map(g => ({ x: g.year, y: g.rate })),
+        getData: () => getForecastSeries('scienceGraduationRate'),
         color: '#A23B72', keywords: ['อัตราสำเร็จ', 'สำเร็จการศึกษา', 'graduation', 'จบการศึกษา', 'อัตราจบ'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์', 'มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
         yAxisID: 'y1',
     },
     scienceGraduated: {
         label: 'จำนวนผู้สำเร็จการศึกษา คณะวิทยาศาสตร์', unit: 'คน', scope: 'คณะวิทยาศาสตร์',
-        getData: () => graduationHistory.map(g => ({ x: g.year, y: g.graduated })),
+        getData: () => getForecastSeries('scienceGraduated'),
         color: '#2E86AB', keywords: ['ผู้สำเร็จ', 'จบ', 'graduated', 'สำเร็จการศึกษา', 'จำนวนผู้สำเร็จ'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์', 'มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
         yAxisID: 'y',
@@ -275,7 +278,7 @@ function generateForecastResponse(parsed) {
                 : model.predict(y).toLocaleString();
             return `   ปี ${y}: ~${val} ${ds.unit}`;
         }).join('\n');
-        results.push(`**${ds.label}**\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}`);
+        results.push(`**${ds.label}**\nแหล่งข้อมูล: ${getForecastDataSourceNote(dsKey)}\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}`);
     }
 
     // Build scales config — support dual Y-axis
@@ -951,9 +954,15 @@ function looksLikeDatasetDump(s) {
 
 // `hbar` is a UI-only sentinel meaning "bar with indexAxis='y'". It maps
 // back to chartType='bar' when handed to Chart.js.
-const PALETTE = ['#00a651', '#7B68EE', '#E91E63', '#C5A028', '#2E86AB', '#F18F01', '#06b6d4', '#a855f7', '#22c55e', '#f97316', '#ef4444', '#14b8a6', '#A23B72', '#0ea5e9', '#84cc16', '#ec4899', '#8b5cf6', '#fb923c'];
+const LIGHT_CHART_PALETTE = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2', '#9333ea', '#0f766e', '#ea580c', '#be123c', '#4f46e5', '#15803d'];
+const DARK_CHART_PALETTE = ['#7dd3fc', '#a78bfa', '#34d399', '#fbbf24', '#fb7185', '#22d3ee', '#c084fc', '#86efac', '#fdba74', '#f0abfc', '#93c5fd', '#fca5a5'];
 const DEFAULT_BAR_ALPHA = 0.72;
 const DEFAULT_HOVER_ALPHA = 0.88;
+
+function getActiveChartPalette() {
+    const isDark = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark';
+    return isDark ? DARK_CHART_PALETTE : LIGHT_CHART_PALETTE;
+}
 
 function parseHexColor(value) {
     const hex = String(value || '').trim().replace(/^#/, '');
@@ -1001,18 +1010,20 @@ function safeChartColor(value, fallbackHex, alpha = DEFAULT_BAR_ALPHA) {
 }
 
 function safeChartColorList(value, fallbackHex, alpha, count = 0) {
+    const palette = getActiveChartPalette();
     if (Array.isArray(value)) {
-        return value.map((color, idx) => safeChartColor(color, PALETTE[idx % PALETTE.length], alpha));
+        return value.map((color, idx) => safeChartColor(color, palette[idx % palette.length], alpha));
     }
     if (value) return safeChartColor(value, fallbackHex, alpha);
     if (count > 0) {
-        return Array.from({ length: count }, (_, idx) => rgbaFromHex(PALETTE[idx % PALETTE.length], alpha));
+        return Array.from({ length: count }, (_, idx) => rgbaFromHex(palette[idx % palette.length], alpha));
     }
     return rgbaFromHex(fallbackHex, alpha);
 }
 
 function hoverChartColor(value, fallbackHex) {
-    if (Array.isArray(value)) return value.map((color, idx) => hoverChartColor(color, PALETTE[idx % PALETTE.length]));
+    const palette = getActiveChartPalette();
+    if (Array.isArray(value)) return value.map((color, idx) => hoverChartColor(color, palette[idx % palette.length]));
     const safe = safeChartColor(value, fallbackHex, DEFAULT_HOVER_ALPHA);
     if (typeof safe !== 'string') return safe;
     if (safe.startsWith('#')) return rgbaFromHex(safe, DEFAULT_HOVER_ALPHA);
@@ -1026,9 +1037,10 @@ function sanitizeChartDatasetColors(chart) {
     if (!Array.isArray(datasets)) return chart;
     const chartType = realChartType(chart.chartType || chart.type);
     const labelCount = chart?.data?.labels?.length || 0;
+    const palette = getActiveChartPalette();
 
     datasets.forEach((ds, idx) => {
-        const fallback = PALETTE[idx % PALETTE.length];
+        const fallback = palette[idx % palette.length];
         const effectiveType = realChartType(ds.type || chartType);
         const isSliceChart = ['pie', 'doughnut', 'polarArea'].includes(chartType);
         const needsColorArray = isSliceChart && labelCount > 0;
@@ -1454,6 +1466,7 @@ function deriveChartConfig(originalChart, uiTargetType) {
 
     // Strip per-dataset `type` so all datasets inherit the parent type.
     if (Array.isArray(data.datasets)) {
+        const palette = getActiveChartPalette();
         data.datasets.forEach((ds, idx) => {
             delete ds.type;
             // y1 axis is for dual-axis bar+line; collapse to default y when
@@ -1471,22 +1484,22 @@ function deriveChartConfig(originalChart, uiTargetType) {
                 if (ds.borderRadius == null) ds.borderRadius = 6;
                 // For horizontal bar, single color reads better than rainbow.
                 if (wantsHorizontal && !Array.isArray(ds.backgroundColor)) {
-                    ds.backgroundColor = ds.backgroundColor || PALETTE[idx % PALETTE.length];
+                    ds.backgroundColor = ds.backgroundColor || palette[idx % palette.length];
                 }
             } else if (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') {
                 // Pie/doughnut need an array of slice colors and no border radius.
                 const n = ds.data?.length || 0;
                 if (!Array.isArray(ds.backgroundColor)) {
-                    ds.backgroundColor = Array.from({ length: n }, (_, i) => PALETTE[i % PALETTE.length]);
+                    ds.backgroundColor = Array.from({ length: n }, (_, i) => palette[i % palette.length]);
                 }
                 ds.borderColor = '#ffffff';
                 ds.borderWidth = 2;
                 delete ds.borderRadius;
                 delete ds.tension;
             } else if (targetType === 'radar') {
-                ds.borderColor = ds.borderColor || PALETTE[idx % PALETTE.length];
-                ds.backgroundColor = (ds.borderColor || PALETTE[idx % PALETTE.length]) + '33';
-                ds.pointBackgroundColor = ds.borderColor || PALETTE[idx % PALETTE.length];
+                ds.borderColor = ds.borderColor || palette[idx % palette.length];
+                ds.backgroundColor = (ds.borderColor || palette[idx % palette.length]) + '33';
+                ds.pointBackgroundColor = ds.borderColor || palette[idx % palette.length];
                 ds.pointBorderColor = '#fff';
                 ds.borderWidth = 2;
                 ds.pointRadius = 4;
@@ -1736,6 +1749,20 @@ function ChatMessage({ msg, onExpand }) {
                             >
                                 <Maximize2 size={13} /> ขยาย
                             </button>
+                            <button
+                                className="ai-page-chart-btn"
+                                onClick={() => exportChartAsCSV('ai-chart', { ...chartData, chartType })}
+                                aria-label="Export chart data as CSV"
+                            >
+                                <TableProperties size={13} /> CSV
+                            </button>
+                            <button
+                                className="ai-page-chart-btn"
+                                onClick={() => exportChartAsExcel('ai-chart', { ...chartData, chartType })}
+                                aria-label="Export chart data as Excel"
+                            >
+                                <FileSpreadsheet size={13} /> Excel
+                            </button>
                         </div>
                         <div className="ai-page-chart-wrapper" style={{ height: wrapperHeight }}>
                             <ReactChart
@@ -1758,14 +1785,14 @@ function ChatMessage({ msg, onExpand }) {
 function generateChartFromFile(parsed, fileName) {
     if (!parsed || parsed.numericCols.length === 0) return null;
 
-    const colors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
+    const colors = getActiveChartPalette();
     const labels = parsed.rows.map(r => String(r[parsed.labelCol] ?? ''));
     const toNum = v => parseFloat(String(v).replace(/,/g, '')) || 0;
     const datasets = parsed.numericCols.slice(0, 6).map((col, i) => ({
         label: col,
         data: parsed.rows.map(r => toNum(r[col])),
         borderColor: colors[i % colors.length],
-        backgroundColor: colors[i % colors.length] + '40',
+        backgroundColor: rgbaFromHex(colors[i % colors.length], 0.28),
         fill: false,
         tension: 0.4,
         pointRadius: 4,
@@ -1800,11 +1827,16 @@ function generateChartFromFile(parsed, fileName) {
 
 export default function AIChatPage() {
     const { user } = useAuth();
+    const { theme } = useTheme();
     const [expandedChart, setExpandedChart] = useState(null);
     const [isListening, setIsListening] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [aiSettings, setAiSettings] = useState(() => getAIModelSettings());
+    const [tokenStats, setTokenStats] = useState(() => getAITokenStats());
     const recognitionRef = useRef(null);
     const fileInputRef = useRef(null);
     const [uploadedFileData, setUploadedFileData] = useState(null);
+    const [, setStudentDataVersion] = useState(0);
     // Chat history state
     const [historyOpen, setHistoryOpen] = useState(false);
     const [sessions, setSessions] = useState([]);
@@ -1813,20 +1845,10 @@ export default function AIChatPage() {
     const saveTimerRef = useRef(null);
     const lastSavedRef = useRef(null);
     // Dashboard summary data for merge context
-    const dashboardMergeSummary = (() => {
-        const trendActual = studentStatsData.trend.filter(t => t.type === 'actual');
-        const budgetActual = universityBudgetData.yearly.filter(y => y.type === 'actual');
-        return {
-            name: 'ข้อมูล Dashboard',
-            headers: ['ปี', 'จำนวนนิสิต', 'งบรายรับ(ล้าน)', 'งบรายจ่าย(ล้าน)'],
-            rows: trendActual.map(t => ({
-                'ปี': t.year,
-                'จำนวนนิสิต': t.total,
-                'งบรายรับ(ล้าน)': budgetActual.find(b => b.year === t.year)?.revenue || 0,
-                'งบรายจ่าย(ล้าน)': budgetActual.find(b => b.year === t.year)?.expense || 0,
-            }))
-        };
-    })();
+    const dashboardMergeSummary = {
+        name: 'ข้อมูล Dashboard',
+        ...buildLiveDashboardMergeSummary(),
+    };
     const [messages, setMessages] = useState([
         {
             role: 'bot',
@@ -1837,6 +1859,21 @@ export default function AIChatPage() {
     const [input, setInput] = useState('');
     const [typing, setTyping] = useState(false);
     const messagesEnd = useRef(null);
+    const modelCatalog = getAIModelCatalog();
+    const userMemory = getAIUserMemory(user || {});
+
+    const updateAISetting = (key, value) => {
+        const next = saveAIModelSettings({ ...aiSettings, [key]: value });
+        setAiSettings(next);
+    };
+
+    const refreshTokenStats = () => setTokenStats(getAITokenStats());
+
+    const sendAI = useCallback(async (prompt) => {
+        const text = await sendMessageToGemini(prompt, { user, theme, aiSettings });
+        setTokenStats(getAITokenStats());
+        return text;
+    }, [user, theme, aiSettings]);
 
     // ── Ensure the live student dataset is loaded before the user can chat ──
     // Layout already calls this on mount, but if the user lands directly on
@@ -1844,7 +1881,7 @@ export default function AIChatPage() {
     // sees real Firestore data instead of the mock fallback.
     useEffect(() => {
         ensureStudentList();
-        return onStudentDataChange(() => {});
+        return onStudentDataChange(() => setStudentDataVersion(v => v + 1));
     }, []);
 
     // ── Speech Recognition Setup ──
@@ -2069,7 +2106,7 @@ export default function AIChatPage() {
             const aiPrompt = `ผู้ใช้อัปโหลดไฟล์ "${fileName}" มีข้อมูล ${parsed.rowCount} แถว คอลัมน์: ${parsed.headers.join(', ')}\n\nตัวอย่างข้อมูล:\n${dataPreview}\n\nช่วยวิเคราะห์และสรุปข้อมูลนี้ให้หน่อย จุดที่น่าสนใจ แนวโน้ม และข้อเสนอแนะ`;
 
             try {
-                const aiText = await sendMessageToGemini(aiPrompt);
+                const aiText = await sendAI(aiPrompt);
                 const parsedAI = parseAIResponse(aiText);
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -2114,7 +2151,7 @@ export default function AIChatPage() {
                 }, 1000);
             });
             try {
-                const aiText = await sendMessageToGemini(buildMessage());
+                const aiText = await sendAI(buildMessage());
                 const parsedAI = parseAIResponse(aiText);
                 setMessages(prev => prev.map(m =>
                     m._retryId === retryId
@@ -2204,7 +2241,7 @@ export default function AIChatPage() {
 
                 return context ? `${context}คำถาม: ${userMsg}` : userMsg;
             };
-            const aiText = await sendMessageToGemini(buildMsg());
+            const aiText = await sendAI(buildMsg());
             const parsedAI = parseAIResponse(aiText);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
@@ -2278,7 +2315,7 @@ export default function AIChatPage() {
                 setTyping(false);
                 return;
             }
-            const aiText = await sendMessageToGemini(query);
+            const aiText = await sendAI(query);
             const parsedAI = parseAIResponse(aiText);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
@@ -2326,6 +2363,13 @@ export default function AIChatPage() {
                     </div>
                 </div>
                 <div className="ai-chat-page-header-actions">
+                    <button
+                        className="ai-chat-page-history-btn"
+                        onClick={() => setSettingsOpen(true)}
+                        aria-label="ตั้งค่าโมเดลและดู token"
+                    >
+                        <Settings size={15} /> ตั้งค่า AI
+                    </button>
                     {canPersist && (
                         <button
                             className="ai-chat-page-history-btn"
@@ -2405,6 +2449,119 @@ export default function AIChatPage() {
                                     })}
                                 </ul>
                             )}
+                        </div>
+                    </aside>
+                </div>
+            )}
+
+            {settingsOpen && (
+                <div className="chat-history-overlay" onClick={() => setSettingsOpen(false)}>
+                    <aside className="chat-history-drawer ai-settings-drawer" onClick={(e) => e.stopPropagation()}>
+                        <div className="chat-history-header">
+                            <div className="chat-history-title">
+                                <Settings size={18} />
+                                <span>AI Model & Token Settings</span>
+                            </div>
+                            <button
+                                className="chat-history-close"
+                                onClick={() => setSettingsOpen(false)}
+                                aria-label="ปิด"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="ai-settings-body">
+                            <div className="ai-settings-metric-grid">
+                                <div className="ai-settings-metric">
+                                    <Gauge size={16} />
+                                    <span>Requests</span>
+                                    <strong>{tokenStats.requests || 0}</strong>
+                                </div>
+                                <div className="ai-settings-metric">
+                                    <TableProperties size={16} />
+                                    <span>Input tokens</span>
+                                    <strong>{Number(tokenStats.estimatedInputTokens || 0).toLocaleString()}</strong>
+                                </div>
+                                <div className="ai-settings-metric">
+                                    <FileSpreadsheet size={16} />
+                                    <span>Output tokens</span>
+                                    <strong>{Number(tokenStats.estimatedOutputTokens || 0).toLocaleString()}</strong>
+                                </div>
+                            </div>
+
+                            <label className="ai-settings-field">
+                                <span>Model routing</span>
+                                <select value={aiSettings.modelMode} onChange={e => updateAISetting('modelMode', e.target.value)}>
+                                    <option value="auto">Auto: เลือกตามความยากของคำถาม</option>
+                                    {modelCatalog.map(model => (
+                                        <option key={model.id} value={model.id}>
+                                            {model.label} ({model.tier})
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            <label className="ai-settings-field">
+                                <span>Context mode</span>
+                                <select value={aiSettings.contextMode} onChange={e => updateAISetting('contextMode', e.target.value)}>
+                                    <option value="agentic_rag">Agentic RAG: อ่านเฉพาะข้อมูลที่เกี่ยวข้อง</option>
+                                    <option value="full">Full context: ใช้ prompt เดิมแบบเต็ม</option>
+                                </select>
+                            </label>
+
+                            <label className="ai-settings-field">
+                                <span>Max output tokens: {aiSettings.maxOutputTokens}</span>
+                                <input
+                                    type="range"
+                                    min="512"
+                                    max="8192"
+                                    step="256"
+                                    value={aiSettings.maxOutputTokens}
+                                    onChange={e => updateAISetting('maxOutputTokens', Number(e.target.value))}
+                                />
+                            </label>
+
+                            <label className="ai-settings-field">
+                                <span>Temperature: {Number(aiSettings.temperature).toFixed(2)}</span>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.05"
+                                    value={aiSettings.temperature}
+                                    onChange={e => updateAISetting('temperature', Number(e.target.value))}
+                                />
+                            </label>
+
+                            <label className="ai-settings-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(aiSettings.allowWebSearch)}
+                                    onChange={e => updateAISetting('allowWebSearch', e.target.checked)}
+                                />
+                                <span>อนุญาต Google Search เฉพาะคำถามข้อมูลเว็บที่จำเป็น</span>
+                            </label>
+
+                            <div className="ai-settings-note">
+                                <strong>Memory ตาม role:</strong> {user?.roleLabel || user?.role || 'ไม่ระบุ'} · รูปแบบที่ชอบ: {userMemory.preferredFormat} · รายละเอียด: {userMemory.detailLevel}
+                            </div>
+
+                            <div className="ai-settings-model-list">
+                                {modelCatalog.map(model => (
+                                    <div key={model.id} className="ai-settings-model-row">
+                                        <span>{model.label}</span>
+                                        <small>{model.bestFor}{model.searchCapable ? ' · Search' : ''}</small>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button
+                                className="admin-refresh-btn"
+                                onClick={() => { resetAITokenStats(); refreshTokenStats(); }}
+                            >
+                                <RotateCw size={14} /> Reset token stats
+                            </button>
                         </div>
                     </aside>
                 </div>
@@ -2646,6 +2803,20 @@ function ExpandedChartModal({ chart, onClose }) {
                             aria-label="รีเซ็ตการซูม"
                         >
                             <RotateCw size={15} /> รีเซ็ตซูม
+                        </button>
+                        <button
+                            className="ai-page-chart-modal-reset"
+                            onClick={() => exportChartAsCSV('ai-chart-expanded', expandedChart)}
+                            aria-label="Export chart data as CSV"
+                        >
+                            <TableProperties size={15} /> CSV
+                        </button>
+                        <button
+                            className="ai-page-chart-modal-reset"
+                            onClick={() => exportChartAsExcel('ai-chart-expanded', expandedChart)}
+                            aria-label="Export chart data as Excel"
+                        >
+                            <FileSpreadsheet size={15} /> Excel
                         </button>
                         <button className="ai-page-chart-modal-close" onClick={onClose} aria-label="ปิดกราฟขยาย" data-tooltip="ปิด">
                             <X size={22} />

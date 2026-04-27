@@ -4,10 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { ensureStudentList, getStudentListSync, isLiveData, onStudentDataChange } from '../services/studentDataService';
-import { getAllAlerts, getAlertSummary } from '../utils/alerts';
+import { getAllAlerts } from '../utils/alerts';
+import { ALERT_SOURCE_META, fetchUniversityAlerts, getAlertApiStatus } from '../services/alertDataService';
 import {
     AlertTriangle, Bell, ShieldAlert, Info, ArrowLeft, Filter,
-    GraduationCap, Wallet, Microscope, Target, RefreshCw, CheckCircle
+    GraduationCap, Wallet, Microscope, Target, RefreshCw, CheckCircle, Search
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
 
@@ -27,13 +28,18 @@ const DOMAIN_ICON = {
 
 export default function AlertCenterPage() {
     const { user } = useAuth();
-    const [, setTick] = useState(0);              // bump to re-run aggregator
+    const [studentDataVersion, setStudentDataVersion] = useState(0);
     const [loading, setLoading] = useState(true);
     const [studentCount, setStudentCount] = useState(() => getStudentListSync().length);
     const [studentDataLive, setStudentDataLive] = useState(() => isLiveData());
     const [severityFilter, setSeverityFilter] = useState('all');
     const [domainFilter, setDomainFilter] = useState('all');
+    const [sourceFilter, setSourceFilter] = useState('all');
+    const [search, setSearch] = useState('');
+    const [externalAlerts, setExternalAlerts] = useState([]);
+    const [apiMessage, setApiMessage] = useState('');
     const [expanded, setExpanded] = useState(null);
+    const apiStatus = useMemo(() => getAlertApiStatus(), []);
 
     useEffect(() => {
         let active = true;
@@ -41,7 +47,7 @@ export default function AlertCenterPage() {
             if (!active) return;
             setStudentCount(list.length);
             setStudentDataLive(isLiveData());
-            setTick(t => t + 1);
+            setStudentDataVersion(t => t + 1);
             setLoading(false);
         };
         ensureStudentList().then(refreshFromStudentData);
@@ -49,20 +55,58 @@ export default function AlertCenterPage() {
         return () => { active = false; unsub && unsub(); };
     }, []);
 
-    // Recompute on each render so external student-data cache changes are reflected after tick bumps.
-    const alerts = getAllAlerts();
-    const summary = getAlertSummary();
+    useEffect(() => {
+        let active = true;
+        fetchUniversityAlerts({ severity: severityFilter, domain: domainFilter, source: sourceFilter })
+            .then(result => {
+                if (!active) return;
+                setExternalAlerts(result.alerts || []);
+                setApiMessage(result.message || '');
+            })
+            .catch(error => {
+                if (!active) return;
+                setExternalAlerts([]);
+                setApiMessage(error.message || 'MJU Alert API unavailable');
+            });
+        return () => { active = false; };
+    }, [severityFilter, domainFilter, sourceFilter]);
+
+    // Recompute whenever the live student-data cache emits an update.
+    const alerts = useMemo(() => {
+        void studentDataVersion;
+        return [...getAllAlerts(), ...externalAlerts];
+    }, [externalAlerts, studentDataVersion]);
+    const summary = useMemo(() => ({
+        total: alerts.length,
+        critical: alerts.filter(a => a.severity === 'critical').length,
+        warning: alerts.filter(a => a.severity === 'warning').length,
+        info: alerts.filter(a => a.severity === 'info').length,
+    }), [alerts]);
 
     const domains = useMemo(() => {
         const s = new Set(alerts.map(a => a.domain));
         return ['all', ...Array.from(s)];
     }, [alerts]);
 
+    const sources = useMemo(() => {
+        const s = new Set(alerts.map(a => a.source).filter(Boolean));
+        return ['all', ...Array.from(s)];
+    }, [alerts]);
+
     const filtered = useMemo(() => alerts.filter(a => {
         if (severityFilter !== 'all' && a.severity !== severityFilter) return false;
         if (domainFilter !== 'all' && a.domain !== domainFilter) return false;
+        if (sourceFilter !== 'all' && a.source !== sourceFilter) return false;
+        const q = search.trim().toLowerCase();
+        if (q) {
+            const haystack = [a.title, a.detail, a.domain, a.metric, a.sourceLabel]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+            if (!haystack.includes(q)) return false;
+        }
         return true;
-    }), [alerts, severityFilter, domainFilter]);
+    }), [alerts, severityFilter, domainFilter, sourceFilter, search]);
 
     if (!canAccess(user?.role, 'alert_center')) return <AccessDenied />;
 
@@ -82,13 +126,14 @@ export default function AlertCenterPage() {
                         Early-warning dashboard — รวมสัญญาณเตือนจากทุกโดเมนไว้ในหน้าเดียว
                         {' '}• ข้อมูลนักศึกษา {studentCount.toLocaleString('th-TH')} คน
                         {' '}• {studentDataLive ? 'อัปเดตสดจาก Firestore' : 'ใช้ข้อมูลตั้งต้นล่าสุด'}
+                        {' '}• {apiStatus.configured ? `เชื่อม API: ${apiStatus.url}` : 'พร้อมเชื่อม MJU API ผ่าน VITE_MJU_ALERT_API_URL'}
                     </p>
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                     <ExportPDFButton title="ศูนย์แจ้งเตือน (Alert Center)" />
                     <button
                         className="admin-refresh-btn"
-                        onClick={() => setTick(t => t + 1)}
+                        onClick={() => setStudentDataVersion(t => t + 1)}
                         aria-label="คำนวณใหม่"
                         data-tooltip="คำนวณใหม่"
                     >
@@ -118,10 +163,31 @@ export default function AlertCenterPage() {
                 <select value={domainFilter} onChange={e => setDomainFilter(e.target.value)}>
                     {domains.map(d => <option key={d} value={d}>{d === 'all' ? 'ทุกโดเมน' : d}</option>)}
                 </select>
+                <label>แหล่งข้อมูล:</label>
+                <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}>
+                    {sources.map(s => (
+                        <option key={s} value={s}>
+                            {s === 'all' ? 'ทุกแหล่งข้อมูล' : (ALERT_SOURCE_META[s]?.label || s)}
+                        </option>
+                    ))}
+                </select>
+                <div className="filter-search">
+                    <Search size={14} />
+                    <input
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="ค้นหาแจ้งเตือน/ตัวชี้วัด"
+                    />
+                </div>
                 <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     แสดง {filtered.length} / {alerts.length} รายการ
                 </span>
             </div>
+            {apiMessage && (
+                <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    API status: {apiMessage}
+                </div>
+            )}
 
             {/* Alert list */}
             <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -170,6 +236,18 @@ export default function AlertCenterPage() {
                                         }}>
                                             <DomainIcon size={12} /> {a.domain}
                                         </span>
+                                        {a.sourceLabel && (
+                                            <span style={{
+                                                fontSize: '0.72rem',
+                                                color: a.sourceMode === 'live' ? '#00a651' : 'var(--text-muted)',
+                                                padding: '3px 9px',
+                                                borderRadius: 999,
+                                                border: '1px solid rgba(123,104,238,0.24)',
+                                                background: 'rgba(123,104,238,0.08)'
+                                            }}>
+                                                {a.sourceLabel}
+                                            </span>
+                                        )}
                                     </div>
                                     <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>{a.title}</h3>
                                     <p style={{ margin: '6px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>

@@ -1,6 +1,8 @@
 # Logs
 logs
 *.log
+readiness-*.png
+chrome-*-profile*/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -17,6 +19,7 @@ dist-ssr
 .env.*
 .env.local
 .env.production
+!.env.example
 
 # Editor directories and files
 .vscode/*

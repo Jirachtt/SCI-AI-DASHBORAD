@@ -9,12 +9,21 @@ import {
     Database, ScrollText
 } from 'lucide-react';
 import { canAccess, getRoleBadgeColor, getRoleInfo } from '../utils/accessControl';
+import {
+    addRoleMonths,
+    buildRoleValidityPatch,
+    formatRoleDate,
+    fromRoleDateInput,
+    getRoleDurationLabel,
+    getRoleValidity,
+    toRoleDateInput
+} from '../utils/roleValidity';
 import AdminDataUpload from '../components/AdminDataUpload';
 import AdminAuditLog from '../components/AdminAuditLog';
 
 const MANAGEABLE_ROLES = ['dean', 'chair', 'staff', 'general', 'student'];
 const ROLE_LABELS = {
-    dean: 'ผจก.คณะ (Dean)',
+    dean: 'คณบดี (Dean)',
     chair: 'ประธานหลักสูตร (Chair)',
     staff: 'เจ้าหน้าที่ (Staff)',
     general: 'ผู้ใช้ทั่วไป (General)',
@@ -23,6 +32,42 @@ const ROLE_LABELS = {
     pending_chair: 'รอการอนุมัติ (Chair)'
 };
 const AVATAR_BY_ROLE = { dean: 'D', chair: 'C', staff: 'S', general: 'U', student: 'U' };
+const DEMO_USERS = [
+    {
+        uid: 'demo-pending-staff',
+        name: 'เจ้าหน้าที่ตัวอย่าง',
+        email: 'staff.demo@mju.ac.th',
+        role: 'pending_staff',
+        requestedRole: 'staff',
+        roleLabel: ROLE_LABELS.pending_staff,
+        status: 'pending',
+        employeeId: 'SCI-DEMO-001',
+        department: 'คณะวิทยาศาสตร์',
+        createdAt: new Date().toISOString()
+    },
+    {
+        uid: 'demo-chair',
+        name: 'ประธานหลักสูตรตัวอย่าง',
+        email: 'chair.demo@mju.ac.th',
+        role: 'chair',
+        roleLabel: ROLE_LABELS.chair,
+        status: 'approved',
+        employeeId: 'SCI-DEMO-002',
+        department: 'วิทยาการคอมพิวเตอร์',
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+        ...buildRoleValidityPatch('chair', new Date(Date.now() - 86400000))
+    },
+    {
+        uid: 'demo-student',
+        name: 'นักศึกษาตัวอย่าง',
+        email: 'student.demo@mju.ac.th',
+        role: 'student',
+        roleLabel: ROLE_LABELS.student,
+        status: 'approved',
+        createdAt: new Date(Date.now() - 172800000).toISOString(),
+        ...buildRoleValidityPatch('student', new Date(Date.now() - 172800000))
+    }
+];
 
 const formatDate = (value) => {
     if (!value) return '-';
@@ -39,6 +84,12 @@ const formatDate = (value) => {
     }
 };
 
+const getRoleTermText = (validity) => {
+    if (validity.status === 'expired') return `หมดอายุแล้ว ${Math.abs(validity.daysRemaining).toLocaleString('th-TH')} วัน`;
+    if (validity.status === 'expiring') return `ใกล้หมดอายุ เหลือ ${validity.daysRemaining.toLocaleString('th-TH')} วัน`;
+    return `เหลือ ${validity.daysRemaining.toLocaleString('th-TH')} วัน`;
+};
+
 export default function AdminPanelPage() {
     const { user, updateUserDoc } = useAuth();
     const [users, setUsers] = useState([]);
@@ -51,6 +102,7 @@ export default function AdminPanelPage() {
     const [savingUid, setSavingUid] = useState(null);
 
     const canViewPanel = canAccess(user?.role, 'admin_panel');
+    const isAdminBypass = user?.uid?.startsWith('admin-bypass-');
 
     const showToast = useCallback((type, message) => {
         setToast({ type, message });
@@ -59,6 +111,11 @@ export default function AdminPanelPage() {
 
     const loadUsers = useCallback(async () => {
         setLoading(true);
+        if (isAdminBypass) {
+            setUsers(DEMO_USERS);
+            setLoading(false);
+            return;
+        }
         try {
             const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
             const snap = await getDocs(q);
@@ -70,7 +127,7 @@ export default function AdminPanelPage() {
         } finally {
             setLoading(false);
         }
-    }, [showToast]);
+    }, [isAdminBypass, showToast]);
 
     useEffect(() => {
         if (canViewPanel) loadUsers();
@@ -85,7 +142,9 @@ export default function AdminPanelPage() {
         total: users.length,
         pending: pendingUsers.length,
         staff: users.filter(u => u.role === 'staff').length,
-        chair: users.filter(u => u.role === 'chair').length
+        chair: users.filter(u => u.role === 'chair').length,
+        expiring: users.filter(u => u.status === 'approved' && getRoleValidity(u).status === 'expiring').length,
+        expired: users.filter(u => u.status === 'approved' && getRoleValidity(u).status === 'expired').length
     }), [users, pendingUsers]);
 
     const filteredUsers = useMemo(() => {
@@ -100,6 +159,56 @@ export default function AdminPanelPage() {
         });
     }, [users, search, roleFilter]);
 
+    const saveRoleTimePatch = async (u, patch, successMessage) => {
+        const nextPatch = {
+            ...patch,
+            roleManagedAt: new Date().toISOString(),
+            roleManagedBy: user?.uid || user?.email || 'admin',
+        };
+        if (u.uid?.startsWith('demo-')) {
+            setUsers(prev => prev.map(x => x.uid === u.uid ? { ...x, ...nextPatch } : x));
+            showToast('success', successMessage);
+            return;
+        }
+        setSavingUid(u.uid);
+        const result = await updateUserDoc(u.uid, nextPatch);
+        setSavingUid(null);
+        if (result.success) {
+            setUsers(prev => prev.map(x => x.uid === u.uid ? { ...x, ...nextPatch } : x));
+            showToast('success', successMessage);
+        } else {
+            showToast('error', 'บันทึกระยะเวลา role ไม่สำเร็จ: ' + result.error);
+        }
+    };
+
+    const handleRoleExpiryDateChange = async (u, value) => {
+        const expiresAt = fromRoleDateInput(value);
+        if (!expiresAt) return;
+        const validity = getRoleValidity(u);
+        if (expiresAt <= validity.startedAt) {
+            showToast('error', 'วันหมดอายุต้องอยู่หลังวันเริ่มสิทธิ์');
+            return;
+        }
+        await saveRoleTimePatch(u, {
+            roleStartedAt: validity.startedAt.toISOString(),
+            roleExpiresAt: expiresAt.toISOString(),
+        }, `ปรับวันหมดอายุ role ของ ${u.name || u.email} แล้ว`);
+    };
+
+    const handleAdjustRoleTime = async (u, months) => {
+        const validity = getRoleValidity(u);
+        const expiresAt = addRoleMonths(validity.expiresAt, months);
+        if (expiresAt <= validity.startedAt) {
+            showToast('error', 'ไม่สามารถลดเวลาจนก่อนวันเริ่มสิทธิ์ได้');
+            return;
+        }
+        const label = months > 0 ? `เพิ่ม ${Math.abs(months)} เดือน` : `ลด ${Math.abs(months)} เดือน`;
+        await saveRoleTimePatch(u, {
+            roleStartedAt: validity.startedAt.toISOString(),
+            roleExpiresAt: expiresAt.toISOString(),
+        }, `${label} ให้ ${u.name || u.email} แล้ว`);
+    };
+
     const handleApprove = async (u) => {
         const requested = u.requestedRole || (u.role === 'pending_staff' ? 'staff' : 'chair');
         const info = getRoleInfo(requested);
@@ -109,8 +218,15 @@ export default function AdminPanelPage() {
             avatar: AVATAR_BY_ROLE[requested] || 'U',
             status: 'approved',
             approvedBy: user?.uid || user?.email || 'admin',
-            approvedAt: new Date().toISOString()
+            approvedAt: new Date().toISOString(),
+            ...buildRoleValidityPatch(requested, new Date())
         };
+        if (u.uid?.startsWith('demo-')) {
+            setUsers(prev => prev.map(x => x.uid === u.uid ? { ...x, ...patch } : x));
+            setConfirmAction(null);
+            showToast('success', `อนุมัติ ${u.name || u.email} เป็น ${ROLE_LABELS[requested] || requested} เรียบร้อย`);
+            return;
+        }
         setSavingUid(u.uid);
         const result = await updateUserDoc(u.uid, patch);
         setSavingUid(null);
@@ -130,8 +246,15 @@ export default function AdminPanelPage() {
             avatar: 'U',
             status: 'rejected',
             approvedBy: user?.uid || user?.email || 'admin',
-            approvedAt: new Date().toISOString()
+            approvedAt: new Date().toISOString(),
+            ...buildRoleValidityPatch('general', new Date())
         };
+        if (u.uid?.startsWith('demo-')) {
+            setUsers(prev => prev.map(x => x.uid === u.uid ? { ...x, ...patch } : x));
+            setConfirmAction(null);
+            showToast('success', `ปฏิเสธคำขอของ ${u.name || u.email} แล้ว`);
+            return;
+        }
         setSavingUid(u.uid);
         const result = await updateUserDoc(u.uid, patch);
         setSavingUid(null);
@@ -156,8 +279,14 @@ export default function AdminPanelPage() {
             avatar: AVATAR_BY_ROLE[newRole] || 'U',
             status: 'approved',
             approvedBy: user?.uid || user?.email || 'admin',
-            approvedAt: new Date().toISOString()
+            approvedAt: new Date().toISOString(),
+            ...buildRoleValidityPatch(newRole, new Date())
         };
+        if (u.uid?.startsWith('demo-')) {
+            setUsers(prev => prev.map(x => x.uid === u.uid ? { ...x, ...patch } : x));
+            showToast('success', `เปลี่ยน role ของ ${u.name || u.email} เป็น ${ROLE_LABELS[newRole] || newRole}`);
+            return;
+        }
         setSavingUid(u.uid);
         const result = await updateUserDoc(u.uid, patch);
         setSavingUid(null);
@@ -237,6 +366,24 @@ export default function AdminPanelPage() {
                         <h2 className="admin-stat-value">{stats.chair}</h2>
                     </div>
                 </div>
+                <div className={`admin-stat-card ${stats.expiring > 0 ? 'pulse' : ''}`}>
+                    <div className="admin-stat-icon" style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B' }}>
+                        <CalendarDays size={22} />
+                    </div>
+                    <div>
+                        <p className="admin-stat-label">Role ใกล้หมดอายุ</p>
+                        <h2 className="admin-stat-value" style={{ color: stats.expiring > 0 ? '#F59E0B' : undefined }}>{stats.expiring}</h2>
+                    </div>
+                </div>
+                <div className={`admin-stat-card ${stats.expired > 0 ? 'pulse' : ''}`}>
+                    <div className="admin-stat-icon" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+                        <AlertTriangle size={22} />
+                    </div>
+                    <div>
+                        <p className="admin-stat-label">Role หมดอายุ</p>
+                        <h2 className="admin-stat-value" style={{ color: stats.expired > 0 ? '#ef4444' : undefined }}>{stats.expired}</h2>
+                    </div>
+                </div>
             </div>
 
             {/* Tabs */}
@@ -305,6 +452,7 @@ export default function AdminPanelPage() {
                                             <div className="admin-pending-row"><IdCard size={14} /> รหัสพนักงาน: {u.employeeId || '-'}</div>
                                             <div className="admin-pending-row"><Building size={14} /> {u.department || '-'}</div>
                                             <div className="admin-pending-row"><CalendarDays size={14} /> ส่งคำขอ: {formatDate(u.createdAt)}</div>
+                                            <div className="admin-pending-row"><Clock size={14} /> ระยะสิทธิ์หลังอนุมัติ: {getRoleDurationLabel(requested)}</div>
                                             {u.reason && (
                                                 <div className="admin-pending-reason">
                                                     <strong>เหตุผล:</strong>
@@ -353,7 +501,7 @@ export default function AdminPanelPage() {
                             <Filter size={16} />
                             <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
                                 <option value="all">ทุก Role</option>
-                                <option value="dean">Dean</option>
+                                <option value="dean">คณบดี (Dean)</option>
                                 <option value="chair">Chair</option>
                                 <option value="staff">Staff</option>
                                 <option value="general">General</option>
@@ -384,12 +532,16 @@ export default function AdminPanelPage() {
                                         <th>อีเมล</th>
                                         <th>สถานะ</th>
                                         <th>Role</th>
+                                        <th>ระยะสิทธิ์ Role</th>
+                                        <th>ปรับเวลา</th>
                                         <th>วันที่สมัคร</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredUsers.map(u => {
                                         const isSelf = u.uid === user?.uid;
+                                        const validity = getRoleValidity(u);
+                                        const canManageTime = u.status === 'approved' && MANAGEABLE_ROLES.includes(u.role);
                                         const statusClass =
                                             u.status === 'pending' ? 'pending'
                                                 : u.status === 'rejected' ? 'rejected'
@@ -429,6 +581,52 @@ export default function AdminPanelPage() {
                                                         ))}
                                                     </select>
                                                 </td>
+                                                <td>
+                                                    {canManageTime ? (
+                                                        <div className="admin-role-term">
+                                                            <span className={`admin-term-badge ${validity.status}`}>
+                                                                {getRoleTermText(validity)}
+                                                            </span>
+                                                            <div className="admin-term-dates">
+                                                                <CalendarDays size={13} />
+                                                                <span>{formatRoleDate(validity.startedAt)} - {formatRoleDate(validity.expiresAt)}</span>
+                                                            </div>
+                                                            <div className="admin-term-meta">
+                                                                ระยะมาตรฐาน {getRoleDurationLabel(u.role)}
+                                                            </div>
+                                                            <div className="admin-term-progress" aria-hidden="true">
+                                                                <span style={{ width: `${validity.progress}%` }} />
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="admin-term-muted">
+                                                            {u.status === 'pending'
+                                                                ? `รออนุมัติ · หลังอนุมัติ ${getRoleDurationLabel(u.requestedRole || 'general')}`
+                                                                : '-'}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    {canManageTime ? (
+                                                        <div className="admin-role-time-actions">
+                                                            <input
+                                                                type="date"
+                                                                value={toRoleDateInput(validity.expiresAt)}
+                                                                onChange={(e) => handleRoleExpiryDateChange(u, e.target.value)}
+                                                                disabled={savingUid === u.uid}
+                                                                aria-label={`กำหนดวันหมดอายุ role ของ ${u.name || u.email || 'user'}`}
+                                                            />
+                                                            <div className="admin-role-time-shortcuts">
+                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, -12)} disabled={savingUid === u.uid}>-1 ปี</button>
+                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, -6)} disabled={savingUid === u.uid}>-6 ด.</button>
+                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, 6)} disabled={savingUid === u.uid}>+6 ด.</button>
+                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, 12)} disabled={savingUid === u.uid}>+1 ปี</button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="admin-term-muted">จัดการหลังอนุมัติ</span>
+                                                    )}
+                                                </td>
                                                 <td className="admin-cell-date">{formatDate(u.createdAt)}</td>
                                             </tr>
                                         );
@@ -466,7 +664,10 @@ export default function AdminPanelPage() {
                         </h2>
                         <p>
                             {confirmAction.type === 'approve'
-                                ? <>จะให้สิทธิ์ <strong>{ROLE_LABELS[confirmAction.user.requestedRole] || confirmAction.user.requestedRole}</strong> แก่ <strong>{confirmAction.user.name}</strong></>
+                                ? (() => {
+                                    const requested = confirmAction.user.requestedRole || (confirmAction.user.role === 'pending_staff' ? 'staff' : 'chair');
+                                    return <>จะให้สิทธิ์ <strong>{ROLE_LABELS[requested] || requested}</strong> แก่ <strong>{confirmAction.user.name}</strong> โดยเริ่มวันนี้และหมดอายุใน {getRoleDurationLabel(requested)}</>;
+                                })()
                                 : <>คำขอของ <strong>{confirmAction.user.name}</strong> จะถูกปฏิเสธ และถูกลดสิทธิ์เป็นผู้ใช้ทั่วไป</>}
                         </p>
                         <div className="admin-modal-actions">

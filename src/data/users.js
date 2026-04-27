@@ -6,7 +6,7 @@ const users = [
     password: 'dean123',
     name: 'ดร.สมชาย วิชาการ',
     role: 'dean',
-    roleLabel: 'ผจก.คณะ',
+    roleLabel: 'คณบดี',
     faculty: 'คณะวิทยาศาสตร์',
     avatar: '👨‍💼'
   },

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
@@ -10,6 +11,8 @@ import {
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { FileText, DollarSign, Award, BookOpen, Globe2, TrendingUp, Microscope } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import ChartDrilldownModal from '../components/ChartDrilldownModal';
+import { withChartDrilldown } from '../utils/chartDrilldown';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
@@ -23,6 +26,7 @@ const tdStyle = { padding: '10px 14px', fontSize: '0.88rem', color: 'var(--text-
 
 export default function ResearchDashboardPage() {
     const { user } = useAuth();
+    const [drillDetail, setDrillDetail] = useState(null);
     if (!canAccess(user?.role, 'research_overview')) return <AccessDenied />;
 
     const { overview, publicationTrend, byDepartment, fundingTrend, fundingSources, patents, communityImpact, benchmark } = researchData;
@@ -96,6 +100,108 @@ export default function ResearchDashboardPage() {
         cutout: '60%',
     };
 
+    const publicationDrilldownOptions = withChartDrilldown(chartOptions, pubChartData, setDrillDetail, (point) => {
+        const row = publicationTrend[point.index];
+        return {
+            title: `แนวโน้มผลงานตีพิมพ์ ปี ${point.label}`,
+            subtitle: point.datasetLabel,
+            valueLabel: point.datasetLabel,
+            value: point.value,
+            unit: 'เรื่อง',
+            accentColor: point.color,
+            rows: row ? [row] : [],
+            columns: [
+                { key: 'year', label: 'ปี' },
+                { key: 'scopus', label: 'Scopus', align: 'right' },
+                { key: 'tci1', label: 'TCI-1', align: 'right' },
+                { key: 'tci2', label: 'TCI-2', align: 'right' },
+                { key: 'national', label: 'ระดับชาติ', align: 'right' },
+                { key: 'total', label: 'รวม', align: 'right' },
+                { key: 'type', label: 'ประเภท' },
+            ],
+        };
+    });
+
+    const sourceDrilldownOptions = withChartDrilldown(doughnutOptions, sourceData, setDrillDetail, (point) => {
+        const row = fundingSources[point.index];
+        return {
+            title: `แหล่งทุนวิจัย: ${point.label}`,
+            subtitle: 'รายละเอียดแหล่งทุนวิจัยปีล่าสุด',
+            valueLabel: 'จำนวนเงิน',
+            value: point.value,
+            unit: 'ล้านบาท',
+            accentColor: point.color,
+            rows: row ? [row] : [],
+            columns: [
+                { key: 'source', label: 'แหล่งทุน' },
+                { key: 'amount', label: 'จำนวนเงิน (ล้านบาท)', align: 'right' },
+            ],
+        };
+    });
+
+    const deptDrilldownOptions = withChartDrilldown(chartOptions, deptChartData, setDrillDetail, (point) => {
+        const row = byDepartment[point.index];
+        return {
+            title: `ผลงานวิจัย: ${point.label}`,
+            subtitle: point.datasetLabel,
+            valueLabel: point.datasetLabel,
+            value: point.value,
+            accentColor: point.color,
+            rows: row ? [row] : [],
+            columns: [
+                { key: 'dept', label: 'ภาควิชา' },
+                { key: 'publications', label: 'ผลงานตีพิมพ์', align: 'right' },
+                { key: 'funding', label: 'ทุน (ล้านบาท)', align: 'right' },
+                { key: 'patents', label: 'สิทธิบัตร', align: 'right' },
+                { key: 'citations', label: 'Citations', align: 'right' },
+            ],
+        };
+    });
+
+    const fundingDrilldownOptions = withChartDrilldown(
+        { ...chartOptions, scales: { ...chartOptions.scales, x: { ...chartOptions.scales.x, stacked: true }, y: { ...chartOptions.scales.y, stacked: true } } },
+        fundChartData,
+        setDrillDetail,
+        (point) => {
+            const row = fundingTrend[point.index];
+            return {
+                title: `แนวโน้มงบวิจัย ปี ${point.label}`,
+                subtitle: point.datasetLabel,
+                valueLabel: point.datasetLabel,
+                value: point.value,
+                unit: 'ล้านบาท',
+                accentColor: point.color,
+                rows: row ? [row] : [],
+                columns: [
+                    { key: 'year', label: 'ปี' },
+                    { key: 'internal', label: 'ทุนภายใน', align: 'right' },
+                    { key: 'external', label: 'ทุนภายนอก', align: 'right' },
+                    { key: 'industry', label: 'ภาคเอกชน', align: 'right' },
+                    { key: 'total', label: 'รวม', align: 'right' },
+                    { key: 'type', label: 'ประเภท' },
+                ],
+            };
+        }
+    );
+
+    const benchmarkDrilldownOptions = withChartDrilldown(chartOptions, benchData, setDrillDetail, (point) => {
+        const row = benchmark[point.index];
+        return {
+            title: `Benchmark: ${point.label}`,
+            subtitle: point.datasetLabel,
+            valueLabel: point.datasetLabel,
+            value: point.value,
+            accentColor: point.color,
+            rows: row ? [row] : [],
+            columns: [
+                { key: 'university', label: 'มหาวิทยาลัย' },
+                { key: 'scopus', label: 'Scopus Papers', align: 'right' },
+                { key: 'hIndex', label: 'h-Index', align: 'right' },
+                { key: 'patents', label: 'สิทธิบัตร', align: 'right' },
+            ],
+        };
+    });
+
     const scorecards = [
         { label: 'ผลงานตีพิมพ์รวม', value: overview.totalPublications.toLocaleString(), icon: FileText, color: '#006838' },
         { label: 'งบวิจัยรวม (ล้าน฿)', value: overview.totalFunding.toFixed(1), icon: DollarSign, color: '#2E86AB' },
@@ -107,6 +213,7 @@ export default function ResearchDashboardPage() {
 
     return (
         <div style={{ padding: '0 4px' }}>
+            <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             <div className="section-header">
                 <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
                     <Microscope size={22} color="#fff" />
@@ -143,13 +250,13 @@ export default function ResearchDashboardPage() {
                 <div style={cardStyle}>
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มผลงานตีพิมพ์</h3>
                     <div style={{ height: 280 }}>
-                        <Line data={pubChartData} options={chartOptions} />
+                        <Line data={pubChartData} options={publicationDrilldownOptions} />
                     </div>
                 </div>
                 <div style={cardStyle}>
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แหล่งทุนวิจัย</h3>
                     <div style={{ height: 280 }}>
-                        <Doughnut data={sourceData} options={doughnutOptions} />
+                        <Doughnut data={sourceData} options={sourceDrilldownOptions} />
                     </div>
                 </div>
             </div>
@@ -159,13 +266,13 @@ export default function ResearchDashboardPage() {
                 <div style={cardStyle}>
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>ผลงานแยกตามภาควิชา</h3>
                     <div style={{ height: 260 }}>
-                        <Bar data={deptChartData} options={chartOptions} />
+                        <Bar data={deptChartData} options={deptDrilldownOptions} />
                     </div>
                 </div>
                 <div style={cardStyle}>
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มงบวิจัย (ล้านบาท)</h3>
                     <div style={{ height: 260 }}>
-                        <Bar data={fundChartData} options={{ ...chartOptions, scales: { ...chartOptions.scales, x: { ...chartOptions.scales.x, stacked: true }, y: { ...chartOptions.scales.y, stacked: true } } }} />
+                        <Bar data={fundChartData} options={fundingDrilldownOptions} />
                     </div>
                 </div>
             </div>
@@ -174,7 +281,7 @@ export default function ResearchDashboardPage() {
             <div style={{ ...cardStyle, marginBottom: 16 }}>
                 <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>เปรียบเทียบกับมหาวิทยาลัยอื่น (Benchmarking)</h3>
                 <div style={{ height: 280 }}>
-                    <Bar data={benchData} options={chartOptions} />
+                    <Bar data={benchData} options={benchmarkDrilldownOptions} />
                 </div>
             </div>
 

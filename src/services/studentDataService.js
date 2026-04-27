@@ -28,6 +28,7 @@ import { writeAuditLog } from './auditLogService';
 
 const DOC_PATH = ['datasets', 'students'];
 const MANUAL_STUDENTS_KEY = 'sci_dashboard_manual_students';
+const DEMO_DATASET_KEY = 'sci_dashboard_demo_student_dataset';
 const MIN_TRUSTED_LIVE_ROWS = 1000;
 
 let _cache = null;
@@ -51,6 +52,27 @@ function saveManualStudents(list) {
         localStorage.setItem(MANUAL_STUDENTS_KEY, JSON.stringify(list));
     } catch (e) {
         console.warn('[studentDataService] localStorage save failed:', e);
+    }
+}
+
+function isBypassUid(uid) {
+    return String(uid || '').startsWith('admin-bypass-');
+}
+
+function loadDemoDataset() {
+    try {
+        const raw = localStorage.getItem(DEMO_DATASET_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+function saveDemoDataset(payload) {
+    try {
+        localStorage.setItem(DEMO_DATASET_KEY, JSON.stringify(payload));
+    } catch (e) {
+        console.warn('[studentDataService] demo dataset save failed:', e);
     }
 }
 
@@ -96,6 +118,12 @@ function studentDocRef() {
 }
 
 function setBundledFallback() {
+    const demo = loadDemoDataset();
+    if (Array.isArray(demo?.rows) && demo.rows.length > 0) {
+        _cache = demo.rows;
+        _isLive = true;
+        return;
+    }
     _cache = scienceStudentList;
     _isLive = false;
 }
@@ -194,6 +222,33 @@ export async function uploadStudentList(rows, { fileName, uid, who, meta } = {})
     if (!Array.isArray(rows) || rows.length === 0) {
         throw new Error('rows must be a non-empty array');
     }
+
+    if (isBypassUid(uid)) {
+        const updatedAt = new Date().toISOString();
+        saveDemoDataset({
+            rows,
+            rowCount: rows.length,
+            fileName: fileName || 'unknown',
+            updatedAt,
+            updatedBy: uid || 'admin-bypass',
+            version: 1,
+            allowSmallDataset: true
+        });
+        _cache = rows;
+        _isLive = true;
+        _loadPromise = Promise.resolve(getStudentListSync());
+        notify();
+        writeAuditLog({
+            action: 'upload_students',
+            who: who || uid || 'admin-bypass',
+            fileName: fileName || 'unknown',
+            rowCount: rows.length,
+            version: 1,
+            meta: { ...(meta || {}), storage: 'local_demo' },
+        });
+        return { rowCount: rows.length };
+    }
+
     await setDoc(studentDocRef(), {
         rows,
         rowCount: rows.length,
@@ -220,6 +275,17 @@ export async function uploadStudentList(rows, { fileName, uid, who, meta } = {})
 }
 
 export async function getStudentListMeta() {
+    const demo = loadDemoDataset();
+    if (Array.isArray(demo?.rows) && demo.rows.length > 0) {
+        return {
+            rowCount: demo.rowCount ?? demo.rows.length,
+            fileName: demo.fileName || null,
+            updatedAt: demo.updatedAt ? new Date(demo.updatedAt) : null,
+            updatedBy: demo.updatedBy || null,
+            version: demo.version || 1
+        };
+    }
+
     try {
         const snap = await getDoc(studentDocRef());
         if (!snap.exists()) return null;

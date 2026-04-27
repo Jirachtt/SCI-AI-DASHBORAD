@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, BarChart3, TrendingUp, Maximize2, Mic, MicOff, Bot } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { SCIENCE_MAJORS } from '../data/studentListData';
-import { getStudentListSync } from '../services/studentDataService';
+import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
 import { Chart as ReactChart } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale,
@@ -11,12 +13,18 @@ import {
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
-import { studentStatsData, universityBudgetData, scienceFacultyBudgetData } from '../data/mockData';
+import { getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
 import { sendMessageToGemini, resetConversation, getWaitSeconds } from '../services/geminiService';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
-const SAFE_CHART_PALETTE = ['#00a651', '#7B68EE', '#E91E63', '#C5A028', '#2E86AB', '#06b6d4', '#a855f7', '#22c55e'];
+const LIGHT_SAFE_CHART_PALETTE = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2', '#9333ea', '#0f766e'];
+const DARK_SAFE_CHART_PALETTE = ['#7dd3fc', '#a78bfa', '#34d399', '#fbbf24', '#fb7185', '#22d3ee', '#c084fc', '#86efac'];
+
+function activeSafePalette() {
+    const isDark = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark';
+    return isDark ? DARK_SAFE_CHART_PALETTE : LIGHT_SAFE_CHART_PALETTE;
+}
 
 function parseSafeRgb(value) {
     const match = String(value || '').trim().match(/rgba?\(\s*([0-9.]+)[,\s]+([0-9.]+)[,\s]+([0-9.]+)/i);
@@ -51,17 +59,19 @@ function safeChartColor(value, fallbackHex, alpha = 0.72) {
 }
 
 function safeChartHoverColor(value, fallbackHex) {
-    if (Array.isArray(value)) return value.map((color, idx) => safeChartHoverColor(color, SAFE_CHART_PALETTE[idx % SAFE_CHART_PALETTE.length]));
+    const palette = activeSafePalette();
+    if (Array.isArray(value)) return value.map((color, idx) => safeChartHoverColor(color, palette[idx % palette.length]));
     const safe = safeChartColor(value, fallbackHex, 0.88);
     return rgbaFromSafeColor(safe, 0.88);
 }
 
 function sanitizeChartDatasetColors(chart) {
     if (!Array.isArray(chart?.data?.datasets)) return chart;
+    const palette = activeSafePalette();
     chart.data.datasets.forEach((ds, idx) => {
-        const fallback = SAFE_CHART_PALETTE[idx % SAFE_CHART_PALETTE.length];
+        const fallback = palette[idx % palette.length];
         if (Array.isArray(ds.backgroundColor)) {
-            ds.backgroundColor = ds.backgroundColor.map((color, colorIdx) => safeChartColor(color, SAFE_CHART_PALETTE[colorIdx % SAFE_CHART_PALETTE.length], 0.72));
+            ds.backgroundColor = ds.backgroundColor.map((color, colorIdx) => safeChartColor(color, palette[colorIdx % palette.length], 0.72));
         } else {
             ds.backgroundColor = safeChartColor(ds.backgroundColor, fallback, chart.chartType === 'bar' ? 0.72 : 0.28);
         }
@@ -95,43 +105,43 @@ function linearRegression(dataPoints) {
 const DATASETS = {
     universityBudgetRevenue: {
         label: 'รายรับมหาวิทยาลัย', unit: 'ล้านบาท', scope: 'มหาวิทยาลัย',
-        getData: () => universityBudgetData.yearly.filter(y => y.type === 'actual').map(y => ({ x: parseInt(y.year), y: y.revenue })),
+        getData: () => getForecastSeries('universityBudgetRevenue'),
         color: '#00a651', keywords: ['รายรับ', 'revenue'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
     },
     universityBudgetExpense: {
         label: 'รายจ่ายมหาวิทยาลัย', unit: 'ล้านบาท', scope: 'มหาวิทยาลัย',
-        getData: () => universityBudgetData.yearly.filter(y => y.type === 'actual').map(y => ({ x: parseInt(y.year), y: y.expense })),
+        getData: () => getForecastSeries('universityBudgetExpense'),
         color: '#E91E63', keywords: ['รายจ่าย', 'expense', 'ค่าใช้จ่าย'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
     },
     universityBudget: {
         label: 'งบประมาณมหาวิทยาลัย (รายรับ)', unit: 'ล้านบาท', scope: 'มหาวิทยาลัย',
-        getData: () => universityBudgetData.yearly.filter(y => y.type === 'actual').map(y => ({ x: parseInt(y.year), y: y.revenue })),
+        getData: () => getForecastSeries('universityBudget'),
         color: '#00a651', keywords: ['งบประมาณ', 'budget', 'งบ'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
     },
     scienceBudgetRevenue: {
         label: 'รายรับคณะวิทยาศาสตร์', unit: 'ล้านบาท', scope: 'คณะวิทยาศาสตร์',
-        getData: () => scienceFacultyBudgetData.yearly.filter(y => y.type === 'actual').map(y => ({ x: parseInt(y.year), y: y.revenue })),
+        getData: () => getForecastSeries('scienceBudgetRevenue'),
         color: '#006838', keywords: ['รายรับ', 'revenue', 'งบประมาณ', 'budget', 'งบ'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์']
     },
     scienceBudgetExpense: {
         label: 'รายจ่ายคณะวิทยาศาสตร์', unit: 'ล้านบาท', scope: 'คณะวิทยาศาสตร์',
-        getData: () => scienceFacultyBudgetData.yearly.filter(y => y.type === 'actual').map(y => ({ x: parseInt(y.year), y: y.expense })),
+        getData: () => getForecastSeries('scienceBudgetExpense'),
         color: '#A23B72', keywords: ['รายจ่าย', 'expense', 'ค่าใช้จ่าย'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์']
     },
     universityStudents: {
-        label: 'จำนวนนิสิตมหาวิทยาลัย', unit: 'คน', scope: 'มหาวิทยาลัย',
-        getData: () => studentStatsData.trend.filter(t => t.type === 'actual').map(t => ({ x: parseInt(t.year), y: t.total })),
+        label: 'จำนวนนักศึกษาในระบบ', unit: 'คน', scope: 'ข้อมูลนักศึกษาในเว็บ',
+        getData: () => getForecastSeries('universityStudents'),
         color: '#7B68EE', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
     },
     scienceStudents: {
         label: 'จำนวนนิสิตคณะวิทยาศาสตร์', unit: 'คน', scope: 'คณะวิทยาศาสตร์',
-        getData: () => studentStatsData.scienceFaculty.byEnrollmentYear.map(e => ({ x: parseInt(e.year), y: e.count })),
+        getData: () => getForecastSeries('scienceStudents'),
         color: '#006838', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์']
     }
@@ -253,7 +263,7 @@ function generateForecastResponse(parsed) {
         });
 
         const forecastSummary = parsed.years.map(y => `   ปี ${y}: ~${model.predict(y).toLocaleString()} ${ds.unit}`).join('\n');
-        results.push(`**${ds.label}**\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}`);
+        results.push(`**${ds.label}**\nแหล่งข้อมูล: ${getForecastDataSourceNote(dsKey)}\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}`);
     }
 
     const chartConfig = allDatasets.length > 0 ? {
@@ -614,6 +624,8 @@ function ChatMessage({ msg, onExpand }) {
 
 // ==================== Main AIChat Component ====================
 export default function AIChat() {
+    const { user } = useAuth();
+    const { theme } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
     const [expandedChart, setExpandedChart] = useState(null);
     const [isListening, setIsListening] = useState(false);
@@ -627,7 +639,13 @@ export default function AIChat() {
     ]);
     const [input, setInput] = useState('');
     const [typing, setTyping] = useState(false);
+    const [, setStudentDataVersion] = useState(0);
     const messagesEnd = useRef(null);
+
+    useEffect(() => {
+        ensureStudentList();
+        return onStudentDataChange(() => setStudentDataVersion(v => v + 1));
+    }, []);
 
     // ── Speech Recognition Setup ──
     useEffect(() => {
@@ -740,6 +758,8 @@ export default function AIChat() {
         messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, typing]);
 
+    const sendAI = useCallback((prompt) => sendMessageToGemini(prompt, { user, theme }), [user, theme]);
+
     // Reset conversation when chat is closed
     const handleClose = useCallback(() => {
         setIsOpen(false);
@@ -768,7 +788,7 @@ export default function AIChat() {
                 }, 1000);
             });
             try {
-                const aiText = await sendMessageToGemini(buildMessage());
+                const aiText = await sendAI(buildMessage());
                 const parsedAI = parseAIResponse(aiText);
                 setMessages(prev => prev.map(m =>
                     m._retryId === retryId
@@ -807,7 +827,7 @@ export default function AIChat() {
                 setTyping(false);
                 return;
             }
-            const aiText = await sendMessageToGemini(userMsg);
+            const aiText = await sendAI(userMsg);
             const parsedAI = parseAIResponse(aiText);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
@@ -854,7 +874,7 @@ export default function AIChat() {
                 setTyping(false);
                 return;
             }
-            const aiText = await sendMessageToGemini(query);
+            const aiText = await sendAI(query);
             const parsedAI = parseAIResponse(aiText);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {

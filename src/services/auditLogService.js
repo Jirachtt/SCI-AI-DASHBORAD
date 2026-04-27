@@ -15,6 +15,35 @@ import {
 import { db } from '../firebase';
 
 const COLLECTION = 'auditLogs';
+const LOCAL_AUDIT_KEY = 'sci_dashboard_local_audit_logs';
+
+function readLocalLogs() {
+    try {
+        const raw = localStorage.getItem(LOCAL_AUDIT_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch {
+        return [];
+    }
+}
+
+function appendLocalLog(entry) {
+    try {
+        const rows = readLocalLogs();
+        rows.unshift({
+            id: `local-${Date.now()}`,
+            action: entry.action,
+            who: entry.who || 'unknown',
+            fileName: entry.fileName || null,
+            rowCount: entry.rowCount ?? null,
+            version: entry.version ?? 1,
+            meta: entry.meta || {},
+            at: new Date().toISOString(),
+        });
+        localStorage.setItem(LOCAL_AUDIT_KEY, JSON.stringify(rows.slice(0, 100)));
+    } catch (err) {
+        console.warn('[auditLogService] local audit fallback failed:', err?.message || err);
+    }
+}
 
 export async function writeAuditLog(entry) {
     if (!entry || !entry.action) throw new Error('audit entry requires an action');
@@ -28,9 +57,9 @@ export async function writeAuditLog(entry) {
             meta: entry.meta || {},
             at: serverTimestamp(),
         });
-    } catch (err) {
-        // Don't block the primary operation on audit failures
-        console.warn('[auditLogService] writeAuditLog failed:', err?.message || err);
+    } catch {
+        // Don't block the primary operation on audit failures.
+        appendLocalLog(entry);
     }
 }
 
@@ -57,6 +86,9 @@ export async function listRecentAuditLogs(maxEntries = 50) {
         });
     } catch (err) {
         console.warn('[auditLogService] listRecentAuditLogs failed:', err?.message || err);
-        return [];
+        return readLocalLogs().slice(0, maxEntries).map(log => ({
+            ...log,
+            at: log.at ? new Date(log.at) : null,
+        }));
     }
 }

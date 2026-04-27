@@ -1,20 +1,32 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { studentStatsData } from '../data/mockData';
 import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
-import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText, BarChart3, Microscope, X, MousePointerClick } from 'lucide-react';
+import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText, BarChart3, Microscope, MousePointerClick } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { Doughnut, Line, Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
     Title, Tooltip, Legend, ArcElement, Filler, BarElement
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
+import { withChartDrilldown } from '../utils/chartDrilldown';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
+
+const studentColumns = [
+    { key: 'id', label: 'รหัสนักศึกษา' },
+    { key: 'name', label: 'ชื่อ-นามสกุล' },
+    { key: 'major', label: 'สาขาวิชา' },
+    { key: 'level', label: 'ระดับ' },
+    { key: 'year', label: 'ชั้นปี', align: 'right' },
+    { key: 'status', label: 'สถานะ' },
+    { key: 'gpa', label: 'GPA', align: 'right', render: value => typeof value === 'number' ? value.toFixed(2) : '-' },
+];
 
 export default function StudentStatsPage() {
     const { user } = useAuth();
@@ -22,7 +34,7 @@ export default function StudentStatsPage() {
     const [selectedLevel, setSelectedLevel] = useState('all');
     const [appliedFaculty, setAppliedFaculty] = useState('all');
     const [appliedLevel, setAppliedLevel] = useState('all');
-    const [drillYear, setDrillYear] = useState(null); // e.g. '2565'
+    const [drillDetail, setDrillDetail] = useState(null);
     const [, forceTick] = useState(0);
 
     useEffect(() => {
@@ -34,6 +46,7 @@ export default function StudentStatsPage() {
     if (!canAccess(user?.role, 'student_stats')) return <AccessDenied />;
 
     const { current, byFaculty, trend, scienceFaculty } = studentStatsData;
+    const studentRows = getStudentListSync();
 
     const isFiltered = appliedFaculty !== 'all' || appliedLevel !== 'all';
 
@@ -51,7 +64,7 @@ export default function StudentStatsPage() {
     }, 0);
 
     // Build filtered stat cards from applied filters
-    const filteredByLevel = useMemo(() => {
+    const filteredByLevel = (() => {
         const levels = [
             { level: 'ปริญญาตรี', key: 'bachelor', color: '#006838' },
             { level: 'ปริญญาโท', key: 'master', color: '#2E86AB' },
@@ -62,7 +75,7 @@ export default function StudentStatsPage() {
             return lvl ? [{ ...lvl, count: filteredFaculty.reduce((s, f) => s + f[lvl.key], 0) }] : [];
         }
         return levels.map(l => ({ ...l, count: filteredFaculty.reduce((s, f) => s + f[l.key], 0) }));
-    }, [appliedFaculty, appliedLevel, filteredFaculty]);
+    })();
 
     // Doughnut chart for student levels
     const levelPalette = ['#22c55e', '#3b82f6', '#8b5cf6', '#f59e0b'];
@@ -219,17 +232,6 @@ export default function StudentStatsPage() {
     const enrollmentBarOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        onClick: (_evt, elements) => {
-            if (!elements || elements.length === 0) return;
-            const idx = elements[0].index;
-            const year = scienceFaculty.byEnrollmentYear[idx]?.year;
-            if (year) setDrillYear(year);
-        },
-        onHover: (evt, elements) => {
-            if (evt?.native?.target) {
-                evt.native.target.style.cursor = elements?.length ? 'pointer' : 'default';
-            }
-        },
         plugins: {
             legend: { display: false },
             tooltip: {
@@ -245,15 +247,231 @@ export default function StudentStatsPage() {
         }
     };
 
-    // Drill-down: students whose id starts with 2-digit intake code matching drillYear
-    const drillStudents = drillYear
-        ? getStudentListSync().filter(s => String(s.id || '').slice(0, 2) === String(drillYear).slice(-2))
-        : [];
+    const studentDataNote = 'รายชื่อที่แสดงดึงจาก studentDataService ซึ่งอัปเดตตาม Firestore/ไฟล์อัปโหลดล่าสุดแบบ realtime';
+
+    const doughnutDrilldownOptions = withChartDrilldown(doughnutOptions, doughnutData, setDrillDetail, (point) => {
+        const rows = studentRows.filter(student => student.level === point.label);
+        return {
+            title: `นักศึกษา ${point.label}`,
+            subtitle: 'รายละเอียดจากข้อมูลนักศึกษาที่ระบบมีอยู่',
+            valueLabel: point.label,
+            value: point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows,
+            columns: studentColumns,
+            note: rows.length === 0 ? 'กราฟนี้เป็นข้อมูลภาพรวมมหาวิทยาลัย แต่ระบบมีรายชื่อเชิงแถวเฉพาะ dataset นักศึกษาที่อัปโหลดไว้' : studentDataNote,
+        };
+    });
+
+    const trendLineDrilldownOptions = withChartDrilldown(trendLineOptions, trendLineData, setDrillDetail, (point) => {
+        const row = trend[point.index];
+        return {
+            title: `แนวโน้มจำนวนนักศึกษา ${point.label}`,
+            subtitle: point.datasetLabel,
+            valueLabel: point.datasetLabel,
+            value: point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows: row ? [row] : [],
+            columns: [
+                { key: 'year', label: 'ปี' },
+                { key: 'total', label: 'รวม', align: 'right' },
+                { key: 'bachelor', label: 'ป.ตรี', align: 'right' },
+                { key: 'master', label: 'ป.โท', align: 'right' },
+                { key: 'doctoral', label: 'ป.เอก', align: 'right' },
+                { key: 'type', label: 'ประเภท' },
+            ],
+        };
+    });
+
+    const sciDoughnutDrilldownOptions = withChartDrilldown(sciDoughnutOptions, sciDoughnutData, setDrillDetail, (point) => {
+        const rows = studentRows.filter(student => student.level === point.label);
+        return {
+            title: `คณะวิทยาศาสตร์: ${point.label}`,
+            subtitle: 'รายชื่อนักศึกษาในระดับที่เลือก',
+            valueLabel: point.label,
+            value: rows.length || point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows,
+            columns: studentColumns,
+            note: studentDataNote,
+        };
+    });
+
+    const enrollmentBarDrilldownOptions = withChartDrilldown(enrollmentBarOptions, enrollmentBarData, setDrillDetail, (point) => {
+        const fullYear = scienceFaculty.byEnrollmentYear[point.index]?.year || String(point.label).replace(/\D/g, '');
+        const shortYear = String(fullYear).slice(-2);
+        const rows = studentRows.filter(student => String(student.id || '').slice(0, 2) === shortYear);
+        return {
+            title: `นักศึกษารหัส ${shortYear} (ปี ${fullYear})`,
+            subtitle: 'รายชื่อนักศึกษาตามปีที่เข้าศึกษา',
+            valueLabel: 'จำนวน',
+            value: rows.length || point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows,
+            columns: studentColumns,
+            note: studentDataNote,
+        };
+    });
+
+    const genderData = {
+        labels: ['ชาย', 'หญิง'],
+        datasets: [{
+            data: [scienceFaculty.byGender.male, scienceFaculty.byGender.female],
+            backgroundColor: ['#3b82f6', '#ec4899'],
+            borderWidth: 0,
+            cutout: '65%',
+        }]
+    };
+
+    const genderOptions = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom', labels: { color: 'var(--text-muted)', padding: 14, font: { size: 12 } } },
+            tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString()} คน (${((ctx.parsed / scienceFaculty.total) * 100).toFixed(1)}%)` } }
+        }
+    };
+
+    const genderDrilldownOptions = withChartDrilldown(genderOptions, genderData, setDrillDetail, (point) => {
+        const rows = studentRows.filter(student => {
+            const prefix = String(student.prefix || '');
+            return point.index === 0 ? prefix === 'นาย' : prefix && prefix !== 'นาย';
+        });
+        return {
+            title: `นักศึกษาคณะวิทยาศาสตร์: ${point.label}`,
+            subtitle: 'สัดส่วนเพศนักศึกษาจากข้อมูลคณะวิทยาศาสตร์',
+            valueLabel: point.label,
+            value: rows.length || point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows,
+            columns: studentColumns,
+            note: rows.length ? studentDataNote : 'กราฟเพศเป็นข้อมูลสรุปรวม หากไฟล์อัปโหลดไม่มีคอลัมน์ prefix/เพศ ระบบจะแสดงเฉพาะยอดรวมจากกราฟ',
+        };
+    });
+
+    const ratioData = {
+        labels: scienceFaculty.studentFacultyRatio.comparison.map(c => c.name),
+        datasets: [{
+            label: 'อัตราส่วน นศ./อาจารย์',
+            data: scienceFaculty.studentFacultyRatio.comparison.map(c => c.ratio),
+            backgroundColor: scienceFaculty.studentFacultyRatio.comparison.map((_, i) => {
+                const p = ['#22c55e', '#f59e0b', '#3b82f6', '#7B68EE', '#ec4899', '#06b6d4'];
+                return p[i % p.length] + 'cc';
+            }),
+            borderColor: scienceFaculty.studentFacultyRatio.comparison.map((_, i) => {
+                const p = ['#22c55e', '#f59e0b', '#3b82f6', '#7B68EE', '#ec4899', '#06b6d4'];
+                return p[i % p.length];
+            }),
+            borderWidth: 1, borderRadius: 4,
+        }]
+    };
+
+    const ratioOptions = {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.x}:1` } }
+        },
+        scales: {
+            x: { ticks: { color: 'var(--text-muted)', callback: v => v + ':1' }, grid: { color: 'var(--border-color)' } },
+            y: { ticks: { color: 'var(--text-primary)', font: { size: 11 } }, grid: { display: false } }
+        }
+    };
+
+    const ratioDrilldownOptions = withChartDrilldown(ratioOptions, ratioData, setDrillDetail, (point) => {
+        const row = scienceFaculty.studentFacultyRatio.comparison[point.index];
+        if (!row) return null;
+        return {
+            title: `อัตราส่วนนักศึกษาต่ออาจารย์: ${row.name}`,
+            subtitle: 'เปรียบเทียบเกณฑ์และหน่วยงานอ้างอิง',
+            valueLabel: 'อัตราส่วน',
+            value: row.ratio,
+            unit: ':1',
+            accentColor: point.color || row.color,
+            rows: scienceFaculty.studentFacultyRatio.comparison.map(item => ({
+                name: item.name,
+                ratio: `${item.ratio}:1`,
+                students: item.name === 'คณะวิทยาศาสตร์ มจ.' ? scienceFaculty.studentFacultyRatio.students : '-',
+                academicStaff: item.name === 'คณะวิทยาศาสตร์ มจ.' ? scienceFaculty.studentFacultyRatio.academicStaff : '-',
+            })),
+            columns: [
+                { key: 'name', label: 'หน่วยงาน/เกณฑ์' },
+                { key: 'ratio', label: 'อัตราส่วน', align: 'right' },
+                { key: 'students', label: 'นักศึกษา', align: 'right' },
+                { key: 'academicStaff', label: 'อาจารย์', align: 'right' },
+            ],
+            note: 'คณะวิทยาศาสตร์คำนวณจากนักศึกษา 1,451 คน และบุคลากรสายวิชาการ 104 คน',
+        };
+    });
+
+    const intakeData = {
+        labels: scienceFaculty.newStudentIntake.map(s => `ปี ${s.year}`),
+        datasets: [
+            {
+                label: 'ป.ตรี',
+                data: scienceFaculty.newStudentIntake.map(s => s.bachelor),
+                backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                borderColor: '#22c55e', borderWidth: 1, borderRadius: 4,
+            },
+            {
+                label: 'ป.โท + ป.เอก',
+                data: scienceFaculty.newStudentIntake.map(s => s.master + s.doctoral),
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4,
+            }
+        ]
+    };
+
+    const intakeOptions = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom', labels: { color: 'var(--text-muted)', padding: 12, font: { size: 11 } } },
+            tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} คน` } }
+        },
+        scales: {
+            x: { stacked: true, ticks: { color: 'var(--text-muted)' }, grid: { display: false } },
+            y: { stacked: true, ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } }
+        }
+    };
+
+    const intakeDrilldownOptions = withChartDrilldown(intakeOptions, intakeData, setDrillDetail, (point) => {
+        const intake = scienceFaculty.newStudentIntake[point.index];
+        if (!intake) return null;
+        const shortYear = String(intake.year).slice(-2);
+        const rows = studentRows.filter(student => {
+            const sameYear = String(student.id || '').slice(0, 2) === shortYear;
+            const level = String(student.level || '');
+            return sameYear && (point.datasetIndex === 0 ? level.includes('ตรี') : !level.includes('ตรี'));
+        });
+        return {
+            title: `นักศึกษาใหม่ปี ${intake.year}: ${point.datasetLabel}`,
+            subtitle: 'จำนวนรับเข้าคณะวิทยาศาสตร์ย้อนหลัง 5 ปี',
+            valueLabel: point.datasetLabel,
+            value: rows.length || point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows,
+            columns: studentColumns,
+            metrics: [
+                { label: 'รวมทั้งปี', value: intake.total, unit: 'คน' },
+                { label: 'โควตา', value: intake.channels.quota, unit: 'คน' },
+                { label: 'รับตรง', value: intake.channels.directAdmit, unit: 'คน' },
+                { label: 'TCAS', value: intake.channels.tcas, unit: 'คน' },
+            ],
+            note: rows.length ? studentDataNote : 'ข้อมูลรับเข้าเป็นยอดรวมรายปี หากไฟล์อัปโหลดไม่มีรายชื่อที่รหัสตรงปีนี้ ระบบจะแสดงเฉพาะยอดจากกราฟ',
+        };
+    });
 
     const scienceSharePct = ((scienceFaculty.total / current.total) * 100).toFixed(1);
 
     return (
         <div>
+            <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             <Link to="/dashboard" className="back-button">
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
@@ -332,7 +550,7 @@ export default function StudentStatsPage() {
                         </div>
                     </div>
                     <div className="chart-container">
-                        <Doughnut data={doughnutData} options={doughnutOptions} />
+                        <Doughnut data={doughnutData} options={doughnutDrilldownOptions} />
                     </div>
                 </div>
 
@@ -344,7 +562,7 @@ export default function StudentStatsPage() {
                         </div>
                     </div>
                     <div className="chart-container">
-                        <Line data={trendLineData} options={trendLineOptions} />
+                        <Line data={trendLineData} options={trendLineDrilldownOptions} />
                     </div>
                 </div>
             </div>
@@ -466,7 +684,7 @@ export default function StudentStatsPage() {
                             </div>
                         </div>
                         <div className="chart-container">
-                            <Doughnut data={sciDoughnutData} options={sciDoughnutOptions} />
+                            <Doughnut data={sciDoughnutData} options={sciDoughnutDrilldownOptions} />
                         </div>
                     </div>
 
@@ -486,7 +704,7 @@ export default function StudentStatsPage() {
                             </span>
                         </div>
                         <div className="chart-container">
-                            <Bar data={enrollmentBarData} options={enrollmentBarOptions} />
+                            <Bar data={enrollmentBarData} options={enrollmentBarDrilldownOptions} />
                         </div>
                     </div>
                 </div>
@@ -503,21 +721,7 @@ export default function StudentStatsPage() {
                         </div>
                         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
                             <div className="chart-container" style={{ height: 200 }}>
-                                <Doughnut data={{
-                                    labels: ['ชาย', 'หญิง'],
-                                    datasets: [{
-                                        data: [scienceFaculty.byGender.male, scienceFaculty.byGender.female],
-                                        backgroundColor: ['#3b82f6', '#ec4899'],
-                                        borderWidth: 0,
-                                        cutout: '65%',
-                                    }]
-                                }} options={{
-                                    responsive: true, maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: { position: 'bottom', labels: { color: 'var(--text-muted)', padding: 14, font: { size: 12 } } },
-                                        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString()} คน (${((ctx.parsed / scienceFaculty.total) * 100).toFixed(1)}%)` } }
-                                    }
-                                }} />
+                                <Doughnut data={genderData} options={genderDrilldownOptions} />
                             </div>
                             <div style={{ display: 'flex', gap: 24, justifyContent: 'center', width: '100%' }}>
                                 <div style={{ textAlign: 'center' }}>
@@ -552,33 +756,7 @@ export default function StudentStatsPage() {
                                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>({scienceFaculty.studentFacultyRatio.students} นศ. / {scienceFaculty.studentFacultyRatio.academicStaff} อาจารย์)</div>
                             </div>
                             <div className="chart-container" style={{ height: 180 }}>
-                                <Bar data={{
-                                    labels: scienceFaculty.studentFacultyRatio.comparison.map(c => c.name),
-                                    datasets: [{
-                                        label: 'อัตราส่วน นศ./อาจารย์',
-                                        data: scienceFaculty.studentFacultyRatio.comparison.map(c => c.ratio),
-                                        backgroundColor: scienceFaculty.studentFacultyRatio.comparison.map((_, i) => {
-                                            const p = ['#22c55e', '#f59e0b', '#3b82f6', '#7B68EE', '#ec4899', '#06b6d4'];
-                                            return p[i % p.length] + 'cc';
-                                        }),
-                                        borderColor: scienceFaculty.studentFacultyRatio.comparison.map((_, i) => {
-                                            const p = ['#22c55e', '#f59e0b', '#3b82f6', '#7B68EE', '#ec4899', '#06b6d4'];
-                                            return p[i % p.length];
-                                        }),
-                                        borderWidth: 1, borderRadius: 4,
-                                    }]
-                                }} options={{
-                                    indexAxis: 'y',
-                                    responsive: true, maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: { display: false },
-                                        tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.x}:1` } }
-                                    },
-                                    scales: {
-                                        x: { ticks: { color: 'var(--text-muted)', callback: v => v + ':1' }, grid: { color: 'var(--border-color)' } },
-                                        y: { ticks: { color: 'var(--text-primary)', font: { size: 11 } }, grid: { display: false } }
-                                    }
-                                }} />
+                                <Bar data={ratioData} options={ratioDrilldownOptions} />
                             </div>
                         </div>
                     </div>
@@ -594,33 +772,7 @@ export default function StudentStatsPage() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, padding: '0 20px 20px' }}>
                         <div className="chart-container" style={{ height: 260 }}>
-                            <Bar data={{
-                                labels: scienceFaculty.newStudentIntake.map(s => `ปี ${s.year}`),
-                                datasets: [
-                                    {
-                                        label: 'ป.ตรี',
-                                        data: scienceFaculty.newStudentIntake.map(s => s.bachelor),
-                                        backgroundColor: 'rgba(34, 197, 94, 0.7)',
-                                        borderColor: '#22c55e', borderWidth: 1, borderRadius: 4,
-                                    },
-                                    {
-                                        label: 'ป.โท + ป.เอก',
-                                        data: scienceFaculty.newStudentIntake.map(s => s.master + s.doctoral),
-                                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                                        borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4,
-                                    }
-                                ]
-                            }} options={{
-                                responsive: true, maintainAspectRatio: false,
-                                plugins: {
-                                    legend: { position: 'bottom', labels: { color: 'var(--text-muted)', padding: 12, font: { size: 11 } } },
-                                    tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} คน` } }
-                                },
-                                scales: {
-                                    x: { stacked: true, ticks: { color: 'var(--text-muted)' }, grid: { display: false } },
-                                    y: { stacked: true, ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } }
-                                }
-                            }} />
+                            <Bar data={intakeData} options={intakeDrilldownOptions} />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {scienceFaculty.newStudentIntake.map((intake, i) => {
@@ -790,94 +942,6 @@ export default function StudentStatsPage() {
                     </div>
                 </div>
             </div>
-
-            {/* Drill-down modal */}
-            {drillYear && (
-                <div
-                    className="admin-modal-overlay no-print"
-                    onClick={() => setDrillYear(null)}
-                    style={{ padding: 20 }}
-                >
-                    <div
-                        className="admin-modal"
-                        onClick={e => e.stopPropagation()}
-                        style={{ maxWidth: 900, width: '100%', textAlign: 'left' }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                            <div style={{
-                                width: 44, height: 44, borderRadius: 12,
-                                background: 'linear-gradient(135deg, #7B68EE, #5B4FCF)',
-                                color: '#fff', display: 'flex',
-                                alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <GraduationCap size={22} />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <h2 style={{ margin: 0, fontSize: '1.15rem' }}>
-                                    นักศึกษารหัส {String(drillYear).slice(-2)} (ปี {drillYear})
-                                </h2>
-                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                    พบ {drillStudents.length.toLocaleString('th-TH')} รายการจากข้อมูลหลัก
-                                </p>
-                            </div>
-                            <button
-                                className="admin-btn-ghost"
-                                onClick={() => setDrillYear(null)}
-                                style={{ padding: '6px 10px' }}
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        {drillStudents.length === 0 ? (
-                            <div className="admin-empty-state" style={{ padding: 24 }}>
-                                <p>ไม่พบรายชื่อนักศึกษาที่มีรหัสขึ้นต้นด้วย {String(drillYear).slice(-2)} ในข้อมูลหลัก</p>
-                                <p style={{ fontSize: '0.85rem' }}>
-                                    อาจเพราะยังไม่ได้อัพโหลดข้อมูลจริง หรือข้อมูลที่อัพโหลดไม่ครอบคลุมปีนี้
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="data-table-container" style={{ maxHeight: '60vh', overflow: 'auto' }}>
-                                <table className="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>รหัส</th>
-                                            <th>ชื่อ-นามสกุล</th>
-                                            <th>สาขา</th>
-                                            <th>ชั้นปี</th>
-                                            <th>สถานะ</th>
-                                            <th style={{ textAlign: 'right' }}>GPA</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {drillStudents.slice(0, 500).map((s, i) => (
-                                            <tr key={s.id || i}>
-                                                <td>{s.id}</td>
-                                                <td>{s.prefix || ''} {s.name}</td>
-                                                <td>{s.major}</td>
-                                                <td>{s.year || '-'}</td>
-                                                <td>{s.status || '-'}</td>
-                                                <td style={{
-                                                    textAlign: 'right',
-                                                    color: s.gpa < 2 ? '#ef4444' : 'inherit',
-                                                    fontWeight: 700
-                                                }}>
-                                                    {typeof s.gpa === 'number' ? s.gpa.toFixed(2) : '-'}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                                {drillStudents.length > 500 && (
-                                    <div style={{ padding: 10, textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                        แสดง 500 รายการแรกจาก {drillStudents.length.toLocaleString('th-TH')}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

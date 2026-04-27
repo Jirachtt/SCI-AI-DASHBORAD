@@ -11,12 +11,14 @@ import {
     CheckCircle, XCircle, Clock, Search, Download
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { Bar, Line, Doughnut, Pie } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
     Title, Tooltip, Legend, ArcElement, Filler, BarElement
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
+import { withChartDrilldown } from '../utils/chartDrilldown';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
 
@@ -33,11 +35,30 @@ const headerStyle = {
     borderBottom: '1px solid var(--border-color)'
 };
 
+const studentColumns = [
+    { key: 'id', label: 'รหัสนักศึกษา' },
+    { key: 'name', label: 'ชื่อ-นามสกุล' },
+    { key: 'major', label: 'สาขาวิชา' },
+    { key: 'year', label: 'ชั้นปี', align: 'right' },
+    { key: 'gpa', label: 'GPA', align: 'right', render: value => typeof value === 'number' ? value.toFixed(2) : '-' },
+    { key: 'graduationStatus', label: 'สถานะ' },
+    { key: 'honors', label: 'เกียรตินิยม' },
+];
+
+function rowsByGpaRange(range) {
+    const [min, max] = String(range).split('-').map(Number);
+    return graduationCandidateList.filter(student => {
+        const gpa = Number(student.gpa);
+        return gpa >= min && gpa <= max;
+    });
+}
+
 export default function GraduationStatsPage() {
     const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [filterMajor, setFilterMajor] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [drillDetail, setDrillDetail] = useState(null);
     const hasGraduationAccess = canAccess(user?.role, 'graduation_stats');
 
     const stats = currentGraduationStats;
@@ -279,8 +300,112 @@ export default function GraduationStatsPage() {
 
     const uniqueMajors = [...new Set(graduationCandidateList.map(s => s.major))].sort();
 
+    const statusDrilldownOptions = withChartDrilldown(statusOptions, statusChartData, setDrillDetail, (point) => {
+        const rows = graduationCandidateList.filter(student => student.graduationStatus === point.label);
+        return {
+            title: `สถานะการสำเร็จ: ${point.label}`,
+            subtitle: 'รายชื่อนักศึกษาปี 4 ที่อยู่ในกลุ่มนี้',
+            valueLabel: 'จำนวน',
+            value: rows.length || point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows,
+            columns: studentColumns,
+        };
+    });
+
+    const historyDrilldownOptions = withChartDrilldown(historyChartOptions, historyChartData, setDrillDetail, (point) => {
+        const row = graduationHistory[point.index];
+        return {
+            title: `แนวโน้มการสำเร็จการศึกษา ปี ${point.label}`,
+            subtitle: point.datasetLabel,
+            valueLabel: point.datasetLabel,
+            value: point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows: row ? [row] : [],
+            columns: [
+                { key: 'year', label: 'ปี' },
+                { key: 'candidates', label: 'ผู้มีสิทธิ์', align: 'right' },
+                { key: 'graduated', label: 'สำเร็จการศึกษา', align: 'right' },
+                { key: 'rate', label: 'อัตรา (%)', align: 'right' },
+                { key: 'avgGPA', label: 'GPA เฉลี่ย', align: 'right' },
+            ],
+        };
+    });
+
+    const majorDrilldownOptions = withChartDrilldown(majorChartOptions, majorChartData, setDrillDetail, (point) => {
+        const major = graduationByMajor[point.index]?.major || point.label;
+        const status = point.datasetLabel;
+        const rows = graduationCandidateList.filter(student => student.major === major && student.graduationStatus === status);
+        const allMajorRows = graduationCandidateList.filter(student => student.major === major);
+        return {
+            title: `${major}: ${status}`,
+            subtitle: 'รายละเอียดนักศึกษาตามสาขาและสถานะที่เลือก',
+            valueLabel: status,
+            value: rows.length || point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows,
+            columns: studentColumns,
+            metrics: [
+                { label: 'รวมสาขา', value: allMajorRows.length, unit: 'คน' },
+                { label: 'GPA เฉลี่ย', value: allMajorRows.length ? (allMajorRows.reduce((sum, student) => sum + Number(student.gpa || 0), 0) / allMajorRows.length).toFixed(2) : '-' },
+            ],
+        };
+    });
+
+    const gpaDrilldownOptions = withChartDrilldown(gpaChartOptions, gpaChartData, setDrillDetail, (point) => {
+        const rows = rowsByGpaRange(point.label);
+        return {
+            title: `ช่วง GPA ${point.label}`,
+            subtitle: 'รายชื่อนักศึกษาที่อยู่ในช่วง GPA นี้',
+            valueLabel: 'จำนวน',
+            value: rows.length || point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows,
+            columns: studentColumns,
+        };
+    });
+
+    const rateDrilldownOptions = withChartDrilldown(rateChartOptions, rateChartData, setDrillDetail, (point) => {
+        const row = graduationHistory[point.index];
+        return {
+            title: `อัตราสำเร็จการศึกษา ปี ${point.label}`,
+            subtitle: 'ข้อมูลสรุปรายปี',
+            valueLabel: 'อัตราสำเร็จ',
+            value: point.value,
+            unit: '%',
+            accentColor: point.color,
+            rows: row ? [row] : [],
+            columns: [
+                { key: 'year', label: 'ปี' },
+                { key: 'candidates', label: 'ผู้มีสิทธิ์', align: 'right' },
+                { key: 'graduated', label: 'สำเร็จการศึกษา', align: 'right' },
+                { key: 'rate', label: 'อัตรา (%)', align: 'right' },
+                { key: 'avgGPA', label: 'GPA เฉลี่ย', align: 'right' },
+            ],
+        };
+    });
+
+    const honorsDrilldownOptions = withChartDrilldown(honorsOptions, honorsChartData, setDrillDetail, (point) => {
+        const rows = graduationCandidateList.filter(student => student.honors === point.label);
+        return {
+            title: `เกียรตินิยม: ${point.label}`,
+            subtitle: 'รายชื่อนักศึกษาที่อยู่ในกลุ่มนี้',
+            valueLabel: 'จำนวน',
+            value: rows.length || point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            rows,
+            columns: studentColumns,
+        };
+    });
+
     return (
         <div style={{ padding: '24px 28px', maxWidth: 1400, margin: '0 auto' }}>
+            <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             {/* Header */}
             <div className="section-header">
                 <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #7B68EE, #5B4FCF)' }}>
@@ -336,7 +461,7 @@ export default function GraduationStatsPage() {
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>สถานะการสำเร็จ (ปัจจุบัน)</span>
                     </div>
                     <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Doughnut data={statusChartData} options={statusOptions} />
+                        <Doughnut data={statusChartData} options={statusDrilldownOptions} />
                     </div>
                     <div style={{ textAlign: 'center', marginTop: 8, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                         รวม {stats.totalCandidates} คน | คาดว่าสำเร็จ {((stats.expectedGraduates / stats.totalCandidates) * 100).toFixed(1)}%
@@ -350,7 +475,7 @@ export default function GraduationStatsPage() {
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>แนวโน้มการสำเร็จการศึกษา (ย้อนหลัง 5 ปี)</span>
                     </div>
                     <div style={{ height: 280 }}>
-                        <Line data={historyChartData} options={historyChartOptions} />
+                        <Line data={historyChartData} options={historyDrilldownOptions} />
                     </div>
                 </div>
             </div>
@@ -364,7 +489,7 @@ export default function GraduationStatsPage() {
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>แยกตามสาขาวิชา</span>
                     </div>
                     <div style={{ height: Math.max(320, graduationByMajor.length * 42) }}>
-                        <Bar data={majorChartData} options={majorChartOptions} />
+                        <Bar data={majorChartData} options={majorDrilldownOptions} />
                     </div>
                 </div>
 
@@ -375,7 +500,7 @@ export default function GraduationStatsPage() {
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>การกระจายตัวของ GPA</span>
                     </div>
                     <div style={{ height: 280 }}>
-                        <Bar data={gpaChartData} options={gpaChartOptions} />
+                        <Bar data={gpaChartData} options={gpaDrilldownOptions} />
                     </div>
                 </div>
             </div>
@@ -389,7 +514,7 @@ export default function GraduationStatsPage() {
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>อัตราสำเร็จการศึกษา (%)</span>
                     </div>
                     <div style={{ height: 260 }}>
-                        <Line data={rateChartData} options={rateChartOptions} />
+                        <Line data={rateChartData} options={rateDrilldownOptions} />
                     </div>
                 </div>
 
@@ -400,7 +525,7 @@ export default function GraduationStatsPage() {
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>เกียรตินิยม</span>
                     </div>
                     <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Doughnut data={honorsChartData} options={honorsOptions} />
+                        <Doughnut data={honorsChartData} options={honorsDrilldownOptions} />
                     </div>
                 </div>
             </div>

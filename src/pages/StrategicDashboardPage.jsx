@@ -11,6 +11,9 @@ import {
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { Target, TrendingUp, CheckCircle2, AlertTriangle } from 'lucide-react';
+import ExportPDFButton from '../components/ExportPDFButton';
+import ChartDrilldownModal from '../components/ChartDrilldownModal';
+import { withChartDrilldown } from '../utils/chartDrilldown';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, Filler, RadialLinearScale, themeAdaptorPlugin);
 
@@ -36,6 +39,7 @@ function ProgressBar({ value, target, color }) {
 export default function StrategicDashboardPage() {
     const { user } = useAuth();
     const [activeOKR, setActiveOKR] = useState(0);
+    const [drillDetail, setDrillDetail] = useState(null);
 
     if (!canAccess(user?.role, 'strategic_overview')) return <AccessDenied />;
 
@@ -151,10 +155,71 @@ export default function StrategicDashboardPage() {
         }
     };
 
+    const performanceColumns = [
+        { key: 'category', label: 'ด้านยุทธศาสตร์' },
+        { key: 'lastYear', label: 'ปีที่แล้ว', align: 'right' },
+        { key: 'currentYear', label: 'ปีปัจจุบัน', align: 'right' },
+        { key: 'targetYear', label: 'เป้าหมาย', align: 'right' },
+        { key: 'gap', label: 'ช่องว่างถึงเป้าหมาย', align: 'right' },
+    ];
+
+    const efficiencyColumns = [
+        { key: 'year', label: 'ปี' },
+        { key: 'score', label: 'คะแนนรวม', align: 'right' },
+        { key: 'budgetEfficiency', label: 'ประสิทธิภาพงบประมาณ', align: 'right' },
+        { key: 'satisfactionScore', label: 'ความพึงพอใจ', align: 'right' },
+        { key: 'type', label: 'สถานะ' },
+    ];
+
+    const perfDrilldownOptions = withChartDrilldown(perfBarOptions, perfBarData, setDrillDetail, (point) => {
+        const category = performanceRadar.categories[point.index];
+        if (!category) return null;
+        return {
+            title: `ประสิทธิภาพด้าน${category}`,
+            subtitle: point.datasetLabel,
+            valueLabel: point.datasetLabel,
+            value: point.value,
+            unit: '%',
+            accentColor: point.color,
+            rows: [{
+                category,
+                lastYear: `${performanceRadar.lastYear[point.index]}%`,
+                currentYear: `${performanceRadar.currentYear[point.index]}%`,
+                targetYear: `${performanceRadar.targetYear[point.index]}%`,
+                gap: `${Math.max(performanceRadar.targetYear[point.index] - performanceRadar.currentYear[point.index], 0).toFixed(1)}%`,
+            }],
+            columns: performanceColumns,
+            note: 'ข้อมูลนี้ใช้สำหรับดูช่องว่างระหว่างผลปัจจุบันกับเป้าหมายยุทธศาสตร์',
+        };
+    });
+
+    const efficiencyDrilldownOptions = withChartDrilldown(chartOptions, effData, setDrillDetail, (point) => {
+        const row = efficiencyTrend[point.index];
+        if (!row) return null;
+        return {
+            title: `แนวโน้มประสิทธิภาพรวมปี ${row.year}`,
+            subtitle: point.datasetLabel,
+            valueLabel: point.datasetLabel,
+            value: point.value,
+            unit: point.datasetIndex === 1 ? '%' : 'คะแนน',
+            accentColor: point.color,
+            rows: efficiencyTrend.map(item => ({
+                year: item.year,
+                score: item.score,
+                budgetEfficiency: `${item.budgetEfficiency}%`,
+                satisfactionScore: item.satisfactionScore,
+                type: item.type === 'forecast' ? 'พยากรณ์' : 'ข้อมูลจริง',
+            })),
+            columns: efficiencyColumns,
+            note: row.type === 'forecast' ? 'ปีนี้เป็นค่าพยากรณ์ จึงควรอ่านร่วมกับแนวโน้มย้อนหลัง' : 'ข้อมูลย้อนหลังจากชุดข้อมูลยุทธศาสตร์ในระบบ',
+        };
+    });
+
     const selectedObj = okr.objectives[activeOKR];
 
     return (
         <div style={{ padding: '0 4px' }}>
+            <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             <div className="section-header">
                 <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #A23B72, #7B2D8E)' }}>
                     <Target size={22} color="#fff" />
@@ -162,6 +227,9 @@ export default function StrategicDashboardPage() {
                 <div>
                     <h1>ยุทธศาสตร์และการดำเนินงาน</h1>
                     <p>Strategic & OKR Monitoring — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                    <ExportPDFButton title="ยุทธศาสตร์และการดำเนินงาน" />
                 </div>
             </div>
 
@@ -195,7 +263,7 @@ export default function StrategicDashboardPage() {
                 <div style={cardStyle}>
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>📊 ประสิทธิภาพ 5 ด้าน — เปรียบเทียบเป้าหมาย</h3>
                     <div style={{ height: 320 }}>
-                        <Bar data={perfBarData} options={perfBarOptions} />
+                        <Bar data={perfBarData} options={perfDrilldownOptions} />
                     </div>
                 </div>
                 <div style={cardStyle}>
@@ -291,7 +359,7 @@ export default function StrategicDashboardPage() {
             <div style={cardStyle}>
                 <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มประสิทธิภาพรวม</h3>
                 <div style={{ height: 260 }}>
-                    <Line data={effData} options={chartOptions} />
+                    <Line data={effData} options={efficiencyDrilldownOptions} />
                 </div>
             </div>
         </div>

@@ -5,11 +5,13 @@ import {
 } from '../data/mockData';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import { getStudentListSync } from './studentDataService';
+import { buildStudentStatsContextForAI } from './forecastDataService';
 import { graduationHistory, currentGraduationStats, graduationByMajor, honorsData, gpaDistribution } from '../data/graduationData';
 import { researchData } from '../data/researchData';
 import { hrData } from '../data/hrData';
 import { strategicData } from '../data/strategicData';
 import { isLiveData } from './studentDataService';
+import { canAccess, getRoleInfo } from '../utils/accessControl';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 if (!API_KEY) {
@@ -32,6 +34,164 @@ const SEARCH_CAPABLE_MODELS = new Set([
     'gemini-2.5-flash',
     'gemini-flash-latest',
 ]);
+
+const AI_SETTINGS_KEY = 'sci-ai-dashboard:ai-settings';
+const AI_TOKEN_STATS_KEY = 'sci-ai-dashboard:ai-token-stats';
+const AI_MEMORY_KEY = 'sci-ai-dashboard:ai-user-memory';
+
+const DEFAULT_AI_SETTINGS = {
+    modelMode: 'auto',
+    contextMode: 'agentic_rag',
+    maxOutputTokens: 4096,
+    temperature: 0.3,
+    maxContexts: 4,
+    allowWebSearch: true,
+};
+
+const MODEL_INFO = {
+    'gemini-2.0-flash-lite': { tier: 'lite', label: 'Gemini 2.0 Flash Lite', bestFor: 'ค้นหา/ตอบสั้น/ประหยัด token' },
+    'gemini-2.5-flash-lite': { tier: 'lite', label: 'Gemini 2.5 Flash Lite', bestFor: 'ตอบทั่วไปแบบประหยัด' },
+    'gemini-flash-lite-latest': { tier: 'lite', label: 'Gemini Flash Lite Latest', bestFor: 'fallback ประหยัด' },
+    'gemini-2.0-flash': { tier: 'standard', label: 'Gemini 2.0 Flash', bestFor: 'วิเคราะห์/สร้างกราฟ/Google Search' },
+    'gemini-2.5-flash': { tier: 'standard', label: 'Gemini 2.5 Flash', bestFor: 'วิเคราะห์ซับซ้อน' },
+    'gemini-flash-latest': { tier: 'standard', label: 'Gemini Flash Latest', bestFor: 'fallback วิเคราะห์' },
+};
+
+function readStorage(key, fallback) {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+function writeStorage(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        // Storage can be disabled in private browsing; AI still works.
+    }
+}
+
+export function getAIModelCatalog() {
+    return MODELS.map(model => ({
+        id: model,
+        searchCapable: SEARCH_CAPABLE_MODELS.has(model),
+        ...(MODEL_INFO[model] || { tier: 'standard', label: model, bestFor: '-' }),
+    }));
+}
+
+export function getAIModelSettings() {
+    return { ...DEFAULT_AI_SETTINGS, ...readStorage(AI_SETTINGS_KEY, {}) };
+}
+
+export function saveAIModelSettings(patch = {}) {
+    const next = { ...getAIModelSettings(), ...patch };
+    next.maxOutputTokens = Math.min(8192, Math.max(512, Number(next.maxOutputTokens) || DEFAULT_AI_SETTINGS.maxOutputTokens));
+    next.temperature = Math.min(1, Math.max(0, Number(next.temperature) || DEFAULT_AI_SETTINGS.temperature));
+    next.maxContexts = Math.min(8, Math.max(1, Number(next.maxContexts) || DEFAULT_AI_SETTINGS.maxContexts));
+    writeStorage(AI_SETTINGS_KEY, next);
+    return next;
+}
+
+export function getAITokenStats() {
+    return readStorage(AI_TOKEN_STATS_KEY, {
+        requests: 0,
+        estimatedInputTokens: 0,
+        estimatedOutputTokens: 0,
+        byModel: {},
+        lastRequest: null,
+    });
+}
+
+export function resetAITokenStats() {
+    writeStorage(AI_TOKEN_STATS_KEY, {
+        requests: 0,
+        estimatedInputTokens: 0,
+        estimatedOutputTokens: 0,
+        byModel: {},
+        lastRequest: null,
+    });
+}
+
+function estimateTokens(value) {
+    return Math.ceil(String(value || '').length / 3.6);
+}
+
+function recordTokenStats({ model, intent, inputText, outputText, contextCount }) {
+    const stats = getAITokenStats();
+    const inputTokens = estimateTokens(inputText);
+    const outputTokens = estimateTokens(outputText);
+    const byModel = stats.byModel || {};
+    const modelStats = byModel[model] || { requests: 0, estimatedInputTokens: 0, estimatedOutputTokens: 0 };
+    modelStats.requests += 1;
+    modelStats.estimatedInputTokens += inputTokens;
+    modelStats.estimatedOutputTokens += outputTokens;
+    byModel[model] = modelStats;
+
+    writeStorage(AI_TOKEN_STATS_KEY, {
+        requests: (stats.requests || 0) + 1,
+        estimatedInputTokens: (stats.estimatedInputTokens || 0) + inputTokens,
+        estimatedOutputTokens: (stats.estimatedOutputTokens || 0) + outputTokens,
+        byModel,
+        lastRequest: {
+            model,
+            intent,
+            contextCount,
+            estimatedInputTokens: inputTokens,
+            estimatedOutputTokens: outputTokens,
+            at: new Date().toISOString(),
+        },
+    });
+}
+
+function memoryKey(userContext = {}) {
+    return `${userContext.uid || userContext.email || userContext.role || 'anonymous'}`;
+}
+
+export function getAIUserMemory(userContext = {}) {
+    const all = readStorage(AI_MEMORY_KEY, {});
+    return all[memoryKey(userContext)] || {
+        preferredFormat: 'auto',
+        detailLevel: 'balanced',
+        topics: {},
+        updatedAt: null,
+    };
+}
+
+export function updateAIUserMemory(userContext = {}, userMessage = '') {
+    const q = String(userMessage || '').toLowerCase();
+    const all = readStorage(AI_MEMORY_KEY, {});
+    const key = memoryKey(userContext);
+    const current = all[key] || getAIUserMemory(userContext);
+    const next = {
+        ...current,
+        topics: { ...(current.topics || {}) },
+        updatedAt: new Date().toISOString(),
+    };
+
+    if (/กราฟ|chart|plot|แผนภูมิ/.test(q)) next.preferredFormat = 'chart';
+    else if (/ตาราง|table|csv|excel/.test(q)) next.preferredFormat = 'table';
+    else if (/สรุป|สั้น|brief/.test(q)) next.detailLevel = 'brief';
+    else if (/ละเอียด|วิเคราะห์|insight/.test(q)) next.detailLevel = 'detailed';
+
+    const topicMap = {
+        students: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา/.test(q),
+        budget: /งบ|budget|รายรับ|รายจ่าย|ค่าเทอม/.test(q),
+        graduation: /สำเร็จ|จบ|graduation|เกียรติ/.test(q),
+        research: /วิจัย|research|scopus|สิทธิบัตร|ทุน/.test(q),
+        hr: /บุคลากร|อาจารย์|staff|hr/.test(q),
+        strategic: /okr|kpi|ยุทธศาสตร์|เป้าหมาย/.test(q),
+    };
+    Object.entries(topicMap).forEach(([topic, matched]) => {
+        if (matched) next.topics[topic] = (next.topics[topic] || 0) + 1;
+    });
+
+    all[key] = next;
+    writeStorage(AI_MEMORY_KEY, all);
+    return next;
+}
 
 // Detect if query should use Google Search for real Maejo website data
 function shouldUseWebSearch(msg) {
@@ -174,8 +334,23 @@ function buildBaseInstruction() {
     });
 
     const personnel = studentStatsData.scienceFaculty.personnel;
-    const gender = studentStatsData.scienceFaculty.byGender;
+    const genderCounts = studentList.reduce((acc, student) => {
+        const prefix = String(student.prefix || '');
+        if (prefix.startsWith('นาย')) acc.male += 1;
+        else if (prefix.startsWith('นาง')) acc.female += 1;
+        return acc;
+    }, { male: 0, female: 0 });
+    const gender = {
+        ...genderCounts,
+        malePercent: studentList.length ? ((genderCounts.male / studentList.length) * 100).toFixed(1) : '0.0',
+        femalePercent: studentList.length ? ((genderCounts.female / studentList.length) * 100).toFixed(1) : '0.0',
+    };
     const ratio = studentStatsData.scienceFaculty.studentFacultyRatio;
+    const facultyRatio = {
+        ...ratio,
+        students: studentList.length,
+        ratio: ratio.academicStaff ? (studentList.length / ratio.academicStaff).toFixed(1) : ratio.ratio,
+    };
     const budgetAll = universityBudgetData.yearly;
     const sciBudgetAll = scienceFacultyBudgetData.yearly;
     const activities = studentLifeData;
@@ -219,7 +394,7 @@ Aggregated Stats:
 - สถานะ: กำลังศึกษา:${statusNormal} รอพินิจ:${statusAtRisk}
 - เพศ: ชาย${gender.male}(${gender.malePercent}%) หญิง${gender.female}(${gender.femalePercent}%)
 - GPA เฉลี่ยแยกสาขา: ${Object.entries(gpaByMajor).map(([m, d]) => `${m}:avg${(d.sum / d.count).toFixed(2)},min${d.min},max${d.max}`).join(' | ')}
-- รับเข้ารายปี(ช่องทาง): ${studentStatsData.scienceFaculty.newStudentIntake.map(i => `${i.year}:${i.total}คน(โควตา${i.channels.quota}/รับตรง${i.channels.directAdmit}/TCAS${i.channels.tcas}/อื่น${i.channels.other})`).join(', ')}
+- รับเข้าตามปีเข้า/รหัสนักศึกษา: ${buildStudentStatsContextForAI().split('\n').find(line => line.startsWith('ตามปีเข้า/รหัสนักศึกษา:'))?.replace('ตามปีเข้า/รหัสนักศึกษา: ', '') || 'ไม่มีข้อมูล'}
 
 ### TABLE: activities (Student Life)
 - activityHours: target=${activities.activityHours.target}, completed=${activities.activityHours.completed}
@@ -246,15 +421,8 @@ ${sciBudgetAll.map(y => {
     return s;
 }).join('\n')}
 
-### TABLE: student_stats (ทั้งมหาวิทยาลัย — ตัวเลขจริงจาก dashboard.mju.ac.th)
-- total: ${dashboardSummary.totalStudents}, GPA: ${dashboardSummary.avgGPA}, gradRate: ${dashboardSummary.graduationRate}%
-- byLevel: ${studentStatsData.current.byLevel.map(l => `${l.level}:${l.count}`).join(', ')}
-- trend: ${studentStatsData.trend.map(t => `${t.year}:total=${t.total},bach=${t.bachelor},master=${t.master},doc=${t.doctoral}(${t.type})`).join(', ')}
-- byFaculty: ${studentStatsData.byFaculty.map(f => `${f.name}(ตรี${f.bachelor},โท${f.master},เอก${f.doctoral})`).join(' | ')}
-- faculties(GPA,gradRate): ${dashboardSummary.faculties.map(f => `${f.name}(${f.totalStudents}คน,GPA${f.avgGPA.toFixed(2)},สำเร็จ${f.graduationRate}%)`).join(' | ')}
-- byCampus: ${(studentStatsData.byCampus || []).map(c => `${c.campus}:${c.count}คน`).join(', ')}
-- byNationality: ${(studentStatsData.byNationality || []).map(n => `${n.nationality}:${n.count}คน`).join(', ')}
-- universityIntakeRecent: ${(studentStatsData.byEnrollmentYear || []).map(e => `รหัส${e.year}:${e.count}คน`).join(', ')}
+### TABLE: student_stats_live (ข้อมูลนักศึกษาที่เว็บใช้จริง)
+${buildStudentStatsContextForAI()}
 
 ### TABLE: personnel (คณะวิทยาศาสตร์)
 - total: ${personnel.total} (ชาย${personnel.male}, หญิง${personnel.female})
@@ -262,7 +430,7 @@ ${sciBudgetAll.map(y => {
 - byEducation: ${personnel.byEducation.map(e => `${e.level}:${e.count}`).join(', ')}
 - byType: ${personnel.byType.map(t => `${t.type}:${t.count}`).join(', ')}
 - retirementForecast: ${personnel.retirementForecast.map(r => `${r.year}:retiring=${r.retiring},remaining=${r.remaining}`).join(', ')}
-- studentFacultyRatio: ${ratio.ratio}:1 (students=${ratio.students}, staff=${ratio.academicStaff})
+- studentFacultyRatio: ${facultyRatio.ratio}:1 (students=${facultyRatio.students}, staff=${facultyRatio.academicStaff})
 - ratioBenchmark: ${ratio.comparison.map(c => `${c.name}:${c.ratio}`).join(', ')}
 
 ### TABLE: tuition
@@ -271,8 +439,8 @@ ${sciBudgetAll.map(y => {
 - byFaculty: ${tuitionData.byFaculty.map(f => `${f.name}:${f.fee}`).join(', ')}
 - breakdown: ${tuitionData.breakdown.map(b => `${b.label}:${b.value}%`).join(', ')}
 
-### TABLE: scienceFaculty.enrollmentByYear
-${studentStatsData.scienceFaculty.byEnrollmentYear.map(e => `${e.year}: ${e.count}คน`).join(', ')}
+### TABLE: scienceFaculty.enrollmentByYear_live
+${buildStudentStatsContextForAI().split('\n').find(line => line.startsWith('ตามปีเข้า/รหัสนักศึกษา:')) || 'ตามปีเข้า/รหัสนักศึกษา: ไม่มีข้อมูล'}
 
 ### TABLE: graduation_current (ปีการศึกษาปัจจุบัน ${currentGraduationStats.semester})
 - ผู้มีสิทธิ์รับปริญญา(ปี4): ${currentGraduationStats.totalCandidates}คน
@@ -489,6 +657,183 @@ function needsStudentDetail(msg) {
     return keywords.some(k => q.includes(k));
 }
 
+function classifyQueryIntent(msg) {
+    const q = String(msg || '').toLowerCase();
+    if (/กราฟ|chart|plot|แผนภูมิ|เปรียบเทียบ|พยากรณ์|forecast|วิเคราะห์/.test(q)) return 'chart_analysis';
+    if (shouldUseWebSearch(q)) return 'web_lookup';
+    if (/\b6\d{9}\b/.test(q) || /ชื่อ|รายชื่อ|ค้นหา|หา.*นักศึกษา|student/.test(q)) return 'lookup';
+    if (/สรุป|ภาพรวม|insight|แนวโน้ม|เหตุผล|ทำไม/.test(q)) return 'analysis';
+    return 'general';
+}
+
+function modelOrderForIntent(intent, settings) {
+    if (settings.modelMode && settings.modelMode !== 'auto' && MODELS.includes(settings.modelMode)) {
+        return [settings.modelMode, ...MODELS.filter(model => model !== settings.modelMode)];
+    }
+    if (intent === 'web_lookup') {
+        return ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest', ...MODELS.filter(model => !SEARCH_CAPABLE_MODELS.has(model))];
+    }
+    if (intent === 'chart_analysis' || intent === 'analysis') {
+        return ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-flash-lite-latest'];
+    }
+    return MODELS;
+}
+
+function domainAllowed(role, domain) {
+    if (!role || role === 'dean') return true;
+    const accessMap = {
+        students: ['student_stats', 'student_list'],
+        tuition: ['tuition'],
+        graduation: ['graduation_check', 'graduation_stats'],
+        budget: ['budget_forecast', 'financial', 'faculty_budget'],
+        research: ['research_overview'],
+        hr: ['hr_overview'],
+        strategic: ['strategic_overview'],
+        student_life: ['student_life'],
+        dashboard: ['dashboard'],
+    };
+    return (accessMap[domain] || ['dashboard']).some(section => canAccess(role, section));
+}
+
+function studentAggregateContext(includeRows = false) {
+    const list = getStudentListSync();
+    const byMajor = {};
+    const byYear = {};
+    let atRisk = 0;
+    list.forEach(s => {
+        byMajor[s.major] = byMajor[s.major] || { count: 0, gpaSum: 0 };
+        byMajor[s.major].count += 1;
+        byMajor[s.major].gpaSum += Number(s.gpa) || 0;
+        byYear[s.year] = (byYear[s.year] || 0) + 1;
+        if ((Number(s.gpa) || 0) < 2) atRisk += 1;
+    });
+    const majorSummary = Object.entries(byMajor).map(([major, v]) =>
+        `${major}: ${v.count} คน, GPA เฉลี่ย ${(v.gpaSum / Math.max(1, v.count)).toFixed(2)}`
+    ).join('\n');
+    const yearSummary = Object.entries(byYear).map(([year, count]) => `ปี ${year}: ${count} คน`).join(', ');
+    const rows = includeRows
+        ? `\nตัวอย่างแถวที่เกี่ยวข้อง:\n${list.slice(0, 40).map(s => `${s.id}, ${s.name}, ${s.major}, ปี ${s.year}, GPA ${s.gpa}, ${s.status}`).join('\n')}`
+        : '';
+    return `ข้อมูลนักศึกษา (${isLiveData() ? 'live' : 'fallback'}) รวม ${list.length} คน\nตามสาขา:\n${majorSummary}\nตามชั้นปี: ${yearSummary}\nGPA < 2.00: ${atRisk} คน${rows}`;
+}
+
+function budgetContext() {
+    const university = universityBudgetData.yearly.map(y => `${y.year}: รายรับ ${y.revenue}, รายจ่าย ${y.expense}, ${y.type}`).join('\n');
+    const science = scienceFacultyBudgetData.yearly.map(y => `${y.year}: รายรับ ${y.revenue}, รายจ่าย ${y.expense}, ${y.type}`).join('\n');
+    return `งบประมาณมหาวิทยาลัย:\n${university}\n\nงบประมาณคณะวิทยาศาสตร์:\n${science}`;
+}
+
+function graduationContext() {
+    return `สถิติสำเร็จการศึกษา:\n${graduationHistory.map(g => `${g.year}: สำเร็จ ${g.graduated}, อัตรา ${g.rate}%, GPA เฉลี่ย ${g.avgGPA}`).join('\n')}\nปัจจุบัน: ${JSON.stringify(currentGraduationStats)}\nแยกสาขา: ${graduationByMajor.map(m => `${m.major}: ${m.rate}% (${m.expected}/${m.total})`).join('; ')}\nเกียรตินิยม: ${Object.entries(honorsData || {}).map(([k, v]) => `${k}:${v}`).join(', ')}\nGPA distribution: ${gpaDistribution.map(g => `${g.range}:${g.count}`).join(', ')}`;
+}
+
+function researchContext() {
+    return `งานวิจัย:\n${JSON.stringify({
+        summary: researchData.summary,
+        publicationsTrend: researchData.publicationsTrend,
+        fundingTrend: researchData.fundingTrend,
+        patents: researchData.patents,
+        benchmark: researchData.benchmark,
+    })}`;
+}
+
+function hrContext() {
+    return `บุคลากร:\n${JSON.stringify({
+        summary: hrData.summary,
+        byDepartment: hrData.byDepartment,
+        byPosition: hrData.byPosition,
+        trends: hrData.trends,
+    })}`;
+}
+
+function strategicContext() {
+    return `ยุทธศาสตร์และ OKR:\n${JSON.stringify(strategicData)}`;
+}
+
+function tuitionContext() {
+    return `ค่าเล่าเรียน:\n${JSON.stringify(tuitionData)}`;
+}
+
+function studentLifeContext() {
+    return `กิจกรรมนักศึกษา/ชีวิตนักศึกษา:\n${JSON.stringify(studentLifeData)}`;
+}
+
+function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) {
+    const q = String(userMessage || '').toLowerCase();
+    const includeStudentRows = needsStudentDetail(userMessage);
+    const candidates = [
+        { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี/, text: () => studentAggregateContext(includeStudentRows) },
+        { id: 'tuition', sections: ['tuition'], keywords: /ค่าเทอม|ค่าเล่าเรียน|tuition|ค่าธรรมเนียม/, text: tuitionContext },
+        { id: 'graduation', sections: ['graduation_check', 'graduation_stats'], keywords: /สำเร็จ|จบ|graduation|เกียรติ|pending|รอพินิจ/, text: graduationContext },
+        { id: 'budget', sections: ['budget_forecast', 'financial', 'faculty_budget'], keywords: /งบ|budget|รายรับ|รายจ่าย|เงิน|finance/, text: budgetContext },
+        { id: 'research', sections: ['research_overview'], keywords: /วิจัย|research|scopus|citation|สิทธิบัตร|ทุน/, text: researchContext },
+        { id: 'hr', sections: ['hr_overview'], keywords: /บุคลากร|อาจารย์|staff|hr|เกษียณ|ตำแหน่ง/, text: hrContext },
+        { id: 'strategic', sections: ['strategic_overview'], keywords: /ยุทธศาสตร์|okr|kpi|เป้าหมาย|ตัวชี้วัด/, text: strategicContext },
+        { id: 'student_life', sections: ['student_life'], keywords: /กิจกรรม|พฤติกรรม|student life|ชั่วโมงกิจกรรม/, text: studentLifeContext },
+    ];
+
+    const role = userContext?.role || 'general';
+    const scored = candidates
+        .filter(c => domainAllowed(role, c.id) || c.sections.some(section => canAccess(role, section)))
+        .map(c => ({ ...c, score: c.keywords.test(q) ? 10 : 0 }))
+        .filter(c => c.score > 0);
+
+    if (scored.length === 0 && domainAllowed(role, 'dashboard')) {
+        scored.push({
+            id: 'dashboard',
+            score: 1,
+            text: () => `ภาพรวม Dashboard:\n${JSON.stringify(dashboardSummary)}`,
+        });
+    }
+
+    return scored
+        .sort((a, b) => b.score - a.score)
+        .slice(0, settings.maxContexts || DEFAULT_AI_SETTINGS.maxContexts)
+        .map(c => ({ id: c.id, text: c.text() }));
+}
+
+function chartPaletteInstruction(theme = 'light') {
+    const dark = theme === 'dark';
+    const palette = dark
+        ? ['#7dd3fc', '#a78bfa', '#34d399', '#fbbf24', '#fb7185', '#22d3ee']
+        : ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
+    return `Theme-aware chart palette: current theme=${theme}. Use high-contrast dataset colors only: ${palette.join(', ')}. Avoid black or near-black chart fills/hover colors.`;
+}
+
+function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}) {
+    const role = userContext?.role || 'general';
+    const roleInfo = getRoleInfo(role);
+    const memory = getAIUserMemory(userContext);
+    const contexts = retrieveRelevantContexts(userMessage, userContext, settings);
+    const contextText = contexts.map((c, idx) => `### Context ${idx + 1}: ${c.id}\n${c.text}`).join('\n\n');
+    const roleLabel = roleInfo?.label || userContext?.roleLabel || role;
+    const accessNote = role === 'dean'
+        ? 'คณบดีเข้าถึงข้อมูลได้ครบทุกโดเมนตามระบบ'
+        : 'ตอบเฉพาะข้อมูลในบริบทและสิทธิ์ของ role นี้เท่านั้น ถ้าข้อมูลอยู่นอกสิทธิ์ให้บอกว่าต้องใช้สิทธิ์สูงกว่า';
+
+    return `You are MJU Science AI Assistant for SCI-AI-DASHBOARD.
+ตอบภาษาไทย กระชับ อ้างอิงเฉพาะข้อมูลใน RETRIEVED CONTEXTS และห้ามเดาตัวเลข
+
+ROLE CONTEXT:
+- role=${role} (${roleLabel})
+- ${accessNote}
+- user preference memory: preferredFormat=${memory.preferredFormat}, detailLevel=${memory.detailLevel}, frequentTopics=${Object.entries(memory.topics || {}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v]) => `${k}:${v}`).join(', ') || '-'}
+
+TOKEN SAVING RULES:
+- ใช้เฉพาะ context ที่เกี่ยวข้องจาก retrieval ด้านล่าง ไม่ต้องอ่านทุกหน้าเว็บ
+- ถ้าคำถามเป็น lookup ธรรมดาให้ตอบสั้น ไม่สร้างกราฟ
+- ถ้าขอกราฟ ให้สร้าง json_chart จากข้อมูลจริงเท่านั้น
+- กราฟเส้นใช้เฉพาะ time series ปี/เดือน/วันที่/ไตรมาส ถ้าเป็นหมวดหมู่ให้ใช้ bar/hbar/scatter
+- ${chartPaletteInstruction(settings.theme || 'light')}
+
+OUTPUT FORMAT:
+- ถ้าสร้างกราฟ ต้องใช้ block \`\`\`json_chart ... \`\`\`
+- ห้ามปล่อย raw JSON/dataset นอก block กราฟ
+
+RETRIEVED CONTEXTS:
+${contextText || 'ไม่มี context ที่เข้าถึงได้สำหรับคำถามนี้'}`;
+}
+
 // Conversation history for multi-turn chat
 let conversationHistory = [];
 
@@ -496,13 +841,18 @@ let conversationHistory = [];
  * Send a message to the Gemini API and return the response text.
  * Tries multiple models in order until one succeeds.
  */
-export function sendMessageToGemini(userMessage) {
-    const p = requestQueue.then(() => _sendMessageImpl(userMessage));
+export function sendMessageToGemini(userMessage, options = {}) {
+    const p = requestQueue.then(() => _sendMessageImpl(userMessage, options));
     requestQueue = p.catch(() => {}); // keep queue alive even if request fails
     return p;
 }
 
-async function _sendMessageImpl(userMessage) {
+async function _sendMessageImpl(userMessage, options = {}) {
+    const settings = saveAIModelSettings({ ...getAIModelSettings(), ...(options.aiSettings || {}) });
+    settings.theme = options.theme || settings.theme || (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : 'light') || 'light';
+    const intent = classifyQueryIntent(userMessage);
+    updateAIUserMemory(options.user || {}, userMessage);
+
     // Detect chart/graph request keywords and append reminder
     const chartKeywords = ['กราฟ', 'chart', 'แผนภูมิ', 'แผนภาพ', 'แท่ง', 'เส้น', 'วงกลม', 'radar', 'พยากรณ์', 'คาดการณ์', 'forecast', 'bar chart', 'line chart', 'pie chart', 'กราฟแท่ง', 'กราฟเส้น', 'กราฟวงกลม', 'เปรียบเทียบ', 'สร้างกราฟ', 'แสดงกราฟ', 'วิเคราะห์'];
     const lowerMsg = userMessage.toLowerCase();
@@ -531,13 +881,18 @@ async function _sendMessageImpl(userMessage) {
     let allQuotaExhausted = true;
 
     // Only include full student data when the question is about students
-    const baseInstruction = buildBaseInstruction();
-    const systemText = needsStudentDetail(userMessage)
+    const baseInstruction = settings.contextMode === 'full'
+        ? buildBaseInstruction()
+        : buildAgenticRagInstruction(userMessage, options.user || {}, settings);
+    const systemText = settings.contextMode === 'full' && needsStudentDetail(userMessage)
         ? baseInstruction + buildStudentData()
         : baseInstruction;
 
     // Check if this query should use Google Search for real-time Maejo data
-    const useSearch = shouldUseWebSearch(userMessage);
+    const useSearch = settings.allowWebSearch && shouldUseWebSearch(userMessage);
+    const retrievedContextCount = settings.contextMode === 'full'
+        ? 0
+        : retrieveRelevantContexts(userMessage, options.user || {}, settings).length;
 
     const baseRequestBody = {
         system_instruction: {
@@ -545,10 +900,10 @@ async function _sendMessageImpl(userMessage) {
         },
         contents: conversationHistory,
         generationConfig: {
-            temperature: 0.35,
+            temperature: settings.temperature,
             topP: 0.85,
             topK: 40,
-            maxOutputTokens: 8192,
+            maxOutputTokens: settings.maxOutputTokens,
         },
         safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -559,7 +914,8 @@ async function _sendMessageImpl(userMessage) {
     };
 
     // Try each model in order, skip models on cooldown
-    for (const model of MODELS) {
+    const candidateModels = modelOrderForIntent(intent, settings);
+    for (const model of candidateModels) {
         if (isModelOnCooldown(model)) {
             console.log(`[Gemini] Skipping ${model} (cooldown)`);
             continue;
@@ -615,6 +971,13 @@ async function _sendMessageImpl(userMessage) {
 
             console.log(`[Gemini] ✅ ${model} OK`);
             onModelSuccess(model);
+            recordTokenStats({
+                model,
+                intent,
+                inputText: `${systemText}\n${JSON.stringify(conversationHistory)}`,
+                outputText: aiText,
+                contextCount: retrievedContextCount,
+            });
 
             conversationHistory.push({
                 role: 'model',
@@ -700,9 +1063,12 @@ export async function getDashboardInsights() {
         }
     }
 
+    const liveStudents = getStudentListSync();
+    const atRisk = liveStudents.filter(student => (Number(student.gpa) || 0) < 2).length;
+    const majors = [...new Set(liveStudents.map(student => student.major).filter(Boolean))].length;
     return [
-        "ข้อมูลนิสิตปี 2568 คาดว่าจะแตะ 21,200 คน เติบโตขึ้นราว 7%",
-        "คณะศิลปศาสตร์มีอัตราสำเร็จการศึกษาสูงกว่าค่าเฉลี่ยมหาวิทยาลัย (94.1%)",
-        "คะแนนความประพฤติเฉลี่ยของนิสิตส่วนใหญ่อยู่ในเกณฑ์ดีเยี่ยม (92/100)"
+        `ข้อมูลนักศึกษาปัจจุบันในระบบรวม ${liveStudents.length.toLocaleString()} คน จาก ${majors} สาขา (${isLiveData() ? 'ข้อมูลอัปโหลดล่าสุด' : 'fallback ระหว่างรอข้อมูลจริง'})`,
+        `นักศึกษาที่ควรเฝ้าระวังจาก GPA < 2.00 มี ${atRisk.toLocaleString()} คน`,
+        'ข้อมูลกราฟพยากรณ์นักศึกษาจะคำนวณจากปีเข้า/รหัสนักศึกษาที่มีอยู่จริงในระบบ ไม่ใช้ trend mock เก่า'
     ];
 }

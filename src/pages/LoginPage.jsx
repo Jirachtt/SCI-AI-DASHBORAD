@@ -174,7 +174,7 @@ export default function LoginPage() {
                         <div className="modal-header">
                             <ShieldCheck size={48} color="#10b981" />
                             <h2>เข้าถึงสิทธิ์ผู้บริหาร</h2>
-                            <p>กรุณากรอกรหัสผ่านสำหรับ ผจก.คณะ หรือ ประธานหลักสูตร</p>
+                            <p>กรุณากรอกรหัสผ่านสำหรับ คณบดี หรือ ประธานหลักสูตร</p>
                         </div>
 
                         <form onSubmit={handleAdminCodeSubmit} className="admin-code-form">

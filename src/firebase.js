@@ -4,16 +4,19 @@ import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } 
 import { getFirestore } from "firebase/firestore";
 // import { getAnalytics } from "firebase/analytics";
 
-// รหัสของคุณ (ถูกต้องแล้วครับ)
 const firebaseConfig = {
-    apiKey: "AIzaSyCHcebwWSYs_TZl-eWct1TRP0hMNHwiXPk",
-    authDomain: "sci-ai-dashboard.firebaseapp.com",
-    projectId: "sci-ai-dashboard",
-    storageBucket: "sci-ai-dashboard.firebasestorage.app",
-    messagingSenderId: "369466557100",
-    appId: "1:369466557100:web:3581810a643fa9ac5c9509",
-    measurementId: "G-ZMT033820E"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
+
+if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId || !firebaseConfig.appId) {
+    console.warn('[firebase] Missing Vite Firebase env vars. Check .env / Vercel Environment Variables.');
+}
 
 // เริ่มต้นระบบ Firebase
 const app = initializeApp(firebaseConfig);

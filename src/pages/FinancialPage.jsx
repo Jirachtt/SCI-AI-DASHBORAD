@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
@@ -10,11 +11,15 @@ import {
     Title, Tooltip, Legend, ArcElement
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
+import ExportPDFButton from '../components/ExportPDFButton';
+import ChartDrilldownModal from '../components/ChartDrilldownModal';
+import { withChartDrilldown } from '../utils/chartDrilldown';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, themeAdaptorPlugin);
 
 export default function FinancialPage() {
     const { user } = useAuth();
+    const [drillDetail, setDrillDetail] = useState(null);
 
     if (!canAccess(user?.role, 'financial')) return <AccessDenied />;
 
@@ -58,8 +63,75 @@ export default function FinancialPage() {
         }]
     } : null;
 
+    const paymentColumns = [
+        { key: 'semester', label: 'เทอม' },
+        { key: 'amount', label: 'จำนวนเงิน', align: 'right' },
+        { key: 'date', label: 'วันที่จ่าย' },
+        { key: 'method', label: 'วิธีชำระ' },
+    ];
+
+    const budgetColumns = [
+        { key: 'name', label: 'หมวดงบประมาณ' },
+        { key: 'amount', label: 'จำนวนเงิน', align: 'right' },
+        { key: 'percent', label: 'สัดส่วนของงบใช้ไป', align: 'right' },
+    ];
+
+    const paymentDrilldownOptions = withChartDrilldown(paymentBarOptions, paymentBarData, setDrillDetail, (point) => {
+        const payment = financialData.paymentHistory[point.index];
+        if (!payment) return null;
+        return {
+            title: `รายละเอียดการชำระ ${payment.semester}`,
+            subtitle: 'ประวัติการจ่ายค่าเทอม',
+            valueLabel: 'จำนวนเงิน',
+            value: payment.amount,
+            unit: 'บาท',
+            accentColor: point.color,
+            rows: financialData.paymentHistory.map(item => ({
+                semester: item.semester,
+                amount: `${item.amount.toLocaleString('th-TH')} บาท`,
+                date: item.date,
+                method: item.method,
+            })),
+            columns: paymentColumns,
+            note: 'แสดงประวัติการชำระจากข้อมูลการเงินในระบบ',
+        };
+    });
+
+    const budgetDoughnutOptions = withChartDrilldown({
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12, font: { size: 11 } } },
+            tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${(ctx.parsed / 1000000).toFixed(1)}M บาท` } }
+        }
+    }, budgetDoughnutData, setDrillDetail, (point) => {
+        const category = financialData.facultyBudget.categories[point.index];
+        if (!category) return null;
+        return {
+            title: `รายละเอียดงบคณะ: ${category.name}`,
+            subtitle: 'งบประมาณคณะตามหมวดรายจ่าย',
+            valueLabel: 'จำนวนเงิน',
+            value: category.amount,
+            unit: 'บาท',
+            accentColor: point.color,
+            rows: financialData.facultyBudget.categories.map(item => ({
+                name: item.name,
+                amount: `${item.amount.toLocaleString('th-TH')} บาท`,
+                percent: `${((item.amount / financialData.facultyBudget.spent) * 100).toFixed(1)}%`,
+            })),
+            columns: budgetColumns,
+            metrics: [
+                { label: 'งบทั้งหมด', value: financialData.facultyBudget.totalBudget, unit: 'บาท' },
+                { label: 'ใช้ไป', value: financialData.facultyBudget.spent, unit: 'บาท' },
+                { label: 'คงเหลือ', value: financialData.facultyBudget.remaining, unit: 'บาท' },
+            ],
+            note: 'สัดส่วนคำนวณจากยอดใช้ไปของงบคณะ',
+        };
+    });
+
     return (
         <div>
+            <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             <Link to="/dashboard" className="back-button">
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
@@ -71,6 +143,9 @@ export default function FinancialPage() {
                 <div>
                     <h2>การเงินและงานทะเบียน</h2>
                     <p>Financial & Administrative</p>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                    <ExportPDFButton title="การเงินและงานทะเบียน" />
                 </div>
             </div>
 
@@ -128,7 +203,7 @@ export default function FinancialPage() {
                             </div>
                         </div>
                         <div className="chart-container">
-                            <Bar data={paymentBarData} options={paymentBarOptions} />
+                            <Bar data={paymentBarData} options={paymentDrilldownOptions} />
                         </div>
                     </div>
 
@@ -143,14 +218,7 @@ export default function FinancialPage() {
                                 </div>
                             </div>
                             <div className="chart-container">
-                                <Doughnut data={budgetDoughnutData} options={{
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12, font: { size: 11 } } },
-                                        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${(ctx.parsed / 1000000).toFixed(1)}M บาท` } }
-                                    }
-                                }} />
+                                <Doughnut data={budgetDoughnutData} options={budgetDoughnutOptions} />
                             </div>
                         </div>
                     )}

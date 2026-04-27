@@ -10,6 +10,7 @@ import { graduationByMajor, currentGraduationStats } from '../data/graduationDat
 import { scienceFacultyBudgetData } from '../data/mockData';
 import { researchData } from '../data/researchData';
 import { strategicData } from '../data/strategicData';
+import { ALERT_SOURCE_META } from '../services/alertDataService';
 
 const SEVERITY_RANK = { critical: 3, warning: 2, info: 1 };
 
@@ -32,6 +33,17 @@ function severityFromGap(gapPct) {
     return null;
 }
 
+function withSource(alert, source) {
+    const meta = ALERT_SOURCE_META[source] || { label: source, mode: 'local' };
+    return {
+        ...alert,
+        source,
+        sourceLabel: meta.label,
+        sourceMode: meta.mode,
+        updatedAt: alert.updatedAt || new Date().toISOString(),
+    };
+}
+
 // ---------- Builders ----------
 function buildStudentAlerts() {
     const students = getStudentListSync() || [];
@@ -44,7 +56,7 @@ function buildStudentAlerts() {
 
     const out = [];
     if (atRisk.length > 0) {
-        out.push({
+        out.push(withSource({
             id: 'stu-low-gpa',
             severity: 'critical',
             domain: 'นักศึกษา',
@@ -55,10 +67,10 @@ function buildStudentAlerts() {
             target: 0,
             suggestedAction: 'นัดอาจารย์ที่ปรึกษาพบกลุ่มเสี่ยงภายในสัปดาห์นี้',
             data: atRisk.slice(0, 20),
-        });
+        }, 'local_students'));
     }
     if (probation.length > 0) {
-        out.push({
+        out.push(withSource({
             id: 'stu-probation',
             severity: 'warning',
             domain: 'นักศึกษา',
@@ -69,7 +81,7 @@ function buildStudentAlerts() {
             target: 0,
             suggestedAction: 'ส่งรายงานให้อาจารย์ที่ปรึกษา และเปิดคลินิกวิชาการ',
             data: probation.slice(0, 20),
-        });
+        }, 'local_students'));
     }
     return out;
 }
@@ -81,7 +93,7 @@ function buildGraduationAlerts() {
     );
     lowRateMajors.forEach(m => {
         const sev = m.rate < T.gradRateCrit ? 'critical' : 'warning';
-        out.push({
+        out.push(withSource({
             id: `grad-rate-${m.major}`,
             severity: sev,
             domain: 'การสำเร็จการศึกษา',
@@ -91,12 +103,12 @@ function buildGraduationAlerts() {
             value: m.rate,
             target: T.gradRateWarn,
             suggestedAction: 'ประชุมภาควิชา วิเคราะห์ bottleneck รายวิชา/โครงงาน',
-        });
+        }, 'graduation'));
     });
 
     // Candidate-level pending
     if (currentGraduationStats.pending > 0) {
-        out.push({
+        out.push(withSource({
             id: 'grad-pending',
             severity: 'warning',
             domain: 'การสำเร็จการศึกษา',
@@ -106,7 +118,7 @@ function buildGraduationAlerts() {
             value: currentGraduationStats.pending,
             target: 0,
             suggestedAction: 'ส่งคณะกรรมการวิชาการพิจารณาก่อนกำหนดยื่นสำเร็จ',
-        });
+        }, 'graduation'));
     }
     return out;
 }
@@ -119,7 +131,7 @@ function buildBudgetAlerts() {
     if (last) {
         const ratio = last.expense / last.revenue;
         if (ratio >= T.budgetUseCrit) {
-            out.push({
+            out.push(withSource({
                 id: 'budget-overrun',
                 severity: 'critical',
                 domain: 'งบประมาณ',
@@ -129,9 +141,9 @@ function buildBudgetAlerts() {
                 value: (ratio * 100).toFixed(1),
                 target: 100,
                 suggestedAction: 'ทบทวนงบลงทุนไตรมาสถัดไป — ชะลอรายการไม่จำเป็น',
-            });
+            }, 'budget'));
         } else if (ratio >= T.budgetUseWarn) {
-            out.push({
+            out.push(withSource({
                 id: 'budget-warn',
                 severity: 'warning',
                 domain: 'งบประมาณ',
@@ -141,7 +153,7 @@ function buildBudgetAlerts() {
                 value: (ratio * 100).toFixed(1),
                 target: 90,
                 suggestedAction: 'ติดตามการเบิกจ่ายเป็นรายเดือน',
-            });
+            }, 'budget'));
         }
     }
     return out;
@@ -151,7 +163,7 @@ function buildResearchAlerts() {
     const out = [];
     const pendingPatents = (researchData?.patents || []).filter(p => p.status === 'รอพิจารณา');
     if (pendingPatents.length > 0) {
-        out.push({
+        out.push(withSource({
             id: 'research-patents-pending',
             severity: 'info',
             domain: 'การวิจัย',
@@ -162,7 +174,7 @@ function buildResearchAlerts() {
             target: 0,
             suggestedAction: 'สอบถามสถานะกับกรมทรัพย์สินทางปัญญา / ติดตามเอกสารเพิ่ม',
             data: pendingPatents,
-        });
+        }, 'research'));
     }
 
     // Funding YoY drop check
@@ -172,7 +184,7 @@ function buildResearchAlerts() {
         const b = funding[funding.length - 1];
         const drop = ((a.total - b.total) / a.total) * 100;
         if (drop > 20) {
-            out.push({
+            out.push(withSource({
                 id: 'research-funding-drop',
                 severity: 'warning',
                 domain: 'การวิจัย',
@@ -182,7 +194,7 @@ function buildResearchAlerts() {
                 value: drop.toFixed(1),
                 target: 0,
                 suggestedAction: 'ผลักดันข้อเสนอทุน วช./สกสว. รอบหน้า',
-            });
+            }, 'research'));
         }
     }
     return out;
@@ -197,7 +209,7 @@ function buildStrategicAlerts() {
         const gapPct = ((g.target - g.current) / g.target) * 100;
         const sev = severityFromGap(gapPct);
         if (!sev) return;
-        out.push({
+        out.push(withSource({
             id: `okr-${g.id}`,
             severity: sev,
             domain: 'ยุทธศาสตร์ (OKR)',
@@ -207,7 +219,7 @@ function buildStrategicAlerts() {
             value: g.current,
             target: g.target,
             suggestedAction: 'ทบทวน KPI ใน OKR workshop ถัดไป',
-        });
+        }, 'strategic'));
     });
     return out;
 }
