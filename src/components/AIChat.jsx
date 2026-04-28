@@ -19,7 +19,7 @@ import { sendMessageToGemini, resetConversation, getWaitSeconds } from '../servi
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
 const LIGHT_SAFE_CHART_PALETTE = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2', '#9333ea', '#0f766e'];
-const DARK_SAFE_CHART_PALETTE = ['#7dd3fc', '#a78bfa', '#34d399', '#fbbf24', '#fb7185', '#22d3ee', '#c084fc', '#86efac'];
+const DARK_SAFE_CHART_PALETTE = ['#7dd3fc', '#c4b5fd', '#34d399', '#fbbf24', '#fb7185', '#22d3ee', '#f0abfc', '#86efac'];
 
 function activeSafePalette() {
     const isDark = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark';

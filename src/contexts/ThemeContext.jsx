@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { Chart as ChartJS } from 'chart.js';
 
 const ThemeContext = createContext();
 
@@ -10,6 +11,13 @@ export function ThemeProvider({ children }) {
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('mju-theme', theme);
+        window.dispatchEvent(new CustomEvent('mju-theme-change', { detail: { theme } }));
+
+        requestAnimationFrame(() => {
+            Object.values(ChartJS.instances || {}).forEach(chart => {
+                chart?.update?.('none');
+            });
+        });
     }, [theme]);
 
     const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { tuitionData } from '../data/mockData';
 import { ArrowLeft, CreditCard } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
@@ -14,12 +13,14 @@ import { themeAdaptorPlugin } from '../utils/chartTheme';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
+import useDashboardDataset from '../hooks/useDashboardDataset';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, themeAdaptorPlugin);
 
 export default function TuitionPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
+    const { data: tuitionData } = useDashboardDataset('tuition');
 
     if (!canAccess(user?.role, 'tuition')) return <AccessDenied />;
 

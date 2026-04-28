@@ -12,6 +12,7 @@ import { hrData } from '../data/hrData';
 import { strategicData } from '../data/strategicData';
 import { isLiveData } from './studentDataService';
 import { canAccess, getRoleInfo } from '../utils/accessControl';
+import { getDashboardDatasetSync, getDashboardFreshnessContext } from './dashboardLiveDataService';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 if (!API_KEY) {
@@ -46,6 +47,17 @@ const DEFAULT_AI_SETTINGS = {
     temperature: 0.3,
     maxContexts: 4,
     allowWebSearch: true,
+};
+
+const STATIC_DASHBOARD_DATASETS = {
+    dashboardSummary,
+    universityBudgetData,
+    scienceFacultyBudgetData,
+    tuitionData,
+    studentLifeData,
+    researchData,
+    hrData,
+    strategicData,
 };
 
 const MODEL_INFO = {
@@ -333,7 +345,11 @@ function buildBaseInstruction() {
         if (s.gpa > gpaByMajor[s.major].max) gpaByMajor[s.major].max = s.gpa;
     });
 
-    const personnel = studentStatsData.scienceFaculty.personnel;
+    const liveStudentStatsData = getDashboardDatasetSync('student_stats') || studentStatsData;
+    const liveUniversityBudgetData = getDashboardDatasetSync('university_budget') || universityBudgetData;
+    const liveScienceBudgetData = getDashboardDatasetSync('science_budget') || scienceFacultyBudgetData;
+    const liveStudentLifeData = getDashboardDatasetSync('student_life') || studentLifeData;
+    const personnel = (liveStudentStatsData.scienceFaculty || studentStatsData.scienceFaculty).personnel;
     const genderCounts = studentList.reduce((acc, student) => {
         const prefix = String(student.prefix || '');
         if (prefix.startsWith('นาย')) acc.male += 1;
@@ -345,15 +361,15 @@ function buildBaseInstruction() {
         malePercent: studentList.length ? ((genderCounts.male / studentList.length) * 100).toFixed(1) : '0.0',
         femalePercent: studentList.length ? ((genderCounts.female / studentList.length) * 100).toFixed(1) : '0.0',
     };
-    const ratio = studentStatsData.scienceFaculty.studentFacultyRatio;
+    const ratio = (liveStudentStatsData.scienceFaculty || studentStatsData.scienceFaculty).studentFacultyRatio;
     const facultyRatio = {
         ...ratio,
         students: studentList.length,
         ratio: ratio.academicStaff ? (studentList.length / ratio.academicStaff).toFixed(1) : ratio.ratio,
     };
-    const budgetAll = universityBudgetData.yearly;
-    const sciBudgetAll = scienceFacultyBudgetData.yearly;
-    const activities = studentLifeData;
+    const budgetAll = liveUniversityBudgetData.yearly || universityBudgetData.yearly;
+    const sciBudgetAll = liveScienceBudgetData.yearly || scienceFacultyBudgetData.yearly;
+    const activities = liveStudentLifeData;
 
     const dataTimestamp = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -718,6 +734,8 @@ function studentAggregateContext(includeRows = false) {
 }
 
 function budgetContext() {
+    const universityBudgetData = getDashboardDatasetSync('university_budget') || STATIC_DASHBOARD_DATASETS.universityBudgetData;
+    const scienceFacultyBudgetData = getDashboardDatasetSync('science_budget') || STATIC_DASHBOARD_DATASETS.scienceFacultyBudgetData;
     const university = universityBudgetData.yearly.map(y => `${y.year}: รายรับ ${y.revenue}, รายจ่าย ${y.expense}, ${y.type}`).join('\n');
     const science = scienceFacultyBudgetData.yearly.map(y => `${y.year}: รายรับ ${y.revenue}, รายจ่าย ${y.expense}, ${y.type}`).join('\n');
     return `งบประมาณมหาวิทยาลัย:\n${university}\n\nงบประมาณคณะวิทยาศาสตร์:\n${science}`;
@@ -728,6 +746,12 @@ function graduationContext() {
 }
 
 function researchContext() {
+    const source = getDashboardDatasetSync('research') || STATIC_DASHBOARD_DATASETS.researchData;
+    const researchData = {
+        ...source,
+        summary: source.summary || source.overview,
+        publicationsTrend: source.publicationsTrend || source.publicationTrend,
+    };
     return `งานวิจัย:\n${JSON.stringify({
         summary: researchData.summary,
         publicationsTrend: researchData.publicationsTrend,
@@ -738,6 +762,14 @@ function researchContext() {
 }
 
 function hrContext() {
+    const source = getDashboardDatasetSync('hr') || STATIC_DASHBOARD_DATASETS.hrData;
+    const hrData = {
+        ...source,
+        summary: source.summary || source.scienceFaculty?.summary,
+        byDepartment: source.byDepartment || source.scienceFaculty?.byDepartment,
+        byPosition: source.byPosition || source.scienceFaculty?.byPosition,
+        trends: source.trends || source.scienceFaculty?.trends,
+    };
     return `บุคลากร:\n${JSON.stringify({
         summary: hrData.summary,
         byDepartment: hrData.byDepartment,
@@ -747,14 +779,17 @@ function hrContext() {
 }
 
 function strategicContext() {
+    const strategicData = getDashboardDatasetSync('strategic') || STATIC_DASHBOARD_DATASETS.strategicData;
     return `ยุทธศาสตร์และ OKR:\n${JSON.stringify(strategicData)}`;
 }
 
 function tuitionContext() {
+    const tuitionData = getDashboardDatasetSync('tuition') || STATIC_DASHBOARD_DATASETS.tuitionData;
     return `ค่าเล่าเรียน:\n${JSON.stringify(tuitionData)}`;
 }
 
 function studentLifeContext() {
+    const studentLifeData = getDashboardDatasetSync('student_life') || STATIC_DASHBOARD_DATASETS.studentLifeData;
     return `กิจกรรมนักศึกษา/ชีวิตนักศึกษา:\n${JSON.stringify(studentLifeData)}`;
 }
 
@@ -779,6 +814,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
         .filter(c => c.score > 0);
 
     if (scored.length === 0 && domainAllowed(role, 'dashboard')) {
+        const dashboardSummary = getDashboardDatasetSync('dashboard_summary') || STATIC_DASHBOARD_DATASETS.dashboardSummary;
         scored.push({
             id: 'dashboard',
             score: 1,
@@ -795,9 +831,9 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
 function chartPaletteInstruction(theme = 'light') {
     const dark = theme === 'dark';
     const palette = dark
-        ? ['#7dd3fc', '#a78bfa', '#34d399', '#fbbf24', '#fb7185', '#22d3ee']
+        ? ['#7dd3fc', '#c4b5fd', '#34d399', '#fbbf24', '#fb7185', '#22d3ee']
         : ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
-    return `Theme-aware chart palette: current theme=${theme}. Use high-contrast dataset colors only: ${palette.join(', ')}. Avoid black or near-black chart fills/hover colors.`;
+    return `Theme-aware chart palette: current theme=${theme}. Use high-contrast dataset colors only: ${palette.join(', ')}. Avoid black, near-black, low-contrast gray, or dark green chart fills/hover colors.`;
 }
 
 function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}) {
@@ -818,6 +854,9 @@ ROLE CONTEXT:
 - role=${role} (${roleLabel})
 - ${accessNote}
 - user preference memory: preferredFormat=${memory.preferredFormat}, detailLevel=${memory.detailLevel}, frequentTopics=${Object.entries(memory.topics || {}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v]) => `${k}:${v}`).join(', ') || '-'}
+
+LIVE DATA FRESHNESS:
+${getDashboardFreshnessContext()}
 
 TOKEN SAVING RULES:
 - ใช้เฉพาะ context ที่เกี่ยวข้องจาก retrieval ด้านล่าง ไม่ต้องอ่านทุกหน้าเว็บ

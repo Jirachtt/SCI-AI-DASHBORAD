@@ -1,6 +1,9 @@
 import { scienceFacultyBudgetData, universityBudgetData } from '../data/mockData';
 import { graduationHistory } from '../data/graduationData';
 import { getStudentListSync, isLiveData } from './studentDataService';
+import { getDashboardDatasetSync } from './dashboardLiveDataService';
+
+const STATIC_BUDGET_DATA = { scienceFacultyBudgetData, universityBudgetData };
 
 function actualBudgetRows(source) {
     return (source?.yearly || []).filter(row => row.type === 'actual');
@@ -85,6 +88,8 @@ export function getLiveStudentSummary() {
 }
 
 export function getForecastSeries(key) {
+    const universityBudgetData = getDashboardDatasetSync('university_budget') || STATIC_BUDGET_DATA.universityBudgetData;
+    const scienceFacultyBudgetData = getDashboardDatasetSync('science_budget') || STATIC_BUDGET_DATA.scienceFacultyBudgetData;
     switch (key) {
         case 'universityBudgetRevenue':
         case 'universityBudget':

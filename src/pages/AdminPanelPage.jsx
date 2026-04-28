@@ -20,6 +20,7 @@ import {
 } from '../utils/roleValidity';
 import AdminDataUpload from '../components/AdminDataUpload';
 import AdminAuditLog from '../components/AdminAuditLog';
+import AdminAutoSyncPanel from '../components/AdminAutoSyncPanel';
 
 const MANAGEABLE_ROLES = ['dean', 'chair', 'staff', 'general', 'student'];
 const ROLE_LABELS = {
@@ -409,6 +410,12 @@ export default function AdminPanelPage() {
                     <Database size={16} /> ข้อมูลระบบ
                 </button>
                 <button
+                    className={`admin-tab ${activeTab === 'sync' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('sync')}
+                >
+                    <Database size={16} /> Auto Sync
+                </button>
+                <button
                     className={`admin-tab ${activeTab === 'audit' ? 'active' : ''}`}
                     onClick={() => setActiveTab('audit')}
                 >
@@ -642,6 +649,13 @@ export default function AdminPanelPage() {
             {activeTab === 'data' && (
                 <div className="admin-tab-panel">
                     <AdminDataUpload onToast={showToast} />
+                </div>
+            )}
+
+            {/* Auto sync tab */}
+            {activeTab === 'sync' && (
+                <div className="admin-tab-panel">
+                    <AdminAutoSyncPanel onToast={showToast} />
                 </div>
             )}
 

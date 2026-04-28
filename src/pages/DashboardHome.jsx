@@ -2,13 +2,13 @@ import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
-import { dashboardSummary } from '../data/mockData';
 import {
     CreditCard, DollarSign, Users, ChevronRight, GraduationCap, BookOpen,
     TrendingUp, Lock, BarChart3, Sparkles, Settings2, Target,
     UserCheck, LineChart, Microscope, Wallet, FileBarChart2, ArrowUpRight
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import useDashboardDataset from '../hooks/useDashboardDataset';
 
 const topics = [
     {
@@ -81,7 +81,10 @@ const dashboardInsights = [
 
 export default function DashboardHome() {
     const { user } = useAuth();
-    const sci = dashboardSummary.faculties.find(f => f.name === 'คณะวิทยาศาสตร์');
+    const { data: dashboardSummary } = useDashboardDataset('dashboard_summary');
+    const sci = dashboardSummary.faculties.find(f => f.name === 'คณะวิทยาศาสตร์')
+        || dashboardSummary.faculties.find(f => String(f.name || '').includes('วิทยาศาสตร์'))
+        || dashboardSummary.faculties[0];
     const [insights] = useState(dashboardInsights);
     const [isEditMode, setIsEditMode] = useState(false);
     const [showForecast, setShowForecast] = useState(false);

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { scienceFacultyBudgetData } from '../data/mockData';
 import { ArrowLeft, TrendingUp, TrendingDown, ArrowUpRight, Sparkles, Download, BarChart3, Wallet, DollarSign } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -14,6 +13,7 @@ import { themeAdaptorPlugin } from '../utils/chartTheme';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
+import useDashboardDataset from '../hooks/useDashboardDataset';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler, themeAdaptorPlugin);
 
@@ -30,6 +30,7 @@ const thStyle = {
 export default function BudgetForecastPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
+    const { data: scienceFacultyBudgetData } = useDashboardDataset('science_budget');
 
     if (!canAccess(user?.role, 'budget_forecast')) return <AccessDenied />;
 

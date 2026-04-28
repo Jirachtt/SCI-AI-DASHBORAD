@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { researchData } from '../data/researchData';
 import { Bar, Line, Doughnut, Pie } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
@@ -13,6 +12,7 @@ import { FileText, DollarSign, Award, BookOpen, Globe2, TrendingUp, Microscope }
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
+import useDashboardDataset from '../hooks/useDashboardDataset';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
@@ -27,6 +27,7 @@ const tdStyle = { padding: '10px 14px', fontSize: '0.88rem', color: 'var(--text-
 export default function ResearchDashboardPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
+    const { data: researchData } = useDashboardDataset('research');
     if (!canAccess(user?.role, 'research_overview')) return <AccessDenied />;
 
     const { overview, publicationTrend, byDepartment, fundingTrend, fundingSources, patents, communityImpact, benchmark } = researchData;

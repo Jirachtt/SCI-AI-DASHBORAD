@@ -955,7 +955,7 @@ function looksLikeDatasetDump(s) {
 // `hbar` is a UI-only sentinel meaning "bar with indexAxis='y'". It maps
 // back to chartType='bar' when handed to Chart.js.
 const LIGHT_CHART_PALETTE = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2', '#9333ea', '#0f766e', '#ea580c', '#be123c', '#4f46e5', '#15803d'];
-const DARK_CHART_PALETTE = ['#7dd3fc', '#a78bfa', '#34d399', '#fbbf24', '#fb7185', '#22d3ee', '#c084fc', '#86efac', '#fdba74', '#f0abfc', '#93c5fd', '#fca5a5'];
+const DARK_CHART_PALETTE = ['#7dd3fc', '#c4b5fd', '#34d399', '#fbbf24', '#fb7185', '#22d3ee', '#f0abfc', '#86efac', '#fdba74', '#f9a8d4', '#93c5fd', '#fca5a5'];
 const DEFAULT_BAR_ALPHA = 0.72;
 const DEFAULT_HOVER_ALPHA = 0.88;
 

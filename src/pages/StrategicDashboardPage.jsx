@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { strategicData } from '../data/strategicData';
 import { Bar, Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
@@ -14,6 +13,7 @@ import { Target, TrendingUp, CheckCircle2, AlertTriangle } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
+import useDashboardDataset from '../hooks/useDashboardDataset';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, Filler, RadialLinearScale, themeAdaptorPlugin);
 
@@ -40,6 +40,7 @@ export default function StrategicDashboardPage() {
     const { user } = useAuth();
     const [activeOKR, setActiveOKR] = useState(0);
     const [drillDetail, setDrillDetail] = useState(null);
+    const { data: strategicData } = useDashboardDataset('strategic');
 
     if (!canAccess(user?.role, 'strategic_overview')) return <AccessDenied />;
 

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { studentStatsData } from '../data/mockData';
 import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
 import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText, BarChart3, Microscope, MousePointerClick } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
@@ -15,6 +14,7 @@ import {
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { withChartDrilldown } from '../utils/chartDrilldown';
+import useDashboardDataset from '../hooks/useDashboardDataset';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
 
@@ -36,6 +36,7 @@ export default function StudentStatsPage() {
     const [appliedLevel, setAppliedLevel] = useState('all');
     const [drillDetail, setDrillDetail] = useState(null);
     const [, forceTick] = useState(0);
+    const { data: studentStatsData } = useDashboardDataset('student_stats');
 
     useEffect(() => {
         ensureStudentList().then(() => forceTick(t => t + 1));

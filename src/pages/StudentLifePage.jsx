@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { studentLifeData } from '../data/mockData';
 import { ArrowLeft, Users } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -14,12 +13,14 @@ import { themeAdaptorPlugin } from '../utils/chartTheme';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
+import useDashboardDataset from '../hooks/useDashboardDataset';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, themeAdaptorPlugin);
 
 export default function StudentLifePage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
+    const { data: studentLifeData } = useDashboardDataset('student_life');
 
     if (!canAccess(user?.role, 'student_life')) return <AccessDenied />;
 

@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { hrData } from '../data/hrData';
 import { Bar, Pie, Doughnut, Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
@@ -13,6 +12,7 @@ import { Users, UserCheck, Award, TrendingUp, Building2, GraduationCap } from 'l
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { normalizeThaiText, withChartDrilldown } from '../utils/chartDrilldown';
+import useDashboardDataset from '../hooks/useDashboardDataset';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
@@ -87,6 +87,7 @@ function buildPersonnelDirectory(sci) {
 export default function HRDashboardPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
+    const { data: hrData } = useDashboardDataset('hr');
     const sci = hrData.scienceFaculty;
     const personnelRows = useMemo(() => buildPersonnelDirectory(sci), [sci]);
     if (!canAccess(user?.role, 'hr_overview')) return <AccessDenied />;

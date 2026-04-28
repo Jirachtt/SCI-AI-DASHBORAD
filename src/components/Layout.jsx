@@ -3,11 +3,14 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AIChat from './AIChat';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Menu, Sun, Moon } from 'lucide-react';
 import { ensureStudentList } from '../services/studentDataService';
+import { ensureDashboardLiveData, startDashboardAutoSync } from '../services/dashboardLiveDataService';
 
 export default function Layout() {
     const { theme, toggleTheme } = useTheme();
+    const { user } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
     const [isTransitioning, setIsTransitioning] = useState(false);
@@ -16,7 +19,18 @@ export default function Layout() {
     // Pre-warm live student data once the user is authenticated.
     // Gemini + page consumers read it synchronously after this resolves;
     // falls back to mock silently if Firestore doesn't have the doc.
-    useEffect(() => { ensureStudentList(); }, []);
+    useEffect(() => {
+        ensureStudentList();
+        ensureDashboardLiveData();
+    }, []);
+
+    useEffect(() => {
+        return startDashboardAutoSync({
+            uid: user?.uid,
+            who: user?.email || user?.uid,
+            role: user?.role,
+        });
+    }, [user?.email, user?.role, user?.uid]);
 
     // Smooth page transition on route change — briefly unmount-style fade
     // (set to 'enter' on navigation, next frame animate to 'enter-active').
