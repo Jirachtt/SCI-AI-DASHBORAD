@@ -14,7 +14,13 @@ const LIGHT_CHART_SURFACE = '#ffffff';
 const DARK_CHART_SURFACE = '#131929';
 
 function withDashboardFont(font = {}, fallbackWeight) {
-    const next = { ...font, family: DASHBOARD_FONT_FAMILY };
+    const next = { family: DASHBOARD_FONT_FAMILY };
+    if (font && typeof font === 'object') {
+        ['size', 'style', 'weight', 'lineHeight'].forEach((key) => {
+            const value = font[key];
+            if (value != null) next[key] = value;
+        });
+    }
     if (fallbackWeight && !next.weight) next.weight = fallbackWeight;
     return next;
 }
@@ -166,6 +172,13 @@ function baseChartType(chart) {
     return chart?.config?.type || chart?.type || 'bar';
 }
 
+function mutableChartOptions(chart) {
+    if (!chart.config.options || typeof chart.config.options !== 'object') {
+        chart.config.options = {};
+    }
+    return chart.config.options;
+}
+
 export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
     const datasets = chart?.data?.datasets;
     if (!Array.isArray(datasets)) return chart;
@@ -214,11 +227,12 @@ export const themeAdaptorPlugin = {
     id: 'themeAdaptor',
     beforeUpdate(chart) {
         const themeConfig = getCurrentChartTheme();
+        const options = mutableChartOptions(chart);
 
         sanitizeChartDatasetColors(chart, themeConfig.theme);
-        chart.options.font = withDashboardFont(chart.options.font, '600');
+        options.font = withDashboardFont(options.font, '600');
 
-        const scales = chart.options.scales || {};
+        const scales = options.scales || {};
         for (const key of Object.keys(scales)) {
             const scale = scales[key];
             if (scale.ticks) {
@@ -245,9 +259,9 @@ export const themeAdaptorPlugin = {
             }
         }
 
-        chart.options.plugins = chart.options.plugins || {};
-        if (chart.options.plugins.tooltip == null) chart.options.plugins.tooltip = {};
-        const tooltip = chart.options.plugins.tooltip;
+        options.plugins = options.plugins || {};
+        if (options.plugins.tooltip == null) options.plugins.tooltip = {};
+        const tooltip = options.plugins.tooltip;
         if (tooltip) {
             tooltip.backgroundColor = themeConfig.tooltipBg;
             tooltip.titleColor = themeConfig.tooltipTitle;
@@ -263,19 +277,19 @@ export const themeAdaptorPlugin = {
             tooltip.caretPadding = tooltip.caretPadding ?? 8;
         }
 
-        const legend = chart.options.plugins?.legend;
+        const legend = options.plugins?.legend;
         if (legend?.labels) {
             legend.labels.color = themeConfig.text;
             legend.labels.font = withDashboardFont(legend.labels.font, '700');
         }
 
-        const title = chart.options.plugins?.title;
+        const title = options.plugins?.title;
         if (title) {
             title.color = themeConfig.text;
             title.font = withDashboardFont(title.font, '700');
         }
 
-        const subtitle = chart.options.plugins?.subtitle;
+        const subtitle = options.plugins?.subtitle;
         if (subtitle) {
             subtitle.color = themeConfig.muted;
             subtitle.font = withDashboardFont(subtitle.font, '600');

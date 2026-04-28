@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { ArrowLeft, DollarSign } from 'lucide-react';
-import { Bar, Doughnut } from 'react-chartjs-2';
+import { Doughnut } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
     Title, Tooltip, Legend, ArcElement
@@ -24,36 +24,7 @@ export default function FinancialPage() {
 
     if (!canAccess(user?.role, 'financial')) return <AccessDenied />;
 
-    const showDetail = canAccess(user?.role, 'financial_detail');
     const showFacultyBudget = canAccess(user?.role, 'faculty_budget');
-
-    const paymentBarData = {
-        labels: financialData.paymentHistory.map(p => p.semester),
-        datasets: [{
-            label: 'ค่าเทอมที่จ่าย (บาท)',
-            data: financialData.paymentHistory.map(p => p.amount),
-            backgroundColor: 'rgba(34, 197, 94, 0.7)',
-            borderColor: '#22c55e',
-            borderWidth: 1,
-            borderRadius: 6,
-        }]
-    };
-
-    const paymentBarOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y.toLocaleString()} บาท` } }
-        },
-        scales: {
-            x: { ticks: { color: '#9ca3af' }, grid: { display: false } },
-            y: {
-                ticks: { color: '#9ca3af', callback: (v) => v.toLocaleString() },
-                grid: { color: 'rgba(255,255,255,0.05)' }
-            }
-        }
-    };
 
     const budgetDoughnutData = showFacultyBudget ? {
         labels: financialData.facultyBudget.categories.map(c => c.name),
@@ -64,39 +35,11 @@ export default function FinancialPage() {
         }]
     } : null;
 
-    const paymentColumns = [
-        { key: 'semester', label: 'เทอม' },
-        { key: 'amount', label: 'จำนวนเงิน', align: 'right' },
-        { key: 'date', label: 'วันที่จ่าย' },
-        { key: 'method', label: 'วิธีชำระ' },
-    ];
-
     const budgetColumns = [
         { key: 'name', label: 'หมวดงบประมาณ' },
         { key: 'amount', label: 'จำนวนเงิน', align: 'right' },
         { key: 'percent', label: 'สัดส่วนของงบใช้ไป', align: 'right' },
     ];
-
-    const paymentDrilldownOptions = withChartDrilldown(paymentBarOptions, paymentBarData, setDrillDetail, (point) => {
-        const payment = financialData.paymentHistory[point.index];
-        if (!payment) return null;
-        return {
-            title: `รายละเอียดการชำระ ${payment.semester}`,
-            subtitle: 'ประวัติการจ่ายค่าเทอม',
-            valueLabel: 'จำนวนเงิน',
-            value: payment.amount,
-            unit: 'บาท',
-            accentColor: point.color,
-            rows: financialData.paymentHistory.map(item => ({
-                semester: item.semester,
-                amount: `${item.amount.toLocaleString('th-TH')} บาท`,
-                date: item.date,
-                method: item.method,
-            })),
-            columns: paymentColumns,
-            note: 'แสดงประวัติการชำระจากข้อมูลการเงินในระบบ',
-        };
-    });
 
     const budgetDoughnutOptions = withChartDrilldown({
         responsive: true,
@@ -194,35 +137,21 @@ export default function FinancialPage() {
             </div>
 
             {/* Charts */}
-            {showDetail && (
+            {showFacultyBudget && budgetDoughnutData && (
                 <div className="charts-grid">
                     <div className="chart-card animate-in">
                         <div className="chart-card-header">
                             <div>
-                                <div className="chart-card-title">ประวัติการจ่ายค่าเทอม</div>
-                                <div className="chart-card-subtitle">บาท/เทอม</div>
+                                <div className="chart-card-title">งบประมาณคณะ</div>
+                                <div className="chart-card-subtitle">
+                                    ใช้ไป {(financialData.facultyBudget.spent / 1000000).toFixed(1)}M / {(financialData.facultyBudget.totalBudget / 1000000).toFixed(1)}M บาท
+                                </div>
                             </div>
                         </div>
                         <div className="chart-container">
-                            <Bar data={paymentBarData} options={paymentDrilldownOptions} />
+                            <Doughnut data={budgetDoughnutData} options={budgetDoughnutOptions} />
                         </div>
                     </div>
-
-                    {showFacultyBudget && budgetDoughnutData && (
-                        <div className="chart-card animate-in">
-                            <div className="chart-card-header">
-                                <div>
-                                    <div className="chart-card-title">งบประมาณคณะ</div>
-                                    <div className="chart-card-subtitle">
-                                        ใช้ไป {(financialData.facultyBudget.spent / 1000000).toFixed(1)}M / {(financialData.facultyBudget.totalBudget / 1000000).toFixed(1)}M บาท
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="chart-container">
-                                <Doughnut data={budgetDoughnutData} options={budgetDoughnutOptions} />
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
 
