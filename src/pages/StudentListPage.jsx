@@ -4,7 +4,10 @@ import { Search, Download, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap
 
 /* ────────────── Student Data (live from Firestore, mock fallback) ────────────── */
 import { SCIENCE_MAJORS } from '../data/studentListData';
-import { ensureStudentList, getStudentListSync, onStudentDataChange, addStudent } from '../services/studentDataService';
+import {
+    ensureStudentList, getStudentListSync, onStudentDataChange,
+    addStudent, syncManualStudentsToRemote
+} from '../services/studentDataService';
 const MAJORS = SCIENCE_MAJORS;
 
 /* ────────────── Styles ────────────── */
@@ -38,24 +41,40 @@ const ROWS_PER_PAGE = 20;
 /* ────────────── Component ────────────── */
 export default function StudentListPage() {
     const { user } = useAuth();
-    const canManage = user?.role === 'dean' || user?.role === 'admin';
+    const canManage = user?.role === 'dean';
 
     const [students, setStudents] = useState(() => getStudentListSync());
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Load live data on mount; re-sync when an admin uploads a new dataset.
+    // Load live data on mount; re-sync when an admin uploads or manually edits data.
     useEffect(() => {
         let cancelled = false;
-        ensureStudentList().then(list => { if (!cancelled) setStudents(list); });
+        ensureStudentList().then(async list => {
+            if (cancelled) return;
+            setStudents(list);
+            if (canManage && user?.uid && !user.uid.startsWith('admin-bypass-')) {
+                try {
+                    const migrated = await syncManualStudentsToRemote({
+                        uid: user.uid,
+                        who: user.email || user.uid,
+                    });
+                    if (!cancelled && migrated.synced > 0) setStudents(getStudentListSync());
+                } catch (err) {
+                    console.warn('[StudentListPage] local manual student migration failed:', err?.message || err);
+                }
+            }
+        });
         const unsub = onStudentDataChange(list => { if (!cancelled && list) setStudents(list); });
         return () => { cancelled = true; unsub(); };
-    }, []);
+    }, [canManage, user?.uid, user?.email]);
     const [yearFilter, setYearFilter] = useState('all');
     const [majorFilter, setMajorFilter] = useState('all');
     const [page, setPage] = useState(1);
     const [showAll, setShowAll] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [newStudent, setNewStudent] = useState({ id: '', name: '', major: MAJORS[0], year: '1', gpa: '' });
+    const [savingStudent, setSavingStudent] = useState(false);
+    const [studentSaveMessage, setStudentSaveMessage] = useState('');
 
     /* ── Filtering ── */
     const filtered = useMemo(() => students.filter(s => {
@@ -99,10 +118,12 @@ export default function StudentListPage() {
     };
 
     /* ── Add Student ── */
-    const handleAdd = () => {
+    const handleAdd = async () => {
         if (!newStudent.id || !newStudent.name || !newStudent.gpa) return;
         const gpa = parseFloat(newStudent.gpa);
         if (isNaN(gpa) || gpa < 0 || gpa > 4) return;
+        setSavingStudent(true);
+        setStudentSaveMessage('');
         const student = {
             id: newStudent.id,
             prefix: '',
@@ -113,18 +134,29 @@ export default function StudentListPage() {
             gpa,
             status: gpa < 2.0 ? 'รอพินิจ' : 'กำลังศึกษา'
         };
-        // Persist to localStorage so it survives page changes and AI chat can see it
-        addStudent(student);
-        // Update local state immediately
-        setStudents(getStudentListSync());
-        setNewStudent({ id: '', name: '', major: MAJORS[0], year: '1', gpa: '' });
-        setShowModal(false);
+        try {
+            const result = await addStudent(student, {
+                uid: user?.uid,
+                who: user?.email || user?.uid || 'unknown',
+            });
+            setStudents(getStudentListSync());
+            if (result.scope === 'live') {
+                setNewStudent({ id: '', name: '', major: MAJORS[0], year: '1', gpa: '' });
+                setShowModal(false);
+                return;
+            }
+            setStudentSaveMessage('ยังไม่บันทึก เพราะต้องใช้บัญชีคณบดีที่ล็อกอินผ่าน Firebase จริงเพื่อเขียนข้อมูลกลาง ทุกเครื่องจึงจะเห็นนักศึกษาคนนี้พร้อมกันแบบ realtime');
+        } catch (err) {
+            setStudentSaveMessage(err?.message || 'บันทึกนักศึกษาไม่สำเร็จ');
+        } finally {
+            setSavingStudent(false);
+        }
     };
 
     const statusColor = (s) => s === 'ปกติ' ? '#4CAF50' : s === 'กำลังศึกษา' ? '#4CAF50' : s === 'รอพินิจ' ? '#FFC107' : '#ef4444';
 
-    /* ── PDPA Access Control: เฉพาะ admin/dean เท่านั้น ── */
-    if (user?.role !== 'dean' && user?.role !== 'admin') {
+    /* ── PDPA Access Control: เฉพาะคณบดีเท่านั้น ── */
+    if (user?.role !== 'dean') {
         return (
             <div className="dashboard-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
                 <div style={{ textAlign: 'center', maxWidth: 480 }}>
@@ -167,7 +199,7 @@ export default function StudentListPage() {
                         <Download size={16} /> Export CSV
                     </button>
                     {canManage && (
-                        <button onClick={() => setShowModal(true)} style={{
+                        <button onClick={() => { setStudentSaveMessage(''); setShowModal(true); }} style={{
                             display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',
                             borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #006838, #00a651)',
                             color: '#fff', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, transition: 'all 0.2s',
@@ -367,9 +399,9 @@ export default function StudentListPage() {
 
             {/* ── Add Student Modal ── */}
             {showModal && (
-                <div style={modalOverlay} onClick={() => setShowModal(false)}>
+                <div style={modalOverlay} onClick={() => { if (!savingStudent) setShowModal(false); }}>
                     <div style={modalBox} onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setShowModal(false)}
+                        <button onClick={() => setShowModal(false)} disabled={savingStudent}
                             style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                             <X size={20} />
                         </button>
@@ -418,20 +450,36 @@ export default function StudentListPage() {
                             </div>
                         </div>
 
+                        {studentSaveMessage && (
+                            <div style={{
+                                marginTop: 18,
+                                padding: '12px 14px',
+                                borderRadius: 10,
+                                border: '1px solid rgba(245, 158, 11, 0.35)',
+                                background: 'rgba(245, 158, 11, 0.12)',
+                                color: 'var(--text-primary)',
+                                fontSize: '0.84rem',
+                                lineHeight: 1.55,
+                            }}>
+                                <AlertTriangle size={15} style={{ verticalAlign: '-3px', marginRight: 6, color: '#F59E0B' }} />
+                                {studentSaveMessage}
+                            </div>
+                        )}
+
                         {/* Actions */}
                         <div style={{ display: 'flex', gap: '12px', marginTop: '28px', justifyContent: 'flex-end' }}>
-                            <button onClick={() => setShowModal(false)}
+                            <button onClick={() => setShowModal(false)} disabled={savingStudent}
                                 style={{ padding: '10px 24px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>
                                 ยกเลิก
                             </button>
-                            <button onClick={handleAdd}
+                            <button onClick={handleAdd} disabled={savingStudent || !newStudent.id || !newStudent.name || !newStudent.gpa}
                                 style={{
                                     padding: '10px 24px', borderRadius: '10px', border: 'none', fontWeight: 600,
-                                    background: (!newStudent.id || !newStudent.name || !newStudent.gpa) ? 'var(--bg-card-hover)' : 'linear-gradient(135deg, #006838, #00a651)',
-                                    color: (!newStudent.id || !newStudent.name || !newStudent.gpa) ? 'var(--text-muted)' : '#fff',
-                                    cursor: (!newStudent.id || !newStudent.name || !newStudent.gpa) ? 'not-allowed' : 'pointer',
+                                    background: (savingStudent || !newStudent.id || !newStudent.name || !newStudent.gpa) ? 'var(--bg-card-hover)' : 'linear-gradient(135deg, #006838, #00a651)',
+                                    color: (savingStudent || !newStudent.id || !newStudent.name || !newStudent.gpa) ? 'var(--text-muted)' : '#fff',
+                                    cursor: (savingStudent || !newStudent.id || !newStudent.name || !newStudent.gpa) ? 'not-allowed' : 'pointer',
                                 }}>
-                                เพิ่มนักศึกษา
+                                {savingStudent ? 'กำลังบันทึก...' : 'เพิ่มนักศึกษา'}
                             </button>
                         </div>
                     </div>

@@ -14,12 +14,13 @@
 //
 // Callers use:
 //   ensureStudentList()    — async, attaches realtime listener; returns live list (or mock)
-//   getStudentListSync()   — synchronous accessor (returns cached / mock + manual adds); safe anywhere
+//   getStudentListSync()   — synchronous accessor (returns cached live/mock data); safe anywhere
 //   uploadStudentList()    — admin writes new dataset
 //   getStudentListMeta()   — lightweight metadata fetch for admin panel
 //   onStudentDataChange()  — subscribe to realtime student-data updates
-//   addStudent()           — persist a single manually added student (localStorage)
+//   addStudent()           — persist a single manually added student (Firestore when possible)
 //   removeStudent()        — remove a manually added student by ID
+//   syncManualStudentsToRemote() — migrate old local-only manual rows to Firestore
 
 import { doc, getDoc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -33,6 +34,7 @@ const MIN_TRUSTED_LIVE_ROWS = 1000;
 
 let _cache = null;
 let _isLive = false;           // true once Firestore has returned a valid dataset
+let _usesLocalOnlyData = false;
 let _loadPromise = null;
 let _unsubscribeLive = null;
 const _listeners = new Set();
@@ -53,6 +55,21 @@ function saveManualStudents(list) {
     } catch (e) {
         console.warn('[studentDataService] localStorage save failed:', e);
     }
+}
+
+function upsertStudent(rows, student) {
+    const list = Array.isArray(rows) ? rows : [];
+    const next = list.filter(s => s.id !== student.id);
+    next.push(student);
+    return next;
+}
+
+function removeStudentFromRows(rows, studentId) {
+    return (Array.isArray(rows) ? rows : []).filter(s => s.id !== studentId);
+}
+
+function removeManualStudent(studentId) {
+    saveManualStudents(loadManualStudents().filter(s => s.id !== studentId));
 }
 
 function isBypassUid(uid) {
@@ -77,31 +94,84 @@ function saveDemoDataset(payload) {
 }
 
 /**
- * Add a single student manually. Persisted in localStorage and immediately
- * visible to getStudentListSync() and AI chat.
+ * Add a single student manually. Real signed-in dean sessions persist to
+ * Firestore so every device receives the realtime update. Admin-bypass/demo
+ * sessions do not mutate local student counts because that would diverge
+ * between devices.
  */
-export function addStudent(student) {
-    const manual = loadManualStudents();
-    // Prevent duplicates by ID
-    const exists = manual.findIndex(s => s.id === student.id);
-    if (exists >= 0) {
-        manual[exists] = student; // Update existing
-    } else {
-        manual.push(student);
+export async function addStudent(student, { uid, who } = {}) {
+    if (!student?.id) throw new Error('student.id is required');
+
+    if (db && !isBypassUid(uid)) {
+        try {
+            const rows = upsertStudent(await readAuthoritativeRows(), student);
+            await persistRows(rows, {
+                uid,
+                source: 'manual_add',
+                manualAction: 'add_student',
+                manualStudentId: student.id,
+            });
+            removeManualStudent(student.id);
+            _cache = rows;
+            _isLive = true;
+            _usesLocalOnlyData = false;
+            _loadPromise = Promise.resolve(getStudentListSync());
+            notify();
+            writeAuditLog({
+                action: 'add_student',
+                who: who || uid || 'unknown',
+                fileName: 'manual-entry',
+                rowCount: rows.length,
+                version: 1,
+                meta: { studentId: student.id },
+            });
+            return { rowCount: rows.length, scope: 'live' };
+        } catch (err) {
+            throw new Error('บันทึกนักศึกษาลงข้อมูลกลางไม่สำเร็จ: ' + (err?.message || 'unknown'));
+        }
     }
-    saveManualStudents(manual);
+
     notify();
-    return manual;
+    return { rowCount: getStudentListSync().length, scope: isBypassUid(uid) ? 'auth_required' : 'no_firebase' };
 }
 
 /**
- * Remove a manually added student by ID.
+ * Remove a student by ID from the shared dataset when possible.
  */
-export function removeStudent(studentId) {
-    const manual = loadManualStudents().filter(s => s.id !== studentId);
-    saveManualStudents(manual);
+export async function removeStudent(studentId, { uid, who } = {}) {
+    if (!studentId) throw new Error('studentId is required');
+
+    if (db && !isBypassUid(uid)) {
+        try {
+            const rows = removeStudentFromRows(await readAuthoritativeRows(), studentId);
+            await persistRows(rows, {
+                uid,
+                source: 'manual_remove',
+                manualAction: 'remove_student',
+                manualStudentId: studentId,
+            });
+            removeManualStudent(studentId);
+            _cache = rows;
+            _isLive = true;
+            _usesLocalOnlyData = false;
+            _loadPromise = Promise.resolve(getStudentListSync());
+            notify();
+            writeAuditLog({
+                action: 'remove_student',
+                who: who || uid || 'unknown',
+                fileName: 'manual-entry',
+                rowCount: rows.length,
+                version: 1,
+                meta: { studentId },
+            });
+            return { rowCount: rows.length, scope: 'live' };
+        } catch (err) {
+            throw new Error('ลบนักศึกษาจากข้อมูลกลางไม่สำเร็จ: ' + (err?.message || 'unknown'));
+        }
+    }
+
     notify();
-    return manual;
+    return { rowCount: getStudentListSync().length, scope: isBypassUid(uid) ? 'auth_required' : 'no_firebase' };
 }
 
 /**
@@ -109,6 +179,35 @@ export function removeStudent(studentId) {
  */
 export function getManualStudents() {
     return loadManualStudents();
+}
+
+export async function syncManualStudentsToRemote({ uid, who } = {}) {
+    const manual = loadManualStudents();
+    if (manual.length === 0) return { synced: 0, scope: 'none' };
+    if (!db || isBypassUid(uid)) return { synced: 0, scope: isBypassUid(uid) ? 'local_demo' : 'no_firebase' };
+
+    const rows = manual.reduce((acc, student) => upsertStudent(acc, student), await readAuthoritativeRows());
+    await persistRows(rows, {
+        uid,
+        source: 'manual_migration',
+        manualAction: 'migrate_local_students',
+        manualStudentId: null,
+    });
+    saveManualStudents([]);
+    _cache = rows;
+    _isLive = true;
+    _usesLocalOnlyData = false;
+    _loadPromise = Promise.resolve(getStudentListSync());
+    notify();
+    writeAuditLog({
+        action: 'migrate_local_students',
+        who: who || uid || 'unknown',
+        fileName: 'local-manual-students',
+        rowCount: rows.length,
+        version: 1,
+        meta: { migratedRows: manual.length },
+    });
+    return { synced: manual.length, rowCount: rows.length, scope: 'live' };
 }
 
 // ─── Core data functions ───
@@ -122,10 +221,12 @@ function setBundledFallback() {
     if (Array.isArray(demo?.rows) && demo.rows.length > 0) {
         _cache = demo.rows;
         _isLive = true;
+        _usesLocalOnlyData = true;
         return;
     }
     _cache = scienceStudentList;
     _isLive = false;
+    _usesLocalOnlyData = false;
 }
 
 function isTrustedLiveRows(rows) {
@@ -139,6 +240,7 @@ function applySnapshot(snap) {
         if (isTrustedLiveRows(rows) || data.allowSmallDataset === true) {
             _cache = rows;
             _isLive = true;
+            _usesLocalOnlyData = false;
             return;
         }
         if (rows.length > 0) {
@@ -149,6 +251,30 @@ function applySnapshot(snap) {
         }
     }
     setBundledFallback();
+}
+
+async function readAuthoritativeRows() {
+    const snap = await getDoc(studentDocRef());
+    if (snap.exists()) {
+        const data = snap.data();
+        const rows = Array.isArray(data.rows) ? data.rows : [];
+        if (isTrustedLiveRows(rows) || data.allowSmallDataset === true) return rows;
+    }
+    return _cache || scienceStudentList;
+}
+
+async function persistRows(rows, { uid, source, manualAction, manualStudentId } = {}) {
+    await setDoc(studentDocRef(), {
+        rows,
+        rowCount: rows.length,
+        updatedAt: serverTimestamp(),
+        updatedBy: uid || 'unknown',
+        version: 1,
+        allowSmallDataset: true,
+        lastWriteSource: source || 'manual',
+        lastManualAction: manualAction || null,
+        lastManualStudentId: manualStudentId || null,
+    }, { merge: true });
 }
 
 function startRealtimeSubscription() {
@@ -199,17 +325,11 @@ function notify() {
 }
 
 export function getStudentListSync() {
-    const base = _cache || scienceStudentList;
-    const manual = loadManualStudents();
-    if (manual.length === 0) return base;
-    // Merge: manual students override base by ID
-    const manualIds = new Set(manual.map(s => s.id));
-    const filtered = base.filter(s => !manualIds.has(s.id));
-    return [...filtered, ...manual];
+    return _cache || scienceStudentList;
 }
 
 export function isLiveData() {
-    return _isLive;
+    return _isLive && !_usesLocalOnlyData;
 }
 
 export async function ensureStudentList() {
@@ -236,6 +356,7 @@ export async function uploadStudentList(rows, { fileName, uid, who, meta } = {})
         });
         _cache = rows;
         _isLive = true;
+        _usesLocalOnlyData = true;
         _loadPromise = Promise.resolve(getStudentListSync());
         notify();
         writeAuditLog({
@@ -260,6 +381,7 @@ export async function uploadStudentList(rows, { fileName, uid, who, meta } = {})
     });
     _cache = rows;
     _isLive = true;
+    _usesLocalOnlyData = false;
     _loadPromise = Promise.resolve(getStudentListSync());
     notify();
     // Fire-and-forget audit log; failures are swallowed inside the service.
@@ -276,7 +398,7 @@ export async function uploadStudentList(rows, { fileName, uid, who, meta } = {})
 
 export async function getStudentListMeta() {
     const demo = loadDemoDataset();
-    if (Array.isArray(demo?.rows) && demo.rows.length > 0) {
+    if ((!_isLive || _usesLocalOnlyData) && Array.isArray(demo?.rows) && demo.rows.length > 0) {
         return {
             rowCount: demo.rowCount ?? demo.rows.length,
             fileName: demo.fileName || null,
