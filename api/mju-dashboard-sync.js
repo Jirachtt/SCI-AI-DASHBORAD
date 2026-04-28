@@ -8,6 +8,20 @@ const DEFAULT_PUBLIC_SOURCES = {
   dashboard_summary: 'https://dashboard.mju.ac.th/',
 };
 
+export const DASHBOARD_SYNC_DATASETS = [
+  'dashboard_summary',
+  'student_stats',
+  'university_budget',
+  'science_budget',
+  'financial',
+  'tuition',
+  'student_life',
+  'graduation',
+  'hr',
+  'research',
+  'strategic',
+];
+
 function sendJson(res, status, body) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -15,9 +29,21 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function sourceForDataset(dataset) {
+export function sourceForDataset(dataset) {
   const envKey = `${DATASET_ENV_PREFIX}${String(dataset || '').toUpperCase()}`;
   return process.env[envKey] || DEFAULT_PUBLIC_SOURCES[dataset] || '';
+}
+
+export function rowCountFromPayload(payload) {
+  if (Array.isArray(payload)) return payload.length;
+  if (Array.isArray(payload?.rows)) return payload.rows.length;
+  if (Array.isArray(payload?.faculties)) return payload.faculties.length;
+  if (Array.isArray(payload?.byFaculty)) return payload.byFaculty.length;
+  if (Array.isArray(payload?.yearly)) return payload.yearly.length;
+  if (Array.isArray(payload?.history)) return payload.history.length;
+  if (Array.isArray(payload?.graduationHistory)) return payload.graduationHistory.length;
+  if (Array.isArray(payload?.publicationTrend)) return payload.publicationTrend.length;
+  return null;
 }
 
 function stripTags(html) {
@@ -169,12 +195,13 @@ function normalizeHtmlDataset(dataset, html, sourceUrl) {
     if (normalized) return normalized;
   }
 
-  return {
-    sourceUrl,
-    fetchedAt: new Date().toISOString(),
-    textSummary: stripTags(html).slice(0, 12000),
-    tables,
-  };
+  const tableCount = tables.length;
+  const textLength = stripTags(html).length;
+  throw new Error(
+    `No structured HTML adapter for ${dataset}. ` +
+    `Fetched ${textLength} text chars and ${tableCount} tables from ${sourceUrl}, ` +
+    'but this dataset needs a JSON/API source or a dedicated parser before it can be written to Firestore.'
+  );
 }
 
 async function fetchSource(dataset, sourceUrl) {
@@ -206,6 +233,22 @@ async function fetchSource(dataset, sourceUrl) {
   };
 }
 
+export async function fetchDashboardSource(dataset) {
+  const sourceUrl = sourceForDataset(dataset);
+  if (!sourceUrl) {
+    throw new Error(`No source configured for ${dataset}. Set MJU_DASHBOARD_SOURCE_${dataset.toUpperCase()} in Vercel.`);
+  }
+
+  const result = await fetchSource(dataset, sourceUrl);
+  return {
+    dataset,
+    sourceUrl,
+    fetchedAt: new Date().toISOString(),
+    rowCount: rowCountFromPayload(result.payload),
+    ...result,
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     sendJson(res, 405, { error: 'Method not allowed' });
@@ -218,26 +261,12 @@ export default async function handler(req, res) {
     return;
   }
 
-  const sourceUrl = sourceForDataset(dataset);
-  if (!sourceUrl) {
-    sendJson(res, 400, {
-      error: `No source configured for ${dataset}. Set MJU_DASHBOARD_SOURCE_${dataset.toUpperCase()} in Vercel.`,
-    });
-    return;
-  }
-
   try {
-    const result = await fetchSource(dataset, sourceUrl);
-    sendJson(res, 200, {
-      dataset,
-      sourceUrl,
-      fetchedAt: new Date().toISOString(),
-      ...result,
-    });
+    sendJson(res, 200, await fetchDashboardSource(dataset));
   } catch (err) {
     sendJson(res, 502, {
       dataset,
-      sourceUrl,
+      sourceUrl: sourceForDataset(dataset),
       error: err?.message || 'Unable to fetch MJU dashboard source',
     });
   }

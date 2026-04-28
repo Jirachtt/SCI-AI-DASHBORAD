@@ -25,6 +25,12 @@
       ]
     }
   ],
+  "crons": [
+    {
+      "path": "/api/mju-dashboard-cron",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
