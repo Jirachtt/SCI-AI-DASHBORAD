@@ -224,7 +224,7 @@ function generateForecastResponse(parsed) {
         if (!ds) continue;
         const dataPoints = ds.getData();
         if (dataPoints.length < 3) {
-            results.push(`**${ds.label}**\nแหล่งข้อมูล: ${getForecastDataSourceNote(dsKey)}\nยังไม่สามารถพยากรณ์ได้ เพราะระบบต้องใช้ข้อมูล realtime อย่างน้อย 3 จุดข้อมูล และจะไม่ใช้ mock/fallback แทน`);
+            results.push(`**${ds.label}**\nแหล่งข้อมูล: ${getForecastDataSourceNote(dsKey)}\nยังไม่สามารถพยากรณ์ได้ เพราะข้อมูลที่เว็บมีอยู่ตอนนี้ต้องมีอย่างน้อย 3 จุดข้อมูลสำหรับ Linear Regression`);
             continue;
         }
 
@@ -339,7 +339,7 @@ function generateForecastResponse(parsed) {
         }
     } : null;
 
-    return { text: results.join('\n\n') + '\n\n_หมายเหตุ: คำนวณจากข้อมูล realtime/live ในระบบเท่านั้น ถ้าข้อมูลไม่พอจะไม่ใช้ mock/fallback แทน (Linear Regression)_', chart: chartConfig };
+    return { text: results.join('\n\n') + '\n\n_หมายเหตุ: คำนวณจากข้อมูลที่เว็บมีอยู่ตอนนี้ โดยใช้ realtime ก่อนเสมอ และจะเปลี่ยนตามข้อมูลใหม่ทันทีเมื่อ Firestore/MJU API sync เข้ามา (Linear Regression)_', chart: chartConfig };
 }
 
 // ==================== Student Data (Real from MJU) ====================

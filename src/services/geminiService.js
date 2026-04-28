@@ -421,7 +421,7 @@ Mandate:
 ═══════════════════════════════════════════
 
 ### TABLE: students (คณะวิทยาศาสตร์)
-Total: ${studentList.length} records (${isLiveData() ? 'ข้อมูลจริงจากการอัปโหลด' : 'ข้อมูลตัวอย่าง mock — ผู้ดูแลยังไม่ได้อัปโหลด'})
+Total: ${studentList.length} records (${isLiveData() ? 'ข้อมูล realtime จากการอัปโหลด' : 'ข้อมูลที่เว็บใช้อยู่ตอนนี้'})
 Columns: student_id, prefix, name, major, level, year, status, gpa
 Aggregated Stats:
 - สาขา: ${Object.entries(majorCounts).map(([m, c]) => `${m}:${c}คน`).join(', ')}
@@ -665,13 +665,12 @@ Always: responsive=true, maintainAspectRatio=false
 // (search by name/id, top-N GPA, etc.). Aggregate queries are already
 // covered by the per-major / per-year stats in the base instruction.
 function buildStudentData() {
-    if (!isLiveData()) {
-        return '\n\n## รายชื่อนักศึกษา:\nยังไม่มีข้อมูล realtime จาก Firestore/การอัปโหลดล่าสุด ห้ามใช้ mock/fallback แทน';
-    }
-
     const list = getStudentListSync();
+    const sourceLabel = isLiveData()
+        ? 'realtime จาก Firestore/การอัปโหลดล่าสุด'
+        : 'ข้อมูลที่เว็บใช้อยู่ตอนนี้';
     // Compact JSON keeps tokens low even at ~1,451 rows.
-    return '\n\n## รายชื่อนักศึกษา(id=รหัส,n=ชื่อ,m=สาขา,y=ปี,g=GPA,s=สถานะ):\n' +
+    return `\n\n## รายชื่อนักศึกษา (${sourceLabel}; id=รหัส,n=ชื่อ,m=สาขา,y=ปี,g=GPA,s=สถานะ):\n` +
         JSON.stringify(list.map(s => ({
             id: s.id, n: s.name, m: s.major, y: s.year, g: s.gpa, s: s.status
         })));
@@ -738,23 +737,31 @@ function domainAllowed(role, domain) {
 }
 
 function liveDatasetContext(id, label) {
-    const data = getLiveDashboardDatasetSync(id);
-    if (data) return { data, missing: null };
-
     const meta = getDashboardDatasetMetaSync(id);
-    const updated = meta.updatedAt ? meta.updatedAt.toLocaleString('th-TH') : 'ไม่มีเวลาอัปเดตสด';
+    const liveData = getLiveDashboardDatasetSync(id);
+    if (liveData) {
+        const updated = meta.updatedAt ? `, updated=${meta.updatedAt.toLocaleString('th-TH')}` : '';
+        return { data: liveData, sourceLabel: `realtime${updated}`, missing: null };
+    }
+
+    const currentData = getDashboardDatasetSync(id);
+    if (currentData) {
+        return {
+            data: currentData,
+            sourceLabel: 'ข้อมูลที่เว็บใช้อยู่ตอนนี้',
+            missing: null,
+        };
+    }
+
     return {
         data: null,
-        missing: `${label}: ยังไม่มีข้อมูล realtime ใน Firestore (status=${meta.sourceType || 'fallback'}, updated=${updated}) ห้ามใช้ mock/fallback ตอบหรือคำนวณแทน`,
+        missing: `${label}: ยังไม่มีข้อมูลในระบบปัจจุบัน (status=${meta.sourceType || 'empty'})`,
     };
 }
 
 function studentAggregateContext(includeRows = false) {
-    if (!isLiveData()) {
-        return 'ข้อมูลนักศึกษา: ยังไม่มีข้อมูล realtime จาก Firestore/การอัปโหลดล่าสุด ห้ามใช้ mock/fallback ตอบหรือคำนวณแทน';
-    }
-
     const list = getStudentListSync();
+    const sourceLabel = isLiveData() ? 'live/realtime' : 'ข้อมูลที่เว็บใช้อยู่ตอนนี้';
     const byMajor = {};
     const byYear = {};
     let atRisk = 0;
@@ -772,7 +779,7 @@ function studentAggregateContext(includeRows = false) {
     const rows = includeRows
         ? `\nตัวอย่างแถวที่เกี่ยวข้อง:\n${list.slice(0, 40).map(s => `${s.id}, ${s.name}, ${s.major}, ปี ${s.year}, GPA ${s.gpa}, ${s.status}`).join('\n')}`
         : '';
-    return `ข้อมูลนักศึกษา (live/realtime) รวม ${list.length} คน\nตามสาขา:\n${majorSummary}\nตามชั้นปี: ${yearSummary}\nGPA < 2.00: ${atRisk} คน${rows}`;
+    return `ข้อมูลนักศึกษา (${sourceLabel}) รวม ${list.length} คน\nตามสาขา:\n${majorSummary}\nตามชั้นปี: ${yearSummary}\nGPA < 2.00: ${atRisk} คน${rows}`;
 }
 
 function budgetContext() {
@@ -782,14 +789,14 @@ function budgetContext() {
 
     if (universityLive.data) {
         const university = (universityLive.data.yearly || []).map(y => `${y.year}: รายรับ ${y.revenue}, รายจ่าย ${y.expense}, ${y.type}`).join('\n');
-        sections.push(`งบประมาณมหาวิทยาลัย (realtime):\n${university}`);
+        sections.push(`งบประมาณมหาวิทยาลัย (${universityLive.sourceLabel}):\n${university}`);
     } else {
         sections.push(universityLive.missing);
     }
 
     if (scienceLive.data) {
         const science = (scienceLive.data.yearly || []).map(y => `${y.year}: รายรับ ${y.revenue}, รายจ่าย ${y.expense}, ${y.type}`).join('\n');
-        sections.push(`งบประมาณคณะวิทยาศาสตร์ (realtime):\n${science}`);
+        sections.push(`งบประมาณคณะวิทยาศาสตร์ (${scienceLive.sourceLabel}):\n${science}`);
     } else {
         sections.push(scienceLive.missing);
     }
@@ -806,7 +813,7 @@ function graduationContext() {
     const byMajor = live.data.byMajor || live.data.graduationByMajor || [];
     const honors = live.data.honors || {};
     const distribution = live.data.gpaDistribution || [];
-    return `สถิติสำเร็จการศึกษา (realtime):\n${history.map(g => `${g.year}: สำเร็จ ${g.graduated}, อัตรา ${g.rate}%, GPA เฉลี่ย ${g.avgGPA}`).join('\n')}\nปัจจุบัน: ${JSON.stringify(current)}\nแยกสาขา: ${byMajor.map(m => `${m.major}: ${m.rate}% (${m.expected}/${m.total})`).join('; ')}\nเกียรตินิยม: ${Object.entries(honors || {}).map(([k, v]) => `${k}:${v}`).join(', ')}\nGPA distribution: ${distribution.map(g => `${g.range}:${g.count}`).join(', ')}`;
+    return `สถิติสำเร็จการศึกษา (${live.sourceLabel}):\n${history.map(g => `${g.year}: สำเร็จ ${g.graduated}, อัตรา ${g.rate}%, GPA เฉลี่ย ${g.avgGPA}`).join('\n')}\nปัจจุบัน: ${JSON.stringify(current)}\nแยกสาขา: ${byMajor.map(m => `${m.major}: ${m.rate}% (${m.expected}/${m.total})`).join('; ')}\nเกียรตินิยม: ${Object.entries(honors || {}).map(([k, v]) => `${k}:${v}`).join(', ')}\nGPA distribution: ${distribution.map(g => `${g.range}:${g.count}`).join(', ')}`;
 }
 
 function researchContext() {
@@ -818,7 +825,7 @@ function researchContext() {
         summary: source.summary || source.overview,
         publicationsTrend: source.publicationsTrend || source.publicationTrend,
     };
-    return `งานวิจัย:\n${JSON.stringify({
+    return `งานวิจัย (${live.sourceLabel}):\n${JSON.stringify({
         summary: researchData.summary,
         publicationsTrend: researchData.publicationsTrend,
         fundingTrend: researchData.fundingTrend,
@@ -838,7 +845,7 @@ function hrContext() {
         byPosition: source.byPosition || source.scienceFaculty?.byPosition,
         trends: source.trends || source.scienceFaculty?.trends,
     };
-    return `บุคลากร:\n${JSON.stringify({
+    return `บุคลากร (${live.sourceLabel}):\n${JSON.stringify({
         summary: hrData.summary,
         byDepartment: hrData.byDepartment,
         byPosition: hrData.byPosition,
@@ -850,21 +857,21 @@ function strategicContext() {
     const live = liveDatasetContext('strategic', 'ยุทธศาสตร์และ OKR');
     if (!live.data) return live.missing;
     const strategicData = live.data;
-    return `ยุทธศาสตร์และ OKR:\n${JSON.stringify(strategicData)}`;
+    return `ยุทธศาสตร์และ OKR (${live.sourceLabel}):\n${JSON.stringify(strategicData)}`;
 }
 
 function tuitionContext() {
     const live = liveDatasetContext('tuition', 'ค่าเล่าเรียน');
     if (!live.data) return live.missing;
     const tuitionData = live.data;
-    return `ค่าเล่าเรียน:\n${JSON.stringify(tuitionData)}`;
+    return `ค่าเล่าเรียน (${live.sourceLabel}):\n${JSON.stringify(tuitionData)}`;
 }
 
 function studentLifeContext() {
     const live = liveDatasetContext('student_life', 'กิจกรรมนักศึกษา/ชีวิตนักศึกษา');
     if (!live.data) return live.missing;
     const studentLifeData = live.data;
-    return `กิจกรรมนักศึกษา/ชีวิตนักศึกษา:\n${JSON.stringify(studentLifeData)}`;
+    return `กิจกรรมนักศึกษา/ชีวิตนักศึกษา (${live.sourceLabel}):\n${JSON.stringify(studentLifeData)}`;
 }
 
 function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) {
@@ -950,11 +957,11 @@ ${getDashboardFreshnessContext()}
 TOKEN SAVING RULES:
 - Maejo public web mode: ถ้าคำถามเป็นเรื่องทั่วไปของมหาวิทยาลัยแม่โจ้ เช่น ประวัติ คณะ หลักสูตร รับสมัคร TCAS ค่าเทอม ข่าว หน่วยงาน เบอร์ติดต่อ หรือสถานที่ ให้ตอบด้วยข้อมูลจาก Google Search/เว็บทางการ ไม่บังคับว่าต้องมีข้อมูลใน dashboard ของเรา
 - ถ้าเป็นข้อมูลที่อาจเปลี่ยนบ่อย ต้องบอกตามข้อมูลล่าสุดที่ค้นได้ และถ้าไม่พบหลักฐานให้บอกว่าไม่พบข้อมูลล่าสุดแทนการเดา
-- Realtime-only: ใช้เฉพาะ context ที่ระบุว่า realtime/live เท่านั้น ถ้า context แจ้งว่า fallback/missing ห้ามใช้ mock/fallback และให้ตอบว่าข้อมูล realtime ไม่พอ
+- Source priority: ใช้ context ที่ระบุว่า realtime/live ก่อนเสมอ; ถ้ายังไม่มี realtime ให้ใช้ context ที่ระบุว่า "ข้อมูลที่เว็บใช้อยู่ตอนนี้" เพื่อคำนวณ/สร้างกราฟไปก่อน พร้อมบอกแหล่งข้อมูลให้ชัดเจน
 - ถ้าจะคำนวณ พยากรณ์ หรือสร้างกราฟ ต้องคำนวณจากตัวเลขใน RETRIEVED CONTEXTS เท่านั้น ห้ามเดาหรือเติมตัวเลขเอง
 - ใช้เฉพาะ context ที่เกี่ยวข้องจาก retrieval ด้านล่าง ไม่ต้องอ่านทุกหน้าเว็บ
 - ถ้าคำถามเป็น lookup ธรรมดาให้ตอบสั้น ไม่สร้างกราฟ
-- ถ้าขอกราฟ ให้สร้าง json_chart จากข้อมูลจริงเท่านั้น
+- ถ้าขอกราฟ ให้สร้าง json_chart จากตัวเลขใน RETRIEVED CONTEXTS เท่านั้น
 - กราฟเส้นใช้เฉพาะ time series ปี/เดือน/วันที่/ไตรมาส ถ้าเป็นหมวดหมู่ให้ใช้ bar/hbar/scatter
 - ${chartPaletteInstruction(settings.theme || 'light')}
 
@@ -994,9 +1001,9 @@ async function _sendMessageImpl(userMessage, options = {}) {
     if (isChartRequest) {
         finalMessage = userMessage + `\n\n[ระบบ: ผู้ใช้ขอดูกราฟ/วิเคราะห์ข้อมูล — กฎ:
 1. ดูข้อมูลใน "Dashboard" section ว่ามีข้อมูลที่ผู้ใช้ถามหรือไม่
-2. ถ้ามีข้อมูล realtime/live ใน RETRIEVED CONTEXTS → สร้าง json_chart block จากข้อมูลนั้นเท่านั้น พร้อมอธิบายสั้นๆ
-3. ถ้าไม่มีข้อมูล realtime/live ที่ถาม → บอกตรงๆ ว่ายังไม่มีข้อมูล realtime เพียงพอ และห้ามใช้ mock/fallback แทน
-4. ห้ามสร้างตัวเลขขึ้นเอง ห้ามใช้ข้อมูลที่ไม่เกี่ยวข้องหรือ fallback มาแทน
+2. ถ้ามีข้อมูล realtime/live ใน RETRIEVED CONTEXTS → ใช้ชุดนั้นก่อน
+3. ถ้ายังไม่มี realtime แต่มี "ข้อมูลที่เว็บใช้อยู่ตอนนี้" → ใช้ชุดนั้นคำนวณ/สร้างกราฟไปก่อนและระบุแหล่งข้อมูล
+4. ห้ามสร้างตัวเลขขึ้นเอง ห้ามใช้ข้อมูลที่ไม่เกี่ยวข้อง
 5. ต้องแนบ \`\`\`json_chart\`\`\` block เสมอถ้ามีข้อมูล]`;
     }
 
@@ -1012,7 +1019,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
     let lastError = null;
     let allQuotaExhausted = true;
 
-    // Always use retrieved live contexts for chat answers so mock/fallback datasets never reach the model.
+    // Always use retrieved contexts only; realtime wins, current web datasets are used as the interim source.
     const baseInstruction = buildAgenticRagInstruction(userMessage, options.user || {}, settings);
     const systemText = baseInstruction;
 
@@ -1149,7 +1156,7 @@ export function resetConversation() {
 
 // ==================== Proactive AI Insights ====================
 export async function getDashboardInsights() {
-    const insightCacheKey = 'ai_insights_live_only_v2';
+    const insightCacheKey = 'ai_insights_current_web_v3';
     const cached = sessionStorage.getItem(insightCacheKey);
     if (cached) return JSON.parse(cached);
 
@@ -1158,7 +1165,7 @@ export async function getDashboardInsights() {
         { role: 'dean' },
         { ...DEFAULT_AI_SETTINGS, maxContexts: 4 }
     );
-    const prompt = `จากข้อมูล Dashboard แม่โจ้:\n${sysInstruction}\n\nวิเคราะห์สรุป Insight 3 ข้อสั้นๆ (ข้อละ 1-2 บรรทัด) ใช้เฉพาะข้อมูล realtime/live ใน context ห้ามแต่งตัวเลข ห้ามใช้ mock/fallback ถ้าข้อมูล realtime ไม่พอให้ตอบเป็นข้อความแจ้งว่าไม่มีข้อมูล realtime เพียงพอ ตอบเป็น JSON array เท่านั้น:\n\`\`\`json\n["insight1","insight2","insight3"]\n\`\`\``;
+    const prompt = `จากข้อมูล Dashboard แม่โจ้:\n${sysInstruction}\n\nวิเคราะห์สรุป Insight 3 ข้อสั้นๆ (ข้อละ 1-2 บรรทัด) ใช้ตัวเลขจาก context เท่านั้น โดยให้ใช้ realtime/live ก่อน และถ้ายังไม่มีให้ใช้ข้อมูลที่เว็บใช้อยู่ตอนนี้ ห้ามแต่งตัวเลข ตอบเป็น JSON array เท่านั้น:\n\`\`\`json\n["insight1","insight2","insight3"]\n\`\`\``;
 
     await waitForRateLimit();
 
@@ -1198,20 +1205,13 @@ export async function getDashboardInsights() {
         }
     }
 
-    if (!isLiveData()) {
-        return [
-            'ยังไม่มีข้อมูลนักศึกษา realtime จาก Firestore/การอัปโหลดล่าสุด',
-            'AI จะไม่ใช้ mock/fallback เพื่อสรุป Insight หรือคำนวณแทนข้อมูลจริง',
-            'กรุณา sync หรืออัปโหลดข้อมูล live ก่อนให้ระบบวิเคราะห์'
-        ];
-    }
-
     const liveStudents = getStudentListSync();
     const atRisk = liveStudents.filter(student => (Number(student.gpa) || 0) < 2).length;
     const majors = [...new Set(liveStudents.map(student => student.major).filter(Boolean))].length;
+    const source = isLiveData() ? 'ข้อมูล realtime/อัปโหลดล่าสุด' : 'ข้อมูลที่เว็บใช้อยู่ตอนนี้';
     return [
-        `ข้อมูลนักศึกษาปัจจุบันในระบบรวม ${liveStudents.length.toLocaleString()} คน จาก ${majors} สาขา (ข้อมูล realtime/อัปโหลดล่าสุด)`,
+        `ข้อมูลนักศึกษาปัจจุบันในระบบรวม ${liveStudents.length.toLocaleString()} คน จาก ${majors} สาขา (${source})`,
         `นักศึกษาที่ควรเฝ้าระวังจาก GPA < 2.00 มี ${atRisk.toLocaleString()} คน`,
-        'ข้อมูลกราฟพยากรณ์นักศึกษาจะคำนวณจากปีเข้า/รหัสนักศึกษาที่มีอยู่จริงในระบบ ไม่ใช้ trend mock เก่า'
+        'ข้อมูลกราฟพยากรณ์นักศึกษาจะคำนวณจากปีเข้า/รหัสนักศึกษาที่เว็บมีอยู่ตอนนี้ และจะเปลี่ยนเมื่อข้อมูลกลาง sync เข้ามา'
     ];
 }

@@ -1,5 +1,6 @@
 import { getStudentListSync, isLiveData } from './studentDataService';
 import {
+    getDashboardDatasetSync,
     getDashboardDatasetMetaSync,
     getLiveDashboardDatasetSync,
 } from './dashboardLiveDataService';
@@ -47,26 +48,34 @@ function forecastDatasetId(key) {
     return null;
 }
 
-function liveOnlyStatus(datasetId) {
+function describeDashboardDatasetStatus(datasetId) {
     if (datasetId === 'students') {
         const live = isLiveData();
-        const total = live ? getStudentListSync().length : 0;
+        const total = getStudentListSync().length;
         return {
             isLive: live,
+            isUsable: total > 0,
             total,
             source: live
                 ? `ข้อมูล realtime จาก Firestore/การอัปโหลดล่าสุด; รวม ${total.toLocaleString()} คน`
-                : 'ยังไม่มีข้อมูลนักศึกษา realtime ใน Firestore/การอัปโหลดล่าสุด',
+                : `ข้อมูลนักศึกษาที่เว็บใช้อยู่ตอนนี้; รวม ${total.toLocaleString()} คน`,
         };
     }
 
     const meta = getDashboardDatasetMetaSync(datasetId);
+    const currentData = getDashboardDatasetSync(datasetId);
+    const rowCount = meta.rowCount ?? getDashboardRowCount(currentData);
+    const hasUsableCurrentData = Boolean(currentData && rowCount !== 0);
+
     return {
         isLive: Boolean(meta.isLive),
-        total: meta.rowCount ?? null,
+        isUsable: Boolean(meta.isLive) || hasUsableCurrentData,
+        total: rowCount ?? null,
         source: meta.isLive
             ? `ข้อมูล realtime จาก Firestore${formatLiveUpdatedAt(meta.updatedAt)}`
-            : `ยังไม่มีข้อมูล realtime สำหรับ ${datasetId} ใน Firestore`,
+            : hasUsableCurrentData
+                ? `ข้อมูลที่เว็บใช้อยู่ตอนนี้ (${rowCount ?? 'ไม่ทราบจำนวน'} แถว); จะเปลี่ยนเป็น realtime ทันทีเมื่อ Firestore/MJU API sync ชุดนี้เข้ามา`
+                : `ยังไม่มีข้อมูลสำหรับ ${datasetId} ในระบบ`,
     };
 }
 
@@ -74,20 +83,32 @@ function normalizeHistoryRows(source) {
     return source?.history || source?.graduationHistory || [];
 }
 
+function getDashboardRowCount(payload) {
+    if (Array.isArray(payload)) return payload.length;
+    if (Array.isArray(payload?.rows)) return payload.rows.length;
+    if (Array.isArray(payload?.yearly)) return payload.yearly.length;
+    if (Array.isArray(payload?.history)) return payload.history.length;
+    if (Array.isArray(payload?.graduationHistory)) return payload.graduationHistory.length;
+    return payload ? null : 0;
+}
+
+function getForecastDashboardDatasetSync(id) {
+    return getLiveDashboardDatasetSync(id) || getDashboardDatasetSync(id);
+}
+
 export function getForecastDataStatus(key) {
     const datasetId = forecastDatasetId(key);
     if (!datasetId) {
         return {
             isLive: false,
-            source: 'ยังไม่พบชุดข้อมูล realtime ที่ตรงกับคำถามนี้',
+            isUsable: false,
+            source: 'ยังไม่พบชุดข้อมูลที่ตรงกับคำถามนี้',
         };
     }
-    return liveOnlyStatus(datasetId);
+    return describeDashboardDatasetStatus(datasetId);
 }
 
 export function getLiveStudentAdmissionSeries() {
-    if (!isLiveData()) return [];
-
     const students = getStudentListSync();
     const currentAcademicYear = currentAcademicYearFromIds(students);
     const counts = new Map();
@@ -109,7 +130,7 @@ export function getLiveStudentAdmissionSeries() {
 
 export function getLiveStudentSummary() {
     const live = isLiveData();
-    const students = live ? getStudentListSync() : [];
+    const students = getStudentListSync();
     const byMajor = {};
     const byClassYear = {};
     const byStatus = {};
@@ -135,8 +156,9 @@ export function getLiveStudentSummary() {
         total: students.length,
         source: live
             ? 'ข้อมูล realtime จาก Firestore/การอัปโหลดล่าสุด'
-            : 'ยังไม่มีข้อมูลนักศึกษา realtime ใน Firestore/การอัปโหลดล่าสุด',
+            : 'ข้อมูลนักศึกษาที่เว็บใช้อยู่ตอนนี้',
         isLive: live,
+        isUsable: students.length > 0,
         avgGpa: gpaCount ? +(gpaSum / gpaCount).toFixed(2) : null,
         admissionSeries: getLiveStudentAdmissionSeries(),
         byMajor,
@@ -146,9 +168,9 @@ export function getLiveStudentSummary() {
 }
 
 export function getForecastSeries(key) {
-    const universityBudgetData = getLiveDashboardDatasetSync('university_budget');
-    const scienceFacultyBudgetData = getLiveDashboardDatasetSync('science_budget');
-    const graduationData = getLiveDashboardDatasetSync('graduation');
+    const universityBudgetData = getForecastDashboardDatasetSync('university_budget');
+    const scienceFacultyBudgetData = getForecastDashboardDatasetSync('science_budget');
+    const graduationData = getForecastDashboardDatasetSync('graduation');
 
     switch (key) {
         case 'universityBudgetRevenue':
@@ -207,10 +229,10 @@ export function buildLiveDashboardMergeSummary() {
 
 export function buildStudentStatsContextForAI() {
     const summary = getLiveStudentSummary();
-    if (!summary.isLive) {
+    if (!summary.isUsable) {
         return [
             `แหล่งข้อมูล: ${summary.source}`,
-            'สถานะ: ไม่อนุญาตให้ AI ใช้ mock/fallback ในการตอบหรือคำนวณแทนข้อมูล realtime',
+            'สถานะ: ยังไม่มีข้อมูลนักศึกษาในเว็บสำหรับคำนวณ',
         ].join('\n');
     }
 
