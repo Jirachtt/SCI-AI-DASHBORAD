@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { ensureStudentList, getStudentListSync, isLiveData, onStudentDataChange } from '../services/studentDataService';
+import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
 import { getAllAlerts } from '../utils/alerts';
-import { ALERT_SOURCE_META, fetchUniversityAlerts, getAlertApiStatus } from '../services/alertDataService';
+import { ALERT_SOURCE_META, fetchUniversityAlerts } from '../services/alertDataService';
 import {
     AlertTriangle, Bell, ShieldAlert, Info, ArrowLeft, Filter,
     GraduationCap, Wallet, Microscope, Target, RefreshCw, CheckCircle, Search
@@ -31,7 +31,6 @@ export default function AlertCenterPage() {
     const [studentDataVersion, setStudentDataVersion] = useState(0);
     const [loading, setLoading] = useState(true);
     const [studentCount, setStudentCount] = useState(() => getStudentListSync().length);
-    const [studentDataLive, setStudentDataLive] = useState(() => isLiveData());
     const [severityFilter, setSeverityFilter] = useState('all');
     const [domainFilter, setDomainFilter] = useState('all');
     const [sourceFilter, setSourceFilter] = useState('all');
@@ -39,14 +38,12 @@ export default function AlertCenterPage() {
     const [externalAlerts, setExternalAlerts] = useState([]);
     const [apiMessage, setApiMessage] = useState('');
     const [expanded, setExpanded] = useState(null);
-    const apiStatus = useMemo(() => getAlertApiStatus(), []);
 
     useEffect(() => {
         let active = true;
         const refreshFromStudentData = (list = getStudentListSync()) => {
             if (!active) return;
             setStudentCount(list.length);
-            setStudentDataLive(isLiveData());
             setStudentDataVersion(t => t + 1);
             setLoading(false);
         };
@@ -125,8 +122,6 @@ export default function AlertCenterPage() {
                     <p>
                         Early-warning dashboard — รวมสัญญาณเตือนจากทุกโดเมนไว้ในหน้าเดียว
                         {' '}• ข้อมูลนักศึกษา {studentCount.toLocaleString('th-TH')} คน
-                        {' '}• {studentDataLive ? 'อัปเดตสดจาก Firestore' : 'ใช้ข้อมูลตั้งต้นล่าสุด'}
-                        {' '}• {apiStatus.configured ? `เชื่อม API: ${apiStatus.url}` : 'พร้อมเชื่อม MJU API ผ่าน VITE_MJU_ALERT_API_URL'}
                     </p>
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>

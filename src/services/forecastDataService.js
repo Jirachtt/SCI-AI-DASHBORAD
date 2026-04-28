@@ -1,12 +1,13 @@
-import { scienceFacultyBudgetData, universityBudgetData } from '../data/mockData';
-import { graduationHistory } from '../data/graduationData';
 import { getStudentListSync, isLiveData } from './studentDataService';
-import { getDashboardDatasetSync } from './dashboardLiveDataService';
-
-const STATIC_BUDGET_DATA = { scienceFacultyBudgetData, universityBudgetData };
+import {
+    getDashboardDatasetMetaSync,
+    getLiveDashboardDatasetSync,
+} from './dashboardLiveDataService';
 
 function actualBudgetRows(source) {
-    return (source?.yearly || []).filter(row => row.type === 'actual');
+    return (source?.yearly || [])
+        .filter(row => row.type === 'actual')
+        .filter(row => Number.isFinite(Number(row.year)));
 }
 
 function toNumber(value) {
@@ -32,7 +33,61 @@ function currentAcademicYearFromIds(students) {
     return years.length > 0 ? Math.max(...years) : new Date().getFullYear() + 543;
 }
 
+function formatLiveUpdatedAt(updatedAt) {
+    return updatedAt ? ` (อัปเดต ${updatedAt.toLocaleString('th-TH')})` : '';
+}
+
+function forecastDatasetId(key) {
+    if (key === 'universityStudents' || key === 'scienceStudents') return 'students';
+    if (key === 'universityBudgetRevenue' || key === 'universityBudgetExpense' || key === 'universityBudget') {
+        return 'university_budget';
+    }
+    if (key === 'scienceBudgetRevenue' || key === 'scienceBudgetExpense') return 'science_budget';
+    if (key === 'scienceGPA' || key === 'scienceGraduationRate' || key === 'scienceGraduated') return 'graduation';
+    return null;
+}
+
+function liveOnlyStatus(datasetId) {
+    if (datasetId === 'students') {
+        const live = isLiveData();
+        const total = live ? getStudentListSync().length : 0;
+        return {
+            isLive: live,
+            total,
+            source: live
+                ? `ข้อมูล realtime จาก Firestore/การอัปโหลดล่าสุด; รวม ${total.toLocaleString()} คน`
+                : 'ยังไม่มีข้อมูลนักศึกษา realtime ใน Firestore/การอัปโหลดล่าสุด',
+        };
+    }
+
+    const meta = getDashboardDatasetMetaSync(datasetId);
+    return {
+        isLive: Boolean(meta.isLive),
+        total: meta.rowCount ?? null,
+        source: meta.isLive
+            ? `ข้อมูล realtime จาก Firestore${formatLiveUpdatedAt(meta.updatedAt)}`
+            : `ยังไม่มีข้อมูล realtime สำหรับ ${datasetId} ใน Firestore`,
+    };
+}
+
+function normalizeHistoryRows(source) {
+    return source?.history || source?.graduationHistory || [];
+}
+
+export function getForecastDataStatus(key) {
+    const datasetId = forecastDatasetId(key);
+    if (!datasetId) {
+        return {
+            isLive: false,
+            source: 'ยังไม่พบชุดข้อมูล realtime ที่ตรงกับคำถามนี้',
+        };
+    }
+    return liveOnlyStatus(datasetId);
+}
+
 export function getLiveStudentAdmissionSeries() {
+    if (!isLiveData()) return [];
+
     const students = getStudentListSync();
     const currentAcademicYear = currentAcademicYearFromIds(students);
     const counts = new Map();
@@ -53,7 +108,8 @@ export function getLiveStudentAdmissionSeries() {
 }
 
 export function getLiveStudentSummary() {
-    const students = getStudentListSync();
+    const live = isLiveData();
+    const students = live ? getStudentListSync() : [];
     const byMajor = {};
     const byClassYear = {};
     const byStatus = {};
@@ -77,8 +133,10 @@ export function getLiveStudentSummary() {
 
     return {
         total: students.length,
-        source: isLiveData() ? 'ข้อมูล realtime จาก Firestore/การอัปโหลดล่าสุด' : 'ข้อมูล fallback ในระบบระหว่างรอการอัปโหลด',
-        isLive: isLiveData(),
+        source: live
+            ? 'ข้อมูล realtime จาก Firestore/การอัปโหลดล่าสุด'
+            : 'ยังไม่มีข้อมูลนักศึกษา realtime ใน Firestore/การอัปโหลดล่าสุด',
+        isLive: live,
         avgGpa: gpaCount ? +(gpaSum / gpaCount).toFixed(2) : null,
         admissionSeries: getLiveStudentAdmissionSeries(),
         byMajor,
@@ -88,41 +146,42 @@ export function getLiveStudentSummary() {
 }
 
 export function getForecastSeries(key) {
-    const universityBudgetData = getDashboardDatasetSync('university_budget') || STATIC_BUDGET_DATA.universityBudgetData;
-    const scienceFacultyBudgetData = getDashboardDatasetSync('science_budget') || STATIC_BUDGET_DATA.scienceFacultyBudgetData;
+    const universityBudgetData = getLiveDashboardDatasetSync('university_budget');
+    const scienceFacultyBudgetData = getLiveDashboardDatasetSync('science_budget');
+    const graduationData = getLiveDashboardDatasetSync('graduation');
+
     switch (key) {
         case 'universityBudgetRevenue':
         case 'universityBudget':
-            return actualBudgetRows(universityBudgetData).map(row => ({ x: Number(row.year), y: row.revenue }));
+            return actualBudgetRows(universityBudgetData).map(row => ({ x: Number(row.year), y: toNumber(row.revenue) }));
         case 'universityBudgetExpense':
-            return actualBudgetRows(universityBudgetData).map(row => ({ x: Number(row.year), y: row.expense }));
+            return actualBudgetRows(universityBudgetData).map(row => ({ x: Number(row.year), y: toNumber(row.expense) }));
         case 'scienceBudgetRevenue':
-            return actualBudgetRows(scienceFacultyBudgetData).map(row => ({ x: Number(row.year), y: row.revenue }));
+            return actualBudgetRows(scienceFacultyBudgetData).map(row => ({ x: Number(row.year), y: toNumber(row.revenue) }));
         case 'scienceBudgetExpense':
-            return actualBudgetRows(scienceFacultyBudgetData).map(row => ({ x: Number(row.year), y: row.expense }));
+            return actualBudgetRows(scienceFacultyBudgetData).map(row => ({ x: Number(row.year), y: toNumber(row.expense) }));
         case 'universityStudents':
         case 'scienceStudents':
             return getLiveStudentAdmissionSeries();
         case 'scienceGPA':
-            return graduationHistory.map(row => ({ x: row.year, y: row.avgGPA }));
+            return normalizeHistoryRows(graduationData)
+                .filter(row => Number.isFinite(Number(row.year)) && Number.isFinite(Number(row.avgGPA)))
+                .map(row => ({ x: Number(row.year), y: Number(row.avgGPA) }));
         case 'scienceGraduationRate':
-            return graduationHistory.map(row => ({ x: row.year, y: row.rate }));
+            return normalizeHistoryRows(graduationData)
+                .filter(row => Number.isFinite(Number(row.year)) && Number.isFinite(Number(row.rate)))
+                .map(row => ({ x: Number(row.year), y: Number(row.rate) }));
         case 'scienceGraduated':
-            return graduationHistory.map(row => ({ x: row.year, y: row.graduated }));
+            return normalizeHistoryRows(graduationData)
+                .filter(row => Number.isFinite(Number(row.year)) && Number.isFinite(Number(row.graduated)))
+                .map(row => ({ x: Number(row.year), y: Number(row.graduated) }));
         default:
             return [];
     }
 }
 
 export function getForecastDataSourceNote(key) {
-    if (key === 'universityStudents' || key === 'scienceStudents') {
-        const summary = getLiveStudentSummary();
-        return `${summary.source}; รวม ${summary.total.toLocaleString()} คน`;
-    }
-    if (key.includes('Budget')) {
-        return 'ข้อมูลจริงชุดเดียวกับหน้า Budget Forecast ในเว็บ (actual rows only)';
-    }
-    return 'ข้อมูลจริงชุดเดียวกับหน้าเว็บในระบบ';
+    return getForecastDataStatus(key).source;
 }
 
 export function buildLiveDashboardMergeSummary() {
@@ -148,6 +207,13 @@ export function buildLiveDashboardMergeSummary() {
 
 export function buildStudentStatsContextForAI() {
     const summary = getLiveStudentSummary();
+    if (!summary.isLive) {
+        return [
+            `แหล่งข้อมูล: ${summary.source}`,
+            'สถานะ: ไม่อนุญาตให้ AI ใช้ mock/fallback ในการตอบหรือคำนวณแทนข้อมูล realtime',
+        ].join('\n');
+    }
+
     const byMajor = Object.entries(summary.byMajor)
         .sort((a, b) => b[1] - a[1])
         .map(([major, count]) => `${major}:${count}คน`)

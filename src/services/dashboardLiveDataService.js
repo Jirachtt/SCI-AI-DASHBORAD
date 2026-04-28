@@ -129,6 +129,7 @@ const REQUIRED_SHAPES = {
 };
 
 const _cache = new Map();
+const _liveCache = new Map();
 const _meta = new Map();
 const _unsubscribe = new Map();
 const _listeners = new Set();
@@ -199,15 +200,18 @@ function applyDatasetSnapshot(id, snap) {
     const fallback = FALLBACK_DATA[id];
     if (!snap?.exists?.()) {
         _cache.set(id, fallback);
+        _liveCache.delete(id);
         _meta.set(id, { id, sourceType: 'fallback', isLive: false });
         return;
     }
 
     const data = snap.data();
-    const payload = mergePayloadWithFallback(id, normalizeDocPayload(data));
+    const rawPayload = normalizeDocPayload(data);
+    const payload = mergePayloadWithFallback(id, rawPayload);
     if (!isCompatiblePayload(id, payload)) {
         console.warn(`[dashboardLiveDataService] Ignoring incompatible payload for ${id}`);
         _cache.set(id, fallback);
+        _liveCache.delete(id);
         _meta.set(id, {
             id,
             sourceType: 'fallback',
@@ -220,16 +224,20 @@ function applyDatasetSnapshot(id, snap) {
     }
 
     _cache.set(id, payload);
+    const sourceType = data.sourceType || data.lastWriteSource || 'firestore';
+    const isLiveSource = !/fallback|mock|static|demo|sample/i.test(sourceType);
+    if (isLiveSource) _liveCache.set(id, rawPayload || payload);
+    else _liveCache.delete(id);
     _meta.set(id, {
         id,
         label: datasetConfig(id)?.label || id,
-        sourceType: data.sourceType || data.lastWriteSource || 'firestore',
+        sourceType,
         sourceUrl: data.sourceUrl || null,
         updatedAt: readTimestamp(data.updatedAt),
         updatedBy: data.updatedBy || null,
         rowCount: data.rowCount ?? getRowCount(payload),
         version: data.version || 1,
-        isLive: true,
+        isLive: isLiveSource,
     });
 }
 
@@ -267,6 +275,7 @@ function startDatasetListener(id) {
                 err => {
                     console.warn(`[dashboardLiveDataService] Firestore listener failed for ${id}:`, err?.message || err);
                     _cache.set(id, FALLBACK_DATA[id]);
+                    _liveCache.delete(id);
                     _meta.set(id, { id, sourceType: 'fallback', isLive: false, error: err?.message || String(err) });
                     _unsubscribe.delete(id);
                     settle();
@@ -277,6 +286,7 @@ function startDatasetListener(id) {
         } catch (err) {
             console.warn(`[dashboardLiveDataService] Listener setup failed for ${id}:`, err?.message || err);
             _cache.set(id, FALLBACK_DATA[id]);
+            _liveCache.delete(id);
             _meta.set(id, { id, sourceType: 'fallback', isLive: false, error: err?.message || String(err) });
             settle();
         }
@@ -285,6 +295,14 @@ function startDatasetListener(id) {
 
 export function getDashboardDatasetSync(id) {
     return _cache.get(id) || FALLBACK_DATA[id] || null;
+}
+
+export function isDashboardDatasetLiveSync(id) {
+    return Boolean(getDashboardDatasetMetaSync(id).isLive);
+}
+
+export function getLiveDashboardDatasetSync(id) {
+    return isDashboardDatasetLiveSync(id) ? (_liveCache.get(id) || null) : null;
 }
 
 export function getDashboardDatasetMetaSync(id) {
@@ -321,15 +339,16 @@ export async function getDashboardDatasetMeta(id) {
 }
 
 export async function saveDashboardDataset(id, payload, { uid, who, sourceUrl, sourceType = 'mju_sync', meta = {} } = {}) {
-    payload = mergePayloadWithFallback(id, payload);
-    if (!isCompatiblePayload(id, payload)) {
+    const rawPayload = payload;
+    const displayPayload = mergePayloadWithFallback(id, rawPayload);
+    if (!isCompatiblePayload(id, displayPayload)) {
         throw new Error(`Payload for ${id} does not match the dashboard schema.`);
     }
     if (!db) throw new Error('Firestore is not configured.');
 
-    const rowCount = getRowCount(payload);
+    const rowCount = getRowCount(rawPayload) ?? getRowCount(displayPayload);
     await setDoc(datasetDocRef(id), {
-        payload,
+        payload: rawPayload,
         rowCount,
         sourceType,
         sourceUrl: sourceUrl || datasetConfig(id)?.source || null,
@@ -339,7 +358,8 @@ export async function saveDashboardDataset(id, payload, { uid, who, sourceUrl, s
         syncMeta: meta,
     }, { merge: true });
 
-    _cache.set(id, payload);
+    _cache.set(id, displayPayload);
+    _liveCache.set(id, rawPayload);
     _meta.set(id, {
         id,
         label: datasetConfig(id)?.label || id,

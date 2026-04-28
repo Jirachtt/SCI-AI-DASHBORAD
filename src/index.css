@@ -5750,7 +5750,7 @@ select option:checked {
   z-index: 2200;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 28px;
   overflow: auto;
   overscroll-behavior: contain;
   background: rgba(4, 10, 18, 0.62);
@@ -5760,15 +5760,15 @@ select option:checked {
 }
 
 .chart-drilldown-modal {
-  width: min(980px, 100%);
-  max-height: min(calc(100dvh - 48px), 760px);
+  width: min(1040px, calc(100vw - 56px));
+  max-height: min(calc(100dvh - 56px), 780px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   color: var(--text-primary);
   background: var(--bg-card);
   border: 1px solid color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 34%, var(--border-color));
-  border-radius: 18px;
+  border-radius: 20px;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.04);
   animation: chart-drilldown-pop 240ms cubic-bezier(0.2, 0.9, 0.2, 1);
   outline: none;
@@ -5778,7 +5778,7 @@ select option:checked {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 18px 20px;
+  padding: 20px 22px;
   border-bottom: 1px solid var(--border-color);
   background: linear-gradient(90deg, color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 12%, transparent), transparent);
 }
@@ -5837,24 +5837,29 @@ select option:checked {
 .chart-drilldown-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  align-items: stretch;
-  padding: 14px 20px;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 22px 14px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .chart-drilldown-summary p,
 .chart-drilldown-note {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.55;
 }
 
+.chart-drilldown-summary p {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
 .chart-drilldown-value-card,
 .chart-drilldown-mini-stat {
-  min-width: 130px;
-  padding: 10px 12px;
+  min-width: 132px;
+  padding: 11px 13px;
   border-radius: 12px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -5881,20 +5886,33 @@ select option:checked {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 10px 20px;
-  background: color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 10%, var(--bg-card));
-  border-bottom: 1px solid var(--border-color);
+  margin: 14px 20px 0;
+  padding: 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 22%, var(--border-color));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 8%, var(--bg-secondary));
 }
 
 .chart-drilldown-table-wrap {
   overflow: auto;
   flex: 1;
   min-height: 0;
+  padding: 16px 20px 20px;
+}
+
+.chart-drilldown-note + .chart-drilldown-table-wrap {
+  padding-top: 14px;
 }
 
 .chart-drilldown-table {
-  width: 100%;
-  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-card);
   font-size: 0.86rem;
 }
 
@@ -5911,10 +5929,14 @@ select option:checked {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--bg-card);
+  background: var(--bg-secondary);
   color: var(--text-secondary);
   font-size: 0.78rem;
   font-weight: 800;
+}
+
+.chart-drilldown-table tr:last-child td {
+  border-bottom: 0;
 }
 
 .chart-drilldown-table td.is-right {
@@ -5942,9 +5964,11 @@ select option:checked {
 
 @media (max-width: 720px) {
   .chart-drilldown-overlay { padding: 12px; place-items: center; }
-  .chart-drilldown-modal { max-height: calc(100dvh - 24px); border-radius: 16px; }
+  .chart-drilldown-modal { width: min(100%, calc(100vw - 24px)); max-height: calc(100dvh - 24px); border-radius: 16px; }
   .chart-drilldown-header { padding: 14px; gap: 10px; }
   .chart-drilldown-summary { padding: 12px 14px; }
+  .chart-drilldown-note { margin: 12px 12px 0; }
+  .chart-drilldown-table-wrap { padding: 12px; }
   .chart-drilldown-table th,
   .chart-drilldown-table td { padding: 9px 11px; }
 }
