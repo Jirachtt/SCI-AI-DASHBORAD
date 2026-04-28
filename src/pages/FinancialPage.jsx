@@ -226,67 +226,6 @@ export default function FinancialPage() {
                 </div>
             )}
 
-            {/* Requests Table */}
-            <div className="data-table-container animate-in" style={{ marginTop: showDetail ? 0 : 24 }}>
-                <div className="data-table-header">
-                    <span className="data-table-title">สถานะคำร้อง</span>
-                </div>
-                <table className="data-table">
-                    <thead>
-                        <tr>
-                            <th>รหัสคำร้อง</th>
-                            <th>ประเภท</th>
-                            <th>วันที่ยื่น</th>
-                            <th>สถานะ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {financialData.requests.map((req, i) => (
-                            <tr key={i}>
-                                <td style={{ fontWeight: 600 }}>{req.id}</td>
-                                <td>{req.type}</td>
-                                <td>{req.date}</td>
-                                <td>
-                                    <span className={`status-badge ${req.status === 'อนุมัติแล้ว' ? 'approved' :
-                                        req.status === 'รออนุมัติ' ? 'pending' : 'docs-needed'
-                                        }`}>
-                                        {req.status}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Payment History */}
-            {showDetail && (
-                <div className="data-table-container animate-in">
-                    <div className="data-table-header">
-                        <span className="data-table-title">ประวัติการชำระเงิน</span>
-                    </div>
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>เทอม</th>
-                                <th>จำนวน</th>
-                                <th>วันที่จ่าย</th>
-                                <th>วิธีชำระ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {financialData.paymentHistory.map((p, i) => (
-                                <tr key={i}>
-                                    <td>{p.semester}</td>
-                                    <td style={{ fontWeight: 600 }}>{p.amount.toLocaleString()} บาท</td>
-                                    <td>{p.date}</td>
-                                    <td>{p.method}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
         </div>
     );
 }
