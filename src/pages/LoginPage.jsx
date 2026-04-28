@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Lock, Mail, ShieldCheck, X, Sun, Moon } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, X, Sun, Moon, Landmark } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
-    const { user, loginWithEmail, loginWithGoogle, loginWithAdminCode } = useAuth();
+    const { user, loginWithEmail, loginWithGoogle, loginWithMjuSso, loginWithAdminCode } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
@@ -13,6 +13,7 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [mjuLoading, setMjuLoading] = useState(false);
     const [showAdminModal, setShowAdminModal] = useState(false);
     const [adminCode, setAdminCode] = useState('');
 
@@ -46,6 +47,17 @@ export default function LoginPage() {
             setGoogleLoading(false);
         }
         // On success: auth listener will populate user; useEffect navigates.
+    };
+
+    const handleMjuLogin = async () => {
+        if (mjuLoading) return;
+        setError('');
+        setMjuLoading(true);
+        const result = await loginWithMjuSso('/dashboard');
+        if (!result.success) {
+            setError(result.error || 'ยังไม่สามารถเชื่อมบัญชีแม่โจ้ได้');
+            setMjuLoading(false);
+        }
     };
 
     const handleAdminCodeSubmit = async (e) => {
@@ -140,6 +152,22 @@ export default function LoginPage() {
                             </span>
                         </div>
                         <div className="google-btn-shine" />
+                    </button>
+
+                    <button
+                        type="button"
+                        className="mju-login-btn"
+                        onClick={handleMjuLogin}
+                        disabled={mjuLoading || googleLoading || loading}
+                    >
+                        <div className="mju-login-btn-inner">
+                            <div className="mju-login-icon-box">
+                                <Landmark size={20} />
+                            </div>
+                            <span className="mju-login-btn-text">
+                                {mjuLoading ? 'กำลังเชื่อมต่อบัญชีแม่โจ้...' : 'เข้าสู่ระบบด้วยบัญชีแม่โจ้'}
+                            </span>
+                        </div>
                     </button>
 
                     <div className="login-footer">

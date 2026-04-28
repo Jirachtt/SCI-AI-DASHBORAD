@@ -245,7 +245,7 @@ export default function StudentLifePage() {
                                         cursor: 'pointer',
                                     }}
                                 >
-                                    <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.86rem', textAlign: 'left' }}>{cat.name}</span>
+                                    <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.86rem', textAlign: 'left' }}>{cat.name}</span>
                                     <span style={{
                                         height: 10,
                                         borderRadius: 999,

@@ -5,6 +5,7 @@ import {
     signInWithEmailAndPassword,
     signInWithPopup,
     signInWithRedirect,
+    signInWithCustomToken,
     getRedirectResult,
     signOut,
     onAuthStateChanged,
@@ -13,6 +14,13 @@ import {
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { isPendingRole } from '../utils/accessControl';
 import { buildRoleValidityPatch, getRoleValidity } from '../utils/roleValidity';
+import {
+    buildMjuSsoStartUrl,
+    clearMjuSsoState,
+    normalizeMjuRoleFromClaims,
+    readMjuSsoCallback,
+    roleLabelForMjuRole
+} from '../services/mjuSsoService';
 
 const AuthContext = createContext(null);
 
@@ -140,6 +148,29 @@ export function AuthProvider({ children }) {
                         await setDoc(userDocRef, newDoc);
                         if (!mounted) return;
                         setUser(prev => ({ ...prev, ...newDoc, role: 'student' }));
+                    } else {
+                        const tokenResult = await currentUser.getIdTokenResult().catch(() => null);
+                        const claims = tokenResult?.claims || {};
+                        if (claims.mjuVerified || claims.mjuId || claims.mjuRole || claims.mjuUserType) {
+                            const createdAt = new Date().toISOString();
+                            const role = normalizeMjuRoleFromClaims(claims);
+                            const newDoc = {
+                                name: claims.name || claims.displayName || currentUser.displayName || 'MJU User',
+                                email: currentUser.email || claims.email || '',
+                                role,
+                                roleLabel: roleLabelForMjuRole(role),
+                                avatar: role === 'student' ? 'ST' : 'MJU',
+                                status: 'approved',
+                                authProvider: 'mju_sso',
+                                mjuId: claims.mjuId || claims.studentId || claims.employeeId || claims.username || null,
+                                department: claims.department || claims.faculty || null,
+                                createdAt: serverTimestamp(),
+                                ...buildRoleValidityPatch(role, createdAt)
+                            };
+                            await setDoc(userDocRef, newDoc);
+                            if (!mounted) return;
+                            setUser(prev => ({ ...prev, ...newDoc, role }));
+                        }
                     }
                 } catch (err) {
                     console.error("Error fetching user data:", err);
@@ -267,6 +298,42 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const loginWithMjuSso = async (returnTo = '/dashboard') => {
+        if (!auth) return firebaseUnavailable();
+        try {
+            window.location.assign(buildMjuSsoStartUrl(returnTo));
+            return { success: true, redirecting: true };
+        } catch (error) {
+            return {
+                success: false,
+                code: 'mju-sso/not-configured',
+                error: error?.message || 'ยังไม่ได้ตั้งค่า MJU SSO'
+            };
+        }
+    };
+
+    const completeMjuSsoLogin = async (search) => {
+        if (!auth) return firebaseUnavailable();
+        const callback = readMjuSsoCallback(search);
+        if (!callback.ok) {
+            clearMjuSsoState();
+            return { success: false, error: callback.error };
+        }
+
+        try {
+            await signInWithCustomToken(auth, callback.token);
+            clearMjuSsoState();
+            return { success: true, returnTo: callback.returnTo };
+        } catch (error) {
+            clearMjuSsoState();
+            return {
+                success: false,
+                code: error?.code || 'mju-sso/login-failed',
+                error: error?.message || 'เข้าสู่ระบบผ่านบัญชีแม่โจ้ไม่สำเร็จ'
+            };
+        }
+    };
+
     // Check if an email is already registered (used to catch duplicates
     // at step 1 of signup before the user fills out later steps).
     // Returns: { exists: boolean, methods: string[] } — `methods` is empty
@@ -354,6 +421,8 @@ export function AuthProvider({ children }) {
             user,
             loginWithEmail,
             loginWithGoogle,
+            loginWithMjuSso,
+            completeMjuSsoLogin,
             loginWithAdminCode,
             signup,
             checkEmailExists,

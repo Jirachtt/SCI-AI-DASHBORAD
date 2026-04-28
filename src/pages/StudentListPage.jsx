@@ -275,7 +275,7 @@ export default function StudentListPage() {
                                     background: idx % 2 === 0 ? 'transparent' : 'var(--bg-secondary)',
                                     transition: 'background 0.15s',
                                 }}>
-                                    <td style={{ padding: '12px 18px', fontFamily: 'monospace', fontSize: '0.88rem', color: 'var(--text-muted)' }}>{s.id}</td>
+                                    <td style={{ padding: '12px 18px', fontVariantNumeric: 'tabular-nums', fontSize: '0.88rem', color: 'var(--text-muted)' }}>{s.id}</td>
                                     <td style={{ padding: '12px 18px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                             <div style={{

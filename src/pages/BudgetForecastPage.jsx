@@ -128,7 +128,7 @@ export default function BudgetForecastPage() {
                 position: 'bottom',
                 labels: {
                     color: 'var(--text-secondary)', padding: 18, usePointStyle: true, pointStyleWidth: 12,
-                    font: { size: 13, weight: '600', family: "'Prompt', 'Noto Sans Thai', 'Inter', sans-serif" }
+                    font: { size: 13, weight: '600', family: "'Noto Sans Thai', system-ui, sans-serif" }
                 }
             },
             tooltip: {
@@ -332,13 +332,13 @@ export default function BudgetForecastPage() {
                                         background: idx % 2 === 0 ? 'transparent' : 'var(--bg-secondary)',
                                     }}>
                                         <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: '0.95rem' }}>{y.year}</td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: 'monospace', color: '#2E86AB', fontWeight: 600, fontSize: '0.95rem' }}>
+                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#2E86AB', fontWeight: 600, fontSize: '0.95rem' }}>
                                             ฿{(y.revenue * 1_000_000).toLocaleString()}
                                         </td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: 'monospace', color: '#E91E63', fontWeight: 600, fontSize: '0.95rem' }}>
+                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#E91E63', fontWeight: 600, fontSize: '0.95rem' }}>
                                             ฿{(y.expense * 1_000_000).toLocaleString()}
                                         </td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: 'monospace', color: '#4CAF50', fontWeight: 700, fontSize: '0.95rem' }}>
+                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#4CAF50', fontWeight: 700, fontSize: '0.95rem' }}>
                                             ฿{(y.surplus * 1_000_000).toLocaleString()}
                                         </td>
                                         <td style={{ padding: '12px 16px', textAlign: 'center' }}>

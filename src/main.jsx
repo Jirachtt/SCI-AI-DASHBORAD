@@ -55,7 +55,7 @@ class ErrorBoundary extends Component {
           padding: 24,
           background: 'linear-gradient(135deg, #f7f7ff 0%, #eef7ff 48%, #fdf6ff 100%)',
           color: '#111827',
-          fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          fontFamily: '"Noto Sans Thai", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         }}>
           <div style={{
             width: 'min(560px, 100%)',

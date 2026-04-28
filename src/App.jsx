@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { lazy, Suspense } from 'react';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
+import MjuAuthCallbackPage from './pages/MjuAuthCallbackPage';
 import Layout from './components/Layout';
 import DashboardHome from './pages/DashboardHome';
 import { lazyRouteLoaders } from './utils/routePrefetch';
@@ -75,6 +76,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
+      <Route path="/auth/mju/callback" element={<MjuAuthCallbackPage />} />
       <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<DashboardHome />} />
         <Route path="tuition" element={<Suspense fallback={<PageLoader />}><TuitionPage /></Suspense>} />

@@ -650,7 +650,7 @@ export default function GraduationStatsPage() {
                                     onMouseOut={e => e.currentTarget.style.background = 'transparent'}
                                 >
                                     <td style={{ padding: '9px 10px', color: 'var(--text-muted)' }}>{i + 1}</td>
-                                    <td style={{ padding: '9px 10px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{s.id}</td>
+                                    <td style={{ padding: '9px 10px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{s.id}</td>
                                     <td style={{ padding: '9px 10px', color: 'var(--text-primary)', fontWeight: 500 }}>{s.prefix}{s.name}</td>
                                     <td style={{ padding: '9px 10px', color: 'var(--text-muted)' }}>{s.major}</td>
                                     <td style={{ padding: '9px 10px', color: s.gpa >= 3.50 ? '#8b5cf6' : s.gpa >= 3.00 ? '#3b82f6' : s.gpa >= 2.00 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{s.gpa.toFixed(2)}</td>

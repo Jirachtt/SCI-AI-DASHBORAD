@@ -95,7 +95,7 @@ export default function StrategicDashboardPage() {
             y: {
                 ticks: {
                     color: 'var(--text-primary)',
-                    font: { size: 13, weight: 'bold', family: "'Noto Sans Thai', 'Inter', sans-serif" },
+                    font: { size: 13, weight: 'bold', family: "'Noto Sans Thai', system-ui, sans-serif" },
                 },
                 grid: { display: false },
             }
@@ -105,7 +105,7 @@ export default function StrategicDashboardPage() {
                 position: 'bottom',
                 labels: {
                     color: 'var(--text-primary)',
-                    font: { size: 12, weight: '600', family: "'Noto Sans Thai', 'Inter', sans-serif" },
+                    font: { size: 12, weight: '600', family: "'Noto Sans Thai', system-ui, sans-serif" },
                     padding: 20,
                     usePointStyle: true,
                     pointStyleWidth: 12,

@@ -1,6 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-
 :root {
+  --font-sans: 'Noto Sans Thai', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
   /* MJU Brand Colors */
   --mju-green: #006838;
   --mju-green-dark: #004d29;
@@ -17,9 +17,9 @@
   --bg-glass: rgba(16, 20, 36, 0.82);
   --bg-sidebar: #0A0E1A;
 
-  --text-primary: #F1F3F8;
-  --text-secondary: #94A3B8;
-  --text-muted: #5A6577;
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
 
   --border-color: rgba(255, 255, 255, 0.06);
   --border-glow: rgba(0, 166, 81, 0.35);
@@ -55,9 +55,9 @@
   --bg-glass: rgba(255, 255, 255, 0.88);
   --bg-sidebar: #FFFFFF;
 
-  --text-primary: #1A1A1A;
-  --text-secondary: #525252;
-  --text-muted: #9E9E9E;
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted: #64748B;
 
   --border-color: rgba(0, 0, 0, 0.08);
   --border-glow: rgba(0, 166, 81, 0.25);
@@ -270,6 +270,20 @@ body, .sidebar, .main-header, .stat-card, .chart-card,
 
 [data-theme="light"] .google-icon-box {
   background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .mju-login-btn-inner {
+  background: #FFFFFF;
+}
+
+[data-theme="light"] .mju-login-btn:hover .mju-login-btn-inner {
+  background: #F7FFF8;
+}
+
+[data-theme="light"] .mju-login-icon-box {
+  color: var(--mju-green);
+  background: rgba(0, 104, 56, 0.08);
+  border-color: rgba(0, 104, 56, 0.16);
 }
 
 [data-theme="light"] .demo-account-btn {
@@ -800,7 +814,7 @@ html {
 }
 
 body {
-  font-family: 'Prompt', 'Inter', sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
@@ -809,7 +823,105 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-size: 1rem;
-  line-height: 1.6;
+  font-weight: 400;
+  line-height: 1.68;
+}
+
+button,
+input,
+textarea,
+select,
+option,
+table,
+.chart-card,
+.stat-card,
+.modal-content,
+.ai-chat-panel {
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4,
+.section-header h2,
+.chart-card-title,
+.data-table-title,
+.admin-panel-title h1,
+.admin-user-name,
+.login-logo h1 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+p,
+li,
+label,
+input,
+textarea,
+select,
+button,
+td,
+th,
+.section-header p,
+.chart-card-subtitle,
+.stat-card-label,
+.nav-label,
+.sidebar-user-info,
+.admin-data-meta-label,
+.admin-term-muted,
+.admin-user-meta {
+  line-height: 1.65;
+}
+
+.chart-card-subtitle,
+.stat-card-label,
+.section-header p,
+.dashboard-welcome p,
+.data-table td,
+.admin-data-status-header p,
+.admin-data-meta-label,
+.admin-user-meta,
+.admin-cell-date {
+  color: var(--text-secondary);
+}
+
+.chart-card-subtitle,
+.stat-card-label,
+.section-header p,
+.data-table td,
+.admin-data-status-header p,
+.admin-user-meta {
+  font-weight: 500;
+}
+
+button {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+input,
+textarea,
+select {
+  font-weight: 500;
+}
+
+strong,
+b,
+.stat-card-value,
+.chart-card-title,
+.section-header h2 {
+  letter-spacing: 0;
+}
+
+.stat-card-value,
+.admin-stat-value,
+.chart-card [style*="font-weight: 800"],
+.data-table td,
+.data-table th {
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 900px) { html { font-size: 17.5px; } }
@@ -1216,6 +1328,54 @@ html {
   animation: googleShine 0.8s ease forwards;
 }
 
+.mju-login-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--border-radius-sm);
+  background: linear-gradient(135deg, rgba(0, 104, 56, 0.75), rgba(0, 166, 81, 0.62), rgba(197, 160, 40, 0.55));
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+}
+
+.mju-login-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 104, 56, 0.24), 0 4px 12px rgba(197, 160, 40, 0.12);
+}
+
+.mju-login-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.mju-login-btn-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(10, 14, 26, 0.96), rgba(19, 25, 41, 0.96));
+  border-radius: calc(var(--border-radius-sm) - 2px);
+}
+
+.mju-login-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: #d9f99d;
+  background: rgba(0, 166, 81, 0.16);
+  border: 1px solid rgba(0, 166, 81, 0.18);
+}
+
+.mju-login-btn-text {
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
 @keyframes googleShine {
   0% {
     left: -100%;
@@ -1224,6 +1384,52 @@ html {
   100% {
     left: 100%;
   }
+}
+
+.mju-callback-card {
+  max-width: 460px;
+}
+
+.mju-callback-status {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.mju-callback-status strong {
+  color: var(--text-primary);
+}
+
+.mju-callback-status span {
+  max-width: 320px;
+  font-size: 0.86rem;
+}
+
+.mju-callback-icon {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  border-radius: 18px;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--mju-green), var(--mju-green-light));
+  box-shadow: 0 14px 30px rgba(0, 104, 56, 0.22);
+}
+
+.mju-callback-icon .spin-animation {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  color: var(--mju-gold-light);
+}
+
+.mju-callback-icon.error {
+  background: linear-gradient(135deg, #b91c1c, #ef4444);
+  margin: 18px auto 14px;
 }
 
 /* ==================== LOGIN FOOTER ==================== */
@@ -4477,7 +4683,7 @@ select {
   border-radius: var(--border-radius-sm);
   padding: 10px 14px;
   font-size: 0.9rem;
-  font-family: 'Prompt', 'Inter', sans-serif;
+  font-family: var(--font-sans);
   cursor: pointer;
   outline: none;
   transition: border-color 0.3s, box-shadow 0.3s;
