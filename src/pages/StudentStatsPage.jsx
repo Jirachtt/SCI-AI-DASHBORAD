@@ -28,6 +28,62 @@ const studentColumns = [
     { key: 'gpa', label: 'GPA', align: 'right', render: value => typeof value === 'number' ? value.toFixed(2) : '-' },
 ];
 
+const levelFallbackPalette = ['#059669', '#2563eb', '#7c3aed', '#ea580c', '#64748b'];
+const levelColorRules = [
+    { test: /ประกาศ|cert/i, color: '#059669' },
+    { test: /ตรี|bachelor/i, color: '#2563eb' },
+    { test: /โท|master/i, color: '#7c3aed' },
+    { test: /เอก|doctoral|phd/i, color: '#ea580c' },
+];
+
+const aggregateLevelColumns = [
+    { key: 'level', label: 'ระดับ' },
+    { key: 'chartTotal', label: 'จำนวนในกราฟ', align: 'right', render: value => Number(value || 0).toLocaleString('th-TH') },
+    { key: 'detailRows', label: 'รายชื่อที่มีในระบบ', align: 'right', render: value => Number(value || 0).toLocaleString('th-TH') },
+    { key: 'source', label: 'แหล่งข้อมูล' },
+];
+
+function getStudentLevelColor(level, index = 0) {
+    const text = String(level || '');
+    return levelColorRules.find(rule => rule.test.test(text))?.color || levelFallbackPalette[index % levelFallbackPalette.length];
+}
+
+function buildLevelDrilldownRows(point, rows, sourceLabel, rowNote) {
+    const chartTotal = Number(point.value || 0);
+    const rowCount = Array.isArray(rows) ? rows.length : 0;
+    const rowsMatchChart = rowCount > 0 && rowCount === chartTotal;
+
+    if (rowsMatchChart) {
+        return {
+            rows,
+            columns: studentColumns,
+            metrics: [{ label: 'รายชื่อที่แสดง', value: rowCount, unit: 'คน' }],
+            note: rowNote,
+        };
+    }
+
+    return {
+        rows: [{
+            level: point.label,
+            chartTotal,
+            detailRows: rowCount,
+            source: sourceLabel,
+        }],
+        columns: aggregateLevelColumns,
+        metrics: rowCount > 0 ? [{ label: 'รายชื่อรายคนในระบบ', value: rowCount, unit: 'คน' }] : [],
+        note: `จำนวนหลักยึดตามยอดในกราฟจาก ${sourceLabel} ส่วนรายชื่อรายคนจะแสดงเฉพาะเมื่อ dataset รายชื่อนักศึกษาในระบบมีข้อมูลครบตรงกับยอดนั้น`,
+    };
+}
+
+function noteWhenRowsDiffer(rows, chartValue, baseNote) {
+    const rowCount = Array.isArray(rows) ? rows.length : 0;
+    const chartTotal = Number(chartValue || 0);
+    if (rowCount > 0 && rowCount !== chartTotal) {
+        return `${baseNote} • จำนวนหลักในหน้าต่างนี้ยึดตามจุดกราฟ (${chartTotal.toLocaleString('th-TH')} คน) และตารางแสดงเฉพาะรายชื่อที่ระบบมีอยู่ตอนนี้ (${rowCount.toLocaleString('th-TH')} คน)`;
+    }
+    return baseNote;
+}
+
 export default function StudentStatsPage() {
     const { user } = useAuth();
     const [selectedFaculty, setSelectedFaculty] = useState('all');
@@ -67,9 +123,9 @@ export default function StudentStatsPage() {
     // Build filtered stat cards from applied filters
     const filteredByLevel = (() => {
         const levels = [
-            { level: 'ปริญญาตรี', key: 'bachelor', color: '#006838' },
-            { level: 'ปริญญาโท', key: 'master', color: '#2E86AB' },
-            { level: 'ปริญญาเอก', key: 'doctoral', color: '#A23B72' },
+            { level: 'ปริญญาตรี', key: 'bachelor', color: getStudentLevelColor('ปริญญาตรี', 1) },
+            { level: 'ปริญญาโท', key: 'master', color: getStudentLevelColor('ปริญญาโท', 2) },
+            { level: 'ปริญญาเอก', key: 'doctoral', color: getStudentLevelColor('ปริญญาเอก', 3) },
         ];
         if (appliedLevel !== 'all') {
             const lvl = levels.find(l => l.key === appliedLevel);
@@ -79,12 +135,11 @@ export default function StudentStatsPage() {
     })();
 
     // Doughnut chart for student levels
-    const levelPalette = ['#22c55e', '#3b82f6', '#8b5cf6', '#f59e0b'];
     const doughnutData = {
         labels: current.byLevel.map(l => l.level),
         datasets: [{
             data: current.byLevel.map(l => l.count),
-            backgroundColor: current.byLevel.map((_, i) => levelPalette[i % levelPalette.length]),
+            backgroundColor: current.byLevel.map((item, i) => getStudentLevelColor(item.level, i)),
             borderWidth: 0,
             cutout: '60%',
         }]
@@ -189,7 +244,7 @@ export default function StudentStatsPage() {
         labels: scienceFaculty.byLevel.filter(l => l.count > 0).map(l => l.level),
         datasets: [{
             data: scienceFaculty.byLevel.filter(l => l.count > 0).map(l => l.count),
-            backgroundColor: scienceFaculty.byLevel.filter(l => l.count > 0).map((_, i) => levelPalette[i % levelPalette.length]),
+            backgroundColor: scienceFaculty.byLevel.filter(l => l.count > 0).map((item, i) => getStudentLevelColor(item.level, i)),
             borderWidth: 0,
             cutout: '60%',
         }]
@@ -252,6 +307,7 @@ export default function StudentStatsPage() {
 
     const doughnutDrilldownOptions = withChartDrilldown(doughnutOptions, doughnutData, setDrillDetail, (point) => {
         const rows = studentRows.filter(student => student.level === point.label);
+        const detailRows = buildLevelDrilldownRows(point, rows, 'MJU Dashboard (ภาพรวมมหาวิทยาลัย)', studentDataNote);
         return {
             title: `นักศึกษา ${point.label}`,
             subtitle: 'รายละเอียดจากข้อมูลนักศึกษาที่ระบบมีอยู่',
@@ -259,18 +315,17 @@ export default function StudentStatsPage() {
             value: point.value,
             unit: 'คน',
             accentColor: point.color,
-            rows,
-            columns: studentColumns,
-            note: rows.length === 0 ? 'กราฟนี้เป็นข้อมูลภาพรวมมหาวิทยาลัย แต่ระบบมีรายชื่อเชิงแถวเฉพาะ dataset นักศึกษาที่อัปโหลดไว้' : studentDataNote,
+            ...detailRows,
         };
     });
 
     const trendLineDrilldownOptions = withChartDrilldown(trendLineOptions, trendLineData, setDrillDetail, (point) => {
         const row = trend[point.index];
+        const isForecastBridge = row?.type !== 'forecast' && String(point.datasetLabel || '').includes('พยากรณ์');
         return {
             title: `แนวโน้มจำนวนนักศึกษา ${point.label}`,
-            subtitle: point.datasetLabel,
-            valueLabel: point.datasetLabel,
+            subtitle: isForecastBridge ? 'จุดนี้เป็นปีข้อมูลจริงที่ใช้เชื่อมเส้นพยากรณ์' : point.datasetLabel,
+            valueLabel: isForecastBridge ? 'จุดเชื่อมจากข้อมูลจริง' : point.datasetLabel,
             value: point.value,
             unit: 'คน',
             accentColor: point.color,
@@ -288,16 +343,15 @@ export default function StudentStatsPage() {
 
     const sciDoughnutDrilldownOptions = withChartDrilldown(sciDoughnutOptions, sciDoughnutData, setDrillDetail, (point) => {
         const rows = studentRows.filter(student => student.level === point.label);
+        const detailRows = buildLevelDrilldownRows(point, rows, 'MJU Dashboard (คณะวิทยาศาสตร์)', studentDataNote);
         return {
             title: `คณะวิทยาศาสตร์: ${point.label}`,
             subtitle: 'รายชื่อนักศึกษาในระดับที่เลือก',
             valueLabel: point.label,
-            value: rows.length || point.value,
+            value: point.value,
             unit: 'คน',
             accentColor: point.color,
-            rows,
-            columns: studentColumns,
-            note: studentDataNote,
+            ...detailRows,
         };
     });
 
@@ -309,12 +363,12 @@ export default function StudentStatsPage() {
             title: `นักศึกษารหัส ${shortYear} (ปี ${fullYear})`,
             subtitle: 'รายชื่อนักศึกษาตามปีที่เข้าศึกษา',
             valueLabel: 'จำนวน',
-            value: rows.length || point.value,
+            value: point.value,
             unit: 'คน',
             accentColor: point.color,
             rows,
             columns: studentColumns,
-            note: studentDataNote,
+            note: noteWhenRowsDiffer(rows, point.value, studentDataNote),
         };
     });
 
@@ -345,12 +399,12 @@ export default function StudentStatsPage() {
             title: `นักศึกษาคณะวิทยาศาสตร์: ${point.label}`,
             subtitle: 'สัดส่วนเพศนักศึกษาจากข้อมูลคณะวิทยาศาสตร์',
             valueLabel: point.label,
-            value: rows.length || point.value,
+            value: point.value,
             unit: 'คน',
             accentColor: point.color,
             rows,
             columns: studentColumns,
-            note: rows.length ? studentDataNote : 'กราฟเพศเป็นข้อมูลสรุปรวม หากไฟล์อัปโหลดไม่มีคอลัมน์ prefix/เพศ ระบบจะแสดงเฉพาะยอดรวมจากกราฟ',
+            note: rows.length ? noteWhenRowsDiffer(rows, point.value, studentDataNote) : 'กราฟเพศเป็นข้อมูลสรุปรวม หากไฟล์อัปโหลดไม่มีคอลัมน์ prefix/เพศ ระบบจะแสดงเฉพาะยอดรวมจากกราฟ',
         };
     });
 
@@ -453,7 +507,7 @@ export default function StudentStatsPage() {
             title: `นักศึกษาใหม่ปี ${intake.year}: ${point.datasetLabel}`,
             subtitle: 'จำนวนรับเข้าคณะวิทยาศาสตร์ย้อนหลัง 5 ปี',
             valueLabel: point.datasetLabel,
-            value: rows.length || point.value,
+            value: point.value,
             unit: 'คน',
             accentColor: point.color,
             rows,
@@ -464,7 +518,7 @@ export default function StudentStatsPage() {
                 { label: 'รับตรง', value: intake.channels.directAdmit, unit: 'คน' },
                 { label: 'TCAS', value: intake.channels.tcas, unit: 'คน' },
             ],
-            note: rows.length ? studentDataNote : 'ข้อมูลรับเข้าเป็นยอดรวมรายปี หากไฟล์อัปโหลดไม่มีรายชื่อที่รหัสตรงปีนี้ ระบบจะแสดงเฉพาะยอดจากกราฟ',
+            note: rows.length ? noteWhenRowsDiffer(rows, point.value, studentDataNote) : 'ข้อมูลรับเข้าเป็นยอดรวมรายปี หากไฟล์อัปโหลดไม่มีรายชื่อที่รหัสตรงปีนี้ ระบบจะแสดงเฉพาะยอดจากกราฟ',
         };
     });
 

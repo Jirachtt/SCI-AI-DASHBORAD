@@ -24,7 +24,6 @@ export default function ChartDrilldownModal({ detail, onClose }) {
         document.body.style.overflow = 'hidden';
         window.addEventListener('keydown', onKeyDown);
         window.requestAnimationFrame(() => {
-            modalRef.current?.scrollIntoView({ block: 'center', inline: 'center' });
             modalRef.current?.focus({ preventScroll: true });
         });
         return () => {

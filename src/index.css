@@ -5816,7 +5816,7 @@ select option:checked {
 }
 
 .chart-drilldown-modal {
-  width: min(1040px, calc(100vw - 56px));
+  width: min(960px, calc(100vw - 56px));
   max-height: min(calc(100dvh - 56px), 780px);
   display: flex;
   flex-direction: column;
@@ -5961,8 +5961,8 @@ select option:checked {
 }
 
 .chart-drilldown-table {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 720px;
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;

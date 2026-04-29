@@ -4,9 +4,14 @@ export function resolveChartPoint(chartData, element = {}) {
     const dataset = chartData?.datasets?.[datasetIndex] || {};
     const label = chartData?.labels?.[index] ?? dataset.labels?.[index] ?? '';
     const rawValue = Array.isArray(dataset.data) ? dataset.data[index] : undefined;
-    const value = typeof rawValue === 'object' && rawValue !== null
+    const parsed = element?.element?.$context?.parsed;
+    const valueFromRaw = typeof rawValue === 'object' && rawValue !== null
         ? rawValue.y ?? rawValue.x ?? rawValue.r ?? rawValue.value
         : rawValue;
+    const value = valueFromRaw ?? parsed?.y ?? parsed?.x ?? parsed?.r;
+    const color = Array.isArray(dataset.backgroundColor)
+        ? dataset.backgroundColor[index]
+        : (dataset.borderColor || dataset.backgroundColor);
 
     return {
         dataset,
@@ -16,9 +21,7 @@ export function resolveChartPoint(chartData, element = {}) {
         value,
         rawValue,
         datasetLabel: dataset.label || '',
-        color: Array.isArray(dataset.backgroundColor)
-            ? dataset.backgroundColor[index]
-            : (dataset.backgroundColor || dataset.borderColor),
+        color,
     };
 }
 
@@ -31,7 +34,8 @@ export function withChartDrilldown(baseOptions = {}, chartData, openDetail, buil
         onClick: (event, elements, chart) => {
             originalClick?.(event, elements, chart);
             if (!elements || elements.length === 0) return;
-            const point = resolveChartPoint(chartData, elements[0]);
+            const point = resolveChartPoint(chart?.data || chartData, elements[0]);
+            if (point.value === null || point.value === undefined) return;
             const detail = buildDetail?.(point, chart);
             if (detail) openDetail(detail);
         },
