@@ -24,6 +24,25 @@ import {
 
 const AuthContext = createContext(null);
 
+const ROLE_LABELS_BY_ROLE = {
+    dean: 'คณบดี (Dean)',
+    chair: 'ประธานหลักสูตร (Chair)',
+    staff: 'เจ้าหน้าที่ (Staff)',
+    general: 'ผู้ใช้ทั่วไป (General)',
+    student: 'นักศึกษา (Student)',
+    pending_staff: 'รอการอนุมัติ (Staff)',
+    pending_chair: 'รอการอนุมัติ (Chair)'
+};
+
+const normalizeRoleLabel = (role, roleLabel, fallback = 'นักศึกษา (Student)') => {
+    const current = String(roleLabel || fallback);
+    if (!roleLabel && ROLE_LABELS_BY_ROLE[role]) return ROLE_LABELS_BY_ROLE[role];
+    if (role === 'dean' && (current.includes('ผจก') || current.includes('ผู้บริหาร'))) {
+        return ROLE_LABELS_BY_ROLE.dean;
+    }
+    return current;
+};
+
 const firebaseUnavailable = () => ({
     success: false,
     code: 'firebase/not-configured',
@@ -115,13 +134,19 @@ export function AuthProvider({ children }) {
                         const roleValidity = getRoleValidity({ ...userData, role });
                         const roleExpired = roleValidity.status === 'expired' && role !== 'general' && !isPendingRole(role);
                         const effectiveRole = roleExpired ? 'general' : role;
+                        const normalizedRoleLabel = normalizeRoleLabel(role, userData.roleLabel);
+                        if (normalizedRoleLabel !== userData.roleLabel) {
+                            updateDoc(userDocRef, { roleLabel: normalizedRoleLabel }).catch((err) => {
+                                console.warn('[Auth] Failed to normalize role label:', err?.message || err);
+                            });
+                        }
                         setUser(prev => ({
                             ...prev,
                             ...userData,
                             assignedRole: role,
-                            assignedRoleLabel: userData.roleLabel || 'นักศึกษา (Student)',
+                            assignedRoleLabel: normalizedRoleLabel,
                             role: effectiveRole,
-                            roleLabel: roleExpired ? 'ผู้ใช้ทั่วไป (สิทธิ์เดิมหมดอายุ)' : (userData.roleLabel || 'นักศึกษา (Student)'),
+                            roleLabel: roleExpired ? 'ผู้ใช้ทั่วไป (สิทธิ์เดิมหมดอายุ)' : normalizedRoleLabel,
                             isPending: isPendingRole(role),
                             roleExpired,
                             roleValidity,
