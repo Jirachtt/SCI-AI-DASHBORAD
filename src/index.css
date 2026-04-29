@@ -2938,6 +2938,62 @@ html {
   transform: translateY(-1px);
 }
 
+.ai-chat-popup-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-chat-panel .ai-chat-messages {
+  padding: 14px;
+}
+
+.ai-chat-panel .ai-page-msg {
+  max-width: 100%;
+}
+
+.ai-chat-panel .ai-page-msg-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+.ai-chat-panel .ai-page-msg-content {
+  width: 100%;
+}
+
+.ai-chat-panel .ai-page-msg-bubble {
+  padding: 12px 14px;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  border-radius: 14px;
+}
+
+.ai-chat-panel .ai-page-chart-container {
+  border-radius: 12px;
+}
+
+.ai-chat-panel .ai-page-chart-toolbar {
+  padding: 8px;
+}
+
+.ai-chat-panel .ai-page-chart-btn {
+  padding: 5px 8px;
+  font-size: 0.68rem;
+}
+
+.ai-chat-panel .ai-page-chart-wrapper {
+  height: 250px;
+  padding: 10px;
+}
+
+.ai-chat-panel .chat-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 
 
 /* ==================== SCHEDULE CALENDAR ==================== */

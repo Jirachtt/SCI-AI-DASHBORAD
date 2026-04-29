@@ -21,6 +21,7 @@ import {
 import AdminDataUpload from '../components/AdminDataUpload';
 import AdminAuditLog from '../components/AdminAuditLog';
 import AdminAutoSyncPanel from '../components/AdminAutoSyncPanel';
+import ExportPDFButton from '../components/ExportPDFButton';
 
 const MANAGEABLE_ROLES = ['dean', 'chair', 'staff', 'general', 'student'];
 const ROLE_LABELS = {
@@ -315,16 +316,19 @@ export default function AdminPanelPage() {
                         <p>อนุมัติคำขอและบริหารสิทธิ์ระดับต่างๆ ของระบบ</p>
                     </div>
                 </div>
-                <button
-                    className="admin-refresh-btn"
-                    onClick={loadUsers}
-                    disabled={loading}
-                    aria-label="โหลดข้อมูลใหม่"
-                    data-tooltip="โหลดข้อมูลใหม่"
-                >
-                    <RefreshCw size={16} className={loading ? 'spin-animation' : ''} />
-                    รีเฟรช
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <ExportPDFButton title="admin_users_roles" />
+                    <button
+                        className="admin-refresh-btn"
+                        onClick={loadUsers}
+                        disabled={loading}
+                        aria-label="โหลดข้อมูลใหม่"
+                        data-tooltip="โหลดข้อมูลใหม่"
+                    >
+                        <RefreshCw size={16} className={loading ? 'spin-animation' : ''} />
+                        รีเฟรช
+                    </button>
+                </div>
             </div>
 
             {/* Stats */}

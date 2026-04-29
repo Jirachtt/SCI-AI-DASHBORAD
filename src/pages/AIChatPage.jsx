@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, Settings, Gauge, TableProperties } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -357,7 +358,7 @@ const STUDENT_HEADER_HINTS = [
     'เกรดเฉลี่ย', 'gpa', 'เกรด',
 ];
 
-function isStudentFile(headers) {
+export function isStudentFile(headers) {
     if (!Array.isArray(headers)) return false;
     const lc = headers.map(h => h.toLowerCase().trim());
     // Need at least 2 student-like columns to treat it as a student file
@@ -399,7 +400,7 @@ function normalizeStudentRow(row, headers) {
 }
 
 // Parse uploaded rows → normalized student array
-function parseUploadedStudents(parsed) {
+export function parseUploadedStudents(parsed) {
     if (!parsed || !isStudentFile(parsed.headers)) return [];
     const results = [];
     for (const row of parsed.rows) {
@@ -410,7 +411,7 @@ function parseUploadedStudents(parsed) {
 }
 
 // Combined student list: mock/Firestore + any uploaded student rows (deduplicated by ID)
-const getAllStudents = () => {
+export const getAllStudents = () => {
     const base = getStudentListSync();
     if (_uploadedStudentRows.length === 0) return base;
     // Merge: uploaded takes priority on duplicate IDs
@@ -418,6 +419,11 @@ const getAllStudents = () => {
     const filtered = base.filter(s => !idSet.has(s.id));
     return [...filtered, ..._uploadedStudentRows];
 };
+
+export function setUploadedStudentRows(rows = []) {
+    _uploadedStudentRows = Array.isArray(rows) ? rows : [];
+    return getAllStudents();
+}
 
 // ==================== Smart Student Search ====================
 function searchStudents(query) {
@@ -520,7 +526,7 @@ function searchStudents(query) {
 // 1. Explicit forecast requests (with "พยากรณ์"/"predict" keywords)
 // 2. Student search by ID/name/major/GPA (structured lookups)
 // Everything else → Gemini AI (smarter, context-aware answers)
-function tryLocalResponse(question) {
+export function tryLocalResponse(question) {
     const q = question.toLowerCase();
 
     // 1. Explicit forecast requests ONLY when forecast keyword + known data topic
@@ -551,7 +557,70 @@ function tryLocalResponse(question) {
 }
 
 // ==================== Parse AI Generated Chart ====================
-function parseAIResponse(text) {
+export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMergeSummary = null) {
+    const allStudents = getAllStudents();
+    const qLower = String(question || '').toLowerCase();
+    const isStudentQ = /นักศึกษา|นิสิต|gpa|เกรด|สาขา|ชั้นปี|รายชื่อ|จำนวนนักศึกษา|student/.test(qLower);
+    const dashboardSummary = dashboardMergeSummary || {
+        name: 'ข้อมูล Dashboard',
+        ...buildLiveDashboardMergeSummary(),
+    };
+
+    let context = '';
+    if (isStudentQ && allStudents.length > 0) {
+        const byMajor = {};
+        const byYear = {};
+        allStudents.forEach(s => {
+            byMajor[s.major] = byMajor[s.major] || { count: 0, gpas: [] };
+            byMajor[s.major].count += 1;
+            byMajor[s.major].gpas.push(Number(s.gpa) || 0);
+            const yKey = `ชั้นปี ${s.year}`;
+            byYear[yKey] = (byYear[yKey] || 0) + 1;
+        });
+
+        const majorStats = Object.entries(byMajor).map(([major, value]) => {
+            const avg = value.gpas.length
+                ? (value.gpas.reduce((sum, gpa) => sum + gpa, 0) / value.gpas.length).toFixed(2)
+                : '-';
+            return `${major}: ${value.count} คน, GPA เฉลี่ย ${avg}`;
+        }).join('\n');
+        const yearStats = Object.entries(byYear).map(([year, count]) => `${year}: ${count} คน`).join(', ');
+
+        context += `[บริบทนักศึกษา: ข้อมูลรวม ${allStudents.length} คน (ข้อมูลระบบ + ข้อมูลที่อัปโหลด)\n`;
+        context += `สรุปตามสาขา:\n${majorStats}\n`;
+        context += `สรุปตามชั้นปี: ${yearStats}\n`;
+
+        const idMentioned = String(question || '').match(/\b6\d{9}\b/);
+        if (idMentioned) {
+            const found = allStudents.find(s => s.id === idMentioned[0]);
+            context += found
+                ? `รหัสที่ผู้ใช้ระบุ ${found.id}: ${found.prefix || ''}${found.name}, สาขา${found.major}, ปี ${found.year}, ${found.level || ''}, GPA ${found.gpa}, ${found.status}\n`
+                : `รหัสที่ผู้ใช้ระบุ ${idMentioned[0]}: ไม่พบในฐานข้อมูล\n`;
+        }
+
+        const sample = allStudents
+            .slice(0, 15)
+            .map(s => `${s.id},${s.name},${s.major},ปี ${s.year},GPA ${s.gpa},${s.status}`)
+            .join('\n');
+        context += `ตัวอย่างข้อมูล (15 คนแรก):\n${sample}]\n\n`;
+    }
+
+    if (uploadedFileData && !isStudentFile(uploadedFileData.headers)) {
+        const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
+        const dashRows = Array.isArray(dashboardSummary?.rows) ? dashboardSummary.rows : [];
+        const dashHeaders = Array.isArray(dashboardSummary?.headers) ? dashboardSummary.headers : [];
+        const dashPreview = dashRows.map(r => Object.values(r).join(', ')).join('\n');
+        context += `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}`;
+        if (dashRows.length > 0) {
+            context += `\n\nข้อมูล Dashboard สำหรับเปรียบเทียบ (${dashHeaders.join(', ')}):\n${dashPreview}`;
+        }
+        context += `\n\nสามารถรวมข้อมูลไฟล์กับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้ ถ้าผู้ใช้ขอ]\n\n`;
+    }
+
+    return context ? `${context}คำถาม: ${question}` : question;
+}
+
+export function parseAIResponse(text) {
     // Accept 1-3 backticks on the fence — Gemini occasionally emits a single
     // backtick or markdown that renders as inline code instead of a block.
     let regex = /`{1,3}json_chart\s*([\s\S]*?)\s*`{1,3}/;
@@ -1673,7 +1742,7 @@ function deepCloneChart(chart) {
 }
 
 // ==================== Chat Message Component ====================
-function ChatMessage({ msg, onExpand }) {
+export function ChatMessage({ msg, onExpand }) {
     // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
     const initialUiType = getInitialUiChartType(msg.chart);
     const [chartType, setChartType] = useState(initialUiType);
@@ -1785,7 +1854,7 @@ function ChatMessage({ msg, onExpand }) {
 
 
 // ==================== Main AIChatPage Component ====================
-function generateChartFromFile(parsed, fileName) {
+export function generateChartFromFile(parsed, fileName) {
     if (!parsed || parsed.numericCols.length === 0) return null;
 
     const colors = getActiveChartPalette();
@@ -1827,6 +1896,15 @@ function generateChartFromFile(parsed, fileName) {
         },
     };
 }
+
+export const MAIN_AI_QUICK_ACTIONS = [
+    { label: 'กราฟนิสิตแยกคณะ', query: 'สร้างกราฟแท่งแสดงจำนวนนิสิตแยกตามคณะ พร้อมเรียงลำดับจากมากไปน้อย', icon: BarChart3 },
+    { label: 'เปรียบเทียบ GPA ทุกคณะ', query: 'สร้างกราฟเปรียบเทียบ GPA เฉลี่ยและอัตราสำเร็จการศึกษาของทุกคณะ', icon: TrendingUp },
+    { label: 'บุคลากรคณะวิทย์', query: 'แสดงกราฟข้อมูลบุคลากรคณะวิทยาศาสตร์ ตำแหน่งวิชาการ วุฒิการศึกษา และพยากรณ์เกษียณ', icon: Search },
+    { label: 'วิเคราะห์งบประมาณ', query: 'วิเคราะห์งบประมาณมหาวิทยาลัยแม่โจ้ย้อนหลัง 4 ปี แสดงกราฟรายรับ-รายจ่าย พร้อมสรุปแนวโน้ม', icon: ChartLine },
+    { label: 'สถิติสำเร็จการศึกษา', query: 'แสดงกราฟแนวโน้มอัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ย้อนหลัง 5 ปี', icon: Sparkles },
+    { label: 'พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: ChartLine },
+];
 
 export default function AIChatPage() {
     const { user } = useAuth();
@@ -2712,7 +2790,7 @@ export default function AIChatPage() {
 }
 
 // ==================== Expanded Chart Modal Component ====================
-function ExpandedChartModal({ chart, onClose }) {
+export function ExpandedChartModal({ chart, onClose }) {
     const chartRef = useRef(null);
     const [modalKey, setModalKey] = useState(0);
 

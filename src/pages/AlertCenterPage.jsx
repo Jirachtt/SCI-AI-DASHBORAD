@@ -36,7 +36,6 @@ export default function AlertCenterPage() {
     const [sourceFilter, setSourceFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [externalAlerts, setExternalAlerts] = useState([]);
-    const [apiMessage, setApiMessage] = useState('');
     const [expanded, setExpanded] = useState(null);
 
     useEffect(() => {
@@ -58,12 +57,11 @@ export default function AlertCenterPage() {
             .then(result => {
                 if (!active) return;
                 setExternalAlerts(result.alerts || []);
-                setApiMessage(result.message || '');
             })
             .catch(error => {
                 if (!active) return;
+                console.warn('[AlertCenterPage] external alert API unavailable:', error?.message || error);
                 setExternalAlerts([]);
-                setApiMessage(error.message || 'MJU Alert API unavailable');
             });
         return () => { active = false; };
     }, [severityFilter, domainFilter, sourceFilter]);
@@ -178,12 +176,6 @@ export default function AlertCenterPage() {
                     แสดง {filtered.length} / {alerts.length} รายการ
                 </span>
             </div>
-            {apiMessage && (
-                <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    API status: {apiMessage}
-                </div>
-            )}
-
             {/* Alert list */}
             <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {loading ? (

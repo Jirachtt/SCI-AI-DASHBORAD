@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Download, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap, Users, AlertTriangle } from 'lucide-react';
+import { Search, Download, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap, Users, AlertTriangle, FileSpreadsheet } from 'lucide-react';
+import { exportPageAsExcel } from '../utils/exportUtils';
 
 /* ────────────── Student Data (live from Firestore, mock fallback) ────────────── */
 import { SCIENCE_MAJORS } from '../data/studentListData';
@@ -197,6 +198,13 @@ export default function StudentListPage() {
                         color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, transition: 'all 0.2s',
                     }}>
                         <Download size={16} /> Export CSV
+                    </button>
+                    <button onClick={() => exportPageAsExcel('student_list')} style={{
+                        display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',
+                        borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)',
+                        color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, transition: 'all 0.2s',
+                    }}>
+                        <FileSpreadsheet size={16} /> Excel
                     </button>
                     {canManage && (
                         <button onClick={() => { setStudentSaveMessage(''); setShowModal(true); }} style={{

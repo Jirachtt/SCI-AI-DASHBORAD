@@ -1,4 +1,5 @@
 import { CheckCircle, AlertCircle, Calendar, Star, Clock, BookOpen, Award } from 'lucide-react';
+import ExportPDFButton from '../components/ExportPDFButton';
 
 export default function GraduationCheckPage() {
     const graduationData = {
@@ -61,6 +62,9 @@ export default function GraduationCheckPage() {
                 <div>
                     <h1>ตรวจสอบเงื่อนไขการสำเร็จการศึกษา</h1>
                     <p>Requirements Check for Graduation</p>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                    <ExportPDFButton title="graduation_requirements" />
                 </div>
             </div>
 
