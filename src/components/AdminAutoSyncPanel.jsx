@@ -101,6 +101,8 @@ export default function AdminAutoSyncPanel({ onToast }) {
                 {DASHBOARD_DATASETS.map(item => {
                     const meta = metas[item.id] || getDashboardDatasetMetaSync(item.id);
                     const isSyncing = syncingId === item.id;
+                    const needsApi = !meta.isLive && item.syncMode === 'api';
+                    const badgeLabel = meta.isLive ? 'Live' : needsApi ? 'ต้องใช้ API' : 'Fallback';
                     return (
                         <div key={item.id} className="auto-sync-card">
                             <div className="auto-sync-card-head">
@@ -109,7 +111,7 @@ export default function AdminAutoSyncPanel({ onToast }) {
                                     <p>{item.id}</p>
                                 </div>
                                 <span className={`admin-data-badge ${meta.isLive ? 'live' : 'mock'}`}>
-                                    {meta.isLive ? 'Live' : 'Fallback'}
+                                    {badgeLabel}
                                 </span>
                             </div>
 
@@ -118,6 +120,11 @@ export default function AdminAutoSyncPanel({ onToast }) {
                                 <div><CheckCircle size={14} /> {meta.rowCount == null ? '-' : `${meta.rowCount.toLocaleString('th-TH')} rows`}</div>
                                 <div><LinkIcon size={14} /> <span title={meta.sourceUrl || item.source}>{meta.sourceUrl || item.source}</span></div>
                             </div>
+                            {needsApi && (
+                                <div className="auto-sync-card-note">
+                                    ต้องตั้งค่า MJU_DASHBOARD_SOURCE_{item.id.toUpperCase()} หรือ official API/token ก่อน จึงจะ sync เป็นข้อมูลจริงได้
+                                </div>
+                            )}
 
                             <button
                                 type="button"

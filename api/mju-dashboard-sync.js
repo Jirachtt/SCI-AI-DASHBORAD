@@ -7,6 +7,7 @@ const DEFAULT_PUBLIC_SOURCES = {
   research: 'https://dashboard.mju.ac.th/homeDashboard?&dep=20300',
   dashboard_summary: 'https://dashboard.mju.ac.th/student',
   hr: 'https://dashboard.mju.ac.th/homeDashboard?&dep=20300',
+  graduation: 'https://dashboard.mju.ac.th/homeDashboard?&dep=20300',
 };
 
 export const DASHBOARD_SYNC_DATASETS = [
@@ -381,6 +382,51 @@ function normalizeHrFromHomeDashboard(html) {
   };
 }
 
+function normalizeGraduationFromHomeDashboard(tables) {
+  const surveyTable = tables.find(table =>
+    table.some(row => row.join(' ').includes('ปีสำเร็จ')) &&
+    table.some(row => row.join(' ').includes('สำเร็จ')) &&
+    table.some(row => row.join(' ').includes('ร้อยละ'))
+  );
+  if (!surveyTable) return null;
+
+  const history = surveyTable
+    .map(row => {
+      const yearIndex = row.findIndex(cell => /^\d{4}$/.test(String(cell || '').trim()));
+      if (yearIndex < 0) return null;
+      const graduated = numberFromText(row[yearIndex + 1]);
+      const responded = numberFromText(row[yearIndex + 2]);
+      const responseRate = numberFromText(row[yearIndex + 3]);
+      return {
+        year: Number(row[yearIndex]),
+        candidates: graduated,
+        graduated,
+        responded,
+        rate: responseRate,
+        type: 'actual',
+      };
+    })
+    .filter(row => row && row.year && (row.graduated > 0 || row.responded > 0))
+    .sort((a, b) => Number(a.year) - Number(b.year));
+
+  if (history.length === 0) return null;
+  const latest = history[history.length - 1];
+  return {
+    history,
+    graduationHistory: history,
+    current: {
+      academicYear: latest.year,
+      totalCandidates: latest.candidates,
+      expectedGraduates: latest.graduated,
+      pending: Math.max(0, latest.candidates - latest.graduated),
+      notPassed: 0,
+      responseRate: latest.rate,
+      responded: latest.responded,
+    },
+    sourceNote: 'Synced from public MJU Dashboard graduate employment survey on faculty home page',
+  };
+}
+
 function normalizeHtmlDataset(dataset, html, sourceUrl) {
   const tables = parseHtmlTables(html);
   if (dataset === 'student_stats') {
@@ -397,6 +443,10 @@ function normalizeHtmlDataset(dataset, html, sourceUrl) {
   }
   if (dataset === 'hr') {
     const normalized = normalizeHrFromHomeDashboard(html);
+    if (normalized) return normalized;
+  }
+  if (dataset === 'graduation') {
+    const normalized = normalizeGraduationFromHomeDashboard(tables);
     if (normalized) return normalized;
   }
 
