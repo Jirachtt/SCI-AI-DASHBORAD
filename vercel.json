@@ -1,37 +1,52 @@
 {
-  "headers": [
-    {
-      "source": "/",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/signup",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/dashboard",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/dashboard/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    }
-  ],
-  "crons": [
-    {
-      "path": "/api/mju-dashboard-cron",
-      "schedule": "*/15 * * * *"
-    }
-  ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+    "headers": [
+          {
+                  "source": "/",
+                  "headers": [
+                            {
+                                        "key": "Cache-Control",
+                                        "value": "no-cache, no-store, must-revalidate"
+                            }
+                  ]
+          },
+          {
+                  "source": "/signup",
+                  "headers": [
+                            {
+                                        "key": "Cache-Control",
+                                        "value": "no-cache, no-store, must-revalidate"
+                            }
+                  ]
+          },
+          {
+                  "source": "/dashboard",
+                  "headers": [
+                            {
+                                        "key": "Cache-Control",
+                                        "value": "no-cache, no-store, must-revalidate"
+                            }
+                  ]
+          },
+          {
+                  "source": "/dashboard/(.*)",
+                  "headers": [
+                            {
+                                        "key": "Cache-Control",
+                                        "value": "no-cache, no-store, must-revalidate"
+                            }
+                  ]
+          }
+    ],
+    "crons": [
+          {
+                  "path": "/api/mju-dashboard-cron",
+                  "schedule": "0 0 * * *"
+          }
+    ],
+    "rewrites": [
+          {
+                  "source": "/(.*)",
+                  "destination": "/index.html"
+          }
+    ]
 }
