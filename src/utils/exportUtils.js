@@ -2,6 +2,7 @@ import { Chart as ChartJS } from 'chart.js';
 
 const SHEET_NAME_LIMIT = 31;
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const ZIP_MIME = 'application/zip';
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
     let c = n;
@@ -72,8 +73,7 @@ function rowsToCsv(rows) {
     ].join('\n');
 }
 
-function downloadBlob(fileName, mimeType, content) {
-    const blob = new Blob([content], { type: mimeType });
+function triggerBlobDownload(fileName, blob) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -84,16 +84,8 @@ function downloadBlob(fileName, mimeType, content) {
     URL.revokeObjectURL(url);
 }
 
-function downloadDataUrl(fileName, dataUrl, delayMs = 0) {
-    if (!dataUrl) return;
-    window.setTimeout(() => {
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-    }, delayMs);
+function downloadBlob(fileName, mimeType, content) {
+    triggerBlobDownload(fileName, new Blob([content], { type: mimeType }));
 }
 
 export function downloadCSV(fileName, rows) {
@@ -319,7 +311,7 @@ function bytes(value) {
     return encoder.encode(String(value ?? ''));
 }
 
-function createZip(entries) {
+function createZip(entries, mimeType = XLSX_MIME) {
     const localParts = [];
     const centralParts = [];
     let offset = 0;
@@ -380,7 +372,7 @@ function createZip(entries) {
     pushU32(end, centralOffset);
     pushU16(end, 0);
 
-    return new Blob([...localParts, ...centralParts, Uint8Array.from(end)], { type: XLSX_MIME });
+    return new Blob([...localParts, ...centralParts, Uint8Array.from(end)], { type: mimeType });
 }
 
 function dataUrlToBytes(dataUrl) {
@@ -467,15 +459,7 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
         }
     });
 
-    const blob = createZip(entries);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${safeFileName(fileName)}.xlsx`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    triggerBlobDownload(`${safeFileName(fileName)}.xlsx`, createZip(entries));
 }
 
 export async function exportWorkbook(fileName, sheets, chartSheets = []) {
@@ -616,21 +600,11 @@ async function collectChartSheets(root = document) {
     return chartSheets;
 }
 
-async function exportVisibleChartImages(title = 'page-export', root = document) {
-    const chartSheets = await collectChartSheets(root);
-    const exportable = chartSheets.filter(chart => chart.imageDataUrl);
-    exportable.forEach((chart, idx) => {
-        const name = `${safeFileName(title)}_${String(idx + 1).padStart(2, '0')}_${safeFileName(chart.name || `chart_${idx + 1}`)}.png`;
-        downloadDataUrl(name, chart.imageDataUrl, idx * 180);
-    });
-    return chartSheets;
-}
-
 export function extractPageExportPayload(root = document) {
     return extractPageExportData(root).sheets;
 }
 
-export function extractPageExportData(root = document) {
+export function extractPageExportData(root = document, { includeChartRows = true } = {}) {
     const sheets = {};
     const tables = Array.from(root.querySelectorAll('table'));
     tables.forEach((table, idx) => {
@@ -641,24 +615,26 @@ export function extractPageExportData(root = document) {
     const statRows = statCardsToRows(root);
     if (statRows.length > 0) sheets.Summary = statRows;
 
-    const canvases = Array.from(root.querySelectorAll('canvas'));
-    canvases.forEach((canvas, idx) => {
-        const chart = ChartJS.getChart(canvas);
-        const title = chart?.options?.plugins?.title?.text || `Chart ${idx + 1}`;
-        const rows = chartToRows(chart, String(title));
-        if (rows.length > 0) sheets[`Chart ${idx + 1}`] = rows;
-    });
+    if (includeChartRows) {
+        const canvases = Array.from(root.querySelectorAll('canvas'));
+        canvases.forEach((canvas, idx) => {
+            const chart = ChartJS.getChart(canvas);
+            const title = chart?.options?.plugins?.title?.text || `Chart ${idx + 1}`;
+            const rows = chartToRows(chart, String(title));
+            if (rows.length > 0) sheets[`Chart ${idx + 1}`] = rows;
+        });
+    }
 
     return { sheets };
 }
 
 export async function exportPageAsCSV(title = 'page-export') {
-    const sheets = extractPageExportPayload();
+    const { sheets } = extractPageExportData(document, { includeChartRows: false });
     const rows = Object.entries(sheets).flatMap(([sheet, sheetRows]) =>
         sheetRows.map(row => ({ sheet, ...row }))
     );
-    downloadCSV(title, rows);
-    await exportVisibleChartImages(title);
+    const chartSheets = await collectChartSheets();
+    downloadCSVBundle(title, rows, chartSheets);
 }
 
 export async function exportPageAsExcel(title = 'page-export') {
@@ -668,9 +644,11 @@ export async function exportPageAsExcel(title = 'page-export') {
 }
 
 export async function exportChartAsCSV(title, chart) {
-    downloadCSV(title, chartToRows(chart, title));
     const imageDataUrl = await renderChartImageDataUrl(chart);
-    if (imageDataUrl) downloadDataUrl(`${safeFileName(title || 'chart')}.png`, imageDataUrl);
+    downloadCSVBundle(title || 'chart', chartToRows(chart, title), imageDataUrl ? [{
+        name: title || 'Chart',
+        imageDataUrl,
+    }] : []);
 }
 
 export async function exportChartAsExcel(title, chart) {
@@ -680,6 +658,26 @@ export async function exportChartAsExcel(title, chart) {
         rows: chartToRows(chart, title || 'Chart'),
         imageDataUrl,
     }]);
+}
+
+function downloadCSVBundle(title, rows, chartSheets = []) {
+    const safeTitle = safeFileName(title || 'page-export');
+    const csv = `\uFEFF${rowsToCsv(rows) || 'note\nNo tabular data found on this page.'}`;
+    const chartImages = (chartSheets || []).filter(chart => chart?.imageDataUrl);
+
+    if (chartImages.length === 0) {
+        downloadBlob(`${safeTitle}.csv`, 'text/csv;charset=utf-8', csv);
+        return;
+    }
+
+    const entries = [
+        { name: `${safeTitle}.csv`, content: csv },
+        ...chartImages.map((chart, idx) => ({
+            name: `charts/${String(idx + 1).padStart(2, '0')}_${safeFileName(chart.name || `chart_${idx + 1}`)}.png`,
+            content: dataUrlToBytes(chart.imageDataUrl),
+        })),
+    ];
+    triggerBlobDownload(`${safeTitle}_csv_charts.zip`, createZip(entries, ZIP_MIME));
 }
 
 async function renderChartImageDataUrl(chart) {

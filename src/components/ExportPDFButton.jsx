@@ -3,14 +3,15 @@
 // Uses a `data-export-title` attribute to temporarily rename document.title
 // so the generated PDF filename is meaningful (Chrome/Edge respect this).
 import { useState } from 'react';
-import { FileDown, FileSpreadsheet, Printer, TableProperties } from 'lucide-react';
-import { exportPageAsCSV, exportPageAsExcel } from '../utils/exportUtils';
+import { FileDown, Printer, TableProperties } from 'lucide-react';
+import { exportPageAsCSV } from '../utils/exportUtils';
 
 export default function ExportPDFButton({
     title = 'รายงาน Science AI Dashboard',
-    label = 'Export PDF',
+    label = 'PDF',
     variant = 'default',        // 'default' | 'ghost'
     includeDataExports = true,
+    onCSVExport = null,
 }) {
     const [printing, setPrinting] = useState(false);
 
@@ -60,21 +61,12 @@ export default function ExportPDFButton({
                 <>
                     <button
                         type="button"
-                        onClick={() => exportPageAsCSV(title)}
+                        onClick={() => (onCSVExport ? onCSVExport() : exportPageAsCSV(title))}
                         className="admin-refresh-btn no-print"
                         aria-label="Export ข้อมูลในหน้านี้เป็น CSV"
                         data-tooltip="Export CSV"
                     >
                         <TableProperties size={14} /> CSV
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => exportPageAsExcel(title)}
-                        className="admin-refresh-btn no-print"
-                        aria-label="Export ข้อมูลและข้อมูลกราฟในหน้านี้เป็น Excel"
-                        data-tooltip="Export Excel"
-                    >
-                        <FileSpreadsheet size={14} /> Excel
                     </button>
                 </>
             )}

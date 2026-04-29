@@ -25,7 +25,7 @@ import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
 import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
-import { exportChartAsCSV, exportChartAsExcel } from '../utils/exportUtils';
+import { exportChartAsCSV } from '../utils/exportUtils';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -1828,13 +1828,6 @@ export function ChatMessage({ msg, onExpand }) {
                             >
                                 <TableProperties size={13} /> CSV
                             </button>
-                            <button
-                                className="ai-page-chart-btn"
-                                onClick={() => exportChartAsExcel('ai-chart', { ...chartData, chartType })}
-                                aria-label="Export chart data as Excel"
-                            >
-                                <FileSpreadsheet size={13} /> Excel
-                            </button>
                         </div>
                         <div className="ai-page-chart-wrapper" style={{ height: wrapperHeight }}>
                             <ReactChart
@@ -2891,13 +2884,6 @@ export function ExpandedChartModal({ chart, onClose }) {
                             aria-label="Export chart data as CSV"
                         >
                             <TableProperties size={15} /> CSV
-                        </button>
-                        <button
-                            className="ai-page-chart-modal-reset"
-                            onClick={() => exportChartAsExcel('ai-chart-expanded', expandedChart)}
-                            aria-label="Export chart data as Excel"
-                        >
-                            <FileSpreadsheet size={15} /> Excel
                         </button>
                         <button className="ai-page-chart-modal-close" onClick={onClose} aria-label="ปิดกราฟขยาย" data-tooltip="ปิด">
                             <X size={22} />

@@ -170,7 +170,7 @@ export default function DashboardHome() {
 
                 {/* Action buttons */}
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <ExportPDFButton title="ภาพรวม Science AI Dashboard" label="Export PDF" />
+                <ExportPDFButton title="ภาพรวม Science AI Dashboard" label="PDF" />
                 <button
                     onClick={() => setShowForecast(!showForecast)}
                     style={{

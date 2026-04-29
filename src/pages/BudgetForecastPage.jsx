@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { ArrowLeft, TrendingUp, TrendingDown, ArrowUpRight, Sparkles, Download, BarChart3, Wallet, DollarSign } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, ArrowUpRight, Sparkles, BarChart3, Wallet, DollarSign } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement,
@@ -42,46 +42,6 @@ export default function BudgetForecastPage() {
     const revenueGrowth = (((latestYear.revenue - prevYear.revenue) / prevYear.revenue) * 100).toFixed(1);
     const expenseGrowth = (((latestYear.expense - prevYear.expense) / prevYear.expense) * 100).toFixed(1);
     const usagePercent = ((latestYear.expense / latestYear.revenue) * 100).toFixed(1);
-
-    /* ── Export CSV ── */
-    const exportCSV = () => {
-        const BOM = '\uFEFF';
-        const lines = [
-            'รายงานงบประมาณคณะวิทยาศาสตร์ — มหาวิทยาลัยแม่โจ้',
-            `วันที่ส่งออก: ${new Date().toLocaleDateString('th-TH')}`,
-            '',
-            '=== สรุปงบประมาณรายปี (ล้านบาท) ===',
-            'ปีงบประมาณ,รายรับ,รายจ่าย,คงเหลือ,% การใช้จ่าย,ประเภท',
-            ...yearly.map(y => {
-                const pct = ((y.expense / y.revenue) * 100).toFixed(1);
-                return `${y.year},${y.revenue.toFixed(2)},${y.expense.toFixed(2)},${y.surplus.toFixed(2)},${pct}%,${y.type === 'actual' ? 'ข้อมูลจริง' : 'พยากรณ์'}`;
-            }),
-            '',
-            `=== โครงสร้างรายรับปี ${latestYear.year} ===`,
-            'แหล่งรายรับ,จำนวน (ล้านบาท),สัดส่วน',
-            ...latestYear.revenueBreakdown.map(r =>
-                `${r.name},${r.amount.toFixed(2)},${((r.amount / latestYear.revenue) * 100).toFixed(1)}%`
-            ),
-            '',
-            `=== โครงสร้างรายจ่ายปี ${latestYear.year} ===`,
-            'หมวดรายจ่าย,จำนวน (ล้านบาท),สัดส่วน',
-            ...latestYear.expenseBreakdown.map(e =>
-                `${e.name},${e.amount.toFixed(2)},${((e.amount / latestYear.expense) * 100).toFixed(1)}%`
-            ),
-            '',
-            `หมายเหตุ: ${summary.forecastNote}`,
-            `อัตราเติบโตรายรับเฉลี่ย: ${summary.avgGrowthRevenue}%/ปี`,
-            `อัตราเติบโตรายจ่ายเฉลี่ย: ${summary.avgGrowthExpense}%/ปี`,
-        ];
-        const csv = BOM + lines.join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `budget_report_science_${new Date().toISOString().slice(0, 10)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
 
     /* ── Chart ── */
     const combinedChartData = {
@@ -264,15 +224,6 @@ export default function BudgetForecastPage() {
                 </div>
                 <div className="section-header-actions">
                     <ExportPDFButton title="งบประมาณคณะวิทยาศาสตร์" label="PDF" />
-                    <button onClick={exportCSV} style={{
-                        display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',
-                        borderRadius: '10px', border: 'none',
-                        background: 'linear-gradient(135deg, #006838, #00a651)',
-                        color: '#fff', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600,
-                        transition: 'all 0.2s',
-                    }}>
-                        <Download size={16} /> Export Report
-                    </button>
                 </div>
             </div>
 
