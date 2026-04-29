@@ -44,15 +44,45 @@ function withSource(alert, source) {
     };
 }
 
+function sortStudentsByMajorRisk(students = []) {
+    const majorLowestGpa = new Map();
+    students.forEach(student => {
+        const major = student.major || 'ไม่ระบุสาขา';
+        const gpa = Number(student.gpa);
+        const current = majorLowestGpa.get(major);
+        if (!Number.isFinite(current) || gpa < current) {
+            majorLowestGpa.set(major, gpa);
+        }
+    });
+
+    return [...students].sort((a, b) => {
+        const majorA = a.major || 'ไม่ระบุสาขา';
+        const majorB = b.major || 'ไม่ระบุสาขา';
+        const majorRiskDiff = (majorLowestGpa.get(majorA) ?? 99) - (majorLowestGpa.get(majorB) ?? 99);
+        if (majorRiskDiff !== 0) return majorRiskDiff;
+
+        const majorDiff = majorA.localeCompare(majorB, 'th');
+        if (majorDiff !== 0) return majorDiff;
+
+        const gpaDiff = (Number(a.gpa) || 99) - (Number(b.gpa) || 99);
+        if (gpaDiff !== 0) return gpaDiff;
+
+        const yearDiff = (Number(b.year) || 0) - (Number(a.year) || 0);
+        if (yearDiff !== 0) return yearDiff;
+
+        return String(a.id || '').localeCompare(String(b.id || ''), 'th');
+    });
+}
+
 // ---------- Builders ----------
 function buildStudentAlerts() {
     const students = getStudentListSync() || [];
-    const atRisk = students.filter(s =>
+    const atRisk = sortStudentsByMajorRisk(students.filter(s =>
         typeof s.gpa === 'number' && s.gpa > 0 && s.gpa < T.lowGPA
-    );
-    const probation = students.filter(s =>
+    ));
+    const probation = sortStudentsByMajorRisk(students.filter(s =>
         typeof s.gpa === 'number' && s.gpa >= T.lowGPA && s.gpa < T.probationGPA
-    );
+    ));
 
     const out = [];
     if (atRisk.length > 0) {
@@ -66,7 +96,7 @@ function buildStudentAlerts() {
             value: atRisk.length,
             target: 0,
             suggestedAction: 'นัดอาจารย์ที่ปรึกษาพบกลุ่มเสี่ยงภายในสัปดาห์นี้',
-            data: atRisk.slice(0, 20),
+            data: atRisk,
         }, 'local_students'));
     }
     if (probation.length > 0) {
@@ -80,7 +110,7 @@ function buildStudentAlerts() {
             value: probation.length,
             target: 0,
             suggestedAction: 'ส่งรายงานให้อาจารย์ที่ปรึกษา และเปิดคลินิกวิชาการ',
-            data: probation.slice(0, 20),
+            data: probation,
         }, 'local_students'));
     }
     return out;

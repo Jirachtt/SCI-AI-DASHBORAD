@@ -1,4 +1,4 @@
-import { createElement, useEffect, useMemo, useState } from 'react';
+import { Fragment, createElement, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
@@ -299,6 +299,24 @@ function SummaryCard({ label, value, color, Icon: IconComponent, pulse }) {
 
 function AlertDetailList({ items }) {
     const isStudent = items[0]?.id && items[0]?.name;
+    const groupedStudents = useMemo(() => {
+        if (!isStudent) return [];
+        const groups = [];
+        items.forEach(student => {
+            const major = student.major || 'ไม่ระบุสาขา';
+            let group = groups.find(entry => entry.major === major);
+            if (!group) {
+                group = { major, students: [] };
+                groups.push(group);
+            }
+            group.students.push(student);
+        });
+        return groups.map(group => ({
+            ...group,
+            minGpa: Math.min(...group.students.map(student => Number(student.gpa) || 99)),
+        }));
+    }, [isStudent, items]);
+
     return (
         <div className="data-table-container" style={{ marginTop: 10 }}>
             <table className="data-table">
@@ -323,17 +341,28 @@ function AlertDetailList({ items }) {
                     </tr>
                 </thead>
                 <tbody>
-                    {items.map((it, i) => isStudent ? (
-                        <tr key={i}>
-                            <td>{it.id}</td>
-                            <td>{it.prefix || ''} {it.name}</td>
-                            <td>{it.major}</td>
-                            <td>{it.year}</td>
-                            <td style={{ color: it.gpa < 2 ? '#ef4444' : 'inherit', fontWeight: 700 }}>
-                                {it.gpa?.toFixed(2)}
-                            </td>
-                        </tr>
-                    ) : (
+                    {isStudent ? groupedStudents.map(group => (
+                        <Fragment key={group.major}>
+                            <tr className="alert-major-group-row">
+                                <td colSpan={5}>
+                                    <span>{group.major}</span>
+                                    <strong>{group.students.length.toLocaleString('th-TH')} คน</strong>
+                                    <em>GPA ต่ำสุด {group.minGpa.toFixed(2)}</em>
+                                </td>
+                            </tr>
+                            {group.students.map((it, i) => (
+                                <tr key={`${group.major}-${it.id || i}`}>
+                                    <td>{it.id}</td>
+                                    <td>{it.prefix || ''} {it.name}</td>
+                                    <td>{it.major}</td>
+                                    <td>{it.year}</td>
+                                    <td style={{ color: it.gpa < 2 ? '#ef4444' : '#f59e0b', fontWeight: 800 }}>
+                                        {Number(it.gpa)?.toFixed(2)}
+                                    </td>
+                                </tr>
+                            ))}
+                        </Fragment>
+                    )) : items.map((it, i) => (
                         <tr key={i}>
                             <td>{it.id}</td>
                             <td>{it.title}</td>

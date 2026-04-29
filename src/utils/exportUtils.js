@@ -1,4 +1,37 @@
 import { Chart as ChartJS } from 'chart.js';
+import {
+    dashboardSummary,
+    financialData,
+    scienceFacultyBudgetData,
+    studentLifeData,
+    studentStatsData,
+    tuitionData,
+    universityBudgetData,
+} from '../data/mockData';
+import {
+    currentGraduationStats,
+    graduationByMajor,
+    graduationCandidateList,
+    graduationHistory,
+    gpaDistribution,
+    honorsData,
+} from '../data/graduationData';
+import { hrData } from '../data/hrData';
+import { researchData } from '../data/researchData';
+import { strategicData } from '../data/strategicData';
+import {
+    academicRulesScope,
+    academicRulesSources,
+    graduationRules,
+    honorsRules,
+} from '../data/academicRulesData';
+import { getStudentListSync } from '../services/studentDataService';
+import {
+    DASHBOARD_DATASETS,
+    getDashboardDatasetMetaSync,
+    getDashboardDatasetSync,
+} from '../services/dashboardLiveDataService';
+import { getAllAlerts } from './alerts';
 
 const SHEET_NAME_LIMIT = 31;
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -124,6 +157,460 @@ export function chartToRows(chart, chartName = 'Chart') {
         });
     });
     return pointRows;
+}
+
+function addSheet(sheets, name, rows) {
+    const normalized = normalizeRows(rows).filter(row =>
+        Object.values(row).some(value => value !== '' && value != null)
+    );
+    if (normalized.length === 0) return;
+
+    let finalName = String(name || 'Data');
+    let i = 2;
+    while (sheets[finalName]) {
+        finalName = `${name} ${i}`;
+        i += 1;
+    }
+    sheets[finalName] = normalized;
+}
+
+function exportValue(value) {
+    if (value instanceof Date) return value.toISOString();
+    if (Array.isArray(value)) {
+        if (value.every(item => item == null || ['string', 'number', 'boolean'].includes(typeof item))) {
+            return value.filter(item => item != null).join(' | ');
+        }
+        try {
+            return JSON.stringify(value);
+        } catch {
+            return String(value);
+        }
+    }
+    if (value && typeof value === 'object') {
+        try {
+            return JSON.stringify(value);
+        } catch {
+            return String(value);
+        }
+    }
+    return value;
+}
+
+function flattenRecord(value, prefix = '', out = {}) {
+    if (value == null || typeof value !== 'object' || value instanceof Date || Array.isArray(value)) {
+        if (prefix) out[prefix] = exportValue(value);
+        return out;
+    }
+
+    Object.entries(value).forEach(([key, childValue]) => {
+        const childKey = prefix ? `${prefix}.${key}` : key;
+        if (
+            childValue &&
+            typeof childValue === 'object' &&
+            !(childValue instanceof Date) &&
+            !Array.isArray(childValue)
+        ) {
+            flattenRecord(childValue, childKey, out);
+        } else {
+            out[childKey] = exportValue(childValue);
+        }
+    });
+    return out;
+}
+
+function rowsFromRecords(records, extra = {}) {
+    const list = Array.isArray(records) ? records : (records ? [records] : []);
+    return list.map((record, idx) => ({
+        row: idx + 1,
+        ...extra,
+        ...flattenRecord(record),
+    }));
+}
+
+function rowsFromObject(object, section = 'Summary') {
+    return Object.entries(object || {}).map(([label, value], idx) => ({
+        row: idx + 1,
+        section,
+        label,
+        value: exportValue(value),
+    }));
+}
+
+function getDataset(id, fallback) {
+    return getDashboardDatasetSync(id) || fallback || null;
+}
+
+function datasetMetaRows(ids = DASHBOARD_DATASETS.map(item => item.id)) {
+    return ids.map((id, idx) => {
+        const meta = getDashboardDatasetMetaSync(id);
+        const config = DASHBOARD_DATASETS.find(item => item.id === id);
+        return {
+            row: idx + 1,
+            datasetId: id,
+            label: config?.label || meta.label || id,
+            section: config?.section || '',
+            sourceMode: config?.syncMode || '',
+            sourceType: meta.sourceType || '',
+            isLive: meta.isLive ? 'live' : 'fallback',
+            rowCount: meta.rowCount ?? '',
+            updatedAt: meta.updatedAt instanceof Date ? meta.updatedAt.toISOString() : (meta.updatedAt || ''),
+            sourceUrl: meta.sourceUrl || config?.source || '',
+        };
+    });
+}
+
+function compactStudentRows(students = getStudentListSync(), extra = {}) {
+    return (students || []).map((student, idx) => ({
+        row: idx + 1,
+        ...extra,
+        id: student.id || '',
+        prefix: student.prefix || '',
+        name: student.name || '',
+        major: student.major || '',
+        level: student.level || '',
+        year: student.year ?? '',
+        gpa: typeof student.gpa === 'number' ? student.gpa.toFixed(2) : (student.gpa ?? ''),
+        status: student.status || '',
+    }));
+}
+
+function budgetYearRows(source, datasetName) {
+    return (source?.yearly || []).map(({ revenueBreakdown, expenseBreakdown, ...yearRow }, idx) => ({
+        row: idx + 1,
+        dataset: datasetName,
+        unit: source?.unit || 'ล้านบาท',
+        ...flattenRecord(yearRow),
+        revenueBreakdownItems: Array.isArray(revenueBreakdown) ? revenueBreakdown.length : 0,
+        expenseBreakdownItems: Array.isArray(expenseBreakdown) ? expenseBreakdown.length : 0,
+    }));
+}
+
+function budgetBreakdownRows(source, datasetName) {
+    return (source?.yearly || []).flatMap(yearRow => [
+        ...(yearRow.revenueBreakdown || []).map((item, idx) => ({
+            dataset: datasetName,
+            year: yearRow.year,
+            type: 'รายรับ',
+            row: idx + 1,
+            ...flattenRecord(item),
+        })),
+        ...(yearRow.expenseBreakdown || []).map((item, idx) => ({
+            dataset: datasetName,
+            year: yearRow.year,
+            type: 'รายจ่าย',
+            row: idx + 1,
+            ...flattenRecord(item),
+        })),
+    ]);
+}
+
+function buildDashboardOverviewSheets() {
+    const sheets = {};
+    const summary = getDataset('dashboard_summary', dashboardSummary) || {};
+    const students = getDataset('student_stats', studentStatsData) || {};
+    const scienceFaculty = students.scienceFaculty || {};
+    const scienceSummary = (summary.faculties || []).find(item => String(item.name || '').includes('วิทยาศาสตร์')) || {};
+
+    addSheet(sheets, 'Summary', [
+        { metric: 'นักศึกษาทั้งหมด', value: students.current?.total ?? summary.totalStudents ?? '' },
+        { metric: 'รายวิชาเปิดสอน', value: summary.totalCourses ?? '' },
+        { metric: 'เกรดเฉลี่ยรวม (GPA)', value: summary.avgGPA ?? '' },
+        { metric: 'อัตราสำเร็จการศึกษา', value: summary.graduationRate ?? '' },
+        { metric: 'นักศึกษาคณะวิทยาศาสตร์', value: scienceFaculty.total ?? scienceSummary.totalStudents ?? '' },
+        { metric: 'รายวิชาคณะวิทยาศาสตร์', value: scienceSummary.totalCourses ?? '' },
+        { metric: 'GPA คณะวิทยาศาสตร์', value: scienceSummary.avgGPA ?? '' },
+        { metric: 'อัตราสำเร็จคณะวิทยาศาสตร์', value: scienceSummary.graduationRate ?? '' },
+    ]);
+    addSheet(sheets, 'Faculties', rowsFromRecords(summary.faculties, { section: 'ภาพรวมรายคณะ' }));
+    addSheet(sheets, 'Science Levels', rowsFromRecords(scienceFaculty.byLevel, { section: 'คณะวิทยาศาสตร์ตามระดับ' }));
+    addSheet(sheets, 'Science Enrollment', rowsFromRecords(scienceFaculty.byEnrollmentYear, { section: 'คณะวิทยาศาสตร์ตามปีเข้า' }));
+    addSheet(sheets, 'Science Intake', rowsFromRecords(scienceFaculty.newStudentIntake, { section: 'รับเข้าใหม่คณะวิทยาศาสตร์' }));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['dashboard_summary', 'student_stats', 'graduation', 'hr', 'research', 'science_budget']));
+    return sheets;
+}
+
+function buildStudentStatsSheets() {
+    const sheets = {};
+    const data = getDataset('student_stats', studentStatsData) || {};
+    const science = data.scienceFaculty || {};
+    const students = getStudentListSync();
+
+    addSheet(sheets, 'Summary', rowsFromRecords(data.current?.byLevel, { section: 'นักศึกษาปัจจุบันตามระดับ' }));
+    addSheet(sheets, 'By Faculty', rowsFromRecords(data.byFaculty, { section: 'นักศึกษาตามคณะ' }));
+    addSheet(sheets, 'By Campus', rowsFromRecords(data.byCampus, { section: 'นักศึกษาตามวิทยาเขต' }));
+    addSheet(sheets, 'By Nationality', rowsFromRecords(data.byNationality, { section: 'นักศึกษาตามสัญชาติ' }));
+    addSheet(sheets, 'By Enrollment Year', rowsFromRecords(data.byEnrollmentYear, { section: 'นักศึกษาตามปีเข้า' }));
+    addSheet(sheets, 'Trend', rowsFromRecords(data.trend, { section: 'แนวโน้มนักศึกษา' }));
+    addSheet(sheets, 'Science Levels', rowsFromRecords(science.byLevel, { section: 'คณะวิทยาศาสตร์ตามระดับ' }));
+    addSheet(sheets, 'Science Enrollment', rowsFromRecords(science.byEnrollmentYear, { section: 'คณะวิทยาศาสตร์ตามปีเข้า' }));
+    addSheet(sheets, 'Science Intake', rowsFromRecords(science.newStudentIntake, { section: 'รับเข้าใหม่คณะวิทยาศาสตร์' }));
+    addSheet(sheets, 'Science Nationality', rowsFromRecords(science.byNationality, { section: 'คณะวิทยาศาสตร์ตามสัญชาติ' }));
+    addSheet(sheets, 'Science Gender', rowsFromObject(science.byGender, 'คณะวิทยาศาสตร์ตามเพศ'));
+    addSheet(sheets, 'Science Ratio', rowsFromRecords(science.studentFacultyRatio?.comparison, { section: 'อัตราส่วนนักศึกษาต่ออาจารย์' }));
+    addSheet(sheets, 'Student Rows', compactStudentRows(students, { section: 'รายชื่อนักศึกษาที่ระบบใช้คำนวณ' }));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['student_stats', 'dashboard_summary']));
+    return sheets;
+}
+
+function buildStudentListSheets() {
+    const sheets = {};
+    const students = getStudentListSync();
+    addSheet(sheets, 'Student Rows', compactStudentRows(students, { section: 'รายชื่อนักศึกษาคณะวิทยาศาสตร์' }));
+    return sheets;
+}
+
+function buildGraduationSheets() {
+    const sheets = {};
+    const data = getDataset('graduation', {
+        history: graduationHistory,
+        current: currentGraduationStats,
+        byMajor: graduationByMajor,
+        honors: honorsData,
+        gpaDistribution,
+    }) || {};
+
+    addSheet(sheets, 'Summary', rowsFromObject(data.current || currentGraduationStats, 'สถานะผู้มีสิทธิ์สำเร็จการศึกษา'));
+    addSheet(sheets, 'History', rowsFromRecords(data.history || data.graduationHistory || graduationHistory, { section: 'ย้อนหลังตามปีการศึกษา' }));
+    addSheet(sheets, 'By Major', rowsFromRecords(data.byMajor || graduationByMajor, { section: 'แยกตามสาขาวิชา' }));
+    addSheet(sheets, 'GPA Distribution', rowsFromRecords(data.gpaDistribution || gpaDistribution, { section: 'ช่วง GPA' }));
+    addSheet(sheets, 'Honors', rowsFromObject(data.honors || honorsData, 'เกียรตินิยม'));
+    addSheet(sheets, 'Candidate Rows', compactStudentRows(graduationCandidateList, { section: 'รายชื่อผู้มีสิทธิ์สำเร็จการศึกษา' }).map((row, idx) => ({
+        ...row,
+        graduationStatus: graduationCandidateList[idx]?.graduationStatus || '',
+        honors: graduationCandidateList[idx]?.honors || '',
+    })));
+    addSheet(sheets, 'Academic Rules', academicRuleRows());
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['graduation']));
+    return sheets;
+}
+
+function buildGraduationCheckSheets() {
+    const sheets = buildGraduationSheets();
+    addSheet(sheets, 'Rules Sources', rowsFromRecords(academicRulesSources, { section: 'แหล่งอ้างอิงกฎสำเร็จการศึกษา' }));
+    return sheets;
+}
+
+function buildHrSheets() {
+    const sheets = {};
+    const data = getDataset('hr', hrData) || {};
+    const science = data.scienceFaculty || {};
+
+    addSheet(sheets, 'University Summary', rowsFromObject(data.university, 'ภาพรวมบุคลากรมหาวิทยาลัย'));
+    addSheet(sheets, 'University Type', rowsFromRecords(data.university?.byType, { section: 'ประเภทบุคลากรมหาวิทยาลัย' }));
+    addSheet(sheets, 'University Gender', rowsFromRecords(data.university?.byGender, { section: 'เพศบุคลากรมหาวิทยาลัย' }));
+    addSheet(sheets, 'Science Summary', rowsFromObject(science, 'ภาพรวมบุคลากรคณะวิทยาศาสตร์'));
+    addSheet(sheets, 'Science Department', rowsFromRecords(science.byDepartment, { section: 'บุคลากรตามภาควิชา' }));
+    addSheet(sheets, 'Science Type', rowsFromRecords(science.byType, { section: 'ประเภทบุคลากรคณะวิทยาศาสตร์' }));
+    addSheet(sheets, 'Academic Positions', rowsFromRecords(science.academicPositions, { section: 'ตำแหน่งทางวิชาการ' }));
+    addSheet(sheets, 'Education', rowsFromRecords(science.byEducation, { section: 'วุฒิการศึกษา' }));
+    addSheet(sheets, 'Trend', rowsFromRecords(science.trend, { section: 'แนวโน้มบุคลากร' }));
+    addSheet(sheets, 'Promotion Trend', rowsFromRecords(science.promotionTrend, { section: 'แนวโน้มตำแหน่งทางวิชาการ' }));
+    addSheet(sheets, 'Diversity Nationality', rowsFromRecords(science.diversity?.nationality, { section: 'ความหลากหลายสัญชาติ' }));
+    addSheet(sheets, 'Diversity Age', rowsFromRecords(science.diversity?.ageGroup, { section: 'ช่วงอายุ' }));
+    addSheet(sheets, 'Student Faculty Ratio', rowsFromRecords(science.studentFacultyRatio, { section: 'อัตราส่วนนักศึกษาต่ออาจารย์' }));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['hr']));
+    return sheets;
+}
+
+function buildResearchSheets() {
+    const sheets = {};
+    const data = getDataset('research', researchData) || {};
+    addSheet(sheets, 'Summary', rowsFromObject(data.overview, 'ภาพรวมงานวิจัย'));
+    addSheet(sheets, 'Publication Trend', rowsFromRecords(data.publicationTrend, { section: 'ผลงานตีพิมพ์ย้อนหลัง' }));
+    addSheet(sheets, 'By Department', rowsFromRecords(data.byDepartment, { section: 'งานวิจัยตามภาควิชา' }));
+    addSheet(sheets, 'Funding Trend', rowsFromRecords(data.fundingTrend, { section: 'แนวโน้มงบวิจัย' }));
+    addSheet(sheets, 'Funding Sources', rowsFromRecords(data.fundingSources, { section: 'แหล่งทุนวิจัย' }));
+    addSheet(sheets, 'Patents', rowsFromRecords(data.patents, { section: 'สิทธิบัตรและนวัตกรรม' }));
+    addSheet(sheets, 'Community Impact', rowsFromRecords(data.communityImpact, { section: 'ผลกระทบชุมชน' }));
+    addSheet(sheets, 'Benchmark', rowsFromRecords(data.benchmark, { section: 'เปรียบเทียบมหาวิทยาลัย' }));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['research']));
+    return sheets;
+}
+
+function buildFinancialSheets() {
+    const sheets = {};
+    const data = getDataset('financial', financialData) || {};
+    addSheet(sheets, 'Tuition Status', rowsFromRecords(data.tuitionStatus, { section: 'สถานะค่าเทอม' }));
+    addSheet(sheets, 'Payment History', rowsFromRecords(data.paymentHistory, { section: 'ประวัติการชำระเงิน' }));
+    addSheet(sheets, 'Scholarship', rowsFromRecords(data.scholarship, { section: 'ทุนการศึกษา' }));
+    addSheet(sheets, 'Requests', rowsFromRecords(data.requests, { section: 'คำร้อง' }));
+    addSheet(sheets, 'Faculty Budget Summary', rowsFromObject(data.facultyBudget, 'งบประมาณคณะ'));
+    addSheet(sheets, 'Faculty Budget Categories', rowsFromRecords(data.facultyBudget?.categories, { section: 'หมวดงบประมาณคณะ' }));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['financial']));
+    return sheets;
+}
+
+function buildTuitionSheets() {
+    const sheets = {};
+    const data = getDataset('tuition', tuitionData) || {};
+    addSheet(sheets, 'Summary', [
+        { section: 'ค่าเทอม', label: data.flatRate?.label || 'ค่าเทอม', min: data.flatRate?.min ?? '', max: data.flatRate?.max ?? '' },
+        { section: 'ค่าแรกเข้า', label: data.entryFee?.label || 'ค่าธรรมเนียมแรกเข้า', min: data.entryFee?.min ?? '', max: data.entryFee?.max ?? '' },
+        { section: 'ตลอดหลักสูตร', label: data.totalCost?.label || 'ตลอดหลักสูตร', min: data.totalCost?.min ?? '', max: data.totalCost?.max ?? '' },
+    ]);
+    addSheet(sheets, 'By Faculty', rowsFromRecords(data.byFaculty, { section: 'ค่าเทอมตามคณะ' }));
+    addSheet(sheets, 'Breakdown', rowsFromRecords(data.breakdown, { section: 'สัดส่วนค่าใช้จ่าย' }));
+    addSheet(sheets, 'Semester History', rowsFromRecords(data.semesterHistory, { section: 'ประวัติรายเทอม' }));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['tuition']));
+    return sheets;
+}
+
+function buildStudentLifeSheets() {
+    const sheets = {};
+    const data = getDataset('student_life', studentLifeData) || {};
+    addSheet(sheets, 'Activity Summary', rowsFromObject(data.activityHours, 'ชั่วโมงกิจกรรม'));
+    addSheet(sheets, 'Activity Categories', rowsFromRecords(data.activityHours?.categories, { section: 'กิจกรรมตามหมวด' }));
+    addSheet(sheets, 'Library', rowsFromRecords(data.library, { section: 'การยืมหนังสือ' }));
+    addSheet(sheets, 'Behavior Summary', rowsFromObject(data.behaviorScore, 'คะแนนพฤติกรรม'));
+    addSheet(sheets, 'Behavior History', rowsFromRecords(data.behaviorScore?.history, { section: 'คะแนนพฤติกรรมย้อนหลัง' }));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['student_life']));
+    return sheets;
+}
+
+function buildBudgetSheets() {
+    const sheets = {};
+    const universityBudget = getDataset('university_budget', universityBudgetData) || {};
+    const scienceBudget = getDataset('science_budget', scienceFacultyBudgetData) || {};
+
+    addSheet(sheets, 'University Budget', budgetYearRows(universityBudget, 'มหาวิทยาลัยแม่โจ้'));
+    addSheet(sheets, 'University Breakdown', budgetBreakdownRows(universityBudget, 'มหาวิทยาลัยแม่โจ้'));
+    addSheet(sheets, 'University Summary', rowsFromObject(universityBudget.summary, 'สรุปงบมหาวิทยาลัย'));
+    addSheet(sheets, 'Science Budget', budgetYearRows(scienceBudget, 'คณะวิทยาศาสตร์'));
+    addSheet(sheets, 'Science Breakdown', budgetBreakdownRows(scienceBudget, 'คณะวิทยาศาสตร์'));
+    addSheet(sheets, 'Science Summary', rowsFromObject(scienceBudget.summary, 'สรุปงบคณะวิทยาศาสตร์'));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['university_budget', 'science_budget']));
+    return sheets;
+}
+
+function buildStrategicSheets() {
+    const sheets = {};
+    const data = getDataset('strategic', strategicData) || {};
+    addSheet(sheets, 'Strategic Goals', rowsFromRecords(data.strategicGoals, { section: 'เป้าหมายยุทธศาสตร์' }));
+    addSheet(sheets, 'Strategic KPI', (data.strategicGoals || []).flatMap(goal =>
+        (goal.kpis || []).map((kpi, idx) => ({
+            goalId: goal.id,
+            goalTitle: goal.title,
+            row: idx + 1,
+            ...flattenRecord(kpi),
+        }))
+    ));
+    addSheet(sheets, 'OKR Objectives', rowsFromRecords(data.okr?.objectives, { section: data.okr?.period || 'OKR' }));
+    addSheet(sheets, 'OKR Key Results', (data.okr?.objectives || []).flatMap(objective =>
+        (objective.keyResults || []).map((kr, idx) => ({
+            objectiveId: objective.id,
+            objectiveTitle: objective.title,
+            row: idx + 1,
+            ...flattenRecord(kr),
+        }))
+    ));
+    addSheet(sheets, 'Performance Radar', (data.performanceRadar?.categories || []).map((category, idx) => ({
+        row: idx + 1,
+        category,
+        currentYear: data.performanceRadar?.currentYear?.[idx] ?? '',
+        targetYear: data.performanceRadar?.targetYear?.[idx] ?? '',
+        lastYear: data.performanceRadar?.lastYear?.[idx] ?? '',
+    })));
+    addSheet(sheets, 'Efficiency Trend', rowsFromRecords(data.efficiencyTrend, { section: 'แนวโน้มประสิทธิภาพ' }));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['strategic']));
+    return sheets;
+}
+
+function buildAlertSheets() {
+    const sheets = {};
+    const alerts = getAllAlerts();
+    addSheet(sheets, 'Alert Summary', [
+        { label: 'ทั้งหมด', value: alerts.length },
+        { label: 'วิกฤต', value: alerts.filter(alert => alert.severity === 'critical').length },
+        { label: 'เฝ้าระวัง', value: alerts.filter(alert => alert.severity === 'warning').length },
+        { label: 'ข้อมูล', value: alerts.filter(alert => alert.severity === 'info').length },
+    ]);
+    addSheet(sheets, 'Alerts', alerts.map(({ data, ...alert }, idx) => ({
+        row: idx + 1,
+        ...flattenRecord(alert),
+        detailRows: Array.isArray(data) ? data.length : 0,
+    })));
+    addSheet(sheets, 'Alert Details', alerts.flatMap(alert =>
+        (Array.isArray(alert.data) ? alert.data : []).map((item, idx) => ({
+            alertId: alert.id,
+            alertTitle: alert.title,
+            severity: alert.severity,
+            domain: alert.domain,
+            row: idx + 1,
+            ...flattenRecord(item),
+        }))
+    ));
+    return sheets;
+}
+
+function academicRuleRows() {
+    return [
+        { section: 'ขอบเขต', label: 'คณะ', value: academicRulesScope.faculty },
+        { section: 'ขอบเขต', label: 'หลักสูตร', value: academicRulesScope.degreeTrack },
+        { section: 'ขอบเขต', label: 'ตรวจทานล่าสุด', value: academicRulesScope.reviewedAt },
+        { section: 'เกียรตินิยม', label: 'หน่วยกิตขั้นต่ำ', value: honorsRules.creditRequirement },
+        { section: 'เกียรตินิยม', label: 'สำเร็จตามหลักสูตร', value: honorsRules.normalCompletion },
+        ...(honorsRules.thresholds || []).map(item => ({
+            section: 'เกณฑ์ GPA เกียรตินิยม',
+            label: item.rank,
+            value: item.gpa,
+        })),
+        ...(honorsRules.mustHave || []).map((value, idx) => ({
+            section: 'คุณสมบัติที่ต้องมี',
+            label: `ข้อ ${idx + 1}`,
+            value,
+        })),
+        ...(honorsRules.disqualifiers || []).map((value, idx) => ({
+            section: 'ลักษณะต้องห้าม',
+            label: `ข้อ ${idx + 1}`,
+            value,
+        })),
+    ];
+}
+
+function buildAcademicRulesSheets() {
+    const sheets = {};
+    addSheet(sheets, 'Scope', rowsFromRecords(academicRulesScope, { section: 'ขอบเขตข้อมูล' }));
+    addSheet(sheets, 'Honors Rules', academicRuleRows());
+    addSheet(sheets, 'Graduation Rules', (graduationRules || []).flatMap(rule =>
+        (rule.items || []).map((value, idx) => ({
+            section: rule.title,
+            row: idx + 1,
+            value,
+        }))
+    ));
+    addSheet(sheets, 'Sources', rowsFromRecords(academicRulesSources, { section: 'แหล่งอ้างอิงทางการ' }));
+    return sheets;
+}
+
+function buildDatasetInventorySheets() {
+    const sheets = {};
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows());
+    return sheets;
+}
+
+function normalizeRoutePath(pathname) {
+    const path = String(pathname || '').replace(/\/+$/, '');
+    return path || '/';
+}
+
+function buildRouteExportSheets(pathname) {
+    const path = normalizeRoutePath(pathname || (typeof window !== 'undefined' ? window.location?.pathname : ''));
+    if (path === '/dashboard') return buildDashboardOverviewSheets();
+    if (path.endsWith('/student-stats')) return buildStudentStatsSheets();
+    if (path.endsWith('/students')) return buildStudentListSheets();
+    if (path.endsWith('/graduation-stats')) return buildGraduationSheets();
+    if (path.endsWith('/graduation')) return buildGraduationCheckSheets();
+    if (path.endsWith('/academic-rules')) return buildAcademicRulesSheets();
+    if (path.endsWith('/hr')) return buildHrSheets();
+    if (path.endsWith('/research')) return buildResearchSheets();
+    if (path.endsWith('/financial')) return buildFinancialSheets();
+    if (path.endsWith('/tuition')) return buildTuitionSheets();
+    if (path.endsWith('/student-life')) return buildStudentLifeSheets();
+    if (path.endsWith('/budget')) return buildBudgetSheets();
+    if (path.endsWith('/strategic')) return buildStrategicSheets();
+    if (path.endsWith('/alerts')) return buildAlertSheets();
+    if (path.endsWith('/ai-chat') || path.endsWith('/admin')) return buildDatasetInventorySheets();
+    return {};
 }
 
 function rowsToGrid(rows) {
@@ -605,15 +1092,15 @@ export function extractPageExportPayload(root = document) {
 }
 
 export function extractPageExportData(root = document, { includeChartRows = true } = {}) {
-    const sheets = {};
+    const sheets = { ...buildRouteExportSheets() };
     const tables = Array.from(root.querySelectorAll('table'));
     tables.forEach((table, idx) => {
         const rows = tableToRows(table, `Table ${idx + 1}`);
-        if (rows.length > 0) sheets[`Table ${idx + 1}`] = rows;
+        addSheet(sheets, `Visible Table ${idx + 1}`, rows);
     });
 
     const statRows = statCardsToRows(root);
-    if (statRows.length > 0) sheets.Summary = statRows;
+    addSheet(sheets, 'Visible Summary', statRows);
 
     if (includeChartRows) {
         const canvases = Array.from(root.querySelectorAll('canvas'));
@@ -621,7 +1108,7 @@ export function extractPageExportData(root = document, { includeChartRows = true
             const chart = ChartJS.getChart(canvas);
             const title = chart?.options?.plugins?.title?.text || `Chart ${idx + 1}`;
             const rows = chartToRows(chart, String(title));
-            if (rows.length > 0) sheets[`Chart ${idx + 1}`] = rows;
+            addSheet(sheets, `Chart ${idx + 1}`, rows);
         });
     }
 
