@@ -84,6 +84,18 @@ function downloadBlob(fileName, mimeType, content) {
     URL.revokeObjectURL(url);
 }
 
+function downloadDataUrl(fileName, dataUrl, delayMs = 0) {
+    if (!dataUrl) return;
+    window.setTimeout(() => {
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }, delayMs);
+}
+
 export function downloadCSV(fileName, rows) {
     const csv = rowsToCsv(rows);
     downloadBlob(`${safeFileName(fileName)}.csv`, 'text/csv;charset=utf-8', `\uFEFF${csv}`);
@@ -382,16 +394,6 @@ function dataUrlToBytes(dataUrl) {
 async function downloadXlsx(fileName, sheets, chartSheets = []) {
     const usedNames = new Set();
     const sheetDefs = [];
-    Object.entries(sheets || {}).forEach(([name, rows]) => {
-        const normalized = normalizeRows(rows);
-        if (normalized.length === 0) return;
-        sheetDefs.push({
-            name: uniqueSheetName(name, usedNames),
-            rows: normalized,
-            imageDataUrl: '',
-            dataStartRow: 1,
-        });
-    });
 
     chartSheets.forEach((chart, idx) => {
         if (!chart?.imageDataUrl && normalizeRows(chart?.rows).length === 0) return;
@@ -400,6 +402,17 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
             rows: normalizeRows(chart.rows).length > 0 ? chart.rows : [{ note: 'Chart image captured from the dashboard page.' }],
             imageDataUrl: chart.imageDataUrl || '',
             dataStartRow: chart.imageDataUrl ? 25 : 1,
+        });
+    });
+
+    Object.entries(sheets || {}).forEach(([name, rows]) => {
+        const normalized = normalizeRows(rows);
+        if (normalized.length === 0) return;
+        sheetDefs.push({
+            name: uniqueSheetName(name, usedNames),
+            rows: normalized,
+            imageDataUrl: '',
+            dataStartRow: 1,
         });
     });
 
@@ -603,6 +616,16 @@ async function collectChartSheets(root = document) {
     return chartSheets;
 }
 
+async function exportVisibleChartImages(title = 'page-export', root = document) {
+    const chartSheets = await collectChartSheets(root);
+    const exportable = chartSheets.filter(chart => chart.imageDataUrl);
+    exportable.forEach((chart, idx) => {
+        const name = `${safeFileName(title)}_${String(idx + 1).padStart(2, '0')}_${safeFileName(chart.name || `chart_${idx + 1}`)}.png`;
+        downloadDataUrl(name, chart.imageDataUrl, idx * 180);
+    });
+    return chartSheets;
+}
+
 export function extractPageExportPayload(root = document) {
     return extractPageExportData(root).sheets;
 }
@@ -629,36 +652,30 @@ export function extractPageExportData(root = document) {
     return { sheets };
 }
 
-export function exportPageAsCSV(title = 'page-export') {
+export async function exportPageAsCSV(title = 'page-export') {
     const sheets = extractPageExportPayload();
     const rows = Object.entries(sheets).flatMap(([sheet, sheetRows]) =>
         sheetRows.map(row => ({ sheet, ...row }))
     );
     downloadCSV(title, rows);
+    await exportVisibleChartImages(title);
 }
 
 export async function exportPageAsExcel(title = 'page-export') {
     const { sheets } = extractPageExportData();
     const chartSheets = await collectChartSheets();
-    await exportWorkbook(title, {
-        README: [{
-            note: 'Chart sheets include a captured chart image from the dashboard and source data when available.',
-        }],
-        ...sheets,
-    }, chartSheets);
+    await exportWorkbook(title, sheets, chartSheets);
 }
 
-export function exportChartAsCSV(title, chart) {
+export async function exportChartAsCSV(title, chart) {
     downloadCSV(title, chartToRows(chart, title));
+    const imageDataUrl = await renderChartImageDataUrl(chart);
+    if (imageDataUrl) downloadDataUrl(`${safeFileName(title || 'chart')}.png`, imageDataUrl);
 }
 
 export async function exportChartAsExcel(title, chart) {
     const imageDataUrl = await renderChartImageDataUrl(chart);
-    await exportWorkbook(title, {
-        README: [{
-            note: 'Chart sheets include a captured chart image and source data.',
-        }],
-    }, [{
+    await exportWorkbook(title, {}, [{
         name: title || 'Chart',
         rows: chartToRows(chart, title || 'Chart'),
         imageDataUrl,
