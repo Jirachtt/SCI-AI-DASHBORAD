@@ -113,7 +113,8 @@ export default function StudentStatsPage() {
         : byFaculty.filter(f => f.name === appliedFaculty);
 
     const filteredTotal = filteredFaculty.reduce((sum, f) => {
-        if (appliedLevel === 'all') return sum + f.bachelor + f.master + f.doctoral;
+        if (appliedLevel === 'all') return sum + (f.certificate || 0) + f.bachelor + f.master + f.doctoral;
+        if (appliedLevel === 'certificate') return sum + (f.certificate || 0);
         if (appliedLevel === 'bachelor') return sum + f.bachelor;
         if (appliedLevel === 'master') return sum + f.master;
         if (appliedLevel === 'doctoral') return sum + f.doctoral;
@@ -123,6 +124,7 @@ export default function StudentStatsPage() {
     // Build filtered stat cards from applied filters
     const filteredByLevel = (() => {
         const levels = [
+            { level: 'ประกาศนียบัตร', key: 'certificate', color: getStudentLevelColor('ประกาศนียบัตร', 0) },
             { level: 'ปริญญาตรี', key: 'bachelor', color: getStudentLevelColor('ปริญญาตรี', 1) },
             { level: 'ปริญญาโท', key: 'master', color: getStudentLevelColor('ปริญญาโท', 2) },
             { level: 'ปริญญาเอก', key: 'doctoral', color: getStudentLevelColor('ปริญญาเอก', 3) },
@@ -555,6 +557,7 @@ export default function StudentStatsPage() {
                 </select>
                 <select value={selectedLevel} onChange={(e) => setSelectedLevel(e.target.value)}>
                     <option value="all">ทุกระดับ</option>
+                    <option value="certificate">ประกาศนียบัตร</option>
                     <option value="bachelor">ปริญญาตรี</option>
                     <option value="master">ปริญญาโท</option>
                     <option value="doctoral">ปริญญาเอก</option>

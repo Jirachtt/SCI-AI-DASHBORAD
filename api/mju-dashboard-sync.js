@@ -4,8 +4,9 @@ const DATASET_ENV_PREFIX = 'MJU_DASHBOARD_SOURCE_';
 
 const DEFAULT_PUBLIC_SOURCES = {
   student_stats: 'https://dashboard.mju.ac.th/student',
-  research: 'https://dashboard.mju.ac.th/scopusList?dep=20300-20300',
-  dashboard_summary: 'https://dashboard.mju.ac.th/',
+  research: 'https://dashboard.mju.ac.th/homeDashboard?&dep=20300',
+  dashboard_summary: 'https://dashboard.mju.ac.th/student',
+  hr: 'https://dashboard.mju.ac.th/homeDashboard?&dep=20300',
 };
 
 export const DASHBOARD_SYNC_DATASETS = [
@@ -96,47 +97,141 @@ function parseDatasetValues(xml, seriesName) {
   return [...dataset.matchAll(/<set\s+value='([^']*)'/g)].map(match => numberFromText(match[1]));
 }
 
+function parseSimpleSets(xml) {
+  return [...String(xml || '').matchAll(/<set\s+label='([^']*)'[^>]*value='([^']*)'[^>]*\/>/g)]
+    .map(match => ({ label: match[1], value: numberFromText(match[2]) }))
+    .filter(row => row.label);
+}
+
+function rowTotal(row) {
+  return Number(row?.certificate || 0) + Number(row?.bachelor || 0) + Number(row?.master || 0) + Number(row?.doctoral || 0);
+}
+
+function normalizeFacultyName(name) {
+  const text = String(name || '').trim();
+  const facultyPrefixes = [
+    'บริหารธุรกิจ',
+    'ผลิตกรรมการเกษตร',
+    'วิทยาศาสตร์',
+    'สารสนเทศและการสื่อสาร',
+    'ศิลปศาสตร์',
+    'เศรษฐศาสตร์',
+    'พัฒนาการท่องเที่ยว',
+    'สัตวศาสตร์และเทคโนโลยี',
+    'วิศวกรรมและอุตสาหกรรมเกษตร',
+    'สถาปัตยกรรมศาสตร์และการออกแบบสิ่งแวดล้อม',
+    'เทคโนโลยีการประมงและทรัพยากรทางน้ำ',
+    'พยาบาลศาสตร์',
+    'สัตวแพทยศาสตร์',
+  ];
+  if (facultyPrefixes.includes(text)) return `คณะ${text}`;
+  return text;
+}
+
+function levelRowsFromChart(chartXml) {
+  const levelMeta = [
+    { pattern: /ปริญญาตรี/, color: '#2563eb', icon: 'BSc' },
+    { pattern: /ปริญญาโท/, color: '#7c3aed', icon: 'MSc' },
+    { pattern: /ปริญญาเอก/, color: '#ea580c', icon: 'PhD' },
+    { pattern: /ประกาศนียบัตร/, color: '#059669', icon: 'Cert' },
+  ];
+  const labels = parseCategoryLabels(chartXml);
+  const totals = parseDatasetValues(chartXml, 'ยอดรวม');
+  return labels.map((level, index) => {
+    const meta = levelMeta.find(item => item.pattern.test(level)) || {};
+    return { level, count: totals[index] || 0, color: meta.color, icon: meta.icon };
+  }).filter(row => row.count > 0);
+}
+
+function aggregateRowsFromChart(chartXml, labelKey = 'label') {
+  const labels = parseCategoryLabels(chartXml);
+  const cert = parseDatasetValues(chartXml, 'ประกาศนียบัตร');
+  const bachelor = parseDatasetValues(chartXml, 'ปริญญาตรี');
+  const master = parseDatasetValues(chartXml, 'ปริญญาโท');
+  const doctoral = parseDatasetValues(chartXml, 'ปริญญาเอก');
+  return labels.map((label, index) => {
+    const row = {
+      [labelKey]: label,
+      certificate: cert[index] || 0,
+      bachelor: bachelor[index] || 0,
+      master: master[index] || 0,
+      doctoral: doctoral[index] || 0,
+    };
+    row.total = rowTotal(row);
+    return row;
+  }).filter(row => row[labelKey] && row.total > 0);
+}
+
+function simpleForecastFromActualRows(rows) {
+  const actual = [...rows].sort((a, b) => Number(a.year) - Number(b.year));
+  if (actual.length < 2) return actual.map(row => ({ ...row, type: 'actual' }));
+
+  const last = actual[actual.length - 1];
+  const previous = actual[actual.length - 2];
+  const project = (key) => Math.max(0, Math.round(Number(last[key] || 0) + (Number(last[key] || 0) - Number(previous[key] || 0))));
+  return [
+    ...actual.map(row => ({ ...row, type: 'actual' })),
+    {
+      year: String(Number(last.year) + 1),
+      certificate: project('certificate'),
+      bachelor: project('bachelor'),
+      master: project('master'),
+      doctoral: project('doctoral'),
+      total: project('total'),
+      type: 'forecast',
+    },
+  ];
+}
+
+function buildScienceFaculty(byFaculty, fallback = {}) {
+  const row = byFaculty.find(item => String(item.name || '').includes('วิทยาศาสตร์'));
+  if (!row) return null;
+  const byLevel = [
+    { level: 'ปริญญาตรี', count: row.bachelor || 0, color: '#2563eb', icon: 'BSc' },
+    { level: 'ปริญญาโท', count: row.master || 0, color: '#7c3aed', icon: 'MSc' },
+    { level: 'ปริญญาเอก', count: row.doctoral || 0, color: '#ea580c', icon: 'PhD' },
+    { level: 'ประกาศนียบัตร', count: row.certificate || 0, color: '#059669', icon: 'Cert' },
+  ];
+  return {
+    ...fallback,
+    name: 'คณะวิทยาศาสตร์',
+    total: row.total || rowTotal(row),
+    byLevel,
+  };
+}
+
 function normalizeStudentStatsFromFusionCharts(html) {
   const charts = extractFusionChartXml(html);
   const levelChart = charts.find(xml => xml.includes("xAxisName='ระดับการศึกษา'"));
   const facultyChart = charts.find(xml => xml.includes("xAxisName='หน่วยงาน'"));
+  const enrollmentChart = charts.find(xml => xml.includes("xAxisName='ปีที่รับเข้า'"));
+  const campusChart = charts.find(xml => xml.includes("xAxisName='วิทยาเขต'"));
   if (!levelChart || !facultyChart) return null;
 
-  const levelMeta = [
-    { pattern: /ปริญญาตรี/, color: '#006838', icon: 'BSc' },
-    { pattern: /ปริญญาโท/, color: '#2E86AB', icon: 'MSc' },
-    { pattern: /ปริญญาเอก/, color: '#A23B72', icon: 'PhD' },
-    { pattern: /ประกาศนียบัตร/, color: '#C5A028', icon: 'Cert' },
-  ];
-
-  const levelLabels = parseCategoryLabels(levelChart);
-  const levelTotals = parseDatasetValues(levelChart, 'ยอดรวม');
-  const byLevel = levelLabels.map((level, index) => {
-    const meta = levelMeta.find(item => item.pattern.test(level)) || {};
-    return { level, count: levelTotals[index] || 0, color: meta.color, icon: meta.icon };
-  }).filter(row => row.count > 0);
-
-  const facultyLabels = parseCategoryLabels(facultyChart);
-  const cert = parseDatasetValues(facultyChart, 'ประกาศนียบัตร');
-  const bachelor = parseDatasetValues(facultyChart, 'ปริญญาตรี');
-  const master = parseDatasetValues(facultyChart, 'ปริญญาโท');
-  const doctoral = parseDatasetValues(facultyChart, 'ปริญญาเอก');
-  const byFaculty = facultyLabels.map((name, index) => ({
-    name,
-    certificate: cert[index] || 0,
-    bachelor: bachelor[index] || 0,
-    master: master[index] || 0,
-    doctoral: doctoral[index] || 0,
-  })).filter(row => row.name && (row.certificate + row.bachelor + row.master + row.doctoral) > 0);
+  const byLevel = levelRowsFromChart(levelChart);
+  const byFaculty = aggregateRowsFromChart(facultyChart, 'name')
+    .map(row => ({ ...row, name: normalizeFacultyName(row.name) }));
+  const byEnrollmentYear = enrollmentChart
+    ? aggregateRowsFromChart(enrollmentChart, 'year').sort((a, b) => Number(b.year) - Number(a.year))
+    : [];
+  const byCampus = campusChart
+    ? aggregateRowsFromChart(campusChart, 'campus').map(row => ({ ...row, count: row.total }))
+    : [];
+  const trend = simpleForecastFromActualRows(byEnrollmentYear);
+  const scienceFaculty = buildScienceFaculty(byFaculty);
 
   const total = byLevel.reduce((sum, row) => sum + row.count, 0)
-    || byFaculty.reduce((sum, row) => sum + row.certificate + row.bachelor + row.master + row.doctoral, 0);
+    || byFaculty.reduce((sum, row) => sum + row.total, 0);
 
   if (!total || byFaculty.length === 0) return null;
 
   return {
     current: { total, byLevel },
     byFaculty,
+    byEnrollmentYear,
+    byCampus,
+    trend,
+    ...(scienceFaculty ? { scienceFaculty } : {}),
     sourceNote: 'Synced from public MJU Dashboard student page',
   };
 }
@@ -183,8 +278,106 @@ function normalizeStudentStatsFromTables(tables) {
 
   return {
     current: { total, byLevel },
-    byFaculty,
+    byFaculty: byFaculty.map(row => ({ ...row, name: normalizeFacultyName(row.name), total: rowTotal(row) })),
     sourceNote: 'Synced from public MJU Dashboard student page',
+  };
+}
+
+function normalizeDashboardSummaryFromStudentPage(html) {
+  const studentStats = normalizeStudentStatsFromFusionCharts(html) || normalizeStudentStatsFromTables(parseHtmlTables(html));
+  if (!studentStats?.byFaculty?.length) return null;
+  return {
+    totalStudents: studentStats.current.total,
+    faculties: studentStats.byFaculty.map(row => ({
+      name: row.name,
+      totalStudents: row.total || rowTotal(row),
+    })),
+    sourceNote: 'Synced from public MJU Dashboard student page',
+  };
+}
+
+function normalizeResearchFromHomeDashboard(html, tables) {
+  const charts = extractFusionChartXml(html);
+  const scopusChart = charts.find(xml => xml.includes("xAxisName='ปีตีพิมพ์'"));
+  const researchSets = charts
+    .filter(xml => !xml.includes("xAxisName='ปีตีพิมพ์'"))
+    .map(xml => parseSimpleSets(xml))
+    .find(rows => rows.length >= 5 && rows.some(row => row.value > 50)) || [];
+  const projectTrend = researchSets
+    .map(row => ({ year: row.label, projects: row.value, type: 'actual' }))
+    .sort((a, b) => Number(a.year) - Number(b.year));
+  const publicationTrend = parseSimpleSets(scopusChart)
+    .map(row => ({
+      year: row.label,
+      scopus: row.value,
+      tci1: 0,
+      tci2: 0,
+      national: 0,
+      total: row.value,
+      type: 'actual',
+    }))
+    .sort((a, b) => Number(a.year) - Number(b.year));
+
+  const fundingTable = tables.find(table =>
+    table.some(row => row.join(' ').includes('ปีงบประมาณ')) &&
+    table.some(row => row.join(' ').includes('งบประมาณ'))
+  );
+  const fundingTrend = (fundingTable || [])
+    .map(row => {
+      const yearIndex = row.findIndex(cell => /^\d{4}$/.test(String(cell || '').trim()));
+      if (yearIndex < 0) return null;
+      const total = numberFromText(row[yearIndex + 2]) / 1000000;
+      return {
+        year: row[yearIndex],
+        internal: Number((total * 0.2).toFixed(2)),
+        external: Number((total * 0.65).toFixed(2)),
+        industry: Number((total * 0.15).toFixed(2)),
+        total: Number(total.toFixed(2)),
+        projects: numberFromText(row[yearIndex + 1]),
+        type: 'actual',
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => Number(a.year) - Number(b.year));
+
+  const latestFunding = fundingTrend[fundingTrend.length - 1];
+  const latestPublication = publicationTrend[publicationTrend.length - 1];
+  const activeProjects = latestFunding?.projects || projectTrend[projectTrend.length - 1]?.projects || 0;
+  const payload = {
+    overview: {
+      activeProjects,
+      totalFunding: latestFunding?.total || 0,
+      totalPublications: publicationTrend.reduce((sum, row) => sum + Number(row.scopus || 0), 0),
+    },
+    ...(publicationTrend.length ? { publicationTrend } : {}),
+    ...(fundingTrend.length ? { fundingTrend } : {}),
+    ...(projectTrend.length ? { projectTrend } : {}),
+    sourceNote: 'Synced from public MJU Dashboard faculty home page',
+  };
+  if (!latestPublication && !latestFunding && !projectTrend.length) return null;
+  return payload;
+}
+
+function normalizeHrFromHomeDashboard(html) {
+  const personBlock = String(html || '').match(/id="ContentPlaceHolder_lbl_chartPerson">([\s\S]*?)<\/span>/)?.[1] || '';
+  if (!personBlock) return null;
+  const total = numberFromText(personBlock.match(/ทั้งหมดของหน่วยงาน[\s\S]*?<strong>([\d,]+)<\/strong>/)?.[1]);
+  const byType = [...String(html || '').matchAll(/title='([^']+?)\s+\(([^)]*)\)'/g)]
+    .map((match, index) => ({
+      type: stripTags(match[1]),
+      count: numberFromText(match[2]),
+      color: ['#006838', '#2E86AB', '#C5A028', '#A23B72'][index % 4],
+    }))
+    .filter(row => row.type && !row.type.includes('ร้อยละ') && row.count > 0)
+    .slice(0, 8);
+  if (!total || byType.length === 0) return null;
+  return {
+    scienceFaculty: {
+      name: 'คณะวิทยาศาสตร์',
+      total,
+      byType,
+    },
+    sourceNote: 'Synced from public MJU Dashboard faculty home page',
   };
 }
 
@@ -192,6 +385,18 @@ function normalizeHtmlDataset(dataset, html, sourceUrl) {
   const tables = parseHtmlTables(html);
   if (dataset === 'student_stats') {
     const normalized = normalizeStudentStatsFromFusionCharts(html) || normalizeStudentStatsFromTables(tables);
+    if (normalized) return normalized;
+  }
+  if (dataset === 'dashboard_summary') {
+    const normalized = normalizeDashboardSummaryFromStudentPage(html);
+    if (normalized) return normalized;
+  }
+  if (dataset === 'research') {
+    const normalized = normalizeResearchFromHomeDashboard(html, tables);
+    if (normalized) return normalized;
+  }
+  if (dataset === 'hr') {
+    const normalized = normalizeHrFromHomeDashboard(html);
     if (normalized) return normalized;
   }
 

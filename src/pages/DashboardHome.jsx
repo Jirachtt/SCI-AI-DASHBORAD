@@ -82,9 +82,39 @@ const dashboardInsights = [
 export default function DashboardHome() {
     const { user } = useAuth();
     const { data: dashboardSummary } = useDashboardDataset('dashboard_summary');
-    const sci = dashboardSummary.faculties.find(f => f.name === 'คณะวิทยาศาสตร์')
-        || dashboardSummary.faculties.find(f => String(f.name || '').includes('วิทยาศาสตร์'))
-        || dashboardSummary.faculties[0];
+    const { data: studentStatsData } = useDashboardDataset('student_stats');
+    const summaryFaculties = Array.isArray(dashboardSummary?.faculties) ? dashboardSummary.faculties : [];
+    const sci = summaryFaculties.find(f => f.name === 'คณะวิทยาศาสตร์')
+        || summaryFaculties.find(f => String(f.name || '').includes('วิทยาศาสตร์'))
+        || summaryFaculties[0]
+        || {};
+    const liveScienceFaculty = studentStatsData?.scienceFaculty
+        || (Array.isArray(studentStatsData?.byFaculty)
+            ? (() => {
+                const row = studentStatsData.byFaculty.find(f => String(f.name || '').includes('วิทยาศาสตร์'));
+                if (!row) return null;
+                return {
+                    name: 'คณะวิทยาศาสตร์',
+                    total: Number(row.total || 0) || Number(row.bachelor || 0) + Number(row.master || 0) + Number(row.doctoral || 0) + Number(row.certificate || 0),
+                    byLevel: [
+                        { label: 'ปริญญาตรี', value: row.bachelor || 0, color: '#2563eb' },
+                        { label: 'ปริญญาโท', value: row.master || 0, color: '#7c3aed' },
+                        { label: 'ปริญญาเอก', value: row.doctoral || 0, color: '#ea580c' },
+                        { label: 'ประกาศนียบัตร', value: row.certificate || 0, color: '#059669' },
+                    ],
+                };
+            })()
+            : null);
+    const totalStudents = Number(studentStatsData?.current?.total || dashboardSummary?.totalStudents || 0);
+    const scienceStudentTotal = Number(liveScienceFaculty?.total || sci.totalStudents || 0);
+    const scienceLevelDetails = (liveScienceFaculty?.byLevel || [])
+        .map(item => ({
+            label: item.label || item.level,
+            value: Number(item.value ?? item.count ?? 0),
+            color: item.color || '#00a651',
+        }))
+        .filter(item => item.value > 0)
+        .map(item => ({ ...item, value: item.value.toLocaleString('th-TH') }));
     const [insights] = useState(dashboardInsights);
     const [isEditMode, setIsEditMode] = useState(false);
     const [showForecast, setShowForecast] = useState(false);
@@ -95,13 +125,13 @@ export default function DashboardHome() {
 
     const scienceSubData = [
         {
-            key: 'students', value: sci.totalStudents.toLocaleString(), label: 'นักศึกษาคณะวิทยาศาสตร์',
-            pct: ((sci.totalStudents / dashboardSummary.totalStudents) * 100).toFixed(1),
+            key: 'students', value: scienceStudentTotal.toLocaleString('th-TH'), label: 'นักศึกษาคณะวิทยาศาสตร์',
+            pct: totalStudents ? ((scienceStudentTotal / totalStudents) * 100).toFixed(1) : '0.0',
             color: '#006838',
-            details: [
-                { label: 'ปริญญาตรี', value: '1,572', color: '#00a651' },
-                { label: 'ปริญญาโท', value: '15', color: '#2E86AB' },
-                { label: 'ปริญญาเอก', value: '4', color: '#A23B72' },
+            details: scienceLevelDetails.length > 0 ? scienceLevelDetails : [
+                { label: 'ปริญญาตรี', value: '1,429', color: '#2563eb' },
+                { label: 'ปริญญาโท', value: '17', color: '#7c3aed' },
+                { label: 'ปริญญาเอก', value: '5', color: '#ea580c' },
             ]
         },
         {
@@ -137,7 +167,7 @@ export default function DashboardHome() {
     ];
 
     const statCards = [
-        { icon: <GraduationCap size={22} />, gradient: 'linear-gradient(135deg, #006838, #00a651)', value: dashboardSummary.totalStudents.toLocaleString(), label: 'นักศึกษาทั้งหมด', trend: '+3.2%' },
+        { icon: <GraduationCap size={22} />, gradient: 'linear-gradient(135deg, #006838, #00a651)', value: totalStudents.toLocaleString('th-TH'), label: 'นักศึกษาทั้งหมด', trend: '+3.2%' },
         { icon: <BookOpen size={22} />, gradient: 'linear-gradient(135deg, #2E86AB, #1a5276)', value: dashboardSummary.totalCourses, label: 'รายวิชาเปิดสอน', trend: null },
         { icon: <TrendingUp size={22} />, gradient: 'linear-gradient(135deg, #C5A028, #9a7d1e)', value: dashboardSummary.avgGPA, label: 'เกรดเฉลี่ยรวม (GPA)', trend: null },
         { icon: <Users size={22} />, gradient: 'linear-gradient(135deg, #A23B72, #7B2D8E)', value: dashboardSummary.graduationRate + '%', label: 'อัตราสำเร็จการศึกษา', trend: '+1.5%' }

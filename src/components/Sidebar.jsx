@@ -1,12 +1,16 @@
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { canAccess, getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
+import { getAIRateLimitSnapshot, getAITokenStats } from '../services/geminiService';
 import {
     Home, CreditCard, DollarSign, Users, LogOut, Lock, FileText,
     GraduationCap, CheckCircle, BarChart3,
     Microscope, Target, UserCheck, BookOpen, Award,
-    Shield, UserCog, Clock, Bell, Bot
+    Shield, UserCog, Clock, Bell, Bot, Settings, Gauge, ChevronDown,
+    ChevronRight, UserRound, Palette, Activity
 } from 'lucide-react';
 
 const FEATURED_AI_CHAT = {
@@ -77,14 +81,32 @@ const menuGroups = [
 
 export default function Sidebar({ isOpen, onClose }) {
     const { user, logout } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [rateLimitsOpen, setRateLimitsOpen] = useState(false);
+    const [rateLimitSnapshot, setRateLimitSnapshot] = useState(() => getAIRateLimitSnapshot());
+    const [tokenStats, setTokenStats] = useState(() => getAITokenStats());
 
     const handleLogout = () => {
+        setSettingsOpen(false);
         logout();
         navigate('/');
     };
 
+    useEffect(() => {
+        if (!settingsOpen) return undefined;
+        const refresh = () => {
+            setRateLimitSnapshot(getAIRateLimitSnapshot());
+            setTokenStats(getAITokenStats());
+        };
+        refresh();
+        const interval = setInterval(refresh, 5000);
+        return () => clearInterval(interval);
+    }, [settingsOpen]);
+
     const badgeColor = getRoleBadgeColor(user?.role);
+    const totalTokens = Number(tokenStats.estimatedInputTokens || 0) + Number(tokenStats.estimatedOutputTokens || 0);
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -184,16 +206,120 @@ export default function Sidebar({ isOpen, onClose }) {
                             </span>
                         )}
                     </div>
-                    <button className="logout-btn" onClick={handleLogout} aria-label="ออกจากระบบ" data-tooltip="ออกจากระบบ">
-                        <LogOut size={18} />
-                    </button>
                 </div>
+                <button
+                    type="button"
+                    className={`sidebar-settings-button ${settingsOpen ? 'active' : ''}`}
+                    onClick={() => setSettingsOpen(true)}
+                    aria-label="เปิด Settings"
+                >
+                    <Settings size={16} />
+                    <span>Settings</span>
+                    <ChevronRight size={15} />
+                </button>
                 <div className="sidebar-status-row">
                     <span className="sidebar-status-dot" />
                     <span className="sidebar-status-text">ออนไลน์</span>
                     <span className="sidebar-version">v1.0.0</span>
                 </div>
             </div>
+            {settingsOpen && (
+                <div className="settings-popover-overlay" onClick={() => setSettingsOpen(false)}>
+                    <section
+                        className="settings-popover"
+                        role="dialog"
+                        aria-label="Settings"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="settings-popover-section">
+                            <div className="settings-popover-label">
+                                <UserRound size={13} />
+                                <span>Personal account</span>
+                            </div>
+                            <div className="settings-account-card">
+                                <div className="sidebar-avatar settings-account-avatar">
+                                    {user?.avatar && user.avatar.startsWith('http') ? (
+                                        <img src={user.avatar} alt="avatar" style={{ width: '100%', height: '100%', borderRadius: 10, objectFit: 'cover' }} />
+                                    ) : (
+                                        user?.avatar
+                                    )}
+                                </div>
+                                <div className="settings-account-text">
+                                    <strong>{user?.name || 'ผู้ใช้'}</strong>
+                                    <span style={{ background: `${badgeColor}22`, color: badgeColor }}>{user?.roleLabel || user?.role || 'General'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="settings-popover-section">
+                            <div className="settings-popover-label">
+                                <Settings size={13} />
+                                <span>Settings</span>
+                            </div>
+                            <button type="button" className="settings-menu-row" onClick={toggleTheme}>
+                                <span className="settings-menu-icon"><Palette size={15} /></span>
+                                <span className="settings-menu-main">
+                                    <span>Theme</span>
+                                    <small>{theme === 'dark' ? 'Dark mode' : 'Light mode'}</small>
+                                </span>
+                                <span className="settings-theme-pill">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+                            </button>
+                        </div>
+
+                        <div className="settings-popover-section">
+                            <button
+                                type="button"
+                                className="settings-menu-row"
+                                onClick={() => setRateLimitsOpen(open => !open)}
+                                aria-expanded={rateLimitsOpen}
+                            >
+                                <span className="settings-menu-icon"><Gauge size={15} /></span>
+                                <span className="settings-menu-main">
+                                    <span>Rate limits remaining</span>
+                                    <small>{rateLimitSnapshot.remaining} / {rateLimitSnapshot.totalLimit} requests · {rateLimitSnapshot.windowSeconds}s window</small>
+                                </span>
+                                <strong className="settings-rate-percent">{rateLimitSnapshot.remainingPercent}%</strong>
+                                {rateLimitsOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                            </button>
+                            <div className="settings-rate-bar" aria-hidden="true">
+                                <span style={{ width: `${rateLimitSnapshot.remainingPercent}%` }} />
+                            </div>
+                            {rateLimitSnapshot.waitSeconds > 0 && (
+                                <div className="settings-rate-wait">
+                                    <Clock size={13} /> รอประมาณ {rateLimitSnapshot.waitSeconds}s ก่อนส่งคำถามต่อไป
+                                </div>
+                            )}
+                            {rateLimitsOpen && (
+                                <div className="settings-rate-detail">
+                                    {rateLimitSnapshot.byModel.map(model => (
+                                        <div key={model.id} className="settings-rate-model">
+                                            <div>
+                                                <span>{model.label}</span>
+                                                <small>{model.cooldownSeconds > 0 ? `cooldown ${model.cooldownSeconds}s` : `${model.remaining}/${model.limit} left`}</small>
+                                            </div>
+                                            <div className="settings-rate-mini">
+                                                <span style={{ width: `${model.remainingPercent}%` }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="settings-popover-section">
+                            <div className="settings-usage-row">
+                                <Activity size={15} />
+                                <span>{Number(tokenStats.requests || 0).toLocaleString()} AI requests</span>
+                                <strong>{totalTokens.toLocaleString()} tokens</strong>
+                            </div>
+                            <button type="button" className="settings-logout-row" onClick={handleLogout}>
+                                <LogOut size={16} />
+                                <span>ออกจากระบบ</span>
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </aside>
     );
 }

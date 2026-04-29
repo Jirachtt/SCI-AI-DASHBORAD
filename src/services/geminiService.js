@@ -43,6 +43,7 @@ const SEARCH_CAPABLE_MODELS = new Set([
 
 const AI_SETTINGS_KEY = 'sci-ai-dashboard:ai-settings';
 const AI_TOKEN_STATS_KEY = 'sci-ai-dashboard:ai-token-stats';
+const AI_RATE_EVENTS_KEY = 'sci-ai-dashboard:ai-rate-events';
 const AI_MEMORY_KEY = 'sci-ai-dashboard:ai-user-memory';
 
 const DEFAULT_AI_SETTINGS = {
@@ -72,6 +73,15 @@ const MODEL_INFO = {
     'gemini-2.0-flash': { tier: 'standard', label: 'Gemini 2.0 Flash', bestFor: 'วิเคราะห์/สร้างกราฟ/Google Search' },
     'gemini-2.5-flash': { tier: 'standard', label: 'Gemini 2.5 Flash', bestFor: 'วิเคราะห์ซับซ้อน' },
     'gemini-flash-latest': { tier: 'standard', label: 'Gemini Flash Latest', bestFor: 'fallback วิเคราะห์' },
+};
+
+const MODEL_RATE_LIMITS = {
+    'gemini-2.0-flash-lite': 30,
+    'gemini-2.5-flash-lite': 30,
+    'gemini-flash-lite-latest': 30,
+    'gemini-2.0-flash': 15,
+    'gemini-2.5-flash': 10,
+    'gemini-flash-latest': 15,
 };
 
 function readStorage(key, fallback) {
@@ -130,6 +140,57 @@ export function resetAITokenStats() {
         byModel: {},
         lastRequest: null,
     });
+    writeStorage(AI_RATE_EVENTS_KEY, []);
+}
+
+function getRecentRateEvents(now = Date.now()) {
+    const cutoff = now - COOLDOWN_MS;
+    const events = readStorage(AI_RATE_EVENTS_KEY, []);
+    const recent = Array.isArray(events)
+        ? events.filter(event => Number(event?.at) >= cutoff && event?.model)
+        : [];
+    if (recent.length !== events.length) writeStorage(AI_RATE_EVENTS_KEY, recent);
+    return recent;
+}
+
+function recordRateEvent(model) {
+    const events = getRecentRateEvents();
+    writeStorage(AI_RATE_EVENTS_KEY, [...events, { model, at: Date.now() }].slice(-120));
+}
+
+export function getAIRateLimitSnapshot() {
+    const now = Date.now();
+    const events = getRecentRateEvents(now);
+    const byModel = getAIModelCatalog().map(model => {
+        const limit = MODEL_RATE_LIMITS[model.id] || 10;
+        const used = events.filter(event => event.model === model.id).length;
+        const cooldownUntil = modelCooldowns[model.id] || 0;
+        const cooldownSeconds = cooldownUntil > now ? Math.ceil((cooldownUntil - now) / 1000) : 0;
+        const remaining = cooldownSeconds > 0 ? 0 : Math.max(0, limit - used);
+        return {
+            ...model,
+            limit,
+            used: Math.min(used, limit),
+            remaining,
+            remainingPercent: Math.round((remaining / limit) * 100),
+            cooldownSeconds,
+        };
+    });
+
+    const totalLimit = byModel.reduce((sum, model) => sum + model.limit, 0);
+    const used = byModel.reduce((sum, model) => sum + model.used, 0);
+    const remaining = byModel.reduce((sum, model) => sum + model.remaining, 0);
+
+    return {
+        windowSeconds: Math.round(COOLDOWN_MS / 1000),
+        totalLimit,
+        used,
+        remaining,
+        remainingPercent: totalLimit ? Math.round((remaining / totalLimit) * 100) : 100,
+        waitSeconds: getWaitSeconds(),
+        byModel,
+        updatedAt: new Date(now).toISOString(),
+    };
 }
 
 function estimateTokens(value) {
@@ -137,6 +198,7 @@ function estimateTokens(value) {
 }
 
 function recordTokenStats({ model, intent, inputText, outputText, contextCount }) {
+    recordRateEvent(model);
     const stats = getAITokenStats();
     const inputTokens = estimateTokens(inputText);
     const outputTokens = estimateTokens(outputText);
@@ -215,6 +277,20 @@ function isDashboardDataQuery(msg) {
     return /กราฟ|chart|json_chart|plot|แผนภูมิ|แผนภาพ|พยากรณ์|forecast|คาดการณ์|linear regression|realtime|real-time|firestore|dashboard|แดชบอร์ด|ในระบบ|ในเว็บ|ข้อมูลเว็บ|ข้อมูลจริง|อัปโหลด|upload|csv|excel|รายชื่อ|ค้นหานักศึกษา|หานักศึกษา|รหัส\s*6|เกรดสูง|เกรดต่ำ|รอพินิจ|gpa|จำนวนนิสิต|จำนวนนักศึกษา|งบประมาณ|รายรับ|รายจ่าย|budget|okr|kpi|scopus|h-index|citation|บุคลากรคณะ|คณะวิทย์|คณะวิทยาศาสตร์/.test(q);
 }
 
+function isStudentPrivateLookupQuery(msg) {
+    const q = String(msg || '').toLowerCase();
+    return /\b6\d{9}\b/.test(q) ||
+        (/รายชื่อ|มีคนไหน|คนไหน|ใครบ้าง|ค้นหานักศึกษา|หานักศึกษา|รหัส\s*6/.test(q) &&
+            /นักศึกษา|นิสิต|student|ค้างจ่าย|ค้างชำระ|ชำระ|ค่าธรรมเนียม|ค่าเทอม/.test(q));
+}
+
+function isMaejoPublicFallbackQuery(msg) {
+    const q = String(msg || '').toLowerCase();
+    const publicTopic = /tcas|admission|รับสมัคร|สมัคร|เปิดรับ|รอบ\s*[1-4]|portfolio|quota|โควตา|direct\s*admit|directadmit|รับเข้า|แรกเข้า|ค่าเทอม|ค่าธรรมเนียม|ค่าเล่าเรียน|ชำระ|ค้างจ่าย|ค้างชำระ|กำหนดการ|ปฏิทิน|ประกาศ|ข่าว|หลักสูตร|เกณฑ์|คะแนน|ทะเบียน|reg\.mju|registrar/.test(q);
+    const maejoSignal = /แม่โจ้|maejo|mju|มจ\.?|มหาวิทยาลัย|คณะวิทยาศาสตร์|คณะวิทย์|ภาคเรียน|เทอม|[12]\s*\/\s*\d{2}|นักศึกษา|นิสิต/.test(q);
+    return publicTopic && maejoSignal;
+}
+
 function isGeneralMaejoQuery(msg) {
     const q = String(msg || '').toLowerCase();
     if (isDashboardDataQuery(q)) return false;
@@ -223,7 +299,9 @@ function isGeneralMaejoQuery(msg) {
 
 // Detect if query should use Google Search for real Maejo website data
 function shouldUseWebSearch(msg) {
-    const q = msg.toLowerCase();
+    const q = String(msg || '').toLowerCase();
+    if (/\b6\d{9}\b/.test(q)) return false;
+    if (isMaejoPublicFallbackQuery(q)) return true;
     if (isGeneralMaejoQuery(q)) return true;
     if (isDashboardDataQuery(q)) return false;
 
@@ -247,6 +325,13 @@ function shouldUseWebSearch(msg) {
         'ข่าว', 'ประกาศ', 'สมัคร', 'ลงทะเบียน', 'ปริญญา', 'บัณฑิต',
         'ห้องสมุด', 'สนามกีฬา', 'โรงอาหาร', 'หน่วยงาน', 'สำนัก', 'สถาบัน'];
     return searchTriggers.some(k => q.includes(k));
+}
+
+function extractUserQuestionFromPrompt(message) {
+    const text = String(message || '');
+    const marker = 'คำถาม:';
+    const idx = text.lastIndexOf(marker);
+    return idx >= 0 ? text.slice(idx + marker.length).trim() : text.trim();
 }
 
 function getApiUrl(modelId) {
@@ -878,8 +963,8 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const q = String(userMessage || '').toLowerCase();
     const includeStudentRows = needsStudentDetail(userMessage);
     const candidates = [
-        { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี/, text: () => studentAggregateContext(includeStudentRows) },
-        { id: 'tuition', sections: ['tuition'], keywords: /ค่าเทอม|ค่าเล่าเรียน|tuition|ค่าธรรมเนียม/, text: tuitionContext },
+        { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี|tcas|admission|รับสมัคร|รับเข้า|รอบ/, text: () => studentAggregateContext(includeStudentRows) },
+        { id: 'tuition', sections: ['tuition'], keywords: /ค่าเทอม|ค่าเล่าเรียน|tuition|ค่าธรรมเนียม|ชำระ|ค้างจ่าย|ค้างชำระ/, text: tuitionContext },
         { id: 'graduation', sections: ['graduation_check', 'graduation_stats'], keywords: /สำเร็จ|จบ|graduation|เกียรติ|pending|รอพินิจ/, text: graduationContext },
         { id: 'budget', sections: ['budget_forecast', 'financial', 'faculty_budget'], keywords: /งบ|budget|รายรับ|รายจ่าย|เงิน|finance/, text: budgetContext },
         { id: 'research', sections: ['research_overview'], keywords: /วิจัย|research|scopus|citation|สิทธิบัตร|ทุน/, text: researchContext },
@@ -913,6 +998,26 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
         .map(c => ({ id: c.id, text: c.text() }));
 }
 
+function maejoLocalFirstContext(userMessage, localContexts = []) {
+    const privateLookup = isStudentPrivateLookupQuery(userMessage);
+    const localContextIds = localContexts.map(c => c.id).join(', ') || 'dashboard';
+    return `หลักการตอบแบบ local-first ของ SCI AI Dashboard:
+- ใช้ข้อมูลในเว็บ/ระบบนี้ก่อนเสมอ โดย context ที่ดึงได้ตอนนี้คือ: ${localContextIds}
+- ถ้าข้อมูลในเว็บเราเป็น aggregate เช่น จำนวนนักศึกษาตามสาขา/ชั้นปี ให้ใช้ตอบหรือคำนวณก่อน
+- ถ้าถาม TCAS/การรับสมัคร/จำนวนรับเข้าแต่ละรอบ/ค่าเทอม/กำหนดการ/ประกาศล่าสุด และใน context ไม่มีตัวเลขหรือไม่มีรายละเอียดรายรอบ ให้ใช้ Google Search grounding ต่อจากแหล่งทางการ
+- สาขาคณะวิทยาศาสตร์ที่เว็บเรารู้จัก: ${SCIENCE_MAJORS.join(', ')}
+- ข้อมูลทั่วไปที่รู้ในเว็บ: มหาวิทยาลัยแม่โจ้ (Maejo University/MJU/มจ.), วิทยาเขตหลักเชียงใหม่ พร้อมวิทยาเขตแพร่และชุมพร, ใช้แหล่งทางการของมหาวิทยาลัยเป็นหลักเมื่อต้องตรวจข้อมูลล่าสุด
+${privateLookup ? '- คำถามนี้มีลักษณะข้อมูลรายบุคคล/การเงินของนักศึกษา: ห้ามเดารายชื่อหรือสถานะชำระเงิน ถ้าไม่มี field สถานะชำระในระบบ ให้บอกชัดว่าเว็บเรายังไม่มีข้อมูลส่วนนี้ และให้ค้นเว็บได้เฉพาะกำหนดการ/ประกาศ/ระเบียบค่าธรรมเนียมแบบสาธารณะเท่านั้น' : ''}`;
+}
+
+function maejoTrustedFallbackContext() {
+    return `เมื่อต้องใช้ข้อมูลนอกเว็บเรา ให้เรียงความน่าเชื่อถือดังนี้:
+1. เว็บไซต์ทางการของมหาวิทยาลัยแม่โจ้และหน่วยงานภายใน เช่น mju.ac.th, admission.mju.ac.th, reg.mju.ac.th, education.mju.ac.th, science.mju.ac.th
+2. ประกาศ PDF/ข่าวทางการจากมหาวิทยาลัยหรือคณะ
+3. แหล่งรัฐหรือระบบ TCAS ที่เกี่ยวข้อง
+หลีกเลี่ยงการใช้เว็บไม่เป็นทางการเมื่อเป็นข้อมูลที่เปลี่ยนบ่อย เช่น TCAS68, จำนวนรับเข้า, ค่าเทอม, ปฏิทิน, เบอร์ติดต่อ และให้ระบุที่มาหรือชื่อแหล่งข้อมูลในคำตอบเมื่อใช้ข้อมูลภายนอก`;
+}
+
 function chartPaletteInstruction(theme = 'light') {
     const dark = theme === 'dark';
     const palette = dark
@@ -926,12 +1031,20 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
     const roleInfo = getRoleInfo(role);
     const memory = getAIUserMemory(userContext);
     const useMaejoWebMode = shouldUseWebSearch(userMessage);
+    const localContexts = retrieveRelevantContexts(userMessage, userContext, settings);
     const contexts = useMaejoWebMode
-        ? [{
-            id: 'maejo_public_web',
-            text: 'คำถามนี้เป็นข้อมูลสาธารณะเกี่ยวกับมหาวิทยาลัยแม่โจ้ทั้งหมด ไม่จำกัดเฉพาะข้อมูลใน dashboard ของเว็บนี้ ให้ใช้ Google Search grounding และให้ความสำคัญกับเว็บทางการของมหาวิทยาลัยแม่โจ้ เช่น mju.ac.th, reg.mju.ac.th และหน่วยงานภายในแม่โจ้ ถ้าเป็นข้อมูลที่อาจเปลี่ยนได้ เช่น รับสมัคร TCAS ข่าว ปฏิทิน ค่าใช้จ่าย ผู้บริหาร เบอร์ติดต่อ หรือหลักสูตร ให้ตอบจากผลค้นหาล่าสุดเท่านั้น',
-        }]
-        : retrieveRelevantContexts(userMessage, userContext, settings);
+        ? [
+            {
+                id: 'sci_ai_dashboard_local_first',
+                text: maejoLocalFirstContext(userMessage, localContexts),
+            },
+            ...localContexts,
+            {
+                id: 'trusted_external_fallback',
+                text: maejoTrustedFallbackContext(),
+            }
+        ]
+        : localContexts;
     const contextText = contexts.map((c, idx) => `### Context ${idx + 1}: ${c.id}\n${c.text}`).join('\n\n');
     const roleLabel = roleInfo?.label || userContext?.roleLabel || role;
     const accessNote = useMaejoWebMode
@@ -940,7 +1053,7 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
         ? 'คณบดีเข้าถึงข้อมูลได้ครบทุกโดเมนตามระบบ'
         : 'ตอบเฉพาะข้อมูลในบริบทและสิทธิ์ของ role นี้เท่านั้น ถ้าข้อมูลอยู่นอกสิทธิ์ให้บอกว่าต้องใช้สิทธิ์สูงกว่า';
     const answerScopeRule = useMaejoWebMode
-        ? 'ตอบภาษาไทย กระชับ สำหรับคำถามทั่วไปเกี่ยวกับมหาวิทยาลัยแม่โจ้ ให้ใช้ Google Search/เว็บทางการเป็นหลัก อ้างอิงแหล่งที่มาเมื่อมี และไม่ต้องสร้างกราฟถ้าผู้ใช้ไม่ได้ขอ'
+        ? 'ตอบภาษาไทย กระชับ ใช้ข้อมูลในเว็บ/ระบบนี้ก่อน หากข้อมูลไม่ครบให้ใช้ Google Search จากเว็บทางการหรือแหล่งน่าเชื่อถือเป็น fallback พร้อมบอกแหล่งที่มา และไม่ต้องสร้างกราฟถ้าผู้ใช้ไม่ได้ขอ'
         : 'ตอบภาษาไทย กระชับ อ้างอิงเฉพาะข้อมูลใน RETRIEVED CONTEXTS และห้ามเดาตัวเลข';
 
     return `You are MJU Science AI Assistant for SCI-AI-DASHBOARD.
@@ -955,7 +1068,10 @@ LIVE DATA FRESHNESS:
 ${getDashboardFreshnessContext()}
 
 TOKEN SAVING RULES:
-- Maejo public web mode: ถ้าคำถามเป็นเรื่องทั่วไปของมหาวิทยาลัยแม่โจ้ เช่น ประวัติ คณะ หลักสูตร รับสมัคร TCAS ค่าเทอม ข่าว หน่วยงาน เบอร์ติดต่อ หรือสถานที่ ให้ตอบด้วยข้อมูลจาก Google Search/เว็บทางการ ไม่บังคับว่าต้องมีข้อมูลใน dashboard ของเรา
+- Maejo public web mode: ถ้าคำถามเป็นเรื่องทั่วไปของมหาวิทยาลัยแม่โจ้ เช่น ประวัติ คณะ หลักสูตร รับสมัคร TCAS ค่าเทอม ค่าธรรมเนียม ข่าว หน่วยงาน เบอร์ติดต่อ หรือสถานที่ ให้ตรวจ RETRIEVED CONTEXTS ของเว็บเราก่อน แล้วค่อยใช้ Google Search/เว็บทางการเมื่อข้อมูลไม่ครบ
+- ห้ามตอบว่า “ไม่พบข้อมูล” ทันทีใน Maejo public web mode จนกว่าจะใช้ทั้ง context ในเว็บเราและ trusted external fallback แล้ว
+- ถ้าถามจำนวนรับเข้า TCAS/แต่ละรอบ/ประกาศล่าสุด ให้ค้นจากเว็บทางการล่าสุด และแยกให้ชัดว่า “ข้อมูลในเว็บเรา” กับ “ข้อมูลจากแหล่งภายนอกทางการ”
+- ถ้าถามรายชื่อหรือสถานะค้างจ่ายค่าธรรมเนียมรายบุคคล ให้ใช้เฉพาะข้อมูลในระบบที่มีสิทธิ์เท่านั้น ห้ามเดารายชื่อและห้ามอ้างว่าเว็บสาธารณะมีข้อมูลรายบุคคล; ถ้าเว็บเรายังไม่มี field ชำระเงิน ให้บอกว่าไม่มีข้อมูลส่วนนี้ในระบบ พร้อมเสนอว่าต้องเชื่อมฐานทะเบียน/การเงิน แต่สามารถให้ข้อมูลประกาศ/กำหนดการชำระค่าธรรมเนียมจากแหล่งทางการได้
 - ถ้าเป็นข้อมูลที่อาจเปลี่ยนบ่อย ต้องบอกตามข้อมูลล่าสุดที่ค้นได้ และถ้าไม่พบหลักฐานให้บอกว่าไม่พบข้อมูลล่าสุดแทนการเดา
 - Source priority: ใช้ context ที่ระบุว่า realtime/live ก่อนเสมอ; ถ้ายังไม่มี realtime ให้ใช้ context ที่ระบุว่า "ข้อมูลที่เว็บใช้อยู่ตอนนี้" เพื่อคำนวณ/สร้างกราฟไปก่อน พร้อมบอกแหล่งข้อมูลให้ชัดเจน
 - ถ้าจะคำนวณ พยากรณ์ หรือสร้างกราฟ ต้องคำนวณจากตัวเลขใน RETRIEVED CONTEXTS เท่านั้น ห้ามเดาหรือเติมตัวเลขเอง
@@ -989,12 +1105,13 @@ export function sendMessageToGemini(userMessage, options = {}) {
 async function _sendMessageImpl(userMessage, options = {}) {
     const settings = saveAIModelSettings({ ...getAIModelSettings(), ...(options.aiSettings || {}) });
     settings.theme = options.theme || settings.theme || (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : 'light') || 'light';
-    const intent = classifyQueryIntent(userMessage);
-    updateAIUserMemory(options.user || {}, userMessage);
+    const originalQuestion = extractUserQuestionFromPrompt(userMessage);
+    const intent = classifyQueryIntent(originalQuestion);
+    updateAIUserMemory(options.user || {}, originalQuestion);
 
     // Detect chart/graph request keywords and append reminder
     const chartKeywords = ['กราฟ', 'chart', 'แผนภูมิ', 'แผนภาพ', 'แท่ง', 'เส้น', 'วงกลม', 'radar', 'พยากรณ์', 'คาดการณ์', 'forecast', 'bar chart', 'line chart', 'pie chart', 'กราฟแท่ง', 'กราฟเส้น', 'กราฟวงกลม', 'เปรียบเทียบ', 'สร้างกราฟ', 'แสดงกราฟ', 'วิเคราะห์'];
-    const lowerMsg = userMessage.toLowerCase();
+    const lowerMsg = originalQuestion.toLowerCase();
     const isChartRequest = chartKeywords.some(kw => lowerMsg.includes(kw));
 
     let finalMessage = userMessage;
@@ -1020,14 +1137,12 @@ async function _sendMessageImpl(userMessage, options = {}) {
     let allQuotaExhausted = true;
 
     // Always use retrieved contexts only; realtime wins, current web datasets are used as the interim source.
-    const baseInstruction = buildAgenticRagInstruction(userMessage, options.user || {}, settings);
+    const baseInstruction = buildAgenticRagInstruction(originalQuestion, options.user || {}, settings);
     const systemText = baseInstruction;
 
     // Check if this query should use Google Search for real-time Maejo data
-    const useSearch = settings.allowWebSearch && shouldUseWebSearch(userMessage);
-    const retrievedContextCount = useSearch
-        ? 1
-        : retrieveRelevantContexts(userMessage, options.user || {}, settings).length;
+    const useSearch = settings.allowWebSearch && shouldUseWebSearch(originalQuestion);
+    const retrievedContextCount = retrieveRelevantContexts(originalQuestion, options.user || {}, settings).length + (useSearch ? 2 : 0);
 
     const baseRequestBody = {
         system_instruction: {
@@ -1050,7 +1165,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
 
     // Try each model in order, skip models on cooldown
     const candidateModels = useSearch
-        ? ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest']
+        ? ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest', ...MODELS.filter(model => !SEARCH_CAPABLE_MODELS.has(model))]
         : modelOrderForIntent(intent, settings);
     for (const model of candidateModels) {
         if (isModelOnCooldown(model)) {

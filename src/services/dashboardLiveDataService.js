@@ -155,6 +155,15 @@ function mergePayloadWithFallback(id, payload) {
     if (!fallback || Array.isArray(fallback) || typeof fallback !== 'object') return payload;
 
     const merged = { ...fallback, ...payload };
+    if (id === 'dashboard_summary' && Array.isArray(payload.faculties) && Array.isArray(fallback.faculties)) {
+        merged.faculties = payload.faculties.map(faculty => {
+            const matchedFallback = fallback.faculties.find(item =>
+                String(item.name || '').includes(String(faculty.name || '').replace(/^คณะ/, '')) ||
+                String(faculty.name || '').includes(String(item.name || '').replace(/^คณะ/, ''))
+            );
+            return { ...(matchedFallback || {}), ...faculty };
+        });
+    }
     for (const [key, value] of Object.entries(payload)) {
         if (
             value &&
