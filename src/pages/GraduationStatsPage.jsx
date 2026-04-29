@@ -6,6 +6,7 @@ import {
     graduationHistory, currentGraduationStats, graduationByMajor,
     gpaDistribution, honorsData, graduationCandidateList
 } from '../data/graduationData';
+import useDashboardDataset from '../hooks/useDashboardDataset';
 import {
     GraduationCap, Award, Users, TrendingUp, AlertTriangle,
     CheckCircle, XCircle, Clock, Search, Download
@@ -60,8 +61,10 @@ export default function GraduationStatsPage() {
     const [filterStatus, setFilterStatus] = useState('all');
     const [drillDetail, setDrillDetail] = useState(null);
     const hasGraduationAccess = canAccess(user?.role, 'graduation_stats');
+    const { data: liveGraduationData } = useDashboardDataset('graduation');
 
-    const stats = currentGraduationStats;
+    const graduationHistoryData = liveGraduationData?.graduationHistory || liveGraduationData?.history || graduationHistory;
+    const stats = { ...currentGraduationStats, ...(liveGraduationData?.current || {}) };
 
     // Filter candidate list
     const filteredCandidates = useMemo(() => graduationCandidateList.filter(s => {
@@ -87,11 +90,11 @@ export default function GraduationStatsPage() {
 
     // Graduation history line chart
     const historyChartData = {
-        labels: graduationHistory.map(h => `${h.year}`),
+        labels: graduationHistoryData.map(h => `${h.year}`),
         datasets: [
             {
                 label: 'ผู้มีสิทธิ์',
-                data: graduationHistory.map(h => h.candidates),
+                data: graduationHistoryData.map(h => h.candidates),
                 borderColor: '#7B68EE',
                 backgroundColor: 'rgba(123,104,238,0.1)',
                 fill: true,
@@ -99,7 +102,7 @@ export default function GraduationStatsPage() {
             },
             {
                 label: 'สำเร็จการศึกษา',
-                data: graduationHistory.map(h => h.graduated),
+                data: graduationHistoryData.map(h => h.graduated),
                 borderColor: '#22c55e',
                 backgroundColor: 'rgba(34,197,94,0.1)',
                 fill: true,
@@ -127,10 +130,10 @@ export default function GraduationStatsPage() {
 
     // Graduation rate line chart
     const rateChartData = {
-        labels: graduationHistory.map(h => `${h.year}`),
+        labels: graduationHistoryData.map(h => `${h.year}`),
         datasets: [{
             label: 'อัตราสำเร็จ (%)',
-            data: graduationHistory.map(h => h.rate),
+            data: graduationHistoryData.map(h => h.rate),
             borderColor: '#f59e0b',
             backgroundColor: 'rgba(245,158,11,0.15)',
             fill: true,
@@ -315,7 +318,7 @@ export default function GraduationStatsPage() {
     });
 
     const historyDrilldownOptions = withChartDrilldown(historyChartOptions, historyChartData, setDrillDetail, (point) => {
-        const row = graduationHistory[point.index];
+        const row = graduationHistoryData[point.index];
         return {
             title: `แนวโน้มการสำเร็จการศึกษา ปี ${point.label}`,
             subtitle: point.datasetLabel,
@@ -370,7 +373,7 @@ export default function GraduationStatsPage() {
     });
 
     const rateDrilldownOptions = withChartDrilldown(rateChartOptions, rateChartData, setDrillDetail, (point) => {
-        const row = graduationHistory[point.index];
+        const row = graduationHistoryData[point.index];
         return {
             title: `อัตราสำเร็จการศึกษา ปี ${point.label}`,
             subtitle: 'ข้อมูลสรุปรายปี',

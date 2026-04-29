@@ -160,21 +160,11 @@ function isCompatiblePayload(id, payload) {
     return guard ? Boolean(guard(payload)) : true;
 }
 
-function mergePayloadWithFallback(id, payload) {
-    const fallback = FALLBACK_DATA[id];
+function deepMergeObject(fallback, payload) {
     if (!payload || Array.isArray(payload) || typeof payload !== 'object') return payload;
     if (!fallback || Array.isArray(fallback) || typeof fallback !== 'object') return payload;
 
     const merged = { ...fallback, ...payload };
-    if (id === 'dashboard_summary' && Array.isArray(payload.faculties) && Array.isArray(fallback.faculties)) {
-        merged.faculties = payload.faculties.map(faculty => {
-            const matchedFallback = fallback.faculties.find(item =>
-                String(item.name || '').includes(String(faculty.name || '').replace(/^คณะ/, '')) ||
-                String(faculty.name || '').includes(String(item.name || '').replace(/^คณะ/, ''))
-            );
-            return { ...(matchedFallback || {}), ...faculty };
-        });
-    }
     for (const [key, value] of Object.entries(payload)) {
         if (
             value &&
@@ -184,8 +174,26 @@ function mergePayloadWithFallback(id, payload) {
             typeof fallback[key] === 'object' &&
             !Array.isArray(fallback[key])
         ) {
-            merged[key] = { ...fallback[key], ...value };
+            merged[key] = deepMergeObject(fallback[key], value);
         }
+    }
+    return merged;
+}
+
+function mergePayloadWithFallback(id, payload) {
+    const fallback = FALLBACK_DATA[id];
+    if (!payload || Array.isArray(payload) || typeof payload !== 'object') return payload;
+    if (!fallback || Array.isArray(fallback) || typeof fallback !== 'object') return payload;
+
+    const merged = deepMergeObject(fallback, payload);
+    if (id === 'dashboard_summary' && Array.isArray(payload.faculties) && Array.isArray(fallback.faculties)) {
+        merged.faculties = payload.faculties.map(faculty => {
+            const matchedFallback = fallback.faculties.find(item =>
+                String(item.name || '').includes(String(faculty.name || '').replace(/^คณะ/, '')) ||
+                String(faculty.name || '').includes(String(item.name || '').replace(/^คณะ/, ''))
+            );
+            return { ...(matchedFallback || {}), ...faculty };
+        });
     }
     return merged;
 }
@@ -213,6 +221,7 @@ function getRowCount(payload) {
     if (Array.isArray(payload?.yearly)) return payload.yearly.length;
     if (Array.isArray(payload?.history)) return payload.history.length;
     if (Array.isArray(payload?.publicationTrend)) return payload.publicationTrend.length;
+    if (Array.isArray(payload?.scienceFaculty?.byType)) return payload.scienceFaculty.byType.length;
     return null;
 }
 
@@ -417,6 +426,8 @@ export async function refreshDashboardDatasetFromSource(id, { uid, who } = {}) {
         meta: {
             fetchedAt: result.fetchedAt || new Date().toISOString(),
             adapter: result.adapter || 'json',
+            sourceUrls: result.sourceUrls || (result.sourceUrl ? [result.sourceUrl] : []),
+            sourceCoverage: payload?.sourceCoverage || null,
         },
     });
 
