@@ -1,7 +1,7 @@
 // Access control utility
 // Defines which sections each role can access
 
-const GENERAL_SECTIONS = ['dashboard', 'tuition', 'ai_chat'];
+const GENERAL_SECTIONS = ['dashboard', 'tuition', 'ai_chat', 'academic_rules'];
 
 const ACCESS_LEVELS = {
     dean: {
@@ -18,7 +18,8 @@ const ACCESS_LEVELS = {
             'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
             'graduation_stats',
             'alert_center',
-            'admin_panel'
+            'admin_panel',
+            'academic_rules'
         ]
     },
     chair: {
@@ -33,7 +34,8 @@ const ACCESS_LEVELS = {
             'student_stats', 'budget_forecast',
             'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
             'graduation_stats',
-            'alert_center'
+            'alert_center',
+            'academic_rules'
         ]
     },
     staff: {
@@ -45,7 +47,8 @@ const ACCESS_LEVELS = {
             'dashboard', 'financial',
             'student_stats', 'graduation_stats', 'budget_forecast',
             'hr_overview', 'research_overview', 'ai_chat',
-            'alert_center'
+            'alert_center',
+            'academic_rules'
         ]
     },
     general: {
@@ -62,7 +65,8 @@ const ACCESS_LEVELS = {
         color: '#E91E63',
         sections: [
             'dashboard', 'tuition', 'student_life',
-            'graduation_check', 'student_stats'
+            'graduation_check', 'student_stats',
+            'academic_rules'
         ]
     },
     // Pending approval roles — same access as general, amber badge

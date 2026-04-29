@@ -11,6 +11,7 @@ export const routeLoaders = {
     '/dashboard/students': () => import('../pages/StudentListPage'),
     '/dashboard/graduation': () => import('../pages/GraduationCheckPage'),
     '/dashboard/graduation-stats': () => import('../pages/GraduationStatsPage'),
+    '/dashboard/academic-rules': () => import('../pages/AcademicRulesPage'),
     '/dashboard/hr': () => import('../pages/HRDashboardPage'),
     '/dashboard/research': () => import('../pages/ResearchDashboardPage'),
     '/dashboard/strategic': () => import('../pages/StrategicDashboardPage'),

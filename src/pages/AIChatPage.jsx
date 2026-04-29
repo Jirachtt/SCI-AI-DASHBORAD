@@ -425,6 +425,208 @@ export function setUploadedStudentRows(rows = []) {
     return getAllStudents();
 }
 
+function wantsStudentCountGradeChart(question) {
+    const q = String(question || '').toLowerCase();
+    const hasChartIntent = /กราฟ|chart|plot|แผนภูมิ|แผนภาพ|สร้าง|แสดง|เปรียบเทียบ|วิเคราะห์/.test(q);
+    const hasStudentCount = /จำนวนนักศึกษา|จำนวนนิสิต|นักศึกษา|นิสิต|student|students|count/.test(q);
+    const hasGrade = /เกรด|gpa|จีพีเอ|grade|เกรดเฉลี่ย|ผลการเรียน/.test(q);
+    const wantsIndividualRows = /รายคน|แต่ละคน|รายชื่อ|ชื่อ|รหัส\s*6|\b6\d{9}\b|สูงสุด|ต่ำสุด|top\s*\d*/i.test(q);
+    return hasChartIntent && hasStudentCount && hasGrade && !wantsIndividualRows;
+}
+
+function getStudentCountGpaByMajorRows(question = '') {
+    const q = String(question || '').toLowerCase();
+    const wantsScienceScope = /คณะวิทย|วิทยาศาสตร์|คณะวิทย์|science/.test(q);
+    const allStudents = getAllStudents().filter(s => s?.major);
+    const scopedStudents = wantsScienceScope
+        ? allStudents.filter(s => SCIENCE_MAJORS.includes(s.major))
+        : allStudents;
+    const students = scopedStudents.length > 0 ? scopedStudents : allStudents;
+    const byMajor = new Map();
+
+    students.forEach(student => {
+        const major = student.major || 'ไม่ระบุสาขา';
+        const current = byMajor.get(major) || { major, count: 0, gpaSum: 0, gpaCount: 0 };
+        const gpa = Number(student.gpa);
+        current.count += 1;
+        if (Number.isFinite(gpa) && gpa >= 0 && gpa <= 4) {
+            current.gpaSum += gpa;
+            current.gpaCount += 1;
+        }
+        byMajor.set(major, current);
+    });
+
+    return Array.from(byMajor.values())
+        .map(row => ({
+            ...row,
+            avgGpa: row.gpaCount > 0 ? Number((row.gpaSum / row.gpaCount).toFixed(2)) : 0,
+        }))
+        .sort((a, b) => b.count - a.count || b.avgGpa - a.avgGpa);
+}
+
+function buildStudentCountGpaByMajorChart(question = '') {
+    const rows = getStudentCountGpaByMajorRows(question);
+    if (rows.length === 0) return null;
+
+    return {
+        chartType: 'bar',
+        data: {
+            labels: rows.map(row => row.major),
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'จำนวนนักศึกษา',
+                    data: rows.map(row => row.count),
+                    backgroundColor: 'rgba(0, 166, 81, 0.75)',
+                    borderColor: '#00a651',
+                    borderWidth: 0,
+                    borderRadius: 8,
+                    yAxisID: 'y',
+                    order: 2,
+                },
+                {
+                    type: 'bar',
+                    label: 'GPA เฉลี่ย',
+                    data: rows.map(row => row.avgGpa),
+                    backgroundColor: 'rgba(123, 104, 238, 0.72)',
+                    borderColor: '#7B68EE',
+                    borderWidth: 0,
+                    borderRadius: 8,
+                    yAxisID: 'y1',
+                    order: 1,
+                },
+            ],
+        },
+        options: {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const value = Number(ctx.parsed?.y ?? ctx.raw ?? 0);
+                            return ctx.dataset?.yAxisID === 'y1'
+                                ? ` ${ctx.dataset.label}: ${value.toFixed(2)}`
+                                : ` ${ctx.dataset.label}: ${value.toLocaleString('th-TH')} คน`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    position: 'left',
+                    beginAtZero: true,
+                    title: { display: true, text: 'จำนวนนักศึกษา (คน)' },
+                },
+                y1: {
+                    type: 'linear',
+                    position: 'right',
+                    min: 0,
+                    max: 4,
+                    title: { display: true, text: 'GPA เฉลี่ย' },
+                    grid: { drawOnChartArea: false },
+                },
+            },
+        },
+    };
+}
+
+function buildStudentCountGpaChartResponse(question = '') {
+    const rows = getStudentCountGpaByMajorRows(question);
+    if (rows.length === 0) return null;
+
+    const chart = buildStudentCountGpaByMajorChart(question);
+    const total = rows.reduce((sum, row) => sum + row.count, 0);
+    const topCount = rows[0];
+    const topGpa = rows.reduce((best, row) => (row.avgGpa > best.avgGpa ? row : best), rows[0]);
+    return {
+        text: `สร้างกราฟเปรียบเทียบ **จำนวนนักศึกษา** และ **GPA เฉลี่ย** แยกตามสาขาให้แล้วครับ\n\nข้อมูลมาจากฐานข้อมูลนักศึกษาในเว็บ จำนวน ${total.toLocaleString('th-TH')} คน ครอบคลุม ${rows.length} สาขา\nสาขาที่มีนักศึกษามากที่สุดคือ ${topCount.major} (${topCount.count.toLocaleString('th-TH')} คน) และสาขาที่มี GPA เฉลี่ยสูงสุดคือ ${topGpa.major} (${topGpa.avgGpa.toFixed(2)})`,
+        chart,
+    };
+}
+
+function wantsStudentClassYearChart(question) {
+    const q = String(question || '').toLowerCase();
+    const hasChartIntent = /กราฟ|chart|plot|แผนภูมิ|แผนภาพ|สร้าง|แสดง|เปรียบเทียบ|วิเคราะห์/.test(q);
+    const hasStudent = /จำนวนนักศึกษา|จำนวนนิสิต|นักศึกษา|นิสิต|student|students/.test(q);
+    const hasClassYear = /ชั้นปี|ปี\s*[1-6]|year|class/.test(q);
+    const wantsIndividualRows = /รายคน|แต่ละคน|รายชื่อ|ชื่อ|รหัส\s*6|\b6\d{9}\b|สูงสุด|ต่ำสุด|top\s*\d*/i.test(q);
+    return hasChartIntent && hasStudent && hasClassYear && !wantsIndividualRows;
+}
+
+function getStudentClassYearRows(question = '') {
+    const q = String(question || '').toLowerCase();
+    const wantsScienceScope = /คณะวิทย|วิทยาศาสตร์|คณะวิทย์|science/.test(q);
+    const allStudents = getAllStudents().filter(s => s?.year);
+    const scopedStudents = wantsScienceScope
+        ? allStudents.filter(s => SCIENCE_MAJORS.includes(s.major))
+        : allStudents;
+    const students = scopedStudents.length > 0 ? scopedStudents : allStudents;
+    const byYear = new Map();
+
+    students.forEach(student => {
+        const year = Number(student.year);
+        const key = Number.isFinite(year) ? year : String(student.year || 'ไม่ระบุ');
+        byYear.set(key, (byYear.get(key) || 0) + 1);
+    });
+
+    return Array.from(byYear.entries())
+        .map(([year, count]) => ({
+            year,
+            label: Number.isFinite(Number(year)) ? `ชั้นปี ${year}` : String(year),
+            count,
+        }))
+        .sort((a, b) => Number(a.year) - Number(b.year));
+}
+
+function buildStudentClassYearChartResponse(question = '') {
+    const rows = getStudentClassYearRows(question);
+    if (rows.length === 0) return null;
+    const total = rows.reduce((sum, row) => sum + row.count, 0);
+    const topYear = rows.reduce((best, row) => (row.count > best.count ? row : best), rows[0]);
+
+    return {
+        text: `สร้างกราฟ **จำนวนนักศึกษาแยกตามชั้นปี** ให้แล้วครับ\n\nข้อมูลมาจากฐานข้อมูลนักศึกษาในเว็บ จำนวน ${total.toLocaleString('th-TH')} คน โดยชั้นปีที่มีนักศึกษามากที่สุดคือ ${topYear.label} (${topYear.count.toLocaleString('th-TH')} คน)`,
+        chart: {
+            chartType: 'bar',
+            data: {
+                labels: rows.map(row => row.label),
+                datasets: [
+                    {
+                        label: 'จำนวนนักศึกษา',
+                        data: rows.map(row => row.count),
+                        backgroundColor: 'rgba(0, 166, 81, 0.75)',
+                        borderColor: '#00a651',
+                        borderWidth: 0,
+                        borderRadius: 8,
+                    },
+                ],
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'จำนวนนักศึกษา (คน)' },
+                    },
+                },
+            },
+        },
+    };
+}
+
+function ensureStudentCountGradeChart(chart, sourceQuestion = '') {
+    if (!wantsStudentCountGradeChart(sourceQuestion)) return chart;
+    const fallbackChart = buildStudentCountGpaByMajorChart(sourceQuestion);
+    if (!fallbackChart) return chart;
+
+    const datasets = chart?.data?.datasets || [];
+    const hasCountDataset = datasets.some(isStudentCountDataset);
+    const hasGpa = datasets.some(isGpaDataset);
+    if (!chart || datasets.length === 0 || (hasCountDataset && !hasGpa)) {
+        return fallbackChart;
+    }
+    return chart;
+}
+
 // ==================== Smart Student Search ====================
 function searchStudents(query) {
     const ALL_STUDENTS = getAllStudents();
@@ -537,7 +739,21 @@ export function tryLocalResponse(question) {
         // If no datasets matched, fall through to AI
     }
 
-    // 2. Student search — only for specific structured lookups (ID, name, GPA filter)
+    // 2. Deterministic aggregate chart for "student count + grade/GPA".
+    // This data already exists in the web app, so do not rely on the model
+    // to remember both metrics when building the chart JSON.
+    if (wantsStudentCountGradeChart(question)) {
+        const result = buildStudentCountGpaChartResponse(question);
+        if (result) return result;
+    }
+
+    // 3. Deterministic aggregate chart for student counts by class year.
+    if (wantsStudentClassYearChart(question)) {
+        const result = buildStudentClassYearChartResponse(question);
+        if (result) return result;
+    }
+
+    // 4. Student search — only for specific structured lookups (ID, name, GPA filter)
     const isStudentLookup =
         (q.match(/(?:รหัส|id)\s*\d{2,}/i)) ||  // search by ID with prefix
         (/\b6\d{9}\b/.test(q)) ||              // bare 10-digit student ID
@@ -589,6 +805,9 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
         context += `[บริบทนักศึกษา: ข้อมูลรวม ${allStudents.length} คน (ข้อมูลระบบ + ข้อมูลที่อัปโหลด)\n`;
         context += `สรุปตามสาขา:\n${majorStats}\n`;
         context += `สรุปตามชั้นปี: ${yearStats}\n`;
+        if (wantsStudentCountGradeChart(question)) {
+            context += `คำสั่งกราฟ: ผู้ใช้ถามทั้งจำนวนนักศึกษาและเกรด/GPA ต้องใส่ทั้ง dataset "จำนวนนักศึกษา" และ "GPA เฉลี่ย" แยกตามสาขา ห้ามตัด metric ใด metric หนึ่งออก\n`;
+        }
 
         const idMentioned = String(question || '').match(/\b6\d{9}\b/);
         if (idMentioned) {
@@ -620,7 +839,7 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
     return context ? `${context}คำถาม: ${question}` : question;
 }
 
-export function parseAIResponse(text) {
+export function parseAIResponse(text, sourceQuestion = '') {
     // Accept 1-3 backticks on the fence — Gemini occasionally emits a single
     // backtick or markdown that renders as inline code instead of a block.
     let regex = /`{1,3}json_chart\s*([\s\S]*?)\s*`{1,3}/;
@@ -668,7 +887,7 @@ export function parseAIResponse(text) {
 
     if (match) {
         try {
-            const rawJson = JSON.parse(match[1] || match[0]);
+            let rawJson = JSON.parse(match[1] || match[0]);
             // Remove the chart JSON from the display text
             cleanText = text.replace(match[0].includes('`') ? regex : match[0], '').trim();
             // Clean up leftover fence fragments (empty fences, stray json_chart label)
@@ -678,6 +897,7 @@ export function parseAIResponse(text) {
                 .replace(/`{1,3}\s*json\s*`{0,3}/g, '')
                 .trim();
 
+            rawJson = ensureStudentCountGradeChart(rawJson, sourceQuestion);
             const isRadar = rawJson.chartType === 'radar' || rawJson.chartType === 'polarArea';
 
             // Validate radar charts have minimum 3 axes
@@ -1891,12 +2111,12 @@ export function generateChartFromFile(parsed, fileName) {
 }
 
 export const MAIN_AI_QUICK_ACTIONS = [
-    { label: 'กราฟนิสิตแยกคณะ', query: 'สร้างกราฟแท่งแสดงจำนวนนิสิตแยกตามคณะ พร้อมเรียงลำดับจากมากไปน้อย', icon: BarChart3 },
-    { label: 'เปรียบเทียบ GPA ทุกคณะ', query: 'สร้างกราฟเปรียบเทียบ GPA เฉลี่ยและอัตราสำเร็จการศึกษาของทุกคณะ', icon: TrendingUp },
-    { label: 'บุคลากรคณะวิทย์', query: 'แสดงกราฟข้อมูลบุคลากรคณะวิทยาศาสตร์ ตำแหน่งวิชาการ วุฒิการศึกษา และพยากรณ์เกษียณ', icon: Search },
-    { label: 'วิเคราะห์งบประมาณ', query: 'วิเคราะห์งบประมาณมหาวิทยาลัยแม่โจ้ย้อนหลัง 4 ปี แสดงกราฟรายรับ-รายจ่าย พร้อมสรุปแนวโน้ม', icon: ChartLine },
-    { label: 'สถิติสำเร็จการศึกษา', query: 'แสดงกราฟแนวโน้มอัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ย้อนหลัง 5 ปี', icon: Sparkles },
-    { label: 'พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: ChartLine },
+    { label: 'จำนวน+GPA ตามสาขา', query: 'สร้างกราฟจำนวนนักศึกษาและ GPA เฉลี่ย คณะวิทยาศาสตร์ แยกตามสาขา', icon: BarChart3 },
+    { label: 'นักศึกษาแยกชั้นปี', query: 'สร้างกราฟจำนวนนักศึกษาคณะวิทยาศาสตร์ แยกตามชั้นปี', icon: TrendingUp },
+    { label: 'GPA สูงสุด 10 คน', query: 'แสดงรายชื่อนักศึกษาที่ GPA สูงสุด 10 คน', icon: Search },
+    { label: 'GPA ต่ำ/รอพินิจ', query: 'แสดงรายชื่อนักศึกษาที่เกรดต่ำหรือรอพินิจ 10 คน', icon: Search },
+    { label: 'พยากรณ์ GPA+สำเร็จ', query: 'พยากรณ์อัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ปี 2570 2571 เป็นกราฟ', icon: Sparkles },
+    { label: 'พยากรณ์รายรับคณะวิทย์', query: 'พยากรณ์รายรับงบประมาณคณะวิทยาศาสตร์ ปี 2570 2571 เป็นกราฟ', icon: ChartLine },
 ];
 
 export default function AIChatPage() {
@@ -2181,7 +2401,7 @@ export default function AIChatPage() {
 
             try {
                 const aiText = await sendAI(aiPrompt);
-                const parsedAI = parseAIResponse(aiText);
+                const parsedAI = parseAIResponse(aiText, aiPrompt);
                 setMessages(prev => [...prev, {
                     role: 'bot',
                     text: `**AI วิเคราะห์เพิ่มเติม:**\n\n${parsedAI.text}`,
@@ -2203,7 +2423,7 @@ export default function AIChatPage() {
     };
 
     // Robust auto-retry with live countdown for quota errors
-    const retryWithCountdown = async (buildMessage, retryId) => {
+    const retryWithCountdown = async (buildMessage, retryId, sourceQuestion = '') => {
         const MAX_RETRIES = 3;
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             let waitSec = Math.max(getWaitSeconds(), 5) + 2;
@@ -2226,7 +2446,7 @@ export default function AIChatPage() {
             });
             try {
                 const aiText = await sendAI(buildMessage());
-                const parsedAI = parseAIResponse(aiText);
+                const parsedAI = parseAIResponse(aiText, sourceQuestion);
                 setMessages(prev => prev.map(m =>
                     m._retryId === retryId
                         ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart }
@@ -2316,7 +2536,7 @@ export default function AIChatPage() {
                 return context ? `${context}คำถาม: ${userMsg}` : userMsg;
             };
             const aiText = await sendAI(buildMsg());
-            const parsedAI = parseAIResponse(aiText);
+            const parsedAI = parseAIResponse(aiText, userMsg);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
             console.error('[AIChatPage] Gemini API error:', error);
@@ -2353,7 +2573,7 @@ export default function AIChatPage() {
                     }
                     return context ? `${context}คำถาม: ${userMsg}` : userMsg;
                 };
-                await retryWithCountdown(buildMsg, retryId);
+                await retryWithCountdown(buildMsg, retryId, userMsg);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -2368,14 +2588,7 @@ export default function AIChatPage() {
 
     const handleKeyDown = (e) => { if (e.key === 'Enter') handleSend(); };
 
-    const quickActions = [
-        { label: 'กราฟนิสิตแยกคณะ', query: 'สร้างกราฟแท่งแสดงจำนวนนิสิตแยกตามคณะ พร้อมเรียงลำดับจากมากไปน้อย', icon: BarChart3 },
-        { label: 'เปรียบเทียบ GPA ทุกคณะ', query: 'สร้างกราฟเปรียบเทียบ GPA เฉลี่ยและอัตราสำเร็จการศึกษาของทุกคณะ', icon: TrendingUp },
-        { label: 'บุคลากรคณะวิทย์', query: 'แสดงกราฟข้อมูลบุคลากรคณะวิทยาศาสตร์ ตำแหน่งวิชาการ วุฒิการศึกษา และพยากรณ์เกษียณ', icon: Search },
-        { label: 'วิเคราะห์งบประมาณ', query: 'วิเคราะห์งบประมาณมหาวิทยาลัยแม่โจ้ ย้อนหลัง 4 ปี แสดงกราฟรายรับ-รายจ่าย พร้อมสรุปแนวโน้ม', icon: ChartLine },
-        { label: 'สถิติสำเร็จการศึกษา', query: 'แสดงกราฟแนวโน้มอัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ย้อนหลัง 5 ปี', icon: Sparkles },
-        { label: 'พยากรณ์งบฯ คณะวิทย์', query: 'พยากรณ์งบประมาณคณะวิทยาศาสตร์ ปี 70 71 เป็นกราฟ', icon: ChartLine },
-    ];
+    const quickActions = MAIN_AI_QUICK_ACTIONS;
 
     const handleQuickAction = async (query) => {
         if (typing) return;
@@ -2390,7 +2603,7 @@ export default function AIChatPage() {
                 return;
             }
             const aiText = await sendAI(query);
-            const parsedAI = parseAIResponse(aiText);
+            const parsedAI = parseAIResponse(aiText, query);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
             console.error('[AIChatPage] Quick action error:', error);
@@ -2401,7 +2614,7 @@ export default function AIChatPage() {
                 setMessages(prev => [...prev, {
                     role: 'bot', text: '**API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
                 }]);
-                await retryWithCountdown(() => query, retryId);
+                await retryWithCountdown(() => query, retryId, query);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',

@@ -10,7 +10,7 @@ import {
     GraduationCap, CheckCircle, BarChart3,
     Microscope, Target, UserCheck, BookOpen, Award,
     Shield, UserCog, Clock, Bell, Bot, Settings, Gauge, ChevronDown,
-    ChevronRight, UserRound, Palette, Activity
+    ChevronRight, UserRound, Palette, Activity, ScrollText
 } from 'lucide-react';
 
 const FEATURED_AI_CHAT = {
@@ -45,6 +45,7 @@ const menuGroups = [
             { path: '/dashboard/graduation', label: 'ตรวจสอบการจบ', icon: CheckCircle, section: 'graduation_check' },
             { path: '/dashboard/student-life', label: 'กิจกรรม/พฤติกรรม', icon: Users, section: 'student_life' },
             { path: '/dashboard/graduation-stats', label: 'สถิติสำเร็จการศึกษา', icon: Award, section: 'graduation_stats' },
+            { path: '/dashboard/academic-rules', label: 'กฎระเบียบ/เกียรตินิยม', icon: ScrollText, section: 'academic_rules' },
         ]
     },
     {

@@ -10,6 +10,7 @@ import { graduationHistory, currentGraduationStats, graduationByMajor, honorsDat
 import { researchData } from '../data/researchData';
 import { hrData } from '../data/hrData';
 import { strategicData } from '../data/strategicData';
+import { buildAcademicRulesContext } from '../data/academicRulesData';
 import { isLiveData } from './studentDataService';
 import { canAccess, getRoleInfo } from '../utils/accessControl';
 import {
@@ -945,6 +946,10 @@ function strategicContext() {
     return `ยุทธศาสตร์และ OKR (${live.sourceLabel}):\n${JSON.stringify(strategicData)}`;
 }
 
+function academicRulesContext() {
+    return buildAcademicRulesContext();
+}
+
 function tuitionContext() {
     const live = liveDatasetContext('tuition', 'ค่าเล่าเรียน');
     if (!live.data) return live.missing;
@@ -964,6 +969,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const includeStudentRows = needsStudentDetail(userMessage);
     const candidates = [
         { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี|tcas|admission|รับสมัคร|รับเข้า|รอบ/, text: () => studentAggregateContext(includeStudentRows) },
+        { id: 'academic_rules', sections: ['academic_rules', 'graduation_check', 'graduation_stats'], keywords: /กฎ|กฏ|ระเบียบ|ข้อบังคับ|เกียรตินิยม|เรียนดี|สำเร็จการศึกษา|พ้นสภาพ|หน่วยกิต|คะแนนความประพฤติ|f\s*หรือ\s*u|gpa\s*3\./i, text: academicRulesContext },
         { id: 'tuition', sections: ['tuition'], keywords: /ค่าเทอม|ค่าเล่าเรียน|tuition|ค่าธรรมเนียม|ชำระ|ค้างจ่าย|ค้างชำระ/, text: tuitionContext },
         { id: 'graduation', sections: ['graduation_check', 'graduation_stats'], keywords: /สำเร็จ|จบ|graduation|เกียรติ|pending|รอพินิจ/, text: graduationContext },
         { id: 'budget', sections: ['budget_forecast', 'financial', 'faculty_budget'], keywords: /งบ|budget|รายรับ|รายจ่าย|เงิน|finance/, text: budgetContext },
@@ -1078,11 +1084,14 @@ TOKEN SAVING RULES:
 - ใช้เฉพาะ context ที่เกี่ยวข้องจาก retrieval ด้านล่าง ไม่ต้องอ่านทุกหน้าเว็บ
 - ถ้าคำถามเป็น lookup ธรรมดาให้ตอบสั้น ไม่สร้างกราฟ
 - ถ้าขอกราฟ ให้สร้าง json_chart จากตัวเลขใน RETRIEVED CONTEXTS เท่านั้น
+- ถ้าผู้ใช้ระบุหลาย metric ในคำถามเดียว เช่น "จำนวนนักศึกษา เกรด/GPA" ต้องใส่ทุก metric ที่ผู้ใช้ขอในกราฟ ห้ามตัดเหลือแค่ dataset เดียว
+- สำหรับคำถาม "จำนวนนักศึกษา + เกรด/GPA คณะวิทยาศาสตร์" ให้ใช้ Context students ตามสาขา: dataset 1 = "จำนวนนักศึกษา" (คน), dataset 2 = "GPA เฉลี่ย" (0-4) และใช้ dual y-axis y/y1
 - กราฟเส้นใช้เฉพาะ time series ปี/เดือน/วันที่/ไตรมาส ถ้าเป็นหมวดหมู่ให้ใช้ bar/hbar/scatter
 - ${chartPaletteInstruction(settings.theme || 'light')}
 
 OUTPUT FORMAT:
 - ถ้าสร้างกราฟ ต้องใช้ block \`\`\`json_chart ... \`\`\`
+- กราฟจำนวนนักศึกษา + เกรด/GPA ต้องมี datasets อย่างน้อย 2 ชุด ได้แก่ "จำนวนนักศึกษา" และ "GPA เฉลี่ย"
 - ห้ามปล่อย raw JSON/dataset นอก block กราฟ
 
 RETRIEVED CONTEXTS:
@@ -1121,7 +1130,8 @@ async function _sendMessageImpl(userMessage, options = {}) {
 2. ถ้ามีข้อมูล realtime/live ใน RETRIEVED CONTEXTS → ใช้ชุดนั้นก่อน
 3. ถ้ายังไม่มี realtime แต่มี "ข้อมูลที่เว็บใช้อยู่ตอนนี้" → ใช้ชุดนั้นคำนวณ/สร้างกราฟไปก่อนและระบุแหล่งข้อมูล
 4. ห้ามสร้างตัวเลขขึ้นเอง ห้ามใช้ข้อมูลที่ไม่เกี่ยวข้อง
-5. ต้องแนบ \`\`\`json_chart\`\`\` block เสมอถ้ามีข้อมูล]`;
+5. ถ้าคำถามขอหลายตัวชี้วัด เช่น จำนวนนักศึกษา + เกรด/GPA ต้องใส่ทุกตัวชี้วัดในกราฟเดียวหรือหลายกราฟ ห้ามตัดบางตัวออก
+6. ต้องแนบ \`\`\`json_chart\`\`\` block เสมอถ้ามีข้อมูล]`;
     }
 
     // Add user message to history

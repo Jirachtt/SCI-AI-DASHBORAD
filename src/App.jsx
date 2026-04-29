@@ -26,6 +26,7 @@ const AIChatPage = lazy(lazyRouteLoaders['/dashboard/ai-chat']);
 const GraduationStatsPage = lazy(lazyRouteLoaders['/dashboard/graduation-stats']);
 const AdminPanelPage = lazy(lazyRouteLoaders['/dashboard/admin']);
 const AlertCenterPage = lazy(lazyRouteLoaders['/dashboard/alerts']);
+const AcademicRulesPage = lazy(lazyRouteLoaders['/dashboard/academic-rules']);
 
 const PageLoader = () => (
   <div className="page-loader">
@@ -87,6 +88,7 @@ function AppRoutes() {
         <Route path="students" element={<Suspense fallback={<PageLoader />}><StudentListPage /></Suspense>} />
         <Route path="graduation" element={<Suspense fallback={<PageLoader />}><GraduationCheckPage /></Suspense>} />
         <Route path="graduation-stats" element={<Suspense fallback={<PageLoader />}><GraduationStatsPage /></Suspense>} />
+        <Route path="academic-rules" element={<Suspense fallback={<PageLoader />}><AcademicRulesPage /></Suspense>} />
         <Route path="hr" element={<Suspense fallback={<PageLoader />}><HRDashboardPage /></Suspense>} />
         <Route path="research" element={<Suspense fallback={<PageLoader />}><ResearchDashboardPage /></Suspense>} />
         <Route path="strategic" element={<Suspense fallback={<PageLoader />}><StrategicDashboardPage /></Suspense>} />

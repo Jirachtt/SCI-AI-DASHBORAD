@@ -61,6 +61,287 @@
   --border-radius-xl: 24px;
 }
 
+/* Academic Rules */
+.academic-rules-page {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.academic-rules-header {
+  margin-bottom: 18px;
+}
+
+.academic-rules-scope {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(0, 104, 56, 0.13), rgba(46, 134, 171, 0.09));
+  border: 1px solid rgba(0, 166, 81, 0.18);
+  border-radius: 8px;
+  padding: 20px 22px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.academic-rules-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--success);
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.academic-rules-scope h3 {
+  margin: 0 0 8px;
+  font-size: 1.18rem;
+  letter-spacing: 0;
+}
+
+.academic-rules-scope p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.academic-rules-scope-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.academic-rules-scope-meta span {
+  display: inline-flex;
+  justify-content: center;
+  border: 1px solid rgba(0, 166, 81, 0.22);
+  background: rgba(0, 166, 81, 0.09);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.academic-rules-stats {
+  margin-bottom: 22px;
+}
+
+.academic-rules-stats .stat-card-value {
+  background: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+}
+
+.academic-rules-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.academic-rules-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.academic-rules-card {
+  border-radius: 8px;
+}
+
+.academic-rules-honors {
+  background:
+    linear-gradient(180deg, rgba(197, 160, 40, 0.08), transparent 48%),
+    var(--bg-card);
+}
+
+.honors-rank-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 14px;
+}
+
+.honors-rank-card {
+  border: 1px solid;
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.honors-rank-card span {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 750;
+  margin-bottom: 8px;
+}
+
+.honors-rank-card strong {
+  font-size: 1.45rem;
+  letter-spacing: 0;
+}
+
+.academic-rule-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-secondary);
+  background: rgba(123, 104, 238, 0.09);
+  border: 1px solid rgba(123, 104, 238, 0.18);
+  border-radius: 8px;
+  padding: 12px;
+  line-height: 1.6;
+  font-size: 0.88rem;
+}
+
+.academic-rule-note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.academic-rules-list {
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 14px 0 0;
+}
+
+.academic-rules-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--text-secondary);
+  line-height: 1.58;
+  font-size: 0.91rem;
+}
+
+.academic-rules-list svg,
+.academic-rules-dot {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.academic-rules-list.positive svg {
+  color: var(--success);
+}
+
+.academic-rules-list.danger svg {
+  color: var(--danger);
+}
+
+.academic-rules-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7B68EE, #2E86AB);
+  margin-top: 8px;
+}
+
+.academic-rules-major-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.academic-rules-major-list span {
+  border: 1px solid rgba(0, 166, 81, 0.22);
+  background: rgba(0, 166, 81, 0.08);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.academic-rules-sources {
+  margin-top: 16px;
+}
+
+.academic-rules-source-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.academic-rules-source-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 13px 14px;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.academic-rules-source-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(0, 166, 81, 0.35);
+  background: rgba(0, 166, 81, 0.07);
+}
+
+.academic-rules-source-item strong,
+.academic-rules-source-item span {
+  display: block;
+}
+
+.academic-rules-source-item strong {
+  font-size: 0.9rem;
+  margin-bottom: 3px;
+}
+
+.academic-rules-source-item span {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+[data-theme="light"] .academic-rules-scope {
+  background: linear-gradient(135deg, rgba(0, 104, 56, 0.08), rgba(46, 134, 171, 0.05));
+  border-color: rgba(0, 104, 56, 0.14);
+}
+
+[data-theme="light"] .honors-rank-card,
+[data-theme="light"] .academic-rules-source-item {
+  background: rgba(255, 255, 255, 0.76);
+}
+
+@media (max-width: 1100px) {
+  .academic-rules-grid,
+  .academic-rules-rule-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .academic-rules-scope {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .academic-rules-scope-meta {
+    min-width: 0;
+  }
+
+  .academic-rules-grid,
+  .academic-rules-rule-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .honors-rank-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ==================== LIGHT THEME ==================== */
 [data-theme="light"] {
   --bg-primary: #F1F1F1;

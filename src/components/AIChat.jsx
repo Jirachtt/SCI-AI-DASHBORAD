@@ -117,7 +117,7 @@ export default function AIChat() {
         }
     };
 
-    const retryWithCountdown = async (buildPrompt, retryId) => {
+    const retryWithCountdown = async (buildPrompt, retryId, sourceQuestion = '') => {
         const maxRetries = 3;
         for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
             const waitSec = Math.max(getWaitSeconds(), 5) + 2;
@@ -147,7 +147,7 @@ export default function AIChat() {
 
             try {
                 const aiText = await sendAI(buildPrompt());
-                const parsedAI = parseAIResponse(aiText);
+                const parsedAI = parseAIResponse(aiText, sourceQuestion);
                 setMessages(prev => prev.map(message =>
                     message._retryId === retryId
                         ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart }
@@ -182,7 +182,7 @@ export default function AIChat() {
 
         const prompt = buildAIChatPrompt(question, uploadedFileData);
         const aiText = await sendAI(prompt);
-        const parsedAI = parseAIResponse(aiText);
+        const parsedAI = parseAIResponse(aiText, question);
         setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
     };
 
@@ -203,7 +203,7 @@ export default function AIChat() {
                     chart: null,
                     _retryId: retryId,
                 }]);
-                await retryWithCountdown(() => buildAIChatPrompt(userMsg, uploadedFileData), retryId);
+                await retryWithCountdown(() => buildAIChatPrompt(userMsg, uploadedFileData), retryId, userMsg);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -275,7 +275,7 @@ export default function AIChat() {
             const dataPreview = parsed.rows.slice(0, 15).map(row => Object.values(row).join(', ')).join('\n');
             try {
                 const aiText = await sendAI(`ผู้ใช้อัปโหลดไฟล์ "${fileName}" มีข้อมูล ${parsed.rowCount} แถว คอลัมน์: ${parsed.headers.join(', ')}\n\nตัวอย่างข้อมูล:\n${dataPreview}\n\nช่วยวิเคราะห์และสรุปข้อมูลนี้แบบกระชับ`);
-                const parsedAI = parseAIResponse(aiText);
+                const parsedAI = parseAIResponse(aiText, `วิเคราะห์ไฟล์ ${fileName}`);
                 setMessages(prev => [...prev, {
                     role: 'bot',
                     text: `**AI วิเคราะห์เพิ่มเติม:**\n\n${parsedAI.text}`,
