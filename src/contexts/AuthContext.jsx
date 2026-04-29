@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
                 setUser({
                     uid: 'admin-bypass-' + Date.now(),
                     email: 'dean@mju.ac.th',
-                    name: 'ผู้บริหาร (Admin)',
+                    name: 'คณบดี (Admin)',
                     avatar: '👨‍💼',
                     role: 'dean',
                     roleLabel: 'คณบดี (Dean)',
@@ -210,7 +210,7 @@ export function AuthProvider({ children }) {
             const adminUser = {
                 uid: 'admin-bypass-' + Date.now(),
                 email: 'dean@mju.ac.th',
-                name: 'ผู้บริหาร (Admin)',
+                name: 'คณบดี (Admin)',
                 avatar: '👨‍💼',
                 role: 'dean',
                 roleLabel: 'คณบดี (Dean)',

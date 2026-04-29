@@ -166,14 +166,14 @@ export default function StudentListPage() {
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.7 }}>
                         หน้ารายชื่อนักศึกษามีข้อมูลส่วนบุคคล (ชื่อ-นามสกุล, รหัส, ผลการเรียน)<br />
                         ตาม <strong style={{ color: '#FFC107' }}>พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)</strong><br />
-                        เฉพาะผู้บริหาร (Admin) เท่านั้นที่สามารถเข้าถึงได้
+                        เฉพาะคณบดี (Admin) เท่านั้นที่สามารถเข้าถึงได้
                     </p>
                     <div style={{
                         marginTop: 20, padding: '12px 24px', borderRadius: '10px',
                         background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
                         fontSize: '0.82rem', color: 'var(--text-muted)'
                     }}>
-                        🔑 กรุณาเข้าสู่ระบบด้วยรหัสผู้บริหาร
+                        🔑 กรุณาเข้าสู่ระบบด้วยรหัสคณบดี
                     </div>
                 </div>
             </div>

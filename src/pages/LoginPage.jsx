@@ -64,7 +64,7 @@ export default function LoginPage() {
         e.preventDefault();
         const result = await loginWithAdminCode(adminCode);
         if (!result.success) {
-            setError('รหัสผ่านผู้บริหารไม่ถูกต้อง');
+            setError('รหัสผ่านคณบดีไม่ถูกต้อง');
             setTimeout(() => setError(''), 3000);
         }
     };
@@ -182,7 +182,7 @@ export default function LoginPage() {
                             style={{ color: '#6b7280', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto' }}
                         >
                             <ShieldCheck size={16} />
-                            เข้าสู่ระบบผู้บริหาร
+                            เข้าสู่ระบบคณบดี
                         </button>
                     </div>
                 </div>
@@ -201,7 +201,7 @@ export default function LoginPage() {
 
                         <div className="modal-header">
                             <ShieldCheck size={48} color="#10b981" />
-                            <h2>เข้าถึงสิทธิ์ผู้บริหาร</h2>
+                            <h2>เข้าถึงสิทธิ์คณบดี</h2>
                             <p>กรุณากรอกรหัสผ่านสำหรับ คณบดี หรือ ประธานหลักสูตร</p>
                         </div>
 
