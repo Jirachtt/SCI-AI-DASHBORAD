@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 import {
     Shield, Users, Clock, Briefcase, Building, Check, X, Search, Filter,
     RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
     Database, ScrollText
 } from 'lucide-react';
-import { canAccess, getRoleBadgeColor, getRoleInfo } from '../utils/accessControl';
+import { canAccess, getRoleBadgeColor, getRoleInfo, isPendingRole } from '../utils/accessControl';
 import {
     addRoleMonths,
     buildRoleValidityPatch,
@@ -92,6 +92,40 @@ const getRoleTermText = (validity) => {
     return `เหลือ ${validity.daysRemaining.toLocaleString('th-TH')} วัน`;
 };
 
+const getDisplayStatus = (u = {}) => {
+    if (u.status === 'pending' || isPendingRole(u.role)) return 'pending';
+    if (u.status === 'rejected') return 'rejected';
+    return 'approved';
+};
+
+const hasManageableRoleTerm = (u = {}) =>
+    MANAGEABLE_ROLES.includes(u.role) && getDisplayStatus(u) === 'approved';
+
+function buildMissingRoleValidityPatch(u = {}) {
+    if (!hasManageableRoleTerm(u)) return null;
+    const validity = getRoleValidity(u);
+    const patch = {};
+
+    if (!u.roleStartedAt) patch.roleStartedAt = validity.startedAt.toISOString();
+    if (!u.roleExpiresAt) patch.roleExpiresAt = validity.expiresAt.toISOString();
+    if (!Number(u.roleDurationYears)) patch.roleDurationYears = validity.durationYears;
+    if (!u.status) patch.status = 'approved';
+    if (!u.roleLabel && ROLE_LABELS[u.role]) patch.roleLabel = ROLE_LABELS[u.role];
+    if (!u.avatar) patch.avatar = AVATAR_BY_ROLE[u.role] || 'U';
+
+    if (Object.keys(patch).length === 0) return null;
+    return {
+        ...patch,
+        roleManagedAt: u.roleManagedAt || new Date().toISOString(),
+        roleManagedBy: u.roleManagedBy || 'system-backfill',
+    };
+}
+
+const normalizeUserRoleTerm = (u = {}) => {
+    const patch = buildMissingRoleValidityPatch(u);
+    return patch ? { ...u, ...patch } : u;
+};
+
 export default function AdminPanelPage() {
     const { user, updateUserDoc } = useAuth();
     const [users, setUsers] = useState([]);
@@ -121,8 +155,25 @@ export default function AdminPanelPage() {
         try {
             const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
             const snap = await getDocs(q);
-            const list = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+            const rawList = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+            const list = rawList.map(normalizeUserRoleTerm);
             setUsers(list);
+
+            const missingRoleTerms = rawList
+                .map(u => ({ user: u, patch: buildMissingRoleValidityPatch(u) }))
+                .filter(item => item.patch);
+            if (missingRoleTerms.length > 0) {
+                Promise.allSettled(
+                    missingRoleTerms.map(({ user: targetUser, patch }) =>
+                        updateDoc(doc(db, 'users', targetUser.uid), patch)
+                    )
+                ).then(results => {
+                    const failed = results.filter(result => result.status === 'rejected');
+                    if (failed.length > 0) {
+                        console.warn(`[AdminPanelPage] Role validity backfill failed for ${failed.length} user(s)`);
+                    }
+                });
+            }
         } catch (err) {
             console.error('Load users error:', err);
             showToast('error', 'โหลดข้อมูลผู้ใช้ไม่สำเร็จ: ' + (err.message || 'unknown'));
@@ -136,7 +187,7 @@ export default function AdminPanelPage() {
     }, [canViewPanel, loadUsers]);
 
     const pendingUsers = useMemo(
-        () => users.filter(u => u.status === 'pending'),
+        () => users.filter(u => getDisplayStatus(u) === 'pending'),
         [users]
     );
 
@@ -145,8 +196,8 @@ export default function AdminPanelPage() {
         pending: pendingUsers.length,
         staff: users.filter(u => u.role === 'staff').length,
         chair: users.filter(u => u.role === 'chair').length,
-        expiring: users.filter(u => u.status === 'approved' && getRoleValidity(u).status === 'expiring').length,
-        expired: users.filter(u => u.status === 'approved' && getRoleValidity(u).status === 'expired').length
+        expiring: users.filter(u => hasManageableRoleTerm(u) && getRoleValidity(u).status === 'expiring').length,
+        expired: users.filter(u => hasManageableRoleTerm(u) && getRoleValidity(u).status === 'expired').length
     }), [users, pendingUsers]);
 
     const filteredUsers = useMemo(() => {
@@ -537,6 +588,15 @@ export default function AdminPanelPage() {
                     ) : (
                         <div className="admin-users-table-wrapper">
                             <table className="admin-users-table">
+                                <colgroup>
+                                    <col className="admin-col-user" />
+                                    <col className="admin-col-email" />
+                                    <col className="admin-col-status" />
+                                    <col className="admin-col-role" />
+                                    <col className="admin-col-term" />
+                                    <col className="admin-col-actions" />
+                                    <col className="admin-col-date" />
+                                </colgroup>
                                 <thead>
                                     <tr>
                                         <th>ผู้ใช้</th>
@@ -552,11 +612,8 @@ export default function AdminPanelPage() {
                                     {filteredUsers.map(u => {
                                         const isSelf = u.uid === user?.uid;
                                         const validity = getRoleValidity(u);
-                                        const canManageTime = u.status === 'approved' && MANAGEABLE_ROLES.includes(u.role);
-                                        const statusClass =
-                                            u.status === 'pending' ? 'pending'
-                                                : u.status === 'rejected' ? 'rejected'
-                                                    : 'approved';
+                                        const canManageTime = hasManageableRoleTerm(u);
+                                        const statusClass = getDisplayStatus(u);
                                         return (
                                             <tr key={u.uid}>
                                                 <td>
@@ -573,7 +630,7 @@ export default function AdminPanelPage() {
                                                 <td className="admin-cell-email">{u.email || '-'}</td>
                                                 <td>
                                                     <span className={`admin-status-badge ${statusClass}`}>
-                                                        {u.status === 'pending' ? 'รออนุมัติ' : u.status === 'rejected' ? 'ปฏิเสธ' : 'อนุมัติแล้ว'}
+                                                        {statusClass === 'pending' ? 'รออนุมัติ' : statusClass === 'rejected' ? 'ปฏิเสธ' : 'อนุมัติแล้ว'}
                                                     </span>
                                                 </td>
                                                 <td>
@@ -611,7 +668,7 @@ export default function AdminPanelPage() {
                                                         </div>
                                                     ) : (
                                                         <span className="admin-term-muted">
-                                                            {u.status === 'pending'
+                                                            {statusClass === 'pending'
                                                                 ? `รออนุมัติ · หลังอนุมัติ ${getRoleDurationLabel(u.requestedRole || 'general')}`
                                                                 : '-'}
                                                         </span>
@@ -635,7 +692,7 @@ export default function AdminPanelPage() {
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <span className="admin-term-muted">จัดการหลังอนุมัติ</span>
+                                                        <span className="admin-term-muted">{statusClass === 'pending' ? 'จัดการหลังอนุมัติ' : '-'}</span>
                                                     )}
                                                 </td>
                                                 <td className="admin-cell-date">{formatDate(u.createdAt)}</td>
