@@ -81,7 +81,7 @@ export default function Layout() {
                         </button>
                     </div>
                 </header>
-                <div className="page-content">
+                <div className="page-content dashboard-typography">
                     <div className={`page-transition ${isTransitioning ? 'page-enter' : 'page-enter-active'}`}>
                         <Outlet />
                     </div>

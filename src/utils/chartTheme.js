@@ -1,4 +1,6 @@
 export const DASHBOARD_FONT_FAMILY = "'Noto Sans Thai', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+const MIN_CHART_FONT_SIZE = 12;
+const DEFAULT_CHART_FONT_SIZE = 13;
 
 export const LIGHT_CHART_PALETTE = [
     '#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2',
@@ -21,6 +23,7 @@ function withDashboardFont(font = {}, fallbackWeight) {
             if (value != null) next[key] = value;
         });
     }
+    next.size = Math.max(Number(next.size) || DEFAULT_CHART_FONT_SIZE, MIN_CHART_FONT_SIZE);
     if (fallbackWeight && !next.weight) next.weight = fallbackWeight;
     return next;
 }

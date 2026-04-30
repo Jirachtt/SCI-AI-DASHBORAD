@@ -226,13 +226,13 @@ export default function DashboardHome() {
             <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div>
                     <h2 style={{
-                        fontSize: '1.7rem', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em',
+                        fontSize: '1.7rem', fontWeight: 800, marginBottom: 8, letterSpacing: 0,
                         background: 'linear-gradient(135deg, var(--text-primary) 30%, #00a651)',
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                     }}>
                         สวัสดี, {user?.name}
                     </h2>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', letterSpacing: '0.01em' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', letterSpacing: 0 }}>
                         ยินดีต้อนรับสู่ Science AI Dashboard — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้
                     </p>
                 </div>
