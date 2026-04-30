@@ -136,7 +136,7 @@ export default function AlertCenterPage() {
             </div>
 
             {/* Summary */}
-            <div className="stats-grid" style={{ marginTop: 12 }}>
+            <div className="stats-grid alert-summary-grid" style={{ marginTop: 12 }}>
                 <SummaryCard label="แจ้งเตือนทั้งหมด" value={summary.total} color="#7B68EE" Icon={Bell} />
                 <SummaryCard label="วิกฤต (Critical)" value={summary.critical} color="#ef4444" Icon={ShieldAlert} pulse={summary.critical > 0} />
                 <SummaryCard label="เฝ้าระวัง (Warning)" value={summary.warning} color="#f59e0b" Icon={AlertTriangle} />
@@ -285,7 +285,7 @@ export default function AlertCenterPage() {
 
 function SummaryCard({ label, value, color, Icon: IconComponent, pulse }) {
     return (
-        <div className={`stat-card animate-in ${pulse ? 'pulse' : ''}`}>
+        <div className={`stat-card alert-summary-card animate-in ${pulse ? 'pulse' : ''}`}>
             <div className="stat-card-header">
                 <div className="stat-card-icon" style={{ background: `linear-gradient(135deg, ${color}, ${color}aa)` }}>
                     {createElement(IconComponent, { size: 20, color: '#fff' })}
