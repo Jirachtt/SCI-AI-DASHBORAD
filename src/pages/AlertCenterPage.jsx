@@ -3,7 +3,11 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
+import { getStudentListSync } from '../services/studentDataService';
+import {
+    ensureSharedDashboardData,
+    onSharedDashboardDataChange,
+} from '../services/sharedDashboardDataService';
 import { getAllAlerts } from '../utils/alerts';
 import { ALERT_SOURCE_META, fetchUniversityAlerts } from '../services/alertDataService';
 import {
@@ -26,9 +30,18 @@ const DOMAIN_ICON = {
     'ยุทธศาสตร์ (OKR)': Target,
 };
 
+const ALERT_DATASET_IDS = [
+    'dashboard_summary',
+    'student_stats',
+    'graduation',
+    'science_budget',
+    'research',
+    'strategic',
+];
+
 export default function AlertCenterPage() {
     const { user } = useAuth();
-    const [studentDataVersion, setStudentDataVersion] = useState(0);
+    const [alertDataVersion, setAlertDataVersion] = useState(0);
     const [loading, setLoading] = useState(true);
     const [studentCount, setStudentCount] = useState(() => getStudentListSync().length);
     const [severityFilter, setSeverityFilter] = useState('all');
@@ -40,14 +53,23 @@ export default function AlertCenterPage() {
 
     useEffect(() => {
         let active = true;
-        const refreshFromStudentData = (list = getStudentListSync()) => {
+        const refreshFromSharedData = () => {
             if (!active) return;
-            setStudentCount(list.length);
-            setStudentDataVersion(t => t + 1);
+            setStudentCount(getStudentListSync().length);
+            setAlertDataVersion(t => t + 1);
             setLoading(false);
         };
-        ensureStudentList().then(refreshFromStudentData);
-        const unsub = onStudentDataChange(refreshFromStudentData);
+        ensureSharedDashboardData(ALERT_DATASET_IDS)
+            .then(refreshFromSharedData)
+            .catch(error => {
+                if (!active) return;
+                console.warn('[AlertCenterPage] shared alert data unavailable:', error?.message || error);
+                refreshFromSharedData();
+            });
+        const unsub = onSharedDashboardDataChange(event => {
+            if (!ALERT_DATASET_IDS.includes(event?.id)) return;
+            refreshFromSharedData();
+        });
         return () => { active = false; unsub && unsub(); };
     }, []);
 
@@ -66,11 +88,11 @@ export default function AlertCenterPage() {
         return () => { active = false; };
     }, [severityFilter, domainFilter, sourceFilter]);
 
-    // Recompute whenever the live student-data cache emits an update.
+    // Recompute whenever any shared dashboard dataset used by alert rules updates.
     const alerts = useMemo(() => {
-        void studentDataVersion;
+        void alertDataVersion;
         return [...getAllAlerts(), ...externalAlerts];
-    }, [externalAlerts, studentDataVersion]);
+    }, [externalAlerts, alertDataVersion]);
     const summary = useMemo(() => ({
         total: alerts.length,
         critical: alerts.filter(a => a.severity === 'critical').length,
@@ -126,7 +148,18 @@ export default function AlertCenterPage() {
                     <ExportPDFButton title="ศูนย์แจ้งเตือน (Alert Center)" />
                     <button
                         className="admin-refresh-btn"
-                        onClick={() => setStudentDataVersion(t => t + 1)}
+                        onClick={() => {
+                            setLoading(true);
+                            ensureSharedDashboardData(ALERT_DATASET_IDS)
+                                .catch(error => {
+                                    console.warn('[AlertCenterPage] manual alert recompute failed:', error?.message || error);
+                                })
+                                .finally(() => {
+                                    setStudentCount(getStudentListSync().length);
+                                    setAlertDataVersion(t => t + 1);
+                                    setLoading(false);
+                                });
+                        }}
                         aria-label="คำนวณใหม่"
                         data-tooltip="คำนวณใหม่"
                     >

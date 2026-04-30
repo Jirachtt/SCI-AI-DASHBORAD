@@ -11,7 +11,10 @@ import { scienceFacultyBudgetData } from '../data/mockData';
 import { researchData } from '../data/researchData';
 import { strategicData } from '../data/strategicData';
 import { ALERT_SOURCE_META } from '../services/alertDataService';
-import { getSharedDashboardDatasetSync } from '../services/sharedDashboardDataService';
+import {
+    getSharedDashboardDatasetMetaSync,
+    getSharedDashboardDatasetSync,
+} from '../services/sharedDashboardDataService';
 
 const SEVERITY_RANK = { critical: 3, warning: 2, info: 1 };
 
@@ -34,14 +37,27 @@ function severityFromGap(gapPct) {
     return null;
 }
 
+const ALERT_DATASET_BY_SOURCE = {
+    local_students: 'student_stats',
+    graduation: 'graduation',
+    budget: 'science_budget',
+    research: 'research',
+    strategic: 'strategic',
+};
+
 function withSource(alert, source) {
     const meta = ALERT_SOURCE_META[source] || { label: source, mode: 'local' };
+    const datasetId = ALERT_DATASET_BY_SOURCE[source];
+    const datasetMeta = datasetId ? getSharedDashboardDatasetMetaSync(datasetId) : null;
+    const isLive = Boolean(datasetMeta?.isLive || meta.mode === 'live');
     return {
         ...alert,
         source,
         sourceLabel: meta.label,
-        sourceMode: meta.mode,
-        updatedAt: alert.updatedAt || new Date().toISOString(),
+        sourceMode: isLive ? 'live' : meta.mode,
+        updatedAt: alert.updatedAt || datasetMeta?.updatedAt?.toISOString?.() || new Date().toISOString(),
+        datasetId,
+        datasetSourceType: datasetMeta?.sourceType || null,
     };
 }
 
@@ -119,7 +135,10 @@ function buildStudentAlerts() {
 
 function buildGraduationAlerts() {
     const out = [];
-    const lowRateMajors = (graduationByMajor || []).filter(m =>
+    const graduationData = getSharedDashboardDatasetSync('graduation') || {};
+    const current = graduationData.current || graduationData.currentGraduationStats || currentGraduationStats;
+    const byMajor = graduationData.byMajor || graduationData.graduationByMajor || graduationByMajor;
+    const lowRateMajors = (byMajor || []).filter(m =>
         m.total >= 3 && m.rate < T.gradRateWarn
     );
     lowRateMajors.forEach(m => {
@@ -138,15 +157,15 @@ function buildGraduationAlerts() {
     });
 
     // Candidate-level pending
-    if (currentGraduationStats.pending > 0) {
+    if (Number(current?.pending || 0) > 0) {
         out.push(withSource({
             id: 'grad-pending',
             severity: 'warning',
             domain: 'การสำเร็จการศึกษา',
-            title: `ผู้คาดว่าสำเร็จ "รอพินิจ" ${currentGraduationStats.pending} คน`,
+            title: `ผู้คาดว่าสำเร็จ "รอพินิจ" ${current.pending} คน`,
             detail: `GPA ก้ำกึ่งเกณฑ์ (1.75–1.99) — ต้องพิจารณารายกรณีก่อนปิดภาคเรียน`,
             metric: 'Pending Review',
-            value: currentGraduationStats.pending,
+            value: current.pending,
             target: 0,
             suggestedAction: 'ส่งคณะกรรมการวิชาการพิจารณาก่อนกำหนดยื่นสำเร็จ',
         }, 'graduation'));
@@ -193,7 +212,8 @@ function buildBudgetAlerts() {
 
 function buildResearchAlerts() {
     const out = [];
-    const pendingPatents = (researchData?.patents || []).filter(p => p.status === 'รอพิจารณา');
+    const currentResearch = getSharedDashboardDatasetSync('research') || researchData;
+    const pendingPatents = (currentResearch?.patents || []).filter(p => p.status === 'รอพิจารณา');
     if (pendingPatents.length > 0) {
         out.push(withSource({
             id: 'research-patents-pending',
@@ -210,7 +230,7 @@ function buildResearchAlerts() {
     }
 
     // Funding YoY drop check
-    const funding = (researchData?.fundingTrend || []).filter(f => f.type === 'actual');
+    const funding = (currentResearch?.fundingTrend || []).filter(f => f.type === 'actual');
     if (funding.length >= 2) {
         const a = funding[funding.length - 2];
         const b = funding[funding.length - 1];
@@ -234,7 +254,8 @@ function buildResearchAlerts() {
 
 function buildStrategicAlerts() {
     const out = [];
-    const goals = strategicData?.strategicGoals || [];
+    const currentStrategic = getSharedDashboardDatasetSync('strategic') || strategicData;
+    const goals = currentStrategic?.strategicGoals || [];
     goals.forEach(g => {
         if (!g.target || g.target === 0) return;
         // Exclude goals where "lower is better" — all sample goals are higher-is-better
