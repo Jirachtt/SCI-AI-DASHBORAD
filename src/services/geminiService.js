@@ -14,11 +14,10 @@ import { buildAcademicRulesContext } from '../data/academicRulesData';
 import { isLiveData } from './studentDataService';
 import { canAccess, getRoleInfo } from '../utils/accessControl';
 import {
-    getDashboardDatasetMetaSync,
-    getDashboardDatasetSync,
-    getDashboardFreshnessContext,
-    getLiveDashboardDatasetSync,
-} from './dashboardLiveDataService';
+    getSharedDashboardDatasetMetaSync,
+    getSharedDashboardDatasetSync,
+    getSharedDashboardFreshnessContext,
+} from './sharedDashboardDataService';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 if (!API_KEY) {
@@ -450,10 +449,10 @@ function buildBaseInstruction() {
         if (s.gpa > gpaByMajor[s.major].max) gpaByMajor[s.major].max = s.gpa;
     });
 
-    const liveStudentStatsData = getDashboardDatasetSync('student_stats') || studentStatsData;
-    const liveUniversityBudgetData = getDashboardDatasetSync('university_budget') || universityBudgetData;
-    const liveScienceBudgetData = getDashboardDatasetSync('science_budget') || scienceFacultyBudgetData;
-    const liveStudentLifeData = getDashboardDatasetSync('student_life') || studentLifeData;
+    const liveStudentStatsData = getSharedDashboardDatasetSync('student_stats') || studentStatsData;
+    const liveUniversityBudgetData = getSharedDashboardDatasetSync('university_budget') || universityBudgetData;
+    const liveScienceBudgetData = getSharedDashboardDatasetSync('science_budget') || scienceFacultyBudgetData;
+    const liveStudentLifeData = getSharedDashboardDatasetSync('student_life') || studentLifeData;
     const personnel = (liveStudentStatsData.scienceFaculty || studentStatsData.scienceFaculty).personnel;
     const genderCounts = studentList.reduce((acc, student) => {
         const prefix = String(student.prefix || '');
@@ -823,18 +822,14 @@ function domainAllowed(role, domain) {
 }
 
 function liveDatasetContext(id, label) {
-    const meta = getDashboardDatasetMetaSync(id);
-    const liveData = getLiveDashboardDatasetSync(id);
-    if (liveData) {
-        const updated = meta.updatedAt ? `, updated=${meta.updatedAt.toLocaleString('th-TH')}` : '';
-        return { data: liveData, sourceLabel: `realtime${updated}`, missing: null };
-    }
-
-    const currentData = getDashboardDatasetSync(id);
+    const meta = getSharedDashboardDatasetMetaSync(id);
+    const currentData = getSharedDashboardDatasetSync(id);
     if (currentData) {
+        const updated = meta.updatedAt ? `, updated=${meta.updatedAt.toLocaleString('th-TH')}` : '';
+        const linked = meta.usesSharedDataHub ? `, linked students=${meta.linkedStudentRows || 0}` : '';
         return {
             data: currentData,
-            sourceLabel: 'ข้อมูลที่เว็บใช้อยู่ตอนนี้',
+            sourceLabel: meta.isLive ? `realtime${updated}${linked}` : `ข้อมูลที่เว็บใช้อยู่ตอนนี้${linked}`,
             missing: null,
         };
     }
@@ -1071,7 +1066,7 @@ ROLE CONTEXT:
 - user preference memory: preferredFormat=${memory.preferredFormat}, detailLevel=${memory.detailLevel}, frequentTopics=${Object.entries(memory.topics || {}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v]) => `${k}:${v}`).join(', ') || '-'}
 
 LIVE DATA FRESHNESS:
-${getDashboardFreshnessContext()}
+${getSharedDashboardFreshnessContext()}
 
 TOKEN SAVING RULES:
 - Maejo public web mode: ถ้าคำถามเป็นเรื่องทั่วไปของมหาวิทยาลัยแม่โจ้ เช่น ประวัติ คณะ หลักสูตร รับสมัคร TCAS ค่าเทอม ค่าธรรมเนียม ข่าว หน่วยงาน เบอร์ติดต่อ หรือสถานที่ ให้ตรวจ RETRIEVED CONTEXTS ของเว็บเราก่อน แล้วค่อยใช้ Google Search/เว็บทางการเมื่อข้อมูลไม่ครบ

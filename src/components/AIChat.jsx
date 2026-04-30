@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bot, Maximize2, MessageCircle, Mic, MicOff, Paperclip, RotateCcw, Send, X } from 'lucide-react';
+import { Bot, FileSpreadsheet, Maximize2, MessageCircle, Mic, MicOff, Paperclip, RotateCcw, Send, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ensureStudentList, onStudentDataChange } from '../services/studentDataService';
@@ -433,6 +433,20 @@ export default function AIChat() {
                             </div>
                         )}
 
+                        {uploadedFileData && (
+                            <div className="ai-chat-file-pill compact">
+                                <FileSpreadsheet size={13} />
+                                <span>{uploadedFileData.rowCount} แถว × {uploadedFileData.headers.length} คอลัมน์</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setUploadedFileData(null)}
+                                    aria-label="ล้างไฟล์ที่อัปโหลด"
+                                >
+                                    <X size={13} />
+                                </button>
+                            </div>
+                        )}
+
                         <div className="ai-chat-input-area">
                             <input
                                 ref={fileInputRef}
@@ -442,24 +456,24 @@ export default function AIChat() {
                                 style={{ display: 'none' }}
                             />
                             <button
-                                className="ai-chat-mic"
+                                className={`ai-chat-tool-btn ai-chat-tool-btn-voice ${isListening ? 'listening' : ''}`}
                                 type="button"
                                 onClick={toggleListening}
                                 disabled={typing}
                                 aria-label="สั่งงานด้วยเสียง"
                                 data-tooltip="สั่งงานด้วยเสียง"
                             >
-                                {isListening ? <Mic size={20} /> : <MicOff size={20} />}
+                                {isListening ? <Mic size={18} /> : <MicOff size={18} />}
                             </button>
                             <button
-                                className="ai-chat-mic"
+                                className={`ai-chat-tool-btn ai-chat-tool-btn-upload ${uploadedFileData ? 'has-file' : ''}`}
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={typing}
                                 aria-label="อัปโหลดไฟล์ CSV/Excel"
                                 data-tooltip="อัปโหลดไฟล์"
                             >
-                                <Paperclip size={19} />
+                                <Paperclip size={18} />
                             </button>
                             <input
                                 type="text"

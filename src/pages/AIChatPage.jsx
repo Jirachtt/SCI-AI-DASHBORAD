@@ -2897,31 +2897,36 @@ export default function AIChatPage() {
                     {/* Input Area */}
                     <div className="ai-chat-page-input-wrapper">
                         {uploadedFileData && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', marginBottom: 6, borderRadius: '8px', background: 'rgba(0,166,81,0.12)', border: '1px solid rgba(0,166,81,0.25)', fontSize: '0.85rem', color: '#00a651' }}>
+                            <div className="ai-chat-file-pill">
                                 <FileSpreadsheet size={14} />
                                 <span>ไฟล์ที่โหลด: {uploadedFileData.rowCount} แถว × {uploadedFileData.headers.length} คอลัมน์ — ถามคำถามเกี่ยวกับข้อมูลนี้ได้เลย</span>
-                                <button onClick={() => setUploadedFileData(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}><X size={14} /></button>
+                                <button
+                                    type="button"
+                                    onClick={() => setUploadedFileData(null)}
+                                    aria-label="ล้างไฟล์ที่อัปโหลด"
+                                >
+                                    <X size={14} />
+                                </button>
                             </div>
                         )}
                         <div className="ai-chat-page-input-area">
                             <button
-                                className={`ai-chat-page-mic ${isListening ? 'listening' : ''}`}
+                                className={`ai-chat-tool-btn ai-chat-tool-btn-voice ${isListening ? 'listening' : ''}`}
                                 onClick={toggleListening}
                                 disabled={typing}
                                 aria-label="สั่งงานด้วยเสียง (ภาษาไทย)"
                                 data-tooltip="สั่งงานด้วยเสียง"
                             >
-                                {isListening ? <Mic size={20} /> : <MicOff size={20} />}
+                                {isListening ? <Mic size={18} /> : <MicOff size={18} />}
                             </button>
                             <button
-                                className="ai-chat-page-mic"
+                                className={`ai-chat-tool-btn ai-chat-tool-btn-upload ${uploadedFileData ? 'has-file' : ''}`}
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={typing}
                                 aria-label="อัปโหลดไฟล์ CSV/Excel เพื่อวิเคราะห์"
                                 data-tooltip="อัปโหลดไฟล์"
-                                style={{ color: '#C5A028' }}
                             >
-                                <Paperclip size={20} />
+                                <Paperclip size={18} />
                             </button>
                             <input
                                 type="file"

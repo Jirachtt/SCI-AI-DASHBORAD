@@ -26,11 +26,11 @@ import {
     honorsRules,
 } from '../data/academicRulesData';
 import { getStudentListSync } from '../services/studentDataService';
+import { DASHBOARD_DATASETS } from '../services/dashboardLiveDataService';
 import {
-    DASHBOARD_DATASETS,
-    getDashboardDatasetMetaSync,
-    getDashboardDatasetSync,
-} from '../services/dashboardLiveDataService';
+    getSharedDashboardDatasetMetaSync,
+    getSharedDashboardDatasetSync,
+} from '../services/sharedDashboardDataService';
 import { getAllAlerts } from './alerts';
 
 const SHEET_NAME_LIMIT = 31;
@@ -237,12 +237,12 @@ function rowsFromObject(object, section = 'Summary') {
 }
 
 function getDataset(id, fallback) {
-    return getDashboardDatasetSync(id) || fallback || null;
+    return getSharedDashboardDatasetSync(id) || fallback || null;
 }
 
 function datasetMetaRows(ids = DASHBOARD_DATASETS.map(item => item.id)) {
     return ids.map((id, idx) => {
-        const meta = getDashboardDatasetMetaSync(id);
+        const meta = getSharedDashboardDatasetMetaSync(id);
         const config = DASHBOARD_DATASETS.find(item => item.id === id);
         return {
             row: idx + 1,

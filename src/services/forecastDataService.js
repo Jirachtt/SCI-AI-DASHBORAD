@@ -1,9 +1,8 @@
 import { getStudentListSync, isLiveData } from './studentDataService';
 import {
-    getDashboardDatasetSync,
-    getDashboardDatasetMetaSync,
-    getLiveDashboardDatasetSync,
-} from './dashboardLiveDataService';
+    getSharedDashboardDatasetMetaSync,
+    getSharedDashboardDatasetSync,
+} from './sharedDashboardDataService';
 
 function actualBudgetRows(source) {
     return (source?.yearly || [])
@@ -62,8 +61,8 @@ function describeDashboardDatasetStatus(datasetId) {
         };
     }
 
-    const meta = getDashboardDatasetMetaSync(datasetId);
-    const currentData = getDashboardDatasetSync(datasetId);
+    const meta = getSharedDashboardDatasetMetaSync(datasetId);
+    const currentData = getSharedDashboardDatasetSync(datasetId);
     const rowCount = meta.rowCount ?? getDashboardRowCount(currentData);
     const hasUsableCurrentData = Boolean(currentData && rowCount !== 0);
 
@@ -93,7 +92,7 @@ function getDashboardRowCount(payload) {
 }
 
 function getForecastDashboardDatasetSync(id) {
-    return getLiveDashboardDatasetSync(id) || getDashboardDatasetSync(id);
+    return getSharedDashboardDatasetSync(id);
 }
 
 export function getForecastDataStatus(key) {

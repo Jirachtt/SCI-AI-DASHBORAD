@@ -11,6 +11,7 @@ import { scienceFacultyBudgetData } from '../data/mockData';
 import { researchData } from '../data/researchData';
 import { strategicData } from '../data/strategicData';
 import { ALERT_SOURCE_META } from '../services/alertDataService';
+import { getSharedDashboardDatasetSync } from '../services/sharedDashboardDataService';
 
 const SEVERITY_RANK = { critical: 3, warning: 2, info: 1 };
 
@@ -155,7 +156,8 @@ function buildGraduationAlerts() {
 
 function buildBudgetAlerts() {
     const out = [];
-    const yrly = scienceFacultyBudgetData?.yearly || [];
+    const currentBudgetData = getSharedDashboardDatasetSync('science_budget') || scienceFacultyBudgetData;
+    const yrly = currentBudgetData?.yearly || [];
     const actual = yrly.filter(y => y.type === 'actual');
     const last = actual[actual.length - 1];
     if (last) {

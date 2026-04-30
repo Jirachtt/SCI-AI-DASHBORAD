@@ -73,16 +73,14 @@ const topics = [
     }
 ];
 
-const dashboardInsights = [
-    'คณะวิทยาศาสตร์มีนักศึกษา 1,451 คน คิดเป็น 8.6% ของนักศึกษาทั้งมหาวิทยาลัย',
-    'อัตราสำเร็จการศึกษาคณะวิทยาศาสตร์ 91.2% สูงกว่าค่าเฉลี่ยมหาวิทยาลัย',
-    'ข้อมูลนักศึกษาเชื่อมกับ Alert Center และ AI Chat ทำให้เห็นความเสี่ยง GPA แบบทันที'
-];
-
 export default function DashboardHome() {
     const { user } = useAuth();
     const { data: dashboardSummary } = useDashboardDataset('dashboard_summary');
     const { data: studentStatsData } = useDashboardDataset('student_stats');
+    const { data: hrData } = useDashboardDataset('hr');
+    const { data: researchData } = useDashboardDataset('research');
+    const { data: scienceBudgetData } = useDashboardDataset('science_budget');
+    const { data: strategicData } = useDashboardDataset('strategic');
     const summaryFaculties = Array.isArray(dashboardSummary?.faculties) ? dashboardSummary.faculties : [];
     const sci = summaryFaculties.find(f => f.name === 'คณะวิทยาศาสตร์')
         || summaryFaculties.find(f => String(f.name || '').includes('วิทยาศาสตร์'))
@@ -115,13 +113,18 @@ export default function DashboardHome() {
         }))
         .filter(item => item.value > 0)
         .map(item => ({ ...item, value: item.value.toLocaleString('th-TH') }));
-    const [insights] = useState(dashboardInsights);
     const [isEditMode, setIsEditMode] = useState(false);
     const [showForecast, setShowForecast] = useState(false);
     const [showInsights, setShowInsights] = useState(false);
     const [cardOrder, setCardOrder] = useState([0, 1, 2, 3]);
     const dragItem = useRef(null);
     const dragOverItem = useRef(null);
+    const scienceSharePct = totalStudents ? ((scienceStudentTotal / totalStudents) * 100).toFixed(1) : '0.0';
+    const insights = [
+        `คณะวิทยาศาสตร์มีนักศึกษา ${scienceStudentTotal.toLocaleString('th-TH')} คน คิดเป็น ${scienceSharePct}% ของนักศึกษาทั้งมหาวิทยาลัย`,
+        `อัตราสำเร็จการศึกษาคณะวิทยาศาสตร์ ${sci.graduationRate || '-'}% เทียบกับค่าเฉลี่ยมหาวิทยาลัย ${dashboardSummary.graduationRate || '-'}%`,
+        `ข้อมูลนักศึกษาใช้แหล่งเดียวกับ Alert Center และ AI Chat จึงเห็นความเสี่ยง GPA ตามข้อมูลล่าสุด`,
+    ];
 
     const scienceSubData = [
         {
@@ -173,13 +176,49 @@ export default function DashboardHome() {
         { icon: <Users size={22} />, gradient: 'linear-gradient(135deg, #A23B72, #7B2D8E)', value: dashboardSummary.graduationRate + '%', label: 'อัตราสำเร็จการศึกษา', trend: '+1.5%' }
     ];
 
+    const actualStudentTrendRows = (studentStatsData?.trend || []).filter(row => row.type !== 'forecast');
+    const latestStudentTrend = actualStudentTrendRows[actualStudentTrendRows.length - 1];
+    const nextStudentForecast = (studentStatsData?.trend || []).find(row => row.type === 'forecast')
+        || (studentStatsData?.trend || [])[studentStatsData?.trend?.length - 1];
+    const forecastStudentTotal = Number(nextStudentForecast?.total || latestStudentTrend?.total || totalStudents);
+    const forecastStudentTrend = latestStudentTrend?.total
+        ? `${forecastStudentTotal >= latestStudentTrend.total ? '+' : ''}${(((forecastStudentTotal - latestStudentTrend.total) / latestStudentTrend.total) * 100).toFixed(1)}%`
+        : '+0.0%';
+    const latestScienceBudget = (scienceBudgetData?.yearly || []).filter(row => row.type !== 'forecast').slice(-1)[0];
+    const forecastScienceBudget = (scienceBudgetData?.yearly || []).find(row => row.type === 'forecast') || latestScienceBudget;
+    const scienceBudgetTrend = latestScienceBudget?.revenue
+        ? `${Number(forecastScienceBudget?.revenue || 0) >= latestScienceBudget.revenue ? '+' : ''}${(((Number(forecastScienceBudget?.revenue || 0) - latestScienceBudget.revenue) / latestScienceBudget.revenue) * 100).toFixed(1)}%`
+        : '+0.0%';
+
     // Forecast data with lucide icons instead of emojis
     const forecasts = [
-        { label: 'นักศึกษาปี 2569', actual: '19,821', forecast: '22,500', trend: '+13.5%', color: '#006838', FcIcon: GraduationCap },
-        { label: 'งบประมาณปี 2569 (ล้าน฿)', actual: '1,920', forecast: '2,035', trend: '+6.0%', color: '#C5A028', FcIcon: Wallet },
+        { label: `นักศึกษาปี ${nextStudentForecast?.year || 'ถัดไป'}`, actual: (latestStudentTrend?.total || totalStudents).toLocaleString('th-TH'), forecast: forecastStudentTotal.toLocaleString('th-TH'), trend: forecastStudentTrend, color: '#006838', FcIcon: GraduationCap },
+        { label: `งบคณะวิทย์ปี ${forecastScienceBudget?.year || 'ถัดไป'} (ล้าน฿)`, actual: `${Number(latestScienceBudget?.revenue || 0).toLocaleString('th-TH')}`, forecast: `${Number(forecastScienceBudget?.revenue || 0).toLocaleString('th-TH')}`, trend: scienceBudgetTrend, color: '#C5A028', FcIcon: Wallet },
         { label: 'ผลงาน Scopus ปี 2569', actual: '78', forecast: '92', trend: '+17.9%', color: '#2E86AB', FcIcon: FileBarChart2 },
         { label: 'อัตราสำเร็จการศึกษา', actual: '89.5%', forecast: '92.1%', trend: '+2.6%', color: '#A23B72', FcIcon: TrendingUp },
     ];
+    const topicCards = topics.map(topic => {
+        if (topic.id === 'student-stats') {
+            return { ...topic, stats: `${totalStudents.toLocaleString('th-TH')} คน` };
+        }
+        if (topic.id === 'hr') {
+            const hrTotal = Number(hrData?.scienceFaculty?.total || hrData?.summary?.total || 0);
+            return { ...topic, stats: hrTotal ? `${hrTotal.toLocaleString('th-TH')} คน (คณะวิทย์)` : topic.stats };
+        }
+        if (topic.id === 'research') {
+            const publications = Number(researchData?.overview?.totalPublications || researchData?.summary?.totalPublications || 0);
+            return { ...topic, stats: publications ? `${publications.toLocaleString('th-TH')} publications` : topic.stats };
+        }
+        if (topic.id === 'financial') {
+            const revenue = Number(latestScienceBudget?.revenue || scienceBudgetData?.summary?.latestRevenue || 0);
+            return { ...topic, stats: revenue ? `${revenue.toLocaleString('th-TH')} ล้านบาท/ปี` : topic.stats };
+        }
+        if (topic.id === 'strategic') {
+            const objectives = strategicData?.okr?.objectives?.length || strategicData?.strategicGoals?.length || 0;
+            return { ...topic, stats: objectives ? `${objectives} goals / OKR` : topic.stats };
+        }
+        return topic;
+    });
 
     return (
         <div>
@@ -546,7 +585,7 @@ export default function DashboardHome() {
                 <FileBarChart2 size={18} color="#9ca3af" /> หมวดข้อมูลหลัก 5 ด้าน
             </h3>
             <div className="topic-cards-grid">
-                {topics.map((topic) => {
+                {topicCards.map((topic) => {
                     const hasAccess = canAccess(user?.role, topic.section);
                     const TopicIcon = topic.Icon;
                     return (

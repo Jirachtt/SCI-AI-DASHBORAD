@@ -562,14 +562,14 @@ export default function AdminPanelPage() {
                         <div className="admin-filter-wrapper">
                             <Filter size={16} />
                             <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-                                <option value="all">ทุก Role</option>
+                                <option value="all">ทุกตำแหน่ง</option>
                                 <option value="dean">คณบดี (Dean)</option>
-                                <option value="chair">Chair</option>
-                                <option value="staff">Staff</option>
-                                <option value="general">General</option>
-                                <option value="student">Student</option>
-                                <option value="pending_staff">รอ: Staff</option>
-                                <option value="pending_chair">รอ: Chair</option>
+                                <option value="chair">ประธานหลักสูตร (Chair)</option>
+                                <option value="staff">เจ้าหน้าที่ (Staff)</option>
+                                <option value="general">ผู้ใช้ทั่วไป (General)</option>
+                                <option value="student">นักศึกษา (Student)</option>
+                                <option value="pending_staff">รออนุมัติ: Staff</option>
+                                <option value="pending_chair">รออนุมัติ: Chair</option>
                             </select>
                         </div>
                     </div>
@@ -602,8 +602,8 @@ export default function AdminPanelPage() {
                                         <th>ผู้ใช้</th>
                                         <th>อีเมล</th>
                                         <th>สถานะ</th>
-                                        <th>Role</th>
-                                        <th>ระยะสิทธิ์ Role</th>
+                                        <th>ตำแหน่ง</th>
+                                        <th>ระยะสิทธิ์</th>
                                         <th>ปรับเวลา</th>
                                         <th>วันที่สมัคร</th>
                                     </tr>
@@ -628,18 +628,19 @@ export default function AdminPanelPage() {
                                                     </div>
                                                 </td>
                                                 <td className="admin-cell-email">{u.email || '-'}</td>
-                                                <td>
+                                                <td className="admin-status-cell">
                                                     <span className={`admin-status-badge ${statusClass}`}>
                                                         {statusClass === 'pending' ? 'รออนุมัติ' : statusClass === 'rejected' ? 'ปฏิเสธ' : 'อนุมัติแล้ว'}
                                                     </span>
                                                 </td>
-                                                <td>
+                                                <td className="admin-role-cell">
                                                     <select
                                                         className="admin-role-select"
                                                         value={MANAGEABLE_ROLES.includes(u.role) ? u.role : ''}
                                                         onChange={(e) => handleChangeRole(u, e.target.value)}
                                                         disabled={isSelf || savingUid === u.uid}
                                                         style={{ borderColor: getRoleBadgeColor(u.role) }}
+                                                        title={ROLE_LABELS[u.role] || u.role}
                                                     >
                                                         {!MANAGEABLE_ROLES.includes(u.role) && (
                                                             <option value="" disabled>{ROLE_LABELS[u.role] || u.role}</option>
@@ -649,7 +650,7 @@ export default function AdminPanelPage() {
                                                         ))}
                                                     </select>
                                                 </td>
-                                                <td>
+                                                <td className="admin-term-cell">
                                                     {canManageTime ? (
                                                         <div className="admin-role-term">
                                                             <span className={`admin-term-badge ${validity.status}`}>
@@ -674,7 +675,7 @@ export default function AdminPanelPage() {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td>
+                                                <td className="admin-time-cell">
                                                     {canManageTime ? (
                                                         <div className="admin-role-time-actions">
                                                             <input

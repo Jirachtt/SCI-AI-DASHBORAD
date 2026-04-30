@@ -1,28 +1,28 @@
 import { useEffect, useState } from 'react';
 import {
-    ensureDashboardLiveData,
-    getDashboardDatasetMetaSync,
-    getDashboardDatasetSync,
-    onDashboardLiveDataChange,
-} from '../services/dashboardLiveDataService';
+    ensureSharedDashboardData,
+    getSharedDashboardDatasetMetaSync,
+    getSharedDashboardDatasetSync,
+    onSharedDashboardDataChange,
+} from '../services/sharedDashboardDataService';
 
 export default function useDashboardDataset(id) {
     const [state, setState] = useState(() => ({
-        data: getDashboardDatasetSync(id),
-        meta: getDashboardDatasetMetaSync(id),
+        data: getSharedDashboardDatasetSync(id),
+        meta: getSharedDashboardDatasetMetaSync(id),
     }));
 
     useEffect(() => {
         let mounted = true;
-        ensureDashboardLiveData([id]).then(() => {
+        ensureSharedDashboardData([id]).then(() => {
             if (!mounted) return;
             setState({
-                data: getDashboardDatasetSync(id),
-                meta: getDashboardDatasetMetaSync(id),
+                data: getSharedDashboardDatasetSync(id),
+                meta: getSharedDashboardDatasetMetaSync(id),
             });
         });
 
-        const unsubscribe = onDashboardLiveDataChange(event => {
+        const unsubscribe = onSharedDashboardDataChange(event => {
             if (!mounted || event.id !== id) return;
             setState({ data: event.payload, meta: event.meta });
         });
