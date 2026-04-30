@@ -453,6 +453,11 @@ function buildBaseInstruction() {
     const liveUniversityBudgetData = getSharedDashboardDatasetSync('university_budget') || universityBudgetData;
     const liveScienceBudgetData = getSharedDashboardDatasetSync('science_budget') || scienceFacultyBudgetData;
     const liveStudentLifeData = getSharedDashboardDatasetSync('student_life') || studentLifeData;
+    const liveTuitionData = getSharedDashboardDatasetSync('tuition') || tuitionData;
+    const liveGraduationData = getSharedDashboardDatasetSync('graduation') || {};
+    const liveResearchData = getSharedDashboardDatasetSync('research') || researchData;
+    const liveHrData = getSharedDashboardDatasetSync('hr') || hrData;
+    const liveStrategicData = getSharedDashboardDatasetSync('strategic') || strategicData;
     const personnel = (liveStudentStatsData.scienceFaculty || studentStatsData.scienceFaculty).personnel;
     const genderCounts = studentList.reduce((acc, student) => {
         const prefix = String(student.prefix || '');
@@ -474,6 +479,32 @@ function buildBaseInstruction() {
     const budgetAll = liveUniversityBudgetData.yearly || universityBudgetData.yearly;
     const sciBudgetAll = liveScienceBudgetData.yearly || scienceFacultyBudgetData.yearly;
     const activities = liveStudentLifeData;
+    const tuition = liveTuitionData;
+    const graduationRows = liveGraduationData.history || liveGraduationData.graduationHistory || graduationHistory;
+    const graduationCurrent = liveGraduationData.current || liveGraduationData.currentGraduationStats || currentGraduationStats;
+    const graduationMajors = liveGraduationData.byMajor || liveGraduationData.graduationByMajor || graduationByMajor;
+    const graduationHonors = liveGraduationData.honors || honorsData;
+    const graduationDistribution = liveGraduationData.gpaDistribution || gpaDistribution;
+    const researchOverview = liveResearchData.overview || liveResearchData.summary || researchData.overview;
+    const researchPublicationTrend = liveResearchData.publicationTrend || liveResearchData.publicationsTrend || researchData.publicationTrend || [];
+    const researchDepartments = liveResearchData.byDepartment || researchData.byDepartment || [];
+    const researchFundingTrend = liveResearchData.fundingTrend || researchData.fundingTrend || [];
+    const researchFundingSources = liveResearchData.fundingSources || researchData.fundingSources || [];
+    const researchPatents = liveResearchData.patents || researchData.patents || [];
+    const researchBenchmark = liveResearchData.benchmark || researchData.benchmark || [];
+    const hrUniversity = liveHrData.university || hrData.university || {};
+    const hrScience = liveHrData.scienceFaculty || liveHrData.summary || hrData.scienceFaculty || {};
+    const hrAcademicPositions = hrScience.academicPositions || hrScience.byPosition || [];
+    const hrEducation = hrScience.byEducation || [];
+    const hrDepartments = hrScience.byDepartment || [];
+    const hrTrend = hrScience.trend || hrScience.trends || [];
+    const hrAgeGroup = hrScience.diversity?.ageGroup || hrScience.ageGroup || [];
+    const hrRetirementIn5Years = hrScience.diversity?.retirementIn5Years ?? hrScience.retirementIn5Years ?? '-';
+    const hrRatioTrend = hrScience.studentFacultyRatio || hrScience.studentFacultyRatioTrend || [];
+    const strategicGoals = liveStrategicData.strategicGoals || [];
+    const strategicOkr = liveStrategicData.okr || { period: '-', objectives: [] };
+    const strategicRadar = liveStrategicData.performanceRadar || { categories: [], currentYear: [], targetYear: [], lastYear: [] };
+    const strategicEfficiencyTrend = liveStrategicData.efficiencyTrend || [];
 
     const dataTimestamp = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -523,7 +554,7 @@ Aggregated Stats:
 - behaviorHistory: ${activities.behaviorScore.history.map(h => `${h.semester}:${h.score}`).join(', ')}
 
 ### TABLE: graduation (คณะวิทยาศาสตร์)
-${graduationHistory.map(g => `${g.year}: candidates=${g.candidates}, graduated=${g.graduated}, rate=${g.rate}%, avgGPA=${g.avgGPA}`).join('\n')}
+${graduationRows.map(g => `${g.year}: candidates=${g.candidates ?? '-'}, graduated=${g.graduated}, rate=${g.rate}%, avgGPA=${g.avgGPA}`).join('\n')}
 
 ### TABLE: budget_university (ล้านบาท)
 ${budgetAll.map(y => {
@@ -554,50 +585,50 @@ ${buildStudentStatsContextForAI()}
 - ratioBenchmark: ${ratio.comparison.map(c => `${c.name}:${c.ratio}`).join(', ')}
 
 ### TABLE: tuition
-- flatRate: ${tuitionData.flatRate.min}-${tuitionData.flatRate.max} บ./เทอม
-- totalCost(4yr): ${tuitionData.totalCost.min}-${tuitionData.totalCost.max} บ.
-- byFaculty: ${tuitionData.byFaculty.map(f => `${f.name}:${f.fee}`).join(', ')}
-- breakdown: ${tuitionData.breakdown.map(b => `${b.label}:${b.value}%`).join(', ')}
+- flatRate: ${tuition.flatRate?.min ?? '-'}-${tuition.flatRate?.max ?? '-'} บ./เทอม
+- totalCost(4yr): ${tuition.totalCost?.min ?? '-'}-${tuition.totalCost?.max ?? '-'} บ.
+- byFaculty: ${(tuition.byFaculty || []).map(f => `${f.name}:${f.fee}`).join(', ')}
+- breakdown: ${(tuition.breakdown || []).map(b => `${b.label}:${b.value}%`).join(', ')}
 
 ### TABLE: scienceFaculty.enrollmentByYear_live
 ${buildStudentStatsContextForAI().split('\n').find(line => line.startsWith('ตามปีเข้า/รหัสนักศึกษา:')) || 'ตามปีเข้า/รหัสนักศึกษา: ไม่มีข้อมูล'}
 
-### TABLE: graduation_current (ปีการศึกษาปัจจุบัน ${currentGraduationStats.semester})
-- ผู้มีสิทธิ์รับปริญญา(ปี4): ${currentGraduationStats.totalCandidates}คน
-- คาดว่าสำเร็จ: ${currentGraduationStats.expectedGraduates} | รอพินิจ: ${currentGraduationStats.pending} | ไม่ผ่านเกณฑ์: ${currentGraduationStats.notPassed}
-- GPA เฉลี่ยผู้มีสิทธิ์: ${currentGraduationStats.avgGPA}
-- เกียรตินิยม: อันดับ1=${honorsData.firstClass}คน, อันดับ2=${honorsData.secondClass}คน, ปกติ=${honorsData.normal}คน, ต่ำกว่าเกณฑ์=${honorsData.belowStandard}คน
-- GPADistribution: ${gpaDistribution.map(g => `${g.range}:${g.count}คน`).join(', ')}
-- แยกสาขา: ${graduationByMajor.map(m => `${m.major}(${m.total}คน,คาดสำเร็จ${m.rate}%,GPA${m.avgGPA})`).join(' | ')}
+### TABLE: graduation_current (ปีการศึกษาปัจจุบัน ${graduationCurrent.semester || '-'})
+- ผู้มีสิทธิ์รับปริญญา(ปี4): ${graduationCurrent.totalCandidates ?? '-'}คน
+- คาดว่าสำเร็จ: ${graduationCurrent.expectedGraduates ?? '-'} | รอพินิจ: ${graduationCurrent.pending ?? '-'} | ไม่ผ่านเกณฑ์: ${graduationCurrent.notPassed ?? '-'}
+- GPA เฉลี่ยผู้มีสิทธิ์: ${graduationCurrent.avgGPA ?? '-'}
+- เกียรตินิยม: อันดับ1=${graduationHonors.firstClass ?? '-'}คน, อันดับ2=${graduationHonors.secondClass ?? '-'}คน, ปกติ=${graduationHonors.normal ?? '-'}คน, ต่ำกว่าเกณฑ์=${graduationHonors.belowStandard ?? '-'}คน
+- GPADistribution: ${graduationDistribution.map(g => `${g.range}:${g.count}คน`).join(', ')}
+- แยกสาขา: ${graduationMajors.map(m => `${m.major}(${m.total}คน,คาดสำเร็จ${m.rate}%,GPA${m.avgGPA})`).join(' | ')}
 
 ### TABLE: research (คณะวิทยาศาสตร์)
-- overview: publications=${researchData.overview.totalPublications}, funding=${researchData.overview.totalFunding}ล้านบาท, patents=${researchData.overview.totalPatents}, citations=${researchData.overview.totalCitations}, h-index=${researchData.overview.hIndex}, activeProjects=${researchData.overview.activeProjects}
-- publicationTrend: ${researchData.publicationTrend.map(p => `${p.year}(${p.type || 'actual'}):scopus=${p.scopus},tci1=${p.tci1},total=${p.total}`).join(', ')}
-- byDepartment: ${researchData.byDepartment.map(d => `${d.dept}(pub=${d.publications},fund=${d.funding}M,pat=${d.patents},cite=${d.citations})`).join(' | ')}
-- fundingTrend: ${researchData.fundingTrend.map(f => `${f.year}(${f.type}):internal=${f.internal},external=${f.external},industry=${f.industry},total=${f.total}ล้าน`).join(', ')}
-- fundingSources: ${researchData.fundingSources.map(s => `${s.source}:${s.amount}ล้าน`).join(', ')}
-- patents: ${researchData.patents.map(p => `${p.id}:${p.title}(${p.dept},${p.year},${p.status})`).join(' | ')}
-- benchmark: ${researchData.benchmark.map(b => `${b.university}(scopus=${b.scopus},h=${b.hIndex},pat=${b.patents})`).join(' | ')}
+- overview: publications=${researchOverview.totalPublications ?? '-'}, funding=${researchOverview.totalFunding ?? '-'}ล้านบาท, patents=${researchOverview.totalPatents ?? '-'}, citations=${researchOverview.totalCitations ?? '-'}, h-index=${researchOverview.hIndex ?? '-'}, activeProjects=${researchOverview.activeProjects ?? '-'}
+- publicationTrend: ${researchPublicationTrend.map(p => `${p.year}(${p.type || 'actual'}):scopus=${p.scopus},tci1=${p.tci1},total=${p.total}`).join(', ')}
+- byDepartment: ${researchDepartments.map(d => `${d.dept}(pub=${d.publications},fund=${d.funding}M,pat=${d.patents},cite=${d.citations})`).join(' | ')}
+- fundingTrend: ${researchFundingTrend.map(f => `${f.year}(${f.type}):internal=${f.internal},external=${f.external},industry=${f.industry},total=${f.total}ล้าน`).join(', ')}
+- fundingSources: ${researchFundingSources.map(s => `${s.source}:${s.amount}ล้าน`).join(', ')}
+- patents: ${researchPatents.map(p => `${p.id}:${p.title}(${p.dept},${p.year},${p.status})`).join(' | ')}
+- benchmark: ${researchBenchmark.map(b => `${b.university}(scopus=${b.scopus},h=${b.hIndex},pat=${b.patents})`).join(' | ')}
 
 ### TABLE: hr_detailed (บุคลากร)
-- มหาวิทยาลัย: total=${hrData.university.total}(สายวิชาการ${hrData.university.academic},สายสนับสนุน${hrData.university.support})
-- มหาวิทยาลัยbyType: ${hrData.university.byType.map(t => `${t.type}:${t.count}`).join(', ')}
-- คณะวิทย์: total=${hrData.scienceFaculty.total}(วิชาการ${hrData.scienceFaculty.academic},สนับสนุน${hrData.scienceFaculty.support})
-- คณะวิทย์ตำแหน่งวิชาการ: ${hrData.scienceFaculty.academicPositions.map(p => `${p.position}:${p.count}`).join(', ')}
-- คณะวิทย์วุฒิ: ${hrData.scienceFaculty.byEducation.map(e => `${e.level}:${e.count}`).join(', ')}
-- คณะวิทย์แยกภาควิชา: ${hrData.scienceFaculty.byDepartment.map(d => `${d.dept}(วิชาการ${d.academic},สนับสนุน${d.support})`).join(' | ')}
-- คณะวิทย์trend: ${hrData.scienceFaculty.trend.map(t => `${t.year}(${t.type || 'actual'}):total=${t.total}`).join(', ')}
-- ช่วงอายุ: ${hrData.scienceFaculty.diversity.ageGroup.map(a => `${a.group}:${a.count}คน`).join(', ')}
-- เกษียณใน5ปี: ${hrData.scienceFaculty.diversity.retirementIn5Years}คน
-- อัตราส่วนนศ./อาจารย์: ${hrData.scienceFaculty.studentFacultyRatio.map(r => `${r.year}:${r.ratio}`).join(', ')}
+- มหาวิทยาลัย: total=${hrUniversity.total ?? '-'}(สายวิชาการ${hrUniversity.academic ?? '-'},สายสนับสนุน${hrUniversity.support ?? '-'})
+- มหาวิทยาลัยbyType: ${(hrUniversity.byType || []).map(t => `${t.type}:${t.count}`).join(', ')}
+- คณะวิทย์: total=${hrScience.total ?? '-'}(วิชาการ${hrScience.academic ?? '-'},สนับสนุน${hrScience.support ?? '-'})
+- คณะวิทย์ตำแหน่งวิชาการ: ${hrAcademicPositions.map(p => `${p.position}:${p.count}`).join(', ')}
+- คณะวิทย์วุฒิ: ${hrEducation.map(e => `${e.level}:${e.count}`).join(', ')}
+- คณะวิทย์แยกภาควิชา: ${hrDepartments.map(d => `${d.dept}(วิชาการ${d.academic},สนับสนุน${d.support})`).join(' | ')}
+- คณะวิทย์trend: ${hrTrend.map(t => `${t.year}(${t.type || 'actual'}):total=${t.total}`).join(', ')}
+- ช่วงอายุ: ${hrAgeGroup.map(a => `${a.group}:${a.count}คน`).join(', ')}
+- เกษียณใน5ปี: ${hrRetirementIn5Years}คน
+- อัตราส่วนนศ./อาจารย์: ${hrRatioTrend.map(r => `${r.year}:${r.ratio}`).join(', ')}
 
 ### TABLE: strategic (ยุทธศาสตร์ & OKR)
-- เป้าหมายยุทธศาสตร์: ${strategicData.strategicGoals.map(g => `${g.id}:${g.title}(target=${g.target}${g.unit},current=${g.current}${g.unit})`).join(' | ')}
-- KPIs: ${strategicData.strategicGoals.flatMap(g => g.kpis.map(k => `[${g.id}]${k.name}:target=${k.target},current=${k.current}${k.unit}`)).join(' | ')}
-- OKR(${strategicData.okr.period}): ${strategicData.okr.objectives.map(o => `${o.id}:${o.title}(progress=${o.progress}%)`).join(' | ')}
-- KeyResults: ${strategicData.okr.objectives.flatMap(o => o.keyResults.map(kr => `${kr.id}:${kr.title}(${kr.current}/${kr.target}${kr.unit},${kr.progress}%)`)).join(' | ')}
-- performanceRadar: categories=${strategicData.performanceRadar.categories.join(',')} | current=[${strategicData.performanceRadar.currentYear}] | target=[${strategicData.performanceRadar.targetYear}] | lastYear=[${strategicData.performanceRadar.lastYear}]
-- efficiencyTrend: ${strategicData.efficiencyTrend.map(e => `${e.year}(${e.type || 'actual'}):score=${e.score},budgetEff=${e.budgetEfficiency}%,satisfaction=${e.satisfactionScore}`).join(', ')}
+- เป้าหมายยุทธศาสตร์: ${strategicGoals.map(g => `${g.id}:${g.title}(target=${g.target}${g.unit},current=${g.current}${g.unit})`).join(' | ')}
+- KPIs: ${strategicGoals.flatMap(g => (g.kpis || []).map(k => `[${g.id}]${k.name}:target=${k.target},current=${k.current}${k.unit}`)).join(' | ')}
+- OKR(${strategicOkr.period}): ${(strategicOkr.objectives || []).map(o => `${o.id}:${o.title}(progress=${o.progress}%)`).join(' | ')}
+- KeyResults: ${(strategicOkr.objectives || []).flatMap(o => (o.keyResults || []).map(kr => `${kr.id}:${kr.title}(${kr.current}/${kr.target}${kr.unit},${kr.progress}%)`)).join(' | ')}
+- performanceRadar: categories=${(strategicRadar.categories || []).join(',')} | current=[${strategicRadar.currentYear || []}] | target=[${strategicRadar.targetYear || []}] | lastYear=[${strategicRadar.lastYear || []}]
+- efficiencyTrend: ${strategicEfficiencyTrend.map(e => `${e.year}(${e.type || 'actual'}):score=${e.score},budgetEff=${e.budgetEfficiency}%,satisfaction=${e.satisfactionScore}`).join(', ')}
 
 ═══════════════════════════════════════════
  SECTION 3 — CHART RULES
