@@ -40,11 +40,6 @@ export default function ChartDrilldownModal({ detail, onClose }) {
     const accent = detail.accentColor || '#00a651';
     const visibleRows = rows.slice(0, detail.maxRows || 500);
     const hasHiddenRows = rows.length > visibleRows.length;
-    const rowSummary = rows.length === 0
-        ? 'ไม่มีข้อมูลแถวรายละเอียด'
-        : hasHiddenRows
-            ? `แสดง ${visibleRows.length.toLocaleString('th-TH')} จาก ${rows.length.toLocaleString('th-TH')} รายการ`
-            : `${rows.length.toLocaleString('th-TH')} รายการ`;
 
     return createPortal(
         <div className="chart-drilldown-overlay no-print" onClick={onClose} role="presentation">
@@ -128,10 +123,6 @@ export default function ChartDrilldownModal({ detail, onClose }) {
                         แสดง {visibleRows.length.toLocaleString('th-TH')} รายการแรกจากทั้งหมด {rows.length.toLocaleString('th-TH')} รายการ
                     </div>
                 )}
-                <footer className="chart-drilldown-footer">
-                    <span>{rowSummary}</span>
-                    <button type="button" onClick={onClose}>ปิด</button>
-                </footer>
             </section>
         </div>,
         document.body

@@ -6929,38 +6929,6 @@ select option:checked {
   border-top: 1px solid var(--border-color);
 }
 
-.chart-drilldown-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 20px;
-  border-top: 1px solid var(--border-color);
-  background: color-mix(in srgb, var(--bg-card) 92%, var(--bg-secondary));
-  color: var(--text-secondary);
-  font-size: 0.84rem;
-  font-weight: 700;
-  flex: 0 0 auto;
-}
-
-.chart-drilldown-footer button {
-  min-width: 76px;
-  min-height: 38px;
-  border: 1px solid color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 34%, var(--border-color));
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 12%, var(--bg-secondary));
-  color: var(--text-primary);
-  font-weight: 800;
-  cursor: pointer;
-  transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
-}
-
-.chart-drilldown-footer button:hover {
-  transform: translateY(-1px);
-  background: color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 20%, var(--bg-secondary));
-  border-color: color-mix(in srgb, var(--chart-drilldown-accent, #00a651) 50%, var(--border-color));
-}
-
 @keyframes chart-drilldown-overlay-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -6980,7 +6948,6 @@ select option:checked {
   .chart-drilldown-table-wrap { padding: 12px; }
   .chart-drilldown-table th,
   .chart-drilldown-table td { padding: 9px 11px; }
-  .chart-drilldown-footer { padding: 10px 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
