@@ -5,6 +5,8 @@
 export const routeLoaders = {
     '/dashboard/tuition': () => import('../pages/TuitionPage'),
     '/dashboard/student-stats': () => import('../pages/StudentStatsPage'),
+    '/dashboard/tcas': () => import('../pages/TcasPlanningPage'),
+    '/dashboard/course-analytics': () => import('../pages/CourseAnalyticsPage'),
     '/dashboard/budget': () => import('../pages/BudgetForecastPage'),
     '/dashboard/financial': () => import('../pages/FinancialPage'),
     '/dashboard/student-life': () => import('../pages/StudentLifePage'),

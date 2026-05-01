@@ -15,6 +15,7 @@ import {
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
+import { SCIENCE_MAJORS } from '../data/studentListData';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
 
@@ -84,6 +85,82 @@ function noteWhenRowsDiffer(rows, chartValue, baseNote) {
     return baseNote;
 }
 
+function levelKeyFromStudent(student) {
+    const text = `${student?.level || ''} ${student?.degree || ''} ${student?.degreeLevel || ''}`.toLowerCase();
+    if (/โท|master|msc/i.test(text)) return 'master';
+    if (/เอก|doctoral|phd/i.test(text)) return 'doctoral';
+    if (/ประกาศ|cert/i.test(text)) return 'certificate';
+    return 'bachelor';
+}
+
+function normalizeMajorRow(row = {}) {
+    const bachelor = Number(row.bachelor || 0);
+    const master = Number(row.master || 0);
+    const doctoral = Number(row.doctoral || 0);
+    const certificate = Number(row.certificate || 0);
+    const levelTotal = bachelor + master + doctoral + certificate;
+    const providedTotal = row.total ?? row.count;
+    const total = Number(providedTotal == null ? levelTotal : providedTotal);
+    return {
+        ...row,
+        major: row.major || row.name || 'ไม่ระบุสาขา',
+        total,
+        count: total,
+        bachelor,
+        master,
+        doctoral,
+        certificate,
+        avgGPA: row.avgGPA ?? row.avgGpa ?? null,
+        lowGpa: row.lowGpa ?? row.lowGPA ?? 0,
+    };
+}
+
+function buildMajorRowsFromStudents(rows = []) {
+    const scienceRows = rows.filter(student => SCIENCE_MAJORS.includes(student?.major));
+    const sourceRows = scienceRows.length > 0 ? scienceRows : rows;
+    const byMajor = new Map();
+    sourceRows.forEach(student => {
+        const major = student?.major || 'ไม่ระบุสาขา';
+        const levelKey = levelKeyFromStudent(student);
+        const gpa = Number(student?.gpa);
+        const current = byMajor.get(major) || {
+            major,
+            total: 0,
+            count: 0,
+            bachelor: 0,
+            master: 0,
+            doctoral: 0,
+            certificate: 0,
+            gpaSum: 0,
+            gpaCount: 0,
+            lowGpa: 0,
+        };
+        current.total += 1;
+        current.count += 1;
+        current[levelKey] = (current[levelKey] || 0) + 1;
+        if (Number.isFinite(gpa) && gpa >= 0 && gpa <= 4) {
+            current.gpaSum += gpa;
+            current.gpaCount += 1;
+            if (gpa < 2) current.lowGpa += 1;
+        }
+        byMajor.set(major, current);
+    });
+    return [...byMajor.values()].map(row => ({
+        ...row,
+        avgGPA: row.gpaCount ? Number((row.gpaSum / row.gpaCount).toFixed(2)) : null,
+    }));
+}
+
+function buildScienceMajorRows(scienceFaculty, studentRows) {
+    const rows = Array.isArray(scienceFaculty?.byMajor) && scienceFaculty.byMajor.length > 0
+        ? scienceFaculty.byMajor
+        : buildMajorRowsFromStudents(studentRows);
+    return rows
+        .map(normalizeMajorRow)
+        .filter(row => row.total > 0)
+        .sort((a, b) => b.total - a.total || a.major.localeCompare(b.major, 'th'));
+}
+
 export default function StudentStatsPage() {
     const { user } = useAuth();
     const [selectedFaculty, setSelectedFaculty] = useState('all');
@@ -104,6 +181,7 @@ export default function StudentStatsPage() {
 
     const { current, byFaculty, trend, scienceFaculty } = studentStatsData;
     const studentRows = getStudentListSync();
+    const scienceMajorRows = buildScienceMajorRows(scienceFaculty, studentRows);
 
     const isFiltered = appliedFaculty !== 'all' || appliedLevel !== 'all';
 
@@ -268,17 +346,17 @@ export default function StudentStatsPage() {
         }
     };
 
-    const enrollmentBarData = {
-        labels: scienceFaculty.byEnrollmentYear.map(e => `รหัส ${e.year.slice(-2)}`),
+    const majorBarData = {
+        labels: scienceMajorRows.map(row => row.major),
         datasets: [{
             label: 'จำนวนนิสิต',
-            data: scienceFaculty.byEnrollmentYear.map(e => e.count),
-            backgroundColor: scienceFaculty.byEnrollmentYear.map((_, i) => {
-                const colors = ['rgba(100, 116, 139, 0.7)', 'rgba(20, 184, 166, 0.7)', 'rgba(34, 197, 94, 0.7)', 'rgba(59, 130, 246, 0.7)', 'rgba(139, 92, 246, 0.7)', 'rgba(123, 104, 238, 0.7)'];
+            data: scienceMajorRows.map(row => row.total),
+            backgroundColor: scienceMajorRows.map((_, i) => {
+                const colors = ['rgba(37, 99, 235, 0.78)', 'rgba(5, 150, 105, 0.78)', 'rgba(124, 58, 237, 0.78)', 'rgba(234, 88, 12, 0.78)', 'rgba(8, 145, 178, 0.78)', 'rgba(219, 39, 119, 0.76)', 'rgba(202, 138, 4, 0.78)', 'rgba(79, 70, 229, 0.76)', 'rgba(71, 85, 105, 0.76)'];
                 return colors[i] || 'rgba(34, 197, 94, 0.7)';
             }),
-            borderColor: scienceFaculty.byEnrollmentYear.map((_, i) => {
-                const colors = ['#64748b', '#14b8a6', '#22c55e', '#3b82f6', '#8b5cf6', '#7B68EE'];
+            borderColor: scienceMajorRows.map((_, i) => {
+                const colors = ['#2563eb', '#059669', '#7c3aed', '#ea580c', '#0891b2', '#db2777', '#ca8a04', '#4f46e5', '#475569'];
                 return colors[i] || '#22c55e';
             }),
             borderWidth: 1,
@@ -287,7 +365,7 @@ export default function StudentStatsPage() {
         }]
     };
 
-    const enrollmentBarOptions = {
+    const majorBarOptions = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
@@ -297,7 +375,10 @@ export default function StudentStatsPage() {
             }
         },
         scales: {
-            x: { ticks: { color: 'var(--text-muted)' }, grid: { display: false } },
+            x: {
+                ticks: { color: 'var(--text-muted)', maxRotation: 35, minRotation: 0 },
+                grid: { display: false }
+            },
             y: {
                 ticks: { color: 'var(--text-muted)' },
                 grid: { color: 'var(--border-color)' }
@@ -357,19 +438,24 @@ export default function StudentStatsPage() {
         };
     });
 
-    const enrollmentBarDrilldownOptions = withChartDrilldown(enrollmentBarOptions, enrollmentBarData, setDrillDetail, (point) => {
-        const fullYear = scienceFaculty.byEnrollmentYear[point.index]?.year || String(point.label).replace(/\D/g, '');
-        const shortYear = String(fullYear).slice(-2);
-        const rows = studentRows.filter(student => String(student.id || '').slice(0, 2) === shortYear);
+    const majorBarDrilldownOptions = withChartDrilldown(majorBarOptions, majorBarData, setDrillDetail, (point) => {
+        const majorRow = scienceMajorRows[point.index] || normalizeMajorRow({ major: point.label, total: point.value });
+        const rows = studentRows.filter(student => String(student.major || '') === String(majorRow.major));
         return {
-            title: `นักศึกษารหัส ${shortYear} (ปี ${fullYear})`,
-            subtitle: 'รายชื่อนักศึกษาตามปีที่เข้าศึกษา',
-            valueLabel: 'จำนวน',
+            title: `นิสิตสาขา${majorRow.major}`,
+            subtitle: 'รายชื่อนิสิตคณะวิทยาศาสตร์ตามสาขาที่เลือก',
+            valueLabel: 'จำนวนนิสิต',
             value: point.value,
             unit: 'คน',
             accentColor: point.color,
             rows,
             columns: studentColumns,
+            metrics: [
+                { label: 'ปริญญาตรี', value: majorRow.bachelor, unit: 'คน' },
+                { label: 'ปริญญาโท', value: majorRow.master, unit: 'คน' },
+                { label: 'ปริญญาเอก', value: majorRow.doctoral, unit: 'คน' },
+                ...(majorRow.avgGPA ? [{ label: 'GPA เฉลี่ย', value: majorRow.avgGPA }] : []),
+            ],
             note: noteWhenRowsDiffer(rows, point.value, studentDataNote),
         };
     });
@@ -749,8 +835,8 @@ export default function StudentStatsPage() {
                     <div className="chart-card animate-in">
                         <div className="chart-card-header">
                             <div>
-                                <div className="chart-card-title">จำนวนนิสิตแยกตามรหัสนักศึกษา</div>
-                                <div className="chart-card-subtitle">คณะวิทยาศาสตร์ — แยกตามปีที่เข้าศึกษา</div>
+                                <div className="chart-card-title">จำนวนนิสิตแยกตามสาขา</div>
+                                <div className="chart-card-subtitle">คณะวิทยาศาสตร์ — ใช้ข้อมูลนิสิตล่าสุดชุดเดียวกับ AI</div>
                             </div>
                             <span style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -762,7 +848,7 @@ export default function StudentStatsPage() {
                             </span>
                         </div>
                         <div className="chart-container">
-                            <Bar data={enrollmentBarData} options={enrollmentBarDrilldownOptions} />
+                            <Bar data={majorBarData} options={majorBarDrilldownOptions} />
                         </div>
                     </div>
                 </div>

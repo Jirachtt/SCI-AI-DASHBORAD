@@ -11,6 +11,8 @@ import { researchData } from '../data/researchData';
 import { hrData } from '../data/hrData';
 import { strategicData } from '../data/strategicData';
 import { buildAcademicRulesContext } from '../data/academicRulesData';
+import { tcasPlanningData } from '../data/tcasAdmissionsData';
+import { courseAnalyticsData } from '../data/courseAnalyticsData';
 import { isLiveData } from './studentDataService';
 import { canAccess, getRoleInfo } from '../utils/accessControl';
 import {
@@ -61,6 +63,8 @@ const STATIC_DASHBOARD_DATASETS = {
     scienceFacultyBudgetData,
     tuitionData,
     studentLifeData,
+    tcasPlanningData,
+    courseAnalyticsData,
     researchData,
     hrData,
     strategicData,
@@ -450,6 +454,8 @@ function buildBaseInstruction() {
     });
 
     const liveStudentStatsData = getSharedDashboardDatasetSync('student_stats') || studentStatsData;
+    const liveTcasData = getSharedDashboardDatasetSync('tcas_admissions') || tcasPlanningData;
+    const liveCourseData = getSharedDashboardDatasetSync('course_analytics') || courseAnalyticsData;
     const liveUniversityBudgetData = getSharedDashboardDatasetSync('university_budget') || universityBudgetData;
     const liveScienceBudgetData = getSharedDashboardDatasetSync('science_budget') || scienceFacultyBudgetData;
     const liveStudentLifeData = getSharedDashboardDatasetSync('student_life') || studentLifeData;
@@ -458,7 +464,13 @@ function buildBaseInstruction() {
     const liveResearchData = getSharedDashboardDatasetSync('research') || researchData;
     const liveHrData = getSharedDashboardDatasetSync('hr') || hrData;
     const liveStrategicData = getSharedDashboardDatasetSync('strategic') || strategicData;
-    const personnel = (liveStudentStatsData.scienceFaculty || studentStatsData.scienceFaculty).personnel;
+    const scienceStudentStats = liveStudentStatsData.scienceFaculty || studentStatsData.scienceFaculty || {};
+    const scienceByLevelRows = Array.isArray(scienceStudentStats.byLevel) ? scienceStudentStats.byLevel : [];
+    const scienceByMajorRows = Array.isArray(scienceStudentStats.byMajor) && scienceStudentStats.byMajor.length > 0
+        ? scienceStudentStats.byMajor
+        : Object.entries(majorCounts).map(([major, count]) => ({ major, total: count, count }));
+    const scienceStudentTotal = Number(scienceStudentStats.total || studentList.length || 0);
+    const personnel = scienceStudentStats.personnel || studentStatsData.scienceFaculty.personnel;
     const genderCounts = studentList.reduce((acc, student) => {
         const prefix = String(student.prefix || '');
         if (prefix.startsWith('นาย')) acc.male += 1;
@@ -470,7 +482,7 @@ function buildBaseInstruction() {
         malePercent: studentList.length ? ((genderCounts.male / studentList.length) * 100).toFixed(1) : '0.0',
         femalePercent: studentList.length ? ((genderCounts.female / studentList.length) * 100).toFixed(1) : '0.0',
     };
-    const ratio = (liveStudentStatsData.scienceFaculty || studentStatsData.scienceFaculty).studentFacultyRatio;
+    const ratio = scienceStudentStats.studentFacultyRatio || studentStatsData.scienceFaculty.studentFacultyRatio;
     const facultyRatio = {
         ...ratio,
         students: studentList.length,
@@ -479,6 +491,12 @@ function buildBaseInstruction() {
     const budgetAll = liveUniversityBudgetData.yearly || universityBudgetData.yearly;
     const sciBudgetAll = liveScienceBudgetData.yearly || scienceFacultyBudgetData.yearly;
     const activities = liveStudentLifeData;
+    const scienceActivities = Array.isArray(activities.scienceActivities)
+        ? activities.scienceActivities.filter(event => event.facultyHours)
+        : [];
+    const activityHours = activities.activityHours || {};
+    const activityCategories = Array.isArray(activityHours.categories) ? activityHours.categories : [];
+    const activityMissingHours = Math.max(0, Number(activityHours.target || 0) - Number(activityHours.completed || 0));
     const tuition = liveTuitionData;
     const graduationRows = liveGraduationData.history || liveGraduationData.graduationHistory || graduationHistory;
     const graduationCurrent = liveGraduationData.current || liveGraduationData.currentGraduationStats || currentGraduationStats;
@@ -505,6 +523,10 @@ function buildBaseInstruction() {
     const strategicOkr = liveStrategicData.okr || { period: '-', objectives: [] };
     const strategicRadar = liveStrategicData.performanceRadar || { categories: [], currentYear: [], targetYear: [], lastYear: [] };
     const strategicEfficiencyTrend = liveStrategicData.efficiencyTrend || [];
+    const tcasTrend = liveTcasData.fiveYearTrend || [];
+    const tcasRound3Plan = liveTcasData.round3Plan2569 || [];
+    const courseGradeRows = liveCourseData.gradeDistributions || [];
+    const branchStrengthRows = liveCourseData.branchStrengths || [];
 
     const dataTimestamp = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -547,9 +569,21 @@ Aggregated Stats:
 - GPA เฉลี่ยแยกสาขา: ${Object.entries(gpaByMajor).map(([m, d]) => `${m}:avg${(d.sum / d.count).toFixed(2)},min${d.min},max${d.max}`).join(' | ')}
 - รับเข้าตามปีเข้า/รหัสนักศึกษา: ${buildStudentStatsContextForAI().split('\n').find(line => line.startsWith('ตามปีเข้า/รหัสนักศึกษา:'))?.replace('ตามปีเข้า/รหัสนักศึกษา: ', '') || 'ไม่มีข้อมูล'}
 
-### TABLE: activities (Student Life)
-- activityHours: target=${activities.activityHours.target}, completed=${activities.activityHours.completed}
-- categories: ${activities.activityHours.categories.map(c => `${c.name}:${c.hours}ชม.`).join(', ')}
+### TABLE: science_student_stats_current (หน้าสถิตินิสิตปัจจุบัน)
+- scope: คณะวิทยาศาสตร์เท่านั้น; ถ้าผู้ใช้ถามสถิตินิสิต/นักศึกษาของหน้านี้ ให้ใช้ชุดนี้ก่อนเสมอ
+- total: ${scienceStudentTotal.toLocaleString('th-TH')} คน
+- byLevel: ${scienceByLevelRows.map(row => `${row.level}:${Number(row.count || 0).toLocaleString('th-TH')}คน`).join(', ')}
+- byMajor: ${scienceByMajorRows.map(row => `${row.major || row.name}:${Number(row.total ?? row.count ?? 0).toLocaleString('th-TH')}คน`).join(', ')}
+- answer rule: คำถาม "จำนวนนิสิตแต่ละสาขา/แยกตามสาขา" ให้ตอบจาก byMajor และสร้างกราฟแท่งตามสาขา ห้ามใช้ตาราง byFaculty ของทั้งมหาวิทยาลัยแทน เว้นแต่ผู้ใช้ระบุชัดว่าอยากดูภาพรวมมหาวิทยาลัย
+
+### TABLE: science_activities (กิจกรรมคณะวิทยาศาสตร์)
+- scope: ${activityHours.scope || 'ชั่วโมงกิจกรรมคณะวิทยาศาสตร์เท่านั้น'}
+- requirement: target=${activityHours.target ?? '-'}ชม., completed=${activityHours.completed ?? '-'}ชม., missing=${activityMissingHours}ชม.
+- categories: ${activityCategories.map(c => `${c.name}:${c.hours}/${c.requiredHours ?? '-'}ชม., events=${c.events ?? '-'}/${c.requiredEvents ?? '-'}`).join(' | ')}
+- calendar_events: ${scienceActivities.map(event => `${event.startDate}${event.endDate && event.endDate !== event.startDate ? `-${event.endDate}` : ''}: ${event.title}, type=${event.type}, hours=${event.hours}, status=${event.status}, location=${event.location}`).join('\n')}
+- answer rules: ถาม "เดือนนี้/เดือนหน้า/รับน้อง/ไหว้ครู/ชั่วโมงคณะ" ให้ใช้ calendar_events ก่อนเสมอ และบอกว่าเป็นกิจกรรมที่นับชั่วโมงคณะวิทยาศาสตร์เท่านั้น
+
+### TABLE: student_life_behavior
 - behaviorScore: ${activities.behaviorScore.score}/${activities.behaviorScore.maxScore}
 - behaviorHistory: ${activities.behaviorScore.history.map(h => `${h.semester}:${h.score}`).join(', ')}
 
@@ -574,6 +608,17 @@ ${sciBudgetAll.map(y => {
 
 ### TABLE: student_stats_live (ข้อมูลนักศึกษาที่เว็บใช้จริง)
 ${buildStudentStatsContextForAI()}
+
+### TABLE: tcas_admissions (คณะวิทยาศาสตร์)
+- fiveYearTrend: ${tcasTrend.map(row => `${row.year}: plan=${row.plan}, applicants=${row.applicants}, admitted=${row.admitted}, enrolled=${row.enrolled}, retained=${row.retained}, withdrawn=${row.withdrawn}, source=${row.sourceStatus}`).join(' | ')}
+- round3Plan2569: ${tcasRound3Plan.map(row => `${row.major}:${row.plan}คน, minGPAX=${row.minGpax}`).join(' | ')}
+- rule: ถาม TCAS ย้อนหลัง/แผนรับ/รับเข้า 100 คนออกกี่คน ให้ใช้ TABLE นี้ก่อน ถ้า field เป็น seed_waiting_file ให้บอกชัดว่ารอไฟล์ย้อนหลังจริง
+
+### TABLE: course_grade_analytics (รายวิชา/เกรด/จุดเด่นสาขา)
+- programs: ${(liveCourseData.programs || []).join(', ')}
+- gradeDistribution: ${courseGradeRows.map(row => `${row.code} ${row.title}: enrolled=${row.enrolled}, avgGPA=${row.avgGpa}, grades=${JSON.stringify(row.grades)}`).join(' | ')}
+- branchStrengths: ${branchStrengthRows.map(row => `${row.major}: ${row.strengths?.join(', ')}`).join(' | ')}
+- rule: ถามรายวิชา/วิชาน่าสนใจ/วิชาข้ามสาขา/กราฟเกรดรายวิชา/จุดเด่นสาขา ให้ใช้ TABLE นี้ก่อน
 
 ### TABLE: personnel (คณะวิทยาศาสตร์)
 - total: ${personnel.total} (ชาย${personnel.male}, หญิง${personnel.female})
@@ -717,7 +762,7 @@ When user asks about RELATIONSHIPS between 2+ data domains:
 3. Output combined result as json_chart with multiple datasets
 
 Examples:
-• "GPA กับ กิจกรรม" → students.gpa + activities → bar chart grouped by major
+• "GPA กับ กิจกรรม" → students.gpa + science_activities → bar chart grouped by major หรือ activity-hours summary
 • "จำนวนนิสิต กับ งบประมาณ" → student_stats.trend + budget → dual-axis line
 • "อัตราสำเร็จ กับ GPA แยกปี" → graduation.rate + graduation.avgGPA → dual-axis line
 • "บุคลากรแต่ละตำแหน่ง" → personnel.byPosition → pie/doughnut
@@ -840,6 +885,8 @@ function domainAllowed(role, domain) {
     if (!role || role === 'dean') return true;
     const accessMap = {
         students: ['student_stats', 'student_list'],
+        tcas: ['tcas_admissions'],
+        course_analytics: ['course_analytics'],
         tuition: ['tuition'],
         graduation: ['graduation_check', 'graduation_stats'],
         budget: ['budget_forecast', 'financial', 'faculty_budget'],
@@ -874,6 +921,8 @@ function liveDatasetContext(id, label) {
 function studentAggregateContext(includeRows = false) {
     const list = getStudentListSync();
     const sourceLabel = isLiveData() ? 'live/realtime' : 'ข้อมูลที่เว็บใช้อยู่ตอนนี้';
+    const stats = getSharedDashboardDatasetSync('student_stats') || {};
+    const scienceStats = stats.scienceFaculty || {};
     const byMajor = {};
     const byYear = {};
     let atRisk = 0;
@@ -884,14 +933,27 @@ function studentAggregateContext(includeRows = false) {
         byYear[s.year] = (byYear[s.year] || 0) + 1;
         if ((Number(s.gpa) || 0) < 2) atRisk += 1;
     });
-    const majorSummary = Object.entries(byMajor).map(([major, v]) =>
-        `${major}: ${v.count} คน, GPA เฉลี่ย ${(v.gpaSum / Math.max(1, v.count)).toFixed(2)}`
-    ).join('\n');
+    const liveMajorRows = Array.isArray(scienceStats.byMajor) && scienceStats.byMajor.length > 0
+        ? scienceStats.byMajor
+        : [];
+    const majorSummary = liveMajorRows.length > 0
+        ? liveMajorRows.map(row => {
+            const count = Number(row.total ?? row.count ?? 0);
+            const gpa = row.avgGPA ?? row.avgGpa;
+            return `${row.major || row.name}: ${count.toLocaleString('th-TH')} คน${gpa ? `, GPA เฉลี่ย ${Number(gpa).toFixed(2)}` : ''}`;
+        }).join('\n')
+        : Object.entries(byMajor).map(([major, v]) =>
+            `${major}: ${v.count} คน, GPA เฉลี่ย ${(v.gpaSum / Math.max(1, v.count)).toFixed(2)}`
+        ).join('\n');
+    const levelSummary = Array.isArray(scienceStats.byLevel)
+        ? scienceStats.byLevel.map(row => `${row.level}:${Number(row.count || 0).toLocaleString('th-TH')} คน`).join(', ')
+        : '';
+    const contextTotal = Number(scienceStats.total || list.length || 0);
     const yearSummary = Object.entries(byYear).map(([year, count]) => `ปี ${year}: ${count} คน`).join(', ');
     const rows = includeRows
         ? `\nตัวอย่างแถวที่เกี่ยวข้อง:\n${list.slice(0, 40).map(s => `${s.id}, ${s.name}, ${s.major}, ปี ${s.year}, GPA ${s.gpa}, ${s.status}`).join('\n')}`
         : '';
-    return `ข้อมูลนักศึกษา (${sourceLabel}) รวม ${list.length} คน\nตามสาขา:\n${majorSummary}\nตามชั้นปี: ${yearSummary}\nGPA < 2.00: ${atRisk} คน${rows}`;
+    return `ข้อมูลนิสิตคณะวิทยาศาสตร์ (${sourceLabel}) รวม ${contextTotal.toLocaleString('th-TH')} คน\n${levelSummary ? `ตามระดับ: ${levelSummary}\n` : ''}ตามสาขา:\n${majorSummary}\nตามชั้นปี: ${yearSummary}\nGPA < 2.00: ${atRisk} คน${rows}`;
 }
 
 function budgetContext() {
@@ -984,10 +1046,22 @@ function tuitionContext() {
 }
 
 function studentLifeContext() {
-    const live = liveDatasetContext('student_life', 'กิจกรรมนักศึกษา/ชีวิตนักศึกษา');
+    const live = liveDatasetContext('student_life', 'กิจกรรมคณะวิทยาศาสตร์/ชั่วโมงกิจกรรม');
     if (!live.data) return live.missing;
     const studentLifeData = live.data;
-    return `กิจกรรมนักศึกษา/ชีวิตนักศึกษา (${live.sourceLabel}):\n${JSON.stringify(studentLifeData)}`;
+    return `กิจกรรมคณะวิทยาศาสตร์และชั่วโมงกิจกรรม (${live.sourceLabel}):\n${JSON.stringify(studentLifeData)}`;
+}
+
+function tcasContext() {
+    const live = liveDatasetContext('tcas_admissions', 'แผนรับนักศึกษา TCAS');
+    if (!live.data) return live.missing;
+    return `แผนรับนักศึกษา TCAS (${live.sourceLabel}):\n${JSON.stringify(live.data)}`;
+}
+
+function courseAnalyticsContext() {
+    const live = liveDatasetContext('course_analytics', 'รายวิชา เกรด และจุดเด่นสาขา');
+    if (!live.data) return live.missing;
+    return `รายวิชา เกรด และจุดเด่นสาขา (${live.sourceLabel}):\n${JSON.stringify(live.data)}`;
 }
 
 function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) {
@@ -995,6 +1069,8 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const includeStudentRows = needsStudentDetail(userMessage);
     const candidates = [
         { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี|tcas|admission|รับสมัคร|รับเข้า|รอบ/, text: () => studentAggregateContext(includeStudentRows) },
+        { id: 'tcas', sections: ['tcas_admissions'], keywords: /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|รอบ\s*tcas|portfolio|quota|ผลกระทบ|ออกกี่คน|ค่าเทอมรวม/i, text: tcasContext },
+        { id: 'course_analytics', sections: ['course_analytics'], keywords: /รายวิชา|วิชา|course|เกรดรายวิชา|กระจายเกรด|แผนเรียน|ข้ามสาขา|จุดเด่นสาขา|เชี่ยวชาญ|expertise/i, text: courseAnalyticsContext },
         { id: 'academic_rules', sections: ['academic_rules', 'graduation_check', 'graduation_stats'], keywords: /กฎ|กฏ|ระเบียบ|ข้อบังคับ|เกียรตินิยม|เรียนดี|สำเร็จการศึกษา|พ้นสภาพ|หน่วยกิต|คะแนนความประพฤติ|f\s*หรือ\s*u|gpa\s*3\./i, text: academicRulesContext },
         { id: 'tuition', sections: ['tuition'], keywords: /ค่าเทอม|ค่าเล่าเรียน|tuition|ค่าธรรมเนียม|ชำระ|ค้างจ่าย|ค้างชำระ/, text: tuitionContext },
         { id: 'graduation', sections: ['graduation_check', 'graduation_stats'], keywords: /สำเร็จ|จบ|graduation|เกียรติ|pending|รอพินิจ/, text: graduationContext },
@@ -1002,7 +1078,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
         { id: 'research', sections: ['research_overview'], keywords: /วิจัย|research|scopus|citation|สิทธิบัตร|ทุน/, text: researchContext },
         { id: 'hr', sections: ['hr_overview'], keywords: /บุคลากร|อาจารย์|staff|hr|เกษียณ|ตำแหน่ง/, text: hrContext },
         { id: 'strategic', sections: ['strategic_overview'], keywords: /ยุทธศาสตร์|okr|kpi|เป้าหมาย|ตัวชี้วัด/, text: strategicContext },
-        { id: 'student_life', sections: ['student_life'], keywords: /กิจกรรม|พฤติกรรม|student life|ชั่วโมงกิจกรรม/, text: studentLifeContext },
+        { id: 'student_life', sections: ['student_life'], keywords: /กิจกรรม|พฤติกรรม|student life|ชั่วโมงกิจกรรม|ชั่วโมงคณะ|รับน้อง|ไหว้ครู|เดือนนี้|เดือนหน้า/, text: studentLifeContext },
     ];
 
     const role = userContext?.role || 'general';

@@ -6,7 +6,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { parseFile } from '../utils/fileParsers';
 import {
-    uploadStudentList, getStudentListMeta, ensureStudentList, isLiveData
+    uploadStudentList, getStudentListMeta, ensureStudentList, getStudentDataSourceStatus
 } from '../services/studentDataService';
 
 // Target schema for student rows stored in Firestore (datasets/students).
@@ -99,6 +99,7 @@ export default function AdminDataUpload({ onToast }) {
     const [mapping, setMapping] = useState({});
     const [saving, setSaving] = useState(false);
     const [parseError, setParseError] = useState('');
+    const sourceStatus = getStudentDataSourceStatus();
 
     const loadMeta = async () => {
         setMetaLoading(true);
@@ -188,8 +189,8 @@ export default function AdminDataUpload({ onToast }) {
                         <h3>ข้อมูลรายชื่อนักศึกษาปัจจุบัน</h3>
                         <p>แหล่งข้อมูลที่ AI และหน้ารายงานใช้อยู่</p>
                     </div>
-                    <span className={`admin-data-badge ${isLiveData() ? 'live' : 'mock'}`}>
-                        {isLiveData() ? 'Live (Firestore)' : 'Mock (Default)'}
+                    <span className={`admin-data-badge ${sourceStatus.isBundledSample ? 'mock' : 'live'}`}>
+                        {sourceStatus.label}
                     </span>
                 </div>
                 {metaLoading ? (

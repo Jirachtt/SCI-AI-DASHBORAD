@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap, Users, AlertTriangle } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
@@ -7,7 +7,7 @@ import ExportPDFButton from '../components/ExportPDFButton';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import {
     ensureStudentList, getStudentListSync, onStudentDataChange,
-    addStudent, syncManualStudentsToRemote
+    addStudent, syncManualStudentsToRemote, getStudentDataSourceStatus
 } from '../services/studentDataService';
 const MAJORS = SCIENCE_MAJORS;
 
@@ -45,29 +45,34 @@ export default function StudentListPage() {
     const canManage = user?.role === 'dean';
 
     const [students, setStudents] = useState(() => getStudentListSync());
+    const [dataSourceStatus, setDataSourceStatus] = useState(() => getStudentDataSourceStatus());
     const [searchTerm, setSearchTerm] = useState('');
+    const syncStudentState = useCallback((list = getStudentListSync()) => {
+        setStudents(list);
+        setDataSourceStatus(getStudentDataSourceStatus());
+    }, []);
 
     // Load live data on mount; re-sync when an admin uploads or manually edits data.
     useEffect(() => {
         let cancelled = false;
         ensureStudentList().then(async list => {
             if (cancelled) return;
-            setStudents(list);
+            syncStudentState(list);
             if (canManage && user?.uid && !user.uid.startsWith('admin-bypass-')) {
                 try {
                     const migrated = await syncManualStudentsToRemote({
                         uid: user.uid,
                         who: user.email || user.uid,
                     });
-                    if (!cancelled && migrated.synced > 0) setStudents(getStudentListSync());
+                    if (!cancelled && migrated.synced > 0) syncStudentState(getStudentListSync());
                 } catch (err) {
                     console.warn('[StudentListPage] local manual student migration failed:', err?.message || err);
                 }
             }
         });
-        const unsub = onStudentDataChange(list => { if (!cancelled && list) setStudents(list); });
+        const unsub = onStudentDataChange(list => { if (!cancelled && list) syncStudentState(list); });
         return () => { cancelled = true; unsub(); };
-    }, [canManage, user?.uid, user?.email]);
+    }, [canManage, user?.uid, user?.email, syncStudentState]);
     const [yearFilter, setYearFilter] = useState('all');
     const [majorFilter, setMajorFilter] = useState('all');
     const [page, setPage] = useState(1);
@@ -140,7 +145,7 @@ export default function StudentListPage() {
                 uid: user?.uid,
                 who: user?.email || user?.uid || 'unknown',
             });
-            setStudents(getStudentListSync());
+            syncStudentState(getStudentListSync());
             if (result.scope === 'live') {
                 setNewStudent({ id: '', name: '', major: MAJORS[0], year: '1', gpa: '' });
                 setShowModal(false);
@@ -155,6 +160,11 @@ export default function StudentListPage() {
     };
 
     const statusColor = (s) => s === 'ปกติ' ? '#4CAF50' : s === 'กำลังศึกษา' ? '#4CAF50' : s === 'รอพินิจ' ? '#FFC107' : '#ef4444';
+    const dataSourceText = dataSourceStatus.isBundledSample
+        ? 'ยังเป็นข้อมูลตัวอย่างในเครื่อง'
+        : dataSourceStatus.isShared
+            ? 'ข้อมูลจริงจากฐานกลาง Firestore'
+            : 'ข้อมูลจากไฟล์ที่อัปโหลดในเครื่องนี้';
 
     /* ── PDPA Access Control: เฉพาะคณบดีเท่านั้น ── */
     if (user?.role !== 'dean') {
@@ -189,7 +199,7 @@ export default function StudentListPage() {
                 </div>
                 <div>
                     <h1>รายชื่อนักศึกษา</h1>
-                    <p>ข้อมูลจาก MJU Dashboard (ปี 65 – 69) • ทั้งหมด <strong style={{ color: 'var(--text-primary)' }}>{students.length}</strong> คน</p>
+                    <p>{dataSourceText} • ทั้งหมด <strong style={{ color: 'var(--text-primary)' }}>{students.length}</strong> คน</p>
                 </div>
                 <div className="section-header-actions">
                     <ExportPDFButton title="รายชื่อนักศึกษา" label="PDF" onCSVExport={exportCSV} />
@@ -206,6 +216,29 @@ export default function StudentListPage() {
             </div>
 
 
+
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                flexWrap: 'wrap',
+                margin: '-6px 0 18px',
+                padding: '12px 14px',
+                borderRadius: 12,
+                border: dataSourceStatus.isBundledSample ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(0, 166, 81, 0.24)',
+                background: dataSourceStatus.isBundledSample ? 'rgba(245, 158, 11, 0.10)' : 'rgba(0, 166, 81, 0.08)',
+                color: 'var(--text-primary)',
+                fontSize: '0.86rem',
+                lineHeight: 1.55,
+            }}>
+                <AlertTriangle size={16} color={dataSourceStatus.isBundledSample ? '#f59e0b' : '#00a651'} />
+                <strong>{dataSourceText}</strong>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                    {dataSourceStatus.isBundledSample
+                        ? 'รายชื่อในตารางยังไม่ใช่รายชื่อนักศึกษาจริงของคณะ ต้องอัปโหลดไฟล์จาก Reg/MJU Dashboard หรือเชื่อม API ที่ได้รับอนุญาตก่อนนำไปใช้จริง'
+                        : 'ข้อมูลนี้ถูกใช้ร่วมกันในหน้า Overview, สถิตินักศึกษา, รายชื่อ, แจ้งเตือน, ตรวจจบ, สถิติสำเร็จการศึกษา และ AI'}
+                </span>
+            </div>
 
             {/* ── Year Stat Cards ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' }}>

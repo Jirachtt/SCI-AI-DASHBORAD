@@ -14,6 +14,8 @@ import './index.css';
 // so hovering a sidebar link warms the same chunk cache the router uses.
 const TuitionPage = lazy(lazyRouteLoaders['/dashboard/tuition']);
 const StudentStatsPage = lazy(lazyRouteLoaders['/dashboard/student-stats']);
+const TcasPlanningPage = lazy(lazyRouteLoaders['/dashboard/tcas']);
+const CourseAnalyticsPage = lazy(lazyRouteLoaders['/dashboard/course-analytics']);
 const BudgetForecastPage = lazy(lazyRouteLoaders['/dashboard/budget']);
 const FinancialPage = lazy(lazyRouteLoaders['/dashboard/financial']);
 const StudentLifePage = lazy(lazyRouteLoaders['/dashboard/student-life']);
@@ -82,6 +84,8 @@ function AppRoutes() {
         <Route index element={<DashboardHome />} />
         <Route path="tuition" element={<Suspense fallback={<PageLoader />}><TuitionPage /></Suspense>} />
         <Route path="student-stats" element={<Suspense fallback={<PageLoader />}><StudentStatsPage /></Suspense>} />
+        <Route path="tcas" element={<Suspense fallback={<PageLoader />}><TcasPlanningPage /></Suspense>} />
+        <Route path="course-analytics" element={<Suspense fallback={<PageLoader />}><CourseAnalyticsPage /></Suspense>} />
         <Route path="budget" element={<Suspense fallback={<PageLoader />}><BudgetForecastPage /></Suspense>} />
         <Route path="financial" element={<Suspense fallback={<PageLoader />}><FinancialPage /></Suspense>} />
         <Route path="student-life" element={<Suspense fallback={<PageLoader />}><StudentLifePage /></Suspense>} />

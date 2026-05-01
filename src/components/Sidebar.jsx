@@ -6,11 +6,12 @@ import { canAccess, getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
 import { getAIRateLimitSnapshot, getAITokenStats } from '../services/geminiService';
 import {
-    Home, CreditCard, DollarSign, Users, LogOut, Lock, FileText,
+    Home, CreditCard, DollarSign, LogOut, Lock, FileText,
     GraduationCap, CheckCircle, BarChart3,
     Microscope, Target, UserCheck, BookOpen, Award,
     Shield, UserCog, Clock, Bell, Bot, Settings, Gauge, ChevronDown,
-    ChevronRight, UserRound, Palette, Activity, ScrollText
+    ChevronRight, UserRound, Palette, Activity, ScrollText, CalendarDays,
+    ClipboardList
 } from 'lucide-react';
 
 const FEATURED_AI_CHAT = {
@@ -41,9 +42,11 @@ const menuGroups = [
         label: 'นักศึกษา · STUDENT',
         items: [
             { path: '/dashboard/student-stats', label: 'สถิตินิสิตปัจจุบัน', icon: BarChart3, section: 'student_stats' },
+            { path: '/dashboard/tcas', label: 'แผนรับ TCAS', icon: ClipboardList, section: 'tcas_admissions' },
+            { path: '/dashboard/course-analytics', label: 'รายวิชา/เกรด', icon: BookOpen, section: 'course_analytics' },
             { path: '/dashboard/students', label: 'รายชื่อนักศึกษา', icon: GraduationCap, section: 'student_list' },
             { path: '/dashboard/graduation', label: 'ตรวจสอบการจบ', icon: CheckCircle, section: 'graduation_check' },
-            { path: '/dashboard/student-life', label: 'กิจกรรม/พฤติกรรม', icon: Users, section: 'student_life' },
+            { path: '/dashboard/student-life', label: 'กิจกรรมคณะวิทยาศาสตร์', icon: CalendarDays, section: 'student_life' },
             { path: '/dashboard/graduation-stats', label: 'สถิติสำเร็จการศึกษา', icon: Award, section: 'graduation_stats' },
             { path: '/dashboard/academic-rules', label: 'กฎระเบียบ/เกียรตินิยม', icon: ScrollText, section: 'academic_rules' },
         ]

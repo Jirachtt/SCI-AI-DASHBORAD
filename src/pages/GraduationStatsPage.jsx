@@ -46,9 +46,9 @@ const studentColumns = [
     { key: 'honors', label: 'เกียรตินิยม' },
 ];
 
-function rowsByGpaRange(range) {
+function rowsByGpaRange(range, candidates = graduationCandidateList) {
     const [min, max] = String(range).split('-').map(Number);
-    return graduationCandidateList.filter(student => {
+    return candidates.filter(student => {
         const gpa = Number(student.gpa);
         return gpa >= min && gpa <= max;
     });
@@ -65,16 +65,20 @@ export default function GraduationStatsPage() {
 
     const graduationHistoryData = liveGraduationData?.graduationHistory || liveGraduationData?.history || graduationHistory;
     const stats = { ...currentGraduationStats, ...(liveGraduationData?.current || {}) };
+    const candidateRows = liveGraduationData?.candidateList || liveGraduationData?.candidates || graduationCandidateList;
+    const graduationByMajorRows = liveGraduationData?.byMajor || graduationByMajor;
+    const gpaDistributionRows = liveGraduationData?.gpaDistribution || gpaDistribution;
+    const honorsSummary = liveGraduationData?.honors || honorsData;
 
     // Filter candidate list
-    const filteredCandidates = useMemo(() => graduationCandidateList.filter(s => {
+    const filteredCandidates = useMemo(() => candidateRows.filter(s => {
         const matchSearch = searchTerm === '' ||
             s.name.includes(searchTerm) ||
             s.id.includes(searchTerm);
         const matchMajor = filterMajor === 'all' || s.major === filterMajor;
         const matchStatus = filterStatus === 'all' || s.graduationStatus === filterStatus;
         return matchSearch && matchMajor && matchStatus;
-    }), [searchTerm, filterMajor, filterStatus]);
+    }), [candidateRows, searchTerm, filterMajor, filterStatus]);
 
     if (!hasGraduationAccess) return <AccessDenied />;
 
@@ -162,21 +166,21 @@ export default function GraduationStatsPage() {
 
     // By major bar chart
     const majorChartData = {
-        labels: graduationByMajor.map(m => m.major),
+        labels: graduationByMajorRows.map(m => m.major),
         datasets: [
             {
                 label: 'คาดว่าสำเร็จ',
-                data: graduationByMajor.map(m => m.expected),
+                data: graduationByMajorRows.map(m => m.expected),
                 backgroundColor: 'rgba(34,197,94,0.7)',
             },
             {
                 label: 'รอพินิจ',
-                data: graduationByMajor.map(m => m.pending),
+                data: graduationByMajorRows.map(m => m.pending),
                 backgroundColor: 'rgba(245,158,11,0.7)',
             },
             {
                 label: 'ไม่ผ่านเกณฑ์',
-                data: graduationByMajor.map(m => m.notPassed),
+                data: graduationByMajorRows.map(m => m.notPassed),
                 backgroundColor: 'rgba(239,68,68,0.7)',
             },
         ]
@@ -216,12 +220,12 @@ export default function GraduationStatsPage() {
 
     // GPA Distribution bar chart
     const gpaChartData = {
-        labels: gpaDistribution.map(g => g.range),
+        labels: gpaDistributionRows.map(g => g.range),
         datasets: [{
             label: 'จำนวน (คน)',
-            data: gpaDistribution.map(g => g.count),
-            backgroundColor: gpaDistribution.map(g => g.color + 'cc'),
-            borderColor: gpaDistribution.map(g => g.color),
+            data: gpaDistributionRows.map(g => g.count),
+            backgroundColor: gpaDistributionRows.map(g => g.color + 'cc'),
+            borderColor: gpaDistributionRows.map(g => g.color),
             borderWidth: 1,
             borderRadius: 6,
         }]
@@ -248,7 +252,7 @@ export default function GraduationStatsPage() {
     const honorsChartData = {
         labels: ['เกียรตินิยมอันดับ 1', 'เกียรตินิยมอันดับ 2', 'ปกติ', 'ต่ำกว่าเกณฑ์'],
         datasets: [{
-            data: [honorsData.firstClass, honorsData.secondClass, honorsData.normal, honorsData.belowStandard],
+            data: [honorsSummary.firstClass, honorsSummary.secondClass, honorsSummary.normal, honorsSummary.belowStandard],
             backgroundColor: ['#8b5cf6', '#3b82f6', '#22c55e', '#ef4444'],
             borderWidth: 0,
             cutout: '55%',
@@ -301,10 +305,10 @@ export default function GraduationStatsPage() {
         }
     };
 
-    const uniqueMajors = [...new Set(graduationCandidateList.map(s => s.major))].sort();
+    const uniqueMajors = [...new Set(candidateRows.map(s => s.major))].sort();
 
     const statusDrilldownOptions = withChartDrilldown(statusOptions, statusChartData, setDrillDetail, (point) => {
-        const rows = graduationCandidateList.filter(student => student.graduationStatus === point.label);
+        const rows = candidateRows.filter(student => student.graduationStatus === point.label);
         return {
             title: `สถานะการสำเร็จ: ${point.label}`,
             subtitle: 'รายชื่อนักศึกษาปี 4 ที่อยู่ในกลุ่มนี้',
@@ -338,10 +342,10 @@ export default function GraduationStatsPage() {
     });
 
     const majorDrilldownOptions = withChartDrilldown(majorChartOptions, majorChartData, setDrillDetail, (point) => {
-        const major = graduationByMajor[point.index]?.major || point.label;
+        const major = graduationByMajorRows[point.index]?.major || point.label;
         const status = point.datasetLabel;
-        const rows = graduationCandidateList.filter(student => student.major === major && student.graduationStatus === status);
-        const allMajorRows = graduationCandidateList.filter(student => student.major === major);
+        const rows = candidateRows.filter(student => student.major === major && student.graduationStatus === status);
+        const allMajorRows = candidateRows.filter(student => student.major === major);
         return {
             title: `${major}: ${status}`,
             subtitle: 'รายละเอียดนักศึกษาตามสาขาและสถานะที่เลือก',
@@ -359,7 +363,7 @@ export default function GraduationStatsPage() {
     });
 
     const gpaDrilldownOptions = withChartDrilldown(gpaChartOptions, gpaChartData, setDrillDetail, (point) => {
-        const rows = rowsByGpaRange(point.label);
+        const rows = rowsByGpaRange(point.label, candidateRows);
         return {
             title: `ช่วง GPA ${point.label}`,
             subtitle: 'รายชื่อนักศึกษาที่อยู่ในช่วง GPA นี้',
@@ -393,7 +397,7 @@ export default function GraduationStatsPage() {
     });
 
     const honorsDrilldownOptions = withChartDrilldown(honorsOptions, honorsChartData, setDrillDetail, (point) => {
-        const rows = graduationCandidateList.filter(student => student.honors === point.label);
+        const rows = candidateRows.filter(student => student.honors === point.label);
         return {
             title: `เกียรตินิยม: ${point.label}`,
             subtitle: 'รายชื่อนักศึกษาที่อยู่ในกลุ่มนี้',
@@ -491,7 +495,7 @@ export default function GraduationStatsPage() {
                         <Users size={18} color="#3b82f6" />
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>แยกตามสาขาวิชา</span>
                     </div>
-                    <div style={{ height: Math.max(320, graduationByMajor.length * 42) }}>
+                    <div style={{ height: Math.max(320, graduationByMajorRows.length * 42) }}>
                         <Bar data={majorChartData} options={majorDrilldownOptions} />
                     </div>
                 </div>
@@ -549,7 +553,7 @@ export default function GraduationStatsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {graduationByMajor.map((m, i) => (
+                            {graduationByMajorRows.map((m, i) => (
                                 <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                     <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 500 }}>{m.major}</td>
                                     <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', textAlign: 'center' }}>{m.total}</td>

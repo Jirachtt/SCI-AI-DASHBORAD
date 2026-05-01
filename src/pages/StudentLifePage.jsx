@@ -3,333 +3,286 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { ArrowLeft, Users } from 'lucide-react';
-import { Line } from 'react-chartjs-2';
 import {
-    Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
-    Title, Tooltip, Legend, Filler
-} from 'chart.js';
-import { themeAdaptorPlugin } from '../utils/chartTheme';
+    AlertCircle,
+    ArrowLeft,
+    CalendarDays,
+    CheckCircle2,
+    Clock,
+    ExternalLink,
+    Filter,
+    GraduationCap,
+    MapPin,
+    Sparkles,
+    Users,
+} from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
-import ChartDrilldownModal from '../components/ChartDrilldownModal';
-import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
+import {
+    formatScienceActivityDate,
+    getRecommendedScienceActivities,
+    getScienceActivitySummary,
+    monthKeyFromDate,
+    sumScienceActivityHours,
+} from '../data/scienceActivitiesData';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, themeAdaptorPlugin);
+const STATUS_META = {
+    open: { label: 'เปิดลงทะเบียน', className: 'open' },
+    nearly_full: { label: 'ใกล้เต็ม', className: 'warning' },
+    full: { label: 'เต็มแล้ว', className: 'danger' },
+    closed: { label: 'ปิดรับแล้ว', className: 'muted' },
+    completed: { label: 'เสร็จแล้ว', className: 'muted' },
+};
+
+const TYPE_COLORS = {
+    รับน้อง: '#00a651',
+    ศิลปวัฒนธรรม: '#db2777',
+    วิชาการ: '#2563eb',
+    จิตอาสา: '#d97706',
+    กีฬา: '#7c3aed',
+};
+
+function eventMonthKey(event) {
+    return monthKeyFromDate(event.startDate);
+}
+
+function capacityPercent(event) {
+    return event.capacity ? Math.min(100, Math.round((event.registeredCount / event.capacity) * 100)) : 0;
+}
+
+function eventStatusMeta(event) {
+    return STATUS_META[event.status] || STATUS_META.open;
+}
 
 export default function StudentLifePage() {
     const { user } = useAuth();
-    const [drillDetail, setDrillDetail] = useState(null);
+    const [activeWindow, setActiveWindow] = useState('thisMonth');
     const { data: studentLifeData } = useDashboardDataset('student_life');
 
-    if (!canAccess(user?.role, 'student_life')) return <AccessDenied />;
+    const accessAllowed = canAccess(user?.role, 'student_life');
+    const summary = getScienceActivitySummary();
+    const activityHours = studentLifeData?.activityHours || summary.requirement;
+    const requirement = summary.requirement;
+    const targetHours = Number(activityHours.target ?? requirement.targetHours);
+    const completedHours = Number(activityHours.completed ?? requirement.completedHours);
+    const events = (Array.isArray(studentLifeData?.scienceActivities) && studentLifeData.scienceActivities.length
+        ? studentLifeData.scienceActivities
+        : summary.all)
+        .filter(event => event.facultyHours)
+        .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    const missingHours = Math.max(0, targetHours - completedHours);
+    const currentKey = summary.currentKey;
+    const nextKey = summary.nextKey;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const showDetail = canAccess(user?.role, 'student_life_detail');
+    const thisMonthEvents = events.filter(event => eventMonthKey(event) === currentKey);
+    const nextMonthEvents = events.filter(event => eventMonthKey(event) === nextKey);
+    const upcomingEvents = events.filter(event => new Date(`${event.startDate}T00:00:00+07:00`) >= today);
+    const filteredEvents = activeWindow === 'thisMonth'
+        ? thisMonthEvents
+        : activeWindow === 'nextMonth'
+            ? nextMonthEvents
+            : events;
+    const recommendation = getRecommendedScienceActivities(missingHours, new Date(), events);
 
-    const { activityHours, library, behaviorScore } = studentLifeData;
-    const pct = Math.round((activityHours.completed / activityHours.target) * 100);
-    const remainingHours = Math.max(activityHours.target - activityHours.completed, 0);
-    const overallPct = Math.min(100, pct);
-    const completedCategoryTotal = activityHours.categories.reduce((sum, cat) => sum + cat.hours, 0);
-    const activityPalette = [
-        { color: '#2563EB', soft: 'rgba(37, 99, 235, 0.14)' },
-        { color: '#D97706', soft: 'rgba(217, 119, 6, 0.16)' },
-        { color: '#7C3AED', soft: 'rgba(124, 58, 237, 0.14)' },
-        { color: '#DB2777', soft: 'rgba(219, 39, 119, 0.14)' },
-    ];
-    const activityBreakdown = activityHours.categories.map((cat, index) => ({
-        ...cat,
-        color: activityPalette[index % activityPalette.length].color,
-        soft: activityPalette[index % activityPalette.length].soft,
-        targetPercent: Math.round((cat.hours / activityHours.target) * 100),
-        completedShare: completedCategoryTotal > 0 ? Math.round((cat.hours / completedCategoryTotal) * 100) : 0,
-    }));
+    const typeSummary = Object.entries(events.reduce((acc, event) => {
+        const key = event.type || 'อื่นๆ';
+        acc[key] = acc[key] || { type: key, count: 0, hours: 0, color: TYPE_COLORS[key] || '#64748b' };
+        acc[key].count += 1;
+        acc[key].hours += Number(event.hours || 0);
+        return acc;
+    }, {})).map(([, item]) => item);
+    const maxTypeHours = Math.max(...typeSummary.map(item => item.hours), 1);
 
-    const behaviorLineData = {
-        labels: behaviorScore.history.map(h => h.semester),
-        datasets: [{
-            label: 'คะแนนความประพฤติ',
-            data: behaviorScore.history.map(h => h.score),
-            borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245, 158, 11, 0.12)',
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#f59e0b',
-            pointRadius: 6,
-            pointHoverRadius: 8,
-        }]
-    };
-
-    const behaviorLineOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-        },
-        scales: {
-            x: { ticks: { color: '#9ca3af' }, grid: { display: false } },
-            y: {
-                min: 70, max: 100,
-                ticks: { color: '#9ca3af' },
-                grid: { color: 'rgba(255,255,255,0.05)' }
-            }
-        }
-    };
-
-    const activityColumns = [
-        { key: 'name', label: 'หมวดกิจกรรม' },
-        { key: 'hours', label: 'ชั่วโมง', align: 'right' },
-        { key: 'percent', label: 'คิดเป็น', align: 'right' },
+    const kpis = [
+        { label: 'กิจกรรมเดือนนี้', value: thisMonthEvents.length, detail: summary.currentMonthLabel, icon: CalendarDays, color: '#00a651' },
+        { label: 'กิจกรรมเดือนหน้า', value: nextMonthEvents.length, detail: summary.nextMonthLabel, icon: Sparkles, color: '#7c3aed' },
+        { label: 'ชั่วโมงที่เปิดให้เก็บ', value: sumScienceActivityHours(upcomingEvents), detail: 'รับชั่วโมงคณะวิทยาศาสตร์', icon: Clock, color: '#2563eb' },
+        { label: 'ยังขาดเพื่อครบเกณฑ์', value: missingHours, detail: `${completedHours}/${targetHours} ชั่วโมง`, icon: GraduationCap, color: missingHours > 0 ? '#d97706' : '#059669' },
     ];
 
-    const behaviorColumns = [
-        { key: 'semester', label: 'ภาคเรียน' },
-        { key: 'score', label: 'คะแนน', align: 'right' },
-        { key: 'status', label: 'สถานะ' },
-    ];
-
-    const openActivityDetail = (selectedCategory = null) => setDrillDetail({
-        title: selectedCategory ? `รายละเอียดกิจกรรม: ${selectedCategory.name}` : 'รายละเอียดชั่วโมงกิจกรรม',
-        subtitle: `${activityHours.completed}/${activityHours.target} ชั่วโมง (${overallPct}%)`,
-        valueLabel: selectedCategory ? selectedCategory.name : 'ทำแล้วทั้งหมด',
-        value: selectedCategory ? selectedCategory.hours : activityHours.completed,
-        unit: 'ชั่วโมง',
-        accentColor: selectedCategory?.color || '#16A34A',
-        summary: selectedCategory
-            ? `${selectedCategory.name} ${selectedCategory.hours.toLocaleString('th-TH')} ชั่วโมง คิดเป็น ${selectedCategory.completedShare}% ของชั่วโมงที่ทำแล้ว`
-            : `ทำแล้ว ${activityHours.completed.toLocaleString('th-TH')} ชั่วโมง เหลือ ${remainingHours.toLocaleString('th-TH')} ชั่วโมง จากเป้าหมาย ${activityHours.target.toLocaleString('th-TH')} ชั่วโมง`,
-        rows: activityBreakdown.map(cat => ({
-            name: cat.name,
-            hours: cat.hours,
-            percent: `${cat.targetPercent}% ของเป้าหมายรวม`,
-        })),
-        columns: activityColumns,
-        note: 'แยกตามหมวดกิจกรรมที่บันทึกไว้ในระบบ',
-    });
-
-    const behaviorDrilldownOptions = withChartDrilldown(behaviorLineOptions, behaviorLineData, setDrillDetail, (point) => {
-        const row = behaviorScore.history[point.index];
-        if (!row) return null;
-        return {
-            title: `คะแนนความประพฤติ ${row.semester}`,
-            subtitle: 'แนวโน้มคะแนนความประพฤติรายภาคเรียน',
-            valueLabel: 'คะแนน',
-            value: row.score,
-            unit: `จาก ${behaviorScore.maxScore}`,
-            accentColor: point.color,
-            rows: behaviorScore.history.map(item => ({
-                semester: item.semester,
-                score: item.score,
-                status: item.score >= 90 ? 'ดีมาก' : item.score >= 80 ? 'ดี' : 'ต้องติดตาม',
-            })),
-            columns: behaviorColumns,
-            note: 'คลิกจุดแต่ละภาคเรียนเพื่อดูบริบทคะแนนย้อนหลังทั้งหมด',
-        };
-    });
+    if (!accessAllowed) return <AccessDenied />;
 
     return (
-        <div>
-            <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
+        <div className="science-activity-page">
             <Link to="/dashboard" className="back-button">
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
 
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #A23B72, #7B2D8E)' }}>
-                    <Users size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #00a651, #2E86AB)' }}>
+                    <CalendarDays size={22} color="#fff" />
                 </div>
                 <div>
-                    <h2>กิจกรรมและพฤติกรรม</h2>
-                    <p>Student Life & Activity</p>
+                    <h2>กิจกรรมคณะวิทยาศาสตร์</h2>
+                    <p>Science Faculty Activity Hub — ใช้ชั่วโมงกิจกรรมของคณะวิทยาศาสตร์เป็นหลัก</p>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
-                    <ExportPDFButton title="กิจกรรมและพฤติกรรม" />
+                <div className="section-header-actions">
+                    <ExportPDFButton title="กิจกรรมคณะวิทยาศาสตร์" />
                 </div>
             </div>
 
-            {/* Activity Hours + Behavior */}
-            <div className="charts-grid">
-                <div className="chart-card animate-in">
+            <section className="science-activity-hero">
+                <div>
+                    <span className="science-activity-kicker"><CheckCircle2 size={15} /> ข้อมูลกิจกรรมรับชั่วโมงคณะ</span>
+                    <h3>ปฏิทินกิจกรรมเดือนนี้และเดือนหน้า พร้อมชั่วโมงที่นำไปใช้ตรวจจบได้</h3>
+                    <p>
+                        หน้านี้แยกบทบาทจากหน้าตรวจสอบจบ: ใช้สำหรับดูว่าเดือนนี้/เดือนหน้าคณะวิทยาศาสตร์มีกิจกรรมอะไร
+                        ได้กี่ชั่วโมง และควรเข้าร่วมกิจกรรมไหนเพื่อเติมชั่วโมงให้ครบ
+                    </p>
+                </div>
+                <div className="science-activity-hero-panel">
+                    <span>{requirement.scope}</span>
+                    <strong>{completedHours}/{targetHours} ชม.</strong>
+                    <small>อัปเดตล่าสุด {requirement.lastUpdated}</small>
+                </div>
+            </section>
+
+            <div className="science-activity-kpi-grid">
+                {kpis.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                        <article key={item.label} className="science-activity-kpi-card">
+                            <div className="science-activity-kpi-icon" style={{ color: item.color, background: `${item.color}18` }}>
+                                <Icon size={20} />
+                            </div>
+                            <div>
+                                <strong style={{ color: item.color }}>{item.value.toLocaleString('th-TH')}</strong>
+                                <span>{item.label}</span>
+                                <small>{item.detail}</small>
+                            </div>
+                        </article>
+                    );
+                })}
+            </div>
+
+            <div className="science-activity-layout">
+                <section className="chart-card science-activity-calendar">
                     <div className="chart-card-header">
                         <div>
-                            <div className="chart-card-title">ชั่วโมงกิจกรรม</div>
-                            <div className="chart-card-subtitle">เป้าหมายรวม {activityHours.target} ชั่วโมง แยกความคืบหน้าและหมวดกิจกรรม</div>
+                            <div className="chart-card-title">ปฏิทินกิจกรรมคณะวิทยาศาสตร์</div>
+                            <div className="chart-card-subtitle">เฉพาะกิจกรรมที่นับชั่วโมงคณะวิทยาศาสตร์</div>
                         </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: 12, marginBottom: 18 }}>
-                        {[
-                            { label: 'ทำแล้ว', value: activityHours.completed, unit: 'ชม.', color: '#16A34A' },
-                            { label: 'เป้าหมาย', value: activityHours.target, unit: 'ชม.', color: 'var(--text-primary)' },
-                            { label: remainingHours > 0 ? 'ยังขาด' : 'ครบเกณฑ์', value: remainingHours, unit: 'ชม.', color: remainingHours > 0 ? '#D97706' : '#16A34A' },
-                        ].map((item) => (
-                            <button
-                                key={item.label}
-                                type="button"
-                                onClick={() => openActivityDetail()}
-                                style={{
-                                    textAlign: 'left',
-                                    padding: '14px 16px',
-                                    borderRadius: 10,
-                                    border: '1px solid var(--border-color)',
-                                    background: 'var(--bg-secondary)',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 6 }}>{item.label}</div>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, color: item.color }}>
-                                    <span style={{ fontSize: '1.55rem', fontWeight: 800, lineHeight: 1 }}>{item.value}</span>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{item.unit}</span>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={() => openActivityDetail()}
-                        style={{
-                            width: '100%',
-                            padding: 0,
-                            border: 0,
-                            background: 'transparent',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8, fontSize: '0.86rem' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>ความคืบหน้ารวม</span>
-                            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{overallPct}%</span>
-                        </div>
-                        <div style={{
-                            height: 18,
-                            borderRadius: 999,
-                            background: 'var(--bg-secondary)',
-                            border: '1px solid var(--border-color)',
-                            overflow: 'hidden',
-                            display: 'flex',
-                        }}>
-                            <div style={{
-                                width: `${overallPct}%`,
-                                background: '#16A34A',
-                                borderRadius: 999,
-                                transition: 'width 0.8s ease',
-                            }} />
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                            <span>ทำแล้ว {activityHours.completed} ชม.</span>
-                            <span>ยังขาด {remainingHours} ชม.</span>
-                        </div>
-                    </button>
-
-                    <div style={{ marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>แยกตามประเภทกิจกรรม</span>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>รวม {completedCategoryTotal} ชม.</span>
-                        </div>
-                        <div style={{ display: 'grid', gap: 12 }}>
-                            {activityBreakdown.map((cat) => (
+                        <div className="science-activity-tabs" aria-label="ตัวกรองกิจกรรม">
+                            {[
+                                { id: 'thisMonth', label: 'เดือนนี้' },
+                                { id: 'nextMonth', label: 'เดือนหน้า' },
+                                { id: 'all', label: 'ทั้งหมด' },
+                            ].map(tab => (
                                 <button
-                                    key={cat.name}
+                                    key={tab.id}
                                     type="button"
-                                    onClick={() => openActivityDetail(cat)}
-                                    style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'minmax(96px, 145px) 1fr minmax(92px, auto)',
-                                        alignItems: 'center',
-                                        gap: 12,
-                                        width: '100%',
-                                        padding: '10px 12px',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: 10,
-                                        background: cat.soft,
-                                        cursor: 'pointer',
-                                    }}
+                                    className={activeWindow === tab.id ? 'active' : ''}
+                                    onClick={() => setActiveWindow(tab.id)}
                                 >
-                                    <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.86rem', textAlign: 'left' }}>{cat.name}</span>
-                                    <span style={{
-                                        height: 10,
-                                        borderRadius: 999,
-                                        background: 'rgba(148, 163, 184, 0.18)',
-                                        overflow: 'hidden',
-                                    }}>
-                                        <span style={{
-                                            display: 'block',
-                                            width: `${cat.targetPercent}%`,
-                                            height: '100%',
-                                            borderRadius: 999,
-                                            background: cat.color,
-                                        }} />
-                                    </span>
-                                    <span style={{ textAlign: 'right', color: cat.color, fontWeight: 800, fontSize: '0.9rem' }}>
-                                        {cat.hours} ชม. ({cat.targetPercent}%)
-                                    </span>
+                                    {tab.label}
                                 </button>
                             ))}
                         </div>
-                        <div style={{ marginTop: 10, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            เปอร์เซ็นต์ของแต่ละแถบเทียบกับเป้าหมายรวม {activityHours.target} ชั่วโมง
-                        </div>
                     </div>
-                </div>
 
-                {showDetail && (
-                    <div className="chart-card animate-in">
-                        <div className="chart-card-header">
-                            <div>
-                                <div className="chart-card-title">คะแนนความประพฤติ</div>
-                                <div className="chart-card-subtitle">ปัจจุบัน: {behaviorScore.score}/{behaviorScore.maxScore}</div>
+                    <div className="science-activity-event-list">
+                        {filteredEvents.length === 0 ? (
+                            <div className="science-activity-empty">
+                                <Filter size={24} />
+                                ยังไม่มีกิจกรรมในช่วงเวลานี้
                             </div>
-                            <span style={{
-                                fontSize: '2rem', fontWeight: 700,
-                                color: behaviorScore.score >= 90 ? 'var(--success)' : 'var(--warning)'
-                            }}>
-                                {behaviorScore.score}
-                            </span>
-                        </div>
-                        <div className="chart-container">
-                            <Line data={behaviorLineData} options={behaviorDrilldownOptions} />
-                        </div>
+                        ) : filteredEvents.map(event => {
+                            const status = eventStatusMeta(event);
+                            const typeColor = TYPE_COLORS[event.type] || '#64748b';
+                            const capacity = capacityPercent(event);
+                            return (
+                                <article key={event.id} className="science-activity-event-card">
+                                    <div className="science-activity-event-date">
+                                        <strong>{new Date(`${event.startDate}T00:00:00+07:00`).getDate()}</strong>
+                                        <span>{formatScienceActivityDate(event).split(' ')[1]}</span>
+                                    </div>
+                                    <div className="science-activity-event-main">
+                                        <div className="science-activity-event-title-row">
+                                            <h3>{event.title}</h3>
+                                            <span className={`science-activity-status ${status.className}`}>{status.label}</span>
+                                        </div>
+                                        <p>{event.description}</p>
+                                        <div className="science-activity-event-meta">
+                                            <span style={{ color: typeColor }}>{event.type}</span>
+                                            <span><Clock size={14} /> {event.hours} ชม.</span>
+                                            <span><CalendarDays size={14} /> {formatScienceActivityDate(event)} · {event.time}</span>
+                                            <span><MapPin size={14} /> {event.location}</span>
+                                            <span><Users size={14} /> {event.registeredCount}/{event.capacity} คน</span>
+                                        </div>
+                                        <div className="science-activity-capacity">
+                                            <span style={{ width: `${capacity}%`, background: typeColor }} />
+                                        </div>
+                                    </div>
+                                </article>
+                            );
+                        })}
                     </div>
-                )}
+                </section>
+
+                <aside className="science-activity-side">
+                    <section className="chart-card science-activity-recommend">
+                        <div className="chart-card-title">กิจกรรมแนะนำเติมชั่วโมง</div>
+                        <div className="chart-card-subtitle">คัดจากกิจกรรมคณะวิทยาศาสตร์ที่กำลังจะจัด</div>
+                        <div className="science-activity-missing">
+                            <span>ยังขาด</span>
+                            <strong>{missingHours}</strong>
+                            <span>ชั่วโมง</span>
+                        </div>
+                        <div className="science-activity-recommend-list">
+                            {recommendation.selected.map(event => (
+                                <div key={event.id} className="science-activity-recommend-item">
+                                    <div>
+                                        <strong>{event.title}</strong>
+                                        <span>{formatScienceActivityDate(event)} · {event.type}</span>
+                                    </div>
+                                    <em>+{event.hours} ชม.</em>
+                                </div>
+                            ))}
+                        </div>
+                        <div className={`science-activity-complete-note ${recommendation.willComplete ? 'complete' : ''}`}>
+                            {recommendation.willComplete
+                                ? `เข้าร่วมชุดนี้ได้ ${recommendation.accumulated} ชม. เพียงพอให้ครบเกณฑ์`
+                                : `ชุดนี้ได้ ${recommendation.accumulated} ชม. ยังต้องเพิ่มอีก ${Math.max(0, missingHours - recommendation.accumulated)} ชม.`}
+                        </div>
+                    </section>
+
+                    <section className="chart-card science-activity-breakdown">
+                        <div className="chart-card-title">ชั่วโมงตามประเภทกิจกรรม</div>
+                        <div className="science-activity-type-bars">
+                            {typeSummary.map(item => (
+                                <div key={item.type}>
+                                    <div className="science-activity-type-head">
+                                        <span>{item.type}</span>
+                                        <strong>{item.hours} ชม.</strong>
+                                    </div>
+                                    <div className="science-activity-type-track">
+                                        <span style={{ width: `${Math.round((item.hours / maxTypeHours) * 100)}%`, background: item.color }} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </aside>
             </div>
 
-            {/* Library */}
-            <div className="data-table-container animate-in" style={{ marginTop: 8 }}>
+            <section className="data-table-container science-activity-admin-hint">
                 <div className="data-table-header">
-                    <span className="data-table-title">สถานะห้องสมุด</span>
+                    <span className="data-table-title">แนวทางต่อข้อมูลจริง</span>
+                    <span className="status-badge normal">พร้อมต่อ API/CSV</span>
                 </div>
-                <table className="data-table">
-                    <thead>
-                        <tr>
-                            <th>ชื่อหนังสือ</th>
-                            <th>วันยืม</th>
-                            <th>กำหนดคืน</th>
-                            <th>สถานะ</th>
-                            <th>ค่าปรับ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {library.map((book, i) => (
-                            <tr key={i}>
-                                <td style={{ fontWeight: 500 }}>{book.title}</td>
-                                <td>{book.borrowDate}</td>
-                                <td>{book.dueDate}</td>
-                                <td>
-                                    <span className={`status-badge ${book.status === 'เกินกำหนด' ? 'overdue' :
-                                        book.status === 'ใกล้กำหนด' ? 'due-soon' : 'normal'
-                                        }`}>
-                                        {book.status}
-                                    </span>
-                                </td>
-                                <td style={{ color: book.fine > 0 ? 'var(--danger)' : 'var(--text-secondary)' }}>
-                                    {book.fine > 0 ? `${book.fine} บาท` : '-'}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                <div className="science-activity-hint-body">
+                    <AlertCircle size={18} />
+                    <span>
+                        เมื่อมหาวิทยาลัยหรือคณะมี API/ไฟล์กิจกรรมจริง ให้ส่ง fields: ชื่อกิจกรรม, วันที่, สถานที่,
+                        ประเภท, ชั่วโมงคณะวิทยาศาสตร์, จำนวนรับ, สถานะ และ organizer เข้าชุดข้อมูลนี้ได้ทันที
+                    </span>
+                    <Link to="/dashboard/graduation" className="science-activity-inline-link">
+                        ดูผลต่อเงื่อนไขจบ <ExternalLink size={14} />
+                    </Link>
+                </div>
+            </section>
         </div>
     );
 }

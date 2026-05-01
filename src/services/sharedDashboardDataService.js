@@ -13,7 +13,7 @@ import {
 } from './studentDataService';
 
 const SCIENCE_FACULTY_NAME = 'คณะวิทยาศาสตร์';
-const LINKED_STUDENT_DATASETS = new Set(['dashboard_summary', 'student_stats']);
+const LINKED_STUDENT_DATASETS = new Set(['dashboard_summary', 'student_stats', 'graduation']);
 
 const LEVEL_DEFS = [
     { key: 'bachelor', label: 'ปริญญาตรี', color: '#2563eb', icon: 'BSc', pattern: /ตรี|bachelor|bsc/i },
@@ -493,6 +493,131 @@ function patchDashboardSummary(baseData) {
     return data;
 }
 
+function graduationStatus(student) {
+    const gpa = Number(student?.gpa);
+    const status = String(student?.status || '');
+    if (Number.isFinite(gpa) && gpa < 1.75) return 'ไม่ผ่านเกณฑ์';
+    if (Number.isFinite(gpa) && gpa < 2) return 'รอพินิจ';
+    if (status.includes('รอพินิจ')) return 'รอพินิจ';
+    return 'คาดว่าจะสำเร็จ';
+}
+
+function honorsLabel(student) {
+    const gpa = Number(student?.gpa);
+    if (!Number.isFinite(gpa)) return 'ไม่ระบุ';
+    if (gpa >= 3.5) return 'เกียรตินิยมอันดับ 1';
+    if (gpa >= 3.25) return 'เกียรตินิยมอันดับ 2';
+    if (gpa >= 2) return 'ปกติ';
+    return 'ต่ำกว่าเกณฑ์';
+}
+
+function buildGraduationGpaDistribution(rows = []) {
+    const ranges = [
+        { range: '1.00-1.74', min: 1, max: 1.74, color: '#ef4444' },
+        { range: '1.75-1.99', min: 1.75, max: 1.99, color: '#f97316' },
+        { range: '2.00-2.49', min: 2, max: 2.49, color: '#eab308' },
+        { range: '2.50-2.99', min: 2.5, max: 2.99, color: '#22c55e' },
+        { range: '3.00-3.49', min: 3, max: 3.49, color: '#3b82f6' },
+        { range: '3.50-4.00', min: 3.5, max: 4, color: '#8b5cf6' },
+    ];
+    return ranges.map(range => ({
+        range: range.range,
+        color: range.color,
+        count: rows.filter(student => {
+            const gpa = Number(student?.gpa);
+            return Number.isFinite(gpa) && gpa >= range.min && gpa <= range.max;
+        }).length,
+    }));
+}
+
+function buildGraduationByMajor(rows = []) {
+    const majorMap = new Map();
+    rows.forEach(student => {
+        const major = student?.major || 'ไม่ระบุสาขา';
+        const gpa = Number(student?.gpa);
+        const status = graduationStatus(student);
+        const current = majorMap.get(major) || {
+            major,
+            total: 0,
+            expected: 0,
+            pending: 0,
+            notPassed: 0,
+            gpaSum: 0,
+            gpaCount: 0,
+        };
+        current.total += 1;
+        if (status === 'คาดว่าจะสำเร็จ') current.expected += 1;
+        else if (status === 'รอพินิจ') current.pending += 1;
+        else current.notPassed += 1;
+        if (Number.isFinite(gpa)) {
+            current.gpaSum += gpa;
+            current.gpaCount += 1;
+        }
+        majorMap.set(major, current);
+    });
+
+    return [...majorMap.values()]
+        .map(row => ({
+            major: row.major,
+            total: row.total,
+            expected: row.expected,
+            pending: row.pending,
+            notPassed: row.notPassed,
+            avgGPA: row.gpaCount ? round(row.gpaSum / row.gpaCount) : null,
+            rate: row.total ? round((row.expected / row.total) * 100, 1) : 0,
+        }))
+        .sort((a, b) => b.total - a.total || a.major.localeCompare(b.major, 'th'));
+}
+
+function patchGraduationData(baseData) {
+    const data = clone(baseData) || {};
+    const rows = getStudentListSync();
+    if (!Array.isArray(rows) || rows.length === 0) return data;
+
+    const candidates = rows
+        .filter(student => Number(student?.year) === 4 && levelKeyFromStudent(student) === 'bachelor')
+        .map(student => ({
+            ...student,
+            graduationStatus: graduationStatus(student),
+            honors: honorsLabel(student),
+        }));
+    const gradStudents = rows.filter(student => ['master', 'doctoral'].includes(levelKeyFromStudent(student)));
+    const expectedGraduates = candidates.filter(student => student.graduationStatus === 'คาดว่าจะสำเร็จ').length;
+    const pending = candidates.filter(student => student.graduationStatus === 'รอพินิจ').length;
+    const notPassed = candidates.filter(student => student.graduationStatus === 'ไม่ผ่านเกณฑ์').length;
+    const avgGPA = candidates.length
+        ? round(candidates.reduce((sum, student) => sum + toNumber(student.gpa), 0) / candidates.length)
+        : null;
+
+    data.current = {
+        ...(data.current || {}),
+        totalCandidates: candidates.length,
+        expectedGraduates,
+        pending,
+        notPassed,
+        avgGPA,
+        gradStudentsCandidates: gradStudents.length,
+    };
+    data.byMajor = buildGraduationByMajor(candidates);
+    data.gpaDistribution = buildGraduationGpaDistribution(candidates);
+    data.honors = {
+        firstClass: candidates.filter(student => student.honors === 'เกียรตินิยมอันดับ 1').length,
+        secondClass: candidates.filter(student => student.honors === 'เกียรตินิยมอันดับ 2').length,
+        normal: candidates.filter(student => student.honors === 'ปกติ').length,
+        belowStandard: candidates.filter(student => student.honors === 'ต่ำกว่าเกณฑ์').length,
+    };
+    data.candidateList = candidates;
+    data.sharedSource = {
+        ...(data.sharedSource || {}),
+        students: 'datasets/students',
+        rowCount: rows.length,
+        candidateRows: candidates.length,
+        isLive: isStudentListLive(),
+        linkedAt: new Date().toISOString(),
+    };
+    return data;
+}
+
 function computeWeightedOverallGpa({
     overallAvg,
     overallTotal,
@@ -523,6 +648,7 @@ function getLinkedDataset(id) {
     const base = getDashboardDatasetSync(id);
     if (id === 'student_stats') return patchStudentStats(base);
     if (id === 'dashboard_summary') return patchDashboardSummary(base);
+    if (id === 'graduation') return patchGraduationData(base);
     return base;
 }
 

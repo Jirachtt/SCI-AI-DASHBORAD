@@ -19,6 +19,8 @@ import {
 import { hrData } from '../data/hrData';
 import { researchData } from '../data/researchData';
 import { strategicData } from '../data/strategicData';
+import { tcasPlanningData } from '../data/tcasAdmissionsData';
+import { courseAnalyticsData } from '../data/courseAnalyticsData';
 import {
     academicRulesScope,
     academicRulesSources,
@@ -342,6 +344,7 @@ function buildStudentStatsSheets() {
     addSheet(sheets, 'By Enrollment Year', rowsFromRecords(data.byEnrollmentYear, { section: 'นักศึกษาตามปีเข้า' }));
     addSheet(sheets, 'Trend', rowsFromRecords(data.trend, { section: 'แนวโน้มนักศึกษา' }));
     addSheet(sheets, 'Science Levels', rowsFromRecords(science.byLevel, { section: 'คณะวิทยาศาสตร์ตามระดับ' }));
+    addSheet(sheets, 'Science Majors', rowsFromRecords(science.byMajor, { section: 'คณะวิทยาศาสตร์ตามสาขา' }));
     addSheet(sheets, 'Science Enrollment', rowsFromRecords(science.byEnrollmentYear, { section: 'คณะวิทยาศาสตร์ตามปีเข้า' }));
     addSheet(sheets, 'Science Intake', rowsFromRecords(science.newStudentIntake, { section: 'รับเข้าใหม่คณะวิทยาศาสตร์' }));
     addSheet(sheets, 'Science Nationality', rowsFromRecords(science.byNationality, { section: 'คณะวิทยาศาสตร์ตามสัญชาติ' }));
@@ -367,17 +370,19 @@ function buildGraduationSheets() {
         byMajor: graduationByMajor,
         honors: honorsData,
         gpaDistribution,
+        candidateList: graduationCandidateList,
     }) || {};
+    const candidateRows = data.candidateList || data.candidates || graduationCandidateList;
 
     addSheet(sheets, 'Summary', rowsFromObject(data.current || currentGraduationStats, 'สถานะผู้มีสิทธิ์สำเร็จการศึกษา'));
     addSheet(sheets, 'History', rowsFromRecords(data.history || data.graduationHistory || graduationHistory, { section: 'ย้อนหลังตามปีการศึกษา' }));
     addSheet(sheets, 'By Major', rowsFromRecords(data.byMajor || graduationByMajor, { section: 'แยกตามสาขาวิชา' }));
     addSheet(sheets, 'GPA Distribution', rowsFromRecords(data.gpaDistribution || gpaDistribution, { section: 'ช่วง GPA' }));
     addSheet(sheets, 'Honors', rowsFromObject(data.honors || honorsData, 'เกียรตินิยม'));
-    addSheet(sheets, 'Candidate Rows', compactStudentRows(graduationCandidateList, { section: 'รายชื่อผู้มีสิทธิ์สำเร็จการศึกษา' }).map((row, idx) => ({
+    addSheet(sheets, 'Candidate Rows', compactStudentRows(candidateRows, { section: 'รายชื่อผู้มีสิทธิ์สำเร็จการศึกษา' }).map((row, idx) => ({
         ...row,
-        graduationStatus: graduationCandidateList[idx]?.graduationStatus || '',
-        honors: graduationCandidateList[idx]?.honors || '',
+        graduationStatus: candidateRows[idx]?.graduationStatus || '',
+        honors: candidateRows[idx]?.honors || '',
     })));
     addSheet(sheets, 'Academic Rules', academicRuleRows());
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['graduation']));
@@ -460,10 +465,40 @@ function buildStudentLifeSheets() {
     const data = getDataset('student_life', studentLifeData) || {};
     addSheet(sheets, 'Activity Summary', rowsFromObject(data.activityHours, 'ชั่วโมงกิจกรรม'));
     addSheet(sheets, 'Activity Categories', rowsFromRecords(data.activityHours?.categories, { section: 'กิจกรรมตามหมวด' }));
+    addSheet(sheets, 'Science Activities', rowsFromRecords(data.scienceActivities, { section: 'ปฏิทินกิจกรรมคณะวิทยาศาสตร์' }));
     addSheet(sheets, 'Library', rowsFromRecords(data.library, { section: 'การยืมหนังสือ' }));
     addSheet(sheets, 'Behavior Summary', rowsFromObject(data.behaviorScore, 'คะแนนพฤติกรรม'));
     addSheet(sheets, 'Behavior History', rowsFromRecords(data.behaviorScore?.history, { section: 'คะแนนพฤติกรรมย้อนหลัง' }));
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['student_life']));
+    return sheets;
+}
+
+function buildTcasSheets() {
+    const sheets = {};
+    const data = getDataset('tcas_admissions', tcasPlanningData) || {};
+    addSheet(sheets, 'TCAS 5Y Trend', rowsFromRecords(data.fiveYearTrend, { section: 'แนวโน้ม TCAS 5 ปี' }));
+    addSheet(sheets, 'Round Plan 2569', rowsFromRecords(data.roundPlan2569, { section: 'แผนรับตามรอบ' }));
+    addSheet(sheets, 'Round3 Major Plan', rowsFromRecords(data.round3Plan2569, { section: 'รอบ 3 Admission 2569' }));
+    addSheet(sheets, 'Major Outlook', rowsFromRecords(data.majorOutlook, { section: 'แผนกลยุทธ์รายสาขา' }));
+    addSheet(sheets, 'Sources', rowsFromRecords(data.sources, { section: 'แหล่งข้อมูล' }));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['tcas_admissions']));
+    return sheets;
+}
+
+function buildCourseAnalyticsSheets() {
+    const sheets = {};
+    const data = getDataset('course_analytics', courseAnalyticsData) || {};
+    addSheet(sheets, 'Programs', rowsFromRecords(data.programs?.map(name => ({ name })), { section: 'หลักสูตรปริญญาตรี' }));
+    addSheet(sheets, 'Course Plan', rowsFromRecords((data.coursePlanByYear || []).flatMap(year =>
+        (year.semesters || []).flatMap(semester =>
+            (semester.courses || []).map(course => ({ year: year.year, yearTitle: year.title, semester: semester.semester, ...course }))
+        )
+    ), { section: 'แผนเรียน ปี 1-4' }));
+    addSheet(sheets, 'Featured Courses', rowsFromRecords(data.featuredCourses, { section: 'วิชาน่าสนใจ' }));
+    addSheet(sheets, 'Grade Distribution', rowsFromRecords(data.gradeDistributions, { section: 'กระจายเกรดรายวิชา' }));
+    addSheet(sheets, 'Branch Strengths', rowsFromRecords(data.branchStrengths, { section: 'จุดเด่นสาขา' }));
+    addSheet(sheets, 'Sources', rowsFromRecords(data.sources, { section: 'แหล่งข้อมูล' }));
+    addSheet(sheets, 'Dataset Meta', datasetMetaRows(['course_analytics']));
     return sheets;
 }
 
@@ -606,6 +641,8 @@ function buildRouteExportSheets(pathname) {
     if (path.endsWith('/financial')) return buildFinancialSheets();
     if (path.endsWith('/tuition')) return buildTuitionSheets();
     if (path.endsWith('/student-life')) return buildStudentLifeSheets();
+    if (path.endsWith('/tcas')) return buildTcasSheets();
+    if (path.endsWith('/course-analytics')) return buildCourseAnalyticsSheets();
     if (path.endsWith('/budget')) return buildBudgetSheets();
     if (path.endsWith('/strategic')) return buildStrategicSheets();
     if (path.endsWith('/alerts')) return buildAlertSheets();

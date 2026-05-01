@@ -23,7 +23,7 @@ import {
 } from '../services/geminiService';
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { SCIENCE_MAJORS } from '../data/studentListData';
-import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
+import { ensureStudentList, getStudentListSync, isLiveData, onStudentDataChange } from '../services/studentDataService';
 import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
 import { exportChartAsCSV } from '../utils/exportUtils';
 
@@ -434,14 +434,10 @@ function wantsStudentCountGradeChart(question) {
     return hasChartIntent && hasStudentCount && hasGrade && !wantsIndividualRows;
 }
 
-function getStudentCountGpaByMajorRows(question = '') {
-    const q = String(question || '').toLowerCase();
-    const wantsScienceScope = /คณะวิทย|วิทยาศาสตร์|คณะวิทย์|science/.test(q);
+function getStudentCountGpaByMajorRows() {
     const allStudents = getAllStudents().filter(s => s?.major);
-    const scopedStudents = wantsScienceScope
-        ? allStudents.filter(s => SCIENCE_MAJORS.includes(s.major))
-        : allStudents;
-    const students = scopedStudents.length > 0 ? scopedStudents : allStudents;
+    const scienceStudents = allStudents.filter(s => SCIENCE_MAJORS.includes(s.major));
+    const students = scienceStudents.length > 0 ? scienceStudents : allStudents;
     const byMajor = new Map();
 
     students.forEach(student => {
@@ -530,6 +526,71 @@ function buildStudentCountGpaByMajorChart(question = '') {
     };
 }
 
+function wantsStudentMajorCountChart(question) {
+    const q = String(question || '').toLowerCase();
+    const hasChartIntent = /กราฟ|chart|plot|แผนภูมิ|แผนภาพ|สร้าง|แสดง|เปรียบเทียบ|วิเคราะห์/.test(q);
+    const hasStudentCount = /จำนวนนักศึกษา|จำนวนนิสิต|นักศึกษา|นิสิต|student|students|count/.test(q);
+    const hasMajor = /สาขา|major|program|หลักสูตร/.test(q);
+    const hasGrade = /เกรด|gpa|จีพีเอ|grade|เกรดเฉลี่ย|ผลการเรียน/.test(q);
+    const wantsIndividualRows = /รายคน|แต่ละคน|รายชื่อ|ชื่อ|รหัส\s*6|\b6\d{9}\b|สูงสุด|ต่ำสุด|top\s*\d*/i.test(q);
+    return hasChartIntent && hasStudentCount && hasMajor && !hasGrade && !wantsIndividualRows;
+}
+
+function buildStudentMajorCountChartResponse(question = '') {
+    const rows = getStudentCountGpaByMajorRows(question);
+    if (rows.length === 0) return null;
+
+    const total = rows.reduce((sum, row) => sum + row.count, 0);
+    const topMajor = rows[0];
+    const updatedAt = new Date().toLocaleString('th-TH');
+    const sourceLabel = isLiveData()
+        ? 'ข้อมูลนิสิตล่าสุดจากระบบ realtime'
+        : 'ข้อมูลนิสิตที่เว็บใช้คำนวณอยู่ตอนนี้';
+
+    return {
+        text: `นี่คือกราฟเปรียบเทียบ **จำนวนนิสิตคณะวิทยาศาสตร์แยกตามสาขา** จาก${sourceLabel} ณ ${updatedAt}\n\nรวม ${total.toLocaleString('th-TH')} คน ครอบคลุม ${rows.length} สาขา โดยสาขาที่มีนิสิตมากที่สุดคือ **${topMajor.major}** (${topMajor.count.toLocaleString('th-TH')} คน)`,
+        chart: {
+            chartType: 'bar',
+            data: {
+                labels: rows.map(row => row.major),
+                datasets: [
+                    {
+                        label: 'จำนวนนิสิต (คน)',
+                        data: rows.map(row => row.count),
+                        backgroundColor: 'rgba(37, 99, 235, 0.78)',
+                        borderColor: '#2563eb',
+                        borderWidth: 0,
+                        borderRadius: 8,
+                    },
+                ],
+            },
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'จำนวนนิสิตคณะวิทยาศาสตร์แยกตามสาขา',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.dataset.label}: ${Number(ctx.raw || 0).toLocaleString('th-TH')}`,
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'สาขา' },
+                        ticks: { maxRotation: 35, minRotation: 0 },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'จำนวนนิสิต (คน)' },
+                    },
+                },
+            },
+        },
+    };
+}
+
 function buildStudentCountGpaChartResponse(question = '') {
     const rows = getStudentCountGpaByMajorRows(question);
     if (rows.length === 0) return null;
@@ -539,7 +600,7 @@ function buildStudentCountGpaChartResponse(question = '') {
     const topCount = rows[0];
     const topGpa = rows.reduce((best, row) => (row.avgGpa > best.avgGpa ? row : best), rows[0]);
     return {
-        text: `สร้างกราฟเปรียบเทียบ **จำนวนนักศึกษา** และ **GPA เฉลี่ย** แยกตามสาขาให้แล้วครับ\n\nข้อมูลมาจากฐานข้อมูลนักศึกษาในเว็บ จำนวน ${total.toLocaleString('th-TH')} คน ครอบคลุม ${rows.length} สาขา\nสาขาที่มีนักศึกษามากที่สุดคือ ${topCount.major} (${topCount.count.toLocaleString('th-TH')} คน) และสาขาที่มี GPA เฉลี่ยสูงสุดคือ ${topGpa.major} (${topGpa.avgGpa.toFixed(2)})`,
+        text: `สร้างกราฟเปรียบเทียบ **จำนวนนิสิตคณะวิทยาศาสตร์** และ **GPA เฉลี่ย** แยกตามสาขาให้แล้วครับ\n\nข้อมูลมาจากฐานข้อมูลนิสิตชุดเดียวกับหน้าสถิตินิสิตปัจจุบัน จำนวน ${total.toLocaleString('th-TH')} คน ครอบคลุม ${rows.length} สาขา\nสาขาที่มีนิสิตมากที่สุดคือ ${topCount.major} (${topCount.count.toLocaleString('th-TH')} คน) และสาขาที่มี GPA เฉลี่ยสูงสุดคือ ${topGpa.major} (${topGpa.avgGpa.toFixed(2)})`,
         chart,
     };
 }
@@ -747,13 +808,19 @@ export function tryLocalResponse(question) {
         if (result) return result;
     }
 
-    // 3. Deterministic aggregate chart for student counts by class year.
+    // 3. Deterministic aggregate chart for Faculty of Science student counts by major.
+    if (wantsStudentMajorCountChart(question)) {
+        const result = buildStudentMajorCountChartResponse(question);
+        if (result) return result;
+    }
+
+    // 4. Deterministic aggregate chart for student counts by class year.
     if (wantsStudentClassYearChart(question)) {
         const result = buildStudentClassYearChartResponse(question);
         if (result) return result;
     }
 
-    // 4. Student search — only for specific structured lookups (ID, name, GPA filter)
+    // 5. Student search — only for specific structured lookups (ID, name, GPA filter)
     const isStudentLookup =
         (q.match(/(?:รหัส|id)\s*\d{2,}/i)) ||  // search by ID with prefix
         (/\b6\d{9}\b/.test(q)) ||              // bare 10-digit student ID
@@ -2111,6 +2178,8 @@ export function generateChartFromFile(parsed, fileName) {
 }
 
 export const MAIN_AI_QUICK_ACTIONS = [
+    { label: 'แผนรับ TCAS 5 ปี', query: 'สรุปแผนรับ TCAS คณะวิทยาศาสตร์ย้อนหลัง 5 ปี พร้อมแนวโน้มและรอบ 3 ปี 2569', icon: FileSpreadsheet },
+    { label: 'กราฟเกรดรายวิชา', query: 'สร้างกราฟการกระจายเกรดรายวิชา SCI331 และสรุป GPA เฉลี่ยรายวิชา', icon: BarChart3 },
     { label: 'จำนวน+GPA ตามสาขา', query: 'สร้างกราฟจำนวนนักศึกษาและ GPA เฉลี่ย คณะวิทยาศาสตร์ แยกตามสาขา', icon: BarChart3 },
     { label: 'นักศึกษาแยกชั้นปี', query: 'สร้างกราฟจำนวนนักศึกษาคณะวิทยาศาสตร์ แยกตามชั้นปี', icon: TrendingUp },
     { label: 'GPA สูงสุด 10 คน', query: 'แสดงรายชื่อนักศึกษาที่ GPA สูงสุด 10 คน', icon: Search },

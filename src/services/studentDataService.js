@@ -332,6 +332,42 @@ export function isLiveData() {
     return _isLive && !_usesLocalOnlyData;
 }
 
+export function getStudentDataSourceStatus() {
+    const rows = getStudentListSync();
+    if (_isLive && !_usesLocalOnlyData) {
+        return {
+            mode: 'firestore',
+            label: 'Live (Firestore)',
+            rowCount: rows.length,
+            isUploaded: true,
+            isShared: true,
+            isBundledSample: false,
+        };
+    }
+    if (_isLive && _usesLocalOnlyData) {
+        return {
+            mode: 'local_upload',
+            label: 'Local uploaded file',
+            rowCount: rows.length,
+            isUploaded: true,
+            isShared: false,
+            isBundledSample: false,
+        };
+    }
+    return {
+        mode: 'bundled_sample',
+        label: 'Bundled sample dataset',
+        rowCount: rows.length,
+        isUploaded: false,
+        isShared: false,
+        isBundledSample: true,
+    };
+}
+
+export function isUsingBundledSampleData() {
+    return getStudentDataSourceStatus().isBundledSample;
+}
+
 export async function ensureStudentList() {
     if (!_unsubscribeLive && !_loadPromise) startRealtimeSubscription();
     if (_cache) return getStudentListSync();

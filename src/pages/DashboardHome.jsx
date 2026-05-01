@@ -27,7 +27,7 @@ const topics = [
         id: 'student-stats',
         title: 'นักศึกษา (Student)',
         subtitle: 'Student Lifecycle & Outcomes',
-        description: 'สถิตินิสิตปัจจุบัน การรับเข้า สำเร็จการศึกษา กิจกรรม/พฤติกรรม',
+        description: 'สถิตินิสิตปัจจุบัน TCAS รายวิชา-เกรด สำเร็จการศึกษา และกิจกรรมคณะวิทยาศาสตร์',
         Icon: GraduationCap,
         bgColor: 'linear-gradient(135deg, #7B68EE, #5B4FCF)',
         accent: '#7B68EE',

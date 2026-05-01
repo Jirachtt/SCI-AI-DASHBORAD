@@ -15,6 +15,7 @@ const ACCESS_LEVELS = {
             'student_life_detail', 'faculty_budget', 'staff_management', 'reports',
             'budget_planning', 'student_list', 'graduation_check',
             'student_stats', 'budget_forecast',
+            'tcas_admissions', 'course_analytics',
             'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
             'graduation_stats',
             'alert_center',
@@ -32,6 +33,7 @@ const ACCESS_LEVELS = {
             'financial', 'student_life', 'student_life_detail', 'reports',
             'student_list', 'graduation_check',
             'student_stats', 'budget_forecast',
+            'tcas_admissions', 'course_analytics',
             'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
             'graduation_stats',
             'alert_center',
@@ -46,6 +48,7 @@ const ACCESS_LEVELS = {
         sections: [
             'dashboard', 'financial',
             'student_stats', 'graduation_stats', 'budget_forecast',
+            'tcas_admissions', 'course_analytics',
             'hr_overview', 'research_overview', 'ai_chat',
             'alert_center',
             'academic_rules'
@@ -66,6 +69,7 @@ const ACCESS_LEVELS = {
         sections: [
             'dashboard', 'tuition', 'student_life',
             'graduation_check', 'student_stats',
+            'course_analytics',
             'academic_rules'
         ]
     },

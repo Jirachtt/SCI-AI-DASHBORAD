@@ -19,6 +19,8 @@ import {
 import { hrData } from '../data/hrData';
 import { researchData } from '../data/researchData';
 import { strategicData } from '../data/strategicData';
+import { tcasPlanningData } from '../data/tcasAdmissionsData';
+import { courseAnalyticsData } from '../data/courseAnalyticsData';
 
 const SYNC_ENDPOINT = import.meta.env.VITE_MJU_SYNC_ENDPOINT || '/api/mju-dashboard-sync';
 const AUTO_SYNC_ENABLED = String(import.meta.env.VITE_MJU_AUTO_SYNC || '').toLowerCase() === 'true';
@@ -39,6 +41,20 @@ export const DASHBOARD_DATASETS = [
         section: 'student_stats',
         source: 'https://dashboard.mju.ac.th/student',
         syncMode: 'public',
+    },
+    {
+        id: 'tcas_admissions',
+        label: 'TCAS Admissions',
+        section: 'tcas_admissions',
+        source: 'MJU Admissions/Reg export + https://admissions.mju.ac.th',
+        syncMode: 'api',
+    },
+    {
+        id: 'course_analytics',
+        label: 'Course & Grade Analytics',
+        section: 'course_analytics',
+        source: 'MJU Reg course/grade export (requires official API or CSV)',
+        syncMode: 'api',
     },
     {
         id: 'university_budget',
@@ -70,9 +86,9 @@ export const DASHBOARD_DATASETS = [
     },
     {
         id: 'student_life',
-        label: 'Student Life',
+        label: 'Science Activities',
         section: 'student_life',
-        source: 'MJU student activity/library API endpoint (requires official API)',
+        source: 'Faculty of Science activity calendar/API endpoint (requires official API)',
         syncMode: 'api',
     },
     {
@@ -108,6 +124,8 @@ export const DASHBOARD_DATASETS = [
 const FALLBACK_DATA = {
     dashboard_summary: dashboardSummary,
     student_stats: studentStatsData,
+    tcas_admissions: tcasPlanningData,
+    course_analytics: courseAnalyticsData,
     university_budget: universityBudgetData,
     science_budget: scienceFacultyBudgetData,
     financial: financialData,
@@ -128,6 +146,8 @@ const FALLBACK_DATA = {
 const REQUIRED_SHAPES = {
     dashboard_summary: payload => Array.isArray(payload?.faculties),
     student_stats: payload => payload?.current && Array.isArray(payload?.byFaculty),
+    tcas_admissions: payload => Array.isArray(payload?.fiveYearTrend) && Array.isArray(payload?.round3Plan2569),
+    course_analytics: payload => Array.isArray(payload?.coursePlanByYear) && Array.isArray(payload?.gradeDistributions),
     university_budget: payload => Array.isArray(payload?.yearly),
     science_budget: payload => Array.isArray(payload?.yearly),
     financial: payload => payload?.tuitionStatus || payload?.facultyBudget,
@@ -218,6 +238,8 @@ function getRowCount(payload) {
     if (Array.isArray(payload?.rows)) return payload.rows.length;
     if (Array.isArray(payload?.faculties)) return payload.faculties.length;
     if (Array.isArray(payload?.byFaculty)) return payload.byFaculty.length;
+    if (Array.isArray(payload?.fiveYearTrend)) return payload.fiveYearTrend.length;
+    if (Array.isArray(payload?.coursePlanByYear)) return payload.coursePlanByYear.length;
     if (Array.isArray(payload?.yearly)) return payload.yearly.length;
     if (Array.isArray(payload?.history)) return payload.history.length;
     if (Array.isArray(payload?.publicationTrend)) return payload.publicationTrend.length;

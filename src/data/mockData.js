@@ -1,5 +1,6 @@
 // Mock data for the MJU Dashboard
 // อ้างอิงข้อมูลจากมหาวิทยาลัยแม่โจ้ (mju.ac.th)
+import { SCIENCE_ACTIVITY_REQUIREMENT, scienceActivityEvents } from './scienceActivitiesData';
 
 export const tuitionData = {
     flatRate: {
@@ -81,15 +82,21 @@ export const financialData = {
 
 export const studentLifeData = {
     activityHours: {
-        target: 60,
-        completed: 38,
-        categories: [
-            { name: 'จิตอาสา', hours: 15 },
-            { name: 'กีฬา', hours: 8 },
-            { name: 'วิชาการ', hours: 10 },
-            { name: 'ศิลปวัฒนธรรม', hours: 5 }
-        ]
+        target: SCIENCE_ACTIVITY_REQUIREMENT.targetHours,
+        completed: SCIENCE_ACTIVITY_REQUIREMENT.completedHours,
+        scope: SCIENCE_ACTIVITY_REQUIREMENT.scope,
+        faculty: SCIENCE_ACTIVITY_REQUIREMENT.faculty,
+        programLabel: SCIENCE_ACTIVITY_REQUIREMENT.programLabel,
+        categories: SCIENCE_ACTIVITY_REQUIREMENT.categoryTargets.map(item => ({
+            name: item.name,
+            hours: item.currentHours,
+            requiredHours: item.requiredHours,
+            events: item.currentEvents,
+            requiredEvents: item.requiredEvents,
+            color: item.color,
+        }))
     },
+    scienceActivities: scienceActivityEvents,
     library: [
         { title: 'Introduction to Algorithms', borrowDate: '2568-01-10', dueDate: '2568-02-10', status: 'ใกล้กำหนด', fine: 0 },
         { title: 'Clean Code', borrowDate: '2568-01-15', dueDate: '2568-02-15', status: 'ปกติ', fine: 0 },
