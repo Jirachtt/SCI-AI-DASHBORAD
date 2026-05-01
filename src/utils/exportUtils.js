@@ -439,6 +439,8 @@ function buildFinancialSheets() {
     addSheet(sheets, 'Payment History', rowsFromRecords(data.paymentHistory, { section: 'ประวัติการชำระเงิน' }));
     addSheet(sheets, 'Scholarship', rowsFromRecords(data.scholarship, { section: 'ทุนการศึกษา' }));
     addSheet(sheets, 'Requests', rowsFromRecords(data.requests, { section: 'คำร้อง' }));
+    addSheet(sheets, 'Official Estimate', rowsFromObject(data.officialEstimate, 'ประมาณการจากไฟล์จริง'));
+    addSheet(sheets, 'Official Top Majors', rowsFromRecords(data.officialEstimate?.topMajors, { section: 'รายหลักสูตรตามประมาณการ' }));
     addSheet(sheets, 'Faculty Budget Summary', rowsFromObject(data.facultyBudget, 'งบประมาณคณะ'));
     addSheet(sheets, 'Faculty Budget Categories', rowsFromRecords(data.facultyBudget?.categories, { section: 'หมวดงบประมาณคณะ' }));
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['financial']));
@@ -454,6 +456,7 @@ function buildTuitionSheets() {
         { section: 'ตลอดหลักสูตร', label: data.totalCost?.label || 'ตลอดหลักสูตร', min: data.totalCost?.min ?? '', max: data.totalCost?.max ?? '' },
     ]);
     addSheet(sheets, 'By Faculty', rowsFromRecords(data.byFaculty, { section: 'ค่าเทอมตามคณะ' }));
+    addSheet(sheets, 'Official Majors', rowsFromRecords(data.officialMajors, { section: 'ค่าเทอมรายหลักสูตรจากไฟล์จริง' }));
     addSheet(sheets, 'Breakdown', rowsFromRecords(data.breakdown, { section: 'สัดส่วนค่าใช้จ่าย' }));
     addSheet(sheets, 'Semester History', rowsFromRecords(data.semesterHistory, { section: 'ประวัติรายเทอม' }));
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['tuition']));
@@ -546,6 +549,8 @@ function buildStrategicSheets() {
         lastYear: data.performanceRadar?.lastYear?.[idx] ?? '',
     })));
     addSheet(sheets, 'Efficiency Trend', rowsFromRecords(data.efficiencyTrend, { section: 'แนวโน้มประสิทธิภาพ' }));
+    addSheet(sheets, 'KPI Review 2569', rowsFromRecords(data.kpiReviewRows, { section: 'คำรับรอง 2569' }));
+    addSheet(sheets, 'Development Plan', rowsFromRecords(data.developmentPlanRows, { section: 'แผนพัฒนาส่วนงาน' }));
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['strategic']));
     return sheets;
 }

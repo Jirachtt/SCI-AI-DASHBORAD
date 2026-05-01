@@ -1,8 +1,9 @@
 // Mock data for the MJU Dashboard
 // อ้างอิงข้อมูลจากมหาวิทยาลัยแม่โจ้ (mju.ac.th)
 import { SCIENCE_ACTIVITY_REQUIREMENT, scienceActivityEvents } from './scienceActivitiesData';
+import { officialFinancialData, officialScienceBudgetData, officialTuitionData } from './officialPlanningData';
 
-export const tuitionData = {
+const fallbackTuitionData = {
     flatRate: {
         min: 16000,
         max: 19000,
@@ -42,7 +43,15 @@ export const tuitionData = {
     ]
 };
 
-export const financialData = {
+export const tuitionData = {
+    ...fallbackTuitionData,
+    ...officialTuitionData,
+    semesterHistory: officialTuitionData.semesterHistory?.length
+        ? officialTuitionData.semesterHistory
+        : fallbackTuitionData.semesterHistory,
+};
+
+const fallbackFinancialData = {
     tuitionStatus: {
         current: { amount: 18500, paid: 0, status: 'ค้างชำระ', dueDate: '2568-02-28' },
         total: { totalPaid: 37000, totalRemaining: 111000 }
@@ -78,6 +87,16 @@ export const financialData = {
             { name: 'ค่าสาธารณูปโภค', amount: 300000 }
         ]
     }
+};
+
+export const financialData = {
+    ...fallbackFinancialData,
+    ...officialFinancialData,
+    tuitionStatus: fallbackFinancialData.tuitionStatus,
+    paymentHistory: fallbackFinancialData.paymentHistory,
+    scholarship: fallbackFinancialData.scholarship,
+    requests: fallbackFinancialData.requests,
+    facultyBudget: officialFinancialData.facultyBudget || fallbackFinancialData.facultyBudget,
 };
 
 export const studentLifeData = {
@@ -411,7 +430,7 @@ export const universityBudgetData = {
 };
 
 // ==================== ข้อมูลงบประมาณคณะวิทยาศาสตร์ ====================
-export const scienceFacultyBudgetData = {
+const fallbackScienceFacultyBudgetData = {
     yearly: [
         { year: '2564', revenue: 142.5, expense: 128.2, surplus: 14.3, type: 'actual' },
         { year: '2565', revenue: 138.8, expense: 125.4, surplus: 13.4, type: 'actual' },
@@ -471,4 +490,19 @@ export const scienceFacultyBudgetData = {
     },
     unit: 'ล้านบาท',
     name: 'คณะวิทยาศาสตร์'
+};
+
+const officialScienceBudgetYears = new Set((officialScienceBudgetData.yearly || []).map(item => String(item.year)));
+
+export const scienceFacultyBudgetData = {
+    ...fallbackScienceFacultyBudgetData,
+    ...officialScienceBudgetData,
+    yearly: [
+        ...fallbackScienceFacultyBudgetData.yearly.filter(item => !officialScienceBudgetYears.has(String(item.year))),
+        ...(officialScienceBudgetData.yearly || []),
+    ].sort((a, b) => Number(a.year) - Number(b.year)),
+    summary: {
+        ...fallbackScienceFacultyBudgetData.summary,
+        ...Object.fromEntries(Object.entries(officialScienceBudgetData.summary || {}).filter(([, value]) => value != null)),
+    },
 };

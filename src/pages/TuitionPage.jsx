@@ -25,6 +25,9 @@ export default function TuitionPage() {
     if (!canAccess(user?.role, 'tuition')) return <AccessDenied />;
 
     const showDetail = canAccess(user?.role, 'tuition_detail');
+    const isOfficialTuition = Array.isArray(tuitionData.officialMajors) && tuitionData.officialMajors.length > 0;
+    const plannedStudents2570 = tuitionData.byFaculty.reduce((sum, item) => sum + Number(item.plannedStudents2570 || 0), 0);
+    const totalAdditionalFee = tuitionData.officialMajors?.reduce((sum, item) => sum + Number(item.totalAdditionalFee || 0), 0) || 0;
 
     const barData = {
         labels: tuitionData.byFaculty.map(f => f.name),
@@ -98,8 +101,8 @@ export default function TuitionPage() {
     const tuitionColumns = [
         { key: 'name', label: 'รายการ' },
         { key: 'fee', label: 'ค่าเทอม/เทอม', align: 'right' },
-        { key: 'entryFee', label: 'แรกเข้าโดยประมาณ', align: 'right' },
-        { key: 'totalCost', label: 'ตลอดหลักสูตรโดยประมาณ', align: 'right' },
+        { key: 'entryFee', label: isOfficialTuition ? 'แผนรับ 2570' : 'แรกเข้าโดยประมาณ', align: 'right' },
+        { key: 'totalCost', label: isOfficialTuition ? 'รายการสมทบ/พื้นฐาน' : 'ตลอดหลักสูตรโดยประมาณ', align: 'right' },
     ];
 
     const breakdownColumns = [
@@ -113,8 +116,8 @@ export default function TuitionPage() {
         if (!faculty) return null;
         const avgEntryFee = Math.round((tuitionData.entryFee.min + tuitionData.entryFee.max) / 2);
         return {
-            title: `ค่าเทอม${faculty.name}`,
-            subtitle: 'เปรียบเทียบค่าเทอมรายคณะ',
+            title: `${isOfficialTuition ? 'ค่าธรรมเนียมหลักสูตร' : 'ค่าเทอม'}${faculty.name}`,
+            subtitle: isOfficialTuition ? 'ข้อมูลจากไฟล์ประมาณการปี 2570' : 'เปรียบเทียบค่าเทอมรายคณะ',
             valueLabel: 'ค่าเทอม/เทอม',
             value: faculty.fee,
             unit: 'บาท',
@@ -122,11 +125,11 @@ export default function TuitionPage() {
             rows: [{
                 name: faculty.name,
                 fee: `${faculty.fee.toLocaleString('th-TH')} บาท`,
-                entryFee: `${avgEntryFee.toLocaleString('th-TH')} บาท`,
-                totalCost: `${(faculty.fee * 8 + avgEntryFee).toLocaleString('th-TH')} บาท`,
+                entryFee: isOfficialTuition ? `${Number(faculty.plannedStudents2570 || 0).toLocaleString('th-TH')} คน` : `${avgEntryFee.toLocaleString('th-TH')} บาท`,
+                totalCost: isOfficialTuition ? `${Number(faculty.totalAdditionalFee || 0).toLocaleString('th-TH')} บาท` : `${(faculty.fee * 8 + avgEntryFee).toLocaleString('th-TH')} บาท`,
             }],
             columns: tuitionColumns,
-            note: 'คำนวณจากค่าเทอมเหมาจ่ายและค่าธรรมเนียมแรกเข้าในระบบ',
+            note: isOfficialTuition ? 'ค่าธรรมเนียมและแผนรับมาจากไฟล์คำนวณประมาณการปี 2570' : 'คำนวณจากค่าเทอมเหมาจ่ายและค่าธรรมเนียมแรกเข้าในระบบ',
         };
     });
 
@@ -164,7 +167,7 @@ export default function TuitionPage() {
                 </div>
                 <div>
                     <h2>ค่าธรรมเนียมการศึกษา</h2>
-                    <p>Tuition Fees — ระบบเหมาจ่าย (Flat Rate)</p>
+                    <p>{isOfficialTuition ? 'Tuition Fees — ข้อมูลจากไฟล์คำนวณประมาณการปี 2570' : 'Tuition Fees — ระบบเหมาจ่าย (Flat Rate)'}</p>
                 </div>
                 <div style={{ marginLeft: 'auto' }}>
                     <ExportPDFButton title="ค่าธรรมเนียมการศึกษา" />
@@ -181,15 +184,15 @@ export default function TuitionPage() {
                 </div>
                 <div className="stat-card animate-in">
                     <div className="stat-card-value" style={{ color: 'var(--info)' }}>
-                        {tuitionData.entryFee.min.toLocaleString()} - {tuitionData.entryFee.max.toLocaleString()}
+                        {isOfficialTuition ? plannedStudents2570.toLocaleString() : `${tuitionData.entryFee.min.toLocaleString()} - ${tuitionData.entryFee.max.toLocaleString()}`}
                     </div>
-                    <div className="stat-card-label">บาท (ค่าธรรมเนียมแรกเข้า)</div>
+                    <div className="stat-card-label">{isOfficialTuition ? 'คน — แผนนักศึกษาใหม่ปี 2570' : 'บาท (ค่าธรรมเนียมแรกเข้า)'}</div>
                 </div>
                 <div className="stat-card animate-in">
                     <div className="stat-card-value" style={{ color: 'var(--success)' }}>
-                        {tuitionData.totalCost.min.toLocaleString()} - {tuitionData.totalCost.max.toLocaleString()}
+                        {isOfficialTuition ? totalAdditionalFee.toLocaleString() : `${tuitionData.totalCost.min.toLocaleString()} - ${tuitionData.totalCost.max.toLocaleString()}`}
                     </div>
-                    <div className="stat-card-label">บาท ตลอดหลักสูตร (4 ปี / 8 เทอม)</div>
+                    <div className="stat-card-label">{isOfficialTuition ? 'บาท — รายการสมทบ/รายวิชาพื้นฐานตามแผน' : 'บาท ตลอดหลักสูตร (4 ปี / 8 เทอม)'}</div>
                 </div>
             </div>
 
@@ -197,8 +200,9 @@ export default function TuitionPage() {
             <div className="info-box">
                 <h3>หมายเหตุ</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.7 }}>
-                    สาขาคอมพิวเตอร์มักจะมีค่าบำรุงห้องปฏิบัติการ (Lab) รวมอยู่ด้วย ทำให้สูงกว่าสาขาวิทย์ทั่วไปเล็กน้อย
-                    ค่าธรรมเนียมแรกเข้า (ปี 1 เทอม 1) บวกเพิ่มประมาณ 2,000 - 3,000 บาท (ค่าขึ้นทะเบียนนักศึกษา, ค่าบัตร ฯลฯ)
+                    {isOfficialTuition
+                        ? 'ข้อมูลนี้มาจากไฟล์คำนวณประมาณการปี 70_Ver5.xlsx แสดงค่าธรรมเนียมใหม่ปี 2570 รายหลักสูตรของคณะวิทยาศาสตร์ และจำนวนแผนรับนักศึกษาในปีถัดไป'
+                        : 'สาขาคอมพิวเตอร์มักจะมีค่าบำรุงห้องปฏิบัติการ (Lab) รวมอยู่ด้วย ทำให้สูงกว่าสาขาวิทย์ทั่วไปเล็กน้อย ค่าธรรมเนียมแรกเข้า (ปี 1 เทอม 1) บวกเพิ่มประมาณ 2,000 - 3,000 บาท (ค่าขึ้นทะเบียนนักศึกษา, ค่าบัตร ฯลฯ)'}
                 </p>
             </div>
 
@@ -208,8 +212,8 @@ export default function TuitionPage() {
                     <div className="chart-card animate-in">
                         <div className="chart-card-header">
                             <div>
-                                <div className="chart-card-title">เปรียบเทียบค่าเทอมแต่ละคณะ</div>
-                                <div className="chart-card-subtitle">บาท/เทอม — ภาคปกติ</div>
+                                <div className="chart-card-title">{isOfficialTuition ? 'เปรียบเทียบค่าธรรมเนียมรายหลักสูตร' : 'เปรียบเทียบค่าเทอมแต่ละคณะ'}</div>
+                                <div className="chart-card-subtitle">{isOfficialTuition ? 'บาท/คน/เทอม — แผนปี 2570' : 'บาท/เทอม — ภาคปกติ'}</div>
                             </div>
                         </div>
                         <div className="chart-container">
@@ -235,7 +239,7 @@ export default function TuitionPage() {
             {showDetail && (
                 <div className="data-table-container animate-in">
                     <div className="data-table-header">
-                        <span className="data-table-title">ประวัติค่าเทอมแต่ละเทอม</span>
+                        <span className="data-table-title">{isOfficialTuition ? 'ประมาณการรายรับตามเทอม' : 'ประวัติค่าเทอมแต่ละเทอม'}</span>
                     </div>
                     <table className="data-table">
                         <thead>
@@ -252,7 +256,7 @@ export default function TuitionPage() {
                                     <td>{s.paid > 0 ? `${s.paid.toLocaleString()} บาท` : '-'}</td>
                                     <td>
                                         <span className={`status-badge ${s.status === 'จ่ายแล้ว' ? 'paid' : 'unpaid'}`}>
-                                            {s.status}
+                                            {s.status === 'projection' ? 'ประมาณการ' : s.status}
                                         </span>
                                     </td>
                                 </tr>

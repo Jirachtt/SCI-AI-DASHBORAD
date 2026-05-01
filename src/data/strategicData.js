@@ -1,7 +1,9 @@
+import { officialStrategicData } from './officialPlanningData';
+
 // ==================== ข้อมูลยุทธศาสตร์และการดำเนินงาน (Strategic & OKR Monitoring) ====================
 // อ้างอิง: แผนยุทธศาสตร์คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้ 2566-2570
 
-export const strategicData = {
+const baseStrategicData = {
     // เป้าหมายยุทธศาสตร์หลัก (Strategic Goals 2030)
     strategicGoals: [
         {
@@ -158,6 +160,11 @@ export const strategicData = {
         { year: '2567', score: 80.5, budgetEfficiency: 82, satisfactionScore: 4.1 },
         { year: '2568', score: 83.0, budgetEfficiency: 85, satisfactionScore: 4.2, type: 'forecast' }
     ]
+};
+
+export const strategicData = {
+    ...baseStrategicData,
+    ...officialStrategicData,
 };
 
 export default strategicData;

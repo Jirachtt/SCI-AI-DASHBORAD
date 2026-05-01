@@ -45,6 +45,29 @@ export default function StrategicDashboardPage() {
     if (!canAccess(user?.role, 'strategic_overview')) return <AccessDenied />;
 
     const { strategicGoals, okr, performanceRadar, efficiencyTrend } = strategicData;
+    const kpiReviewRows = Array.isArray(strategicData.kpiReviewRows) ? strategicData.kpiReviewRows : [];
+    const kpiReviewSummary = strategicData.kpiReviewSummary || {
+        totalKpis: kpiReviewRows.length,
+        met: kpiReviewRows.filter(row => row.status === 'met').length,
+        near: kpiReviewRows.filter(row => row.status === 'near').length,
+        below: kpiReviewRows.filter(row => row.status === 'below').length,
+    };
+    const developmentPlanRows = Array.isArray(strategicData.developmentPlanRows) ? strategicData.developmentPlanRows : [];
+    const priorityKpis = kpiReviewRows
+        .filter(row => row.status === 'below' || row.status === 'near')
+        .sort((a, b) => (a.progress ?? 999) - (b.progress ?? 999))
+        .slice(0, 8);
+    const formatKpiValue = (value) => {
+        if (value == null || value === '') return '-';
+        if (typeof value === 'number') return Number.isInteger(value) ? value.toLocaleString('th-TH') : value.toLocaleString('th-TH', { maximumFractionDigits: 2 });
+        return String(value);
+    };
+    const statusStyle = (status) => {
+        if (status === 'met') return { label: 'ถึงเป้า', color: '#059669', bg: '#dcfce7' };
+        if (status === 'near') return { label: 'ใกล้เป้า', color: '#b45309', bg: '#fef3c7' };
+        if (status === 'below') return { label: 'ต้องเร่ง', color: '#dc2626', bg: '#fee2e2' };
+        return { label: 'รอข้อมูล', color: 'var(--text-muted)', bg: 'var(--bg-secondary)' };
+    };
 
     // Horizontal grouped bar chart (executive-friendly)
     const perfBarData = {
@@ -258,6 +281,63 @@ export default function StrategicDashboardPage() {
                     );
                 })}
             </div>
+
+            {kpiReviewRows.length > 0 && (
+                <div style={{ ...cardStyle, marginBottom: 16, padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: 14, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                        <div>
+                            <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', margin: 0 }}>คำรับรองการปฏิบัติการ 2569</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', margin: '4px 0 0' }}>
+                                ใช้ข้อมูลจากไฟล์ทบทวนคำรับรอง 69 และแสดงตัวชี้วัดที่ควรติดตามก่อน
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <span className="status-badge approved">ทั้งหมด {kpiReviewSummary.totalKpis}</span>
+                            <span className="status-badge paid">ถึงเป้า {kpiReviewSummary.met}</span>
+                            <span className="status-badge pending">ใกล้เป้า {kpiReviewSummary.near}</span>
+                            <span className="status-badge rejected">ต้องเร่ง {kpiReviewSummary.below}</span>
+                            <span className="status-badge">แผน {developmentPlanRows.length}</span>
+                        </div>
+                    </div>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table className="data-table" style={{ margin: 0 }}>
+                            <thead>
+                                <tr>
+                                    <th>ตัวชี้วัด</th>
+                                    <th>หน่วย</th>
+                                    <th style={{ textAlign: 'right' }}>ผล 2568</th>
+                                    <th style={{ textAlign: 'right' }}>เป้า 2569</th>
+                                    <th style={{ textAlign: 'right' }}>ความคืบหน้า</th>
+                                    <th>สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {priorityKpis.map(row => {
+                                    const status = statusStyle(row.status);
+                                    return (
+                                        <tr key={row.indicator}>
+                                            <td style={{ maxWidth: 520, whiteSpace: 'normal', lineHeight: 1.45 }}>
+                                                <strong>{row.code}</strong> {row.indicator.replace(row.code, '').trim()}
+                                            </td>
+                                            <td>{row.unit || '-'}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.actual2568)}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.targetReviewed2569)}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                                {row.progress == null ? '-' : `${Math.round(row.progress)}%`}
+                                            </td>
+                                            <td>
+                                                <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 700, color: status.color, background: status.bg }}>
+                                                    {status.label}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             {/* Row 2: Radar + KPI Details */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
