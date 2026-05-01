@@ -57,6 +57,22 @@ export default function StrategicDashboardPage() {
         .filter(row => row.status === 'below' || row.status === 'near')
         .sort((a, b) => (a.progress ?? 999) - (b.progress ?? 999))
         .slice(0, 8);
+    const unknownKpiCount = kpiReviewRows.filter(row => row.status === 'unknown').length;
+    const sourceFiles = Array.isArray(strategicData.sourceFiles) ? strategicData.sourceFiles : [];
+    const activeStrategyIssues = [...new Set(developmentPlanRows
+        .map(row => row.strategyIssue)
+        .filter(Boolean))];
+    const planTargets = developmentPlanRows.reduce((acc, row) => {
+        ['target2569', 'target2570', 'target2571', 'target2572'].forEach(key => {
+            const value = Number(row[key]);
+            if (Number.isFinite(value)) acc[key] += value;
+        });
+        return acc;
+    }, { target2569: 0, target2570: 0, target2571: 0, target2572: 0 });
+    const fullKpiRows = [...kpiReviewRows].sort((a, b) => {
+        const statusRank = { below: 0, near: 1, unknown: 2, met: 3 };
+        return (statusRank[a.status] ?? 4) - (statusRank[b.status] ?? 4);
+    });
     const formatKpiValue = (value) => {
         if (value == null || value === '') return '-';
         if (typeof value === 'number') return Number.isInteger(value) ? value.toLocaleString('th-TH') : value.toLocaleString('th-TH', { maximumFractionDigits: 2 });
@@ -257,6 +273,36 @@ export default function StrategicDashboardPage() {
                 </div>
             </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
+                <div style={{ ...cardStyle, padding: '16px 18px', borderLeft: '4px solid #7B68EE' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <CheckCircle2 size={18} color="#00a651" />
+                        <strong style={{ color: 'var(--text-primary)' }}>ข้อมูลจากไฟล์จริง</strong>
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', lineHeight: 1.45 }}>
+                        ใช้ไฟล์ยุทธศาสตร์ {sourceFiles.length || 2} ไฟล์ และผูกกับ AI/export แล้ว
+                    </div>
+                </div>
+                <div style={{ ...cardStyle, padding: '16px 18px', borderLeft: '4px solid #ef4444' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <AlertTriangle size={18} color="#ef4444" />
+                        <strong style={{ color: 'var(--text-primary)' }}>KPI คำรับรอง 2569</strong>
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', lineHeight: 1.45 }}>
+                        ทั้งหมด {kpiReviewSummary.totalKpis} ตัวชี้วัด · ต้องเร่ง {kpiReviewSummary.below} · ใกล้เป้า {kpiReviewSummary.near} · รอข้อมูล {unknownKpiCount}
+                    </div>
+                </div>
+                <div style={{ ...cardStyle, padding: '16px 18px', borderLeft: '4px solid #0ea5e9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <TrendingUp size={18} color="#0ea5e9" />
+                        <strong style={{ color: 'var(--text-primary)' }}>แผนพัฒนา 2569-2572</strong>
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', lineHeight: 1.45 }}>
+                        แผนทั้งหมด {developmentPlanRows.length} รายการ · {activeStrategyIssues.length} ประเด็นยุทธศาสตร์
+                    </div>
+                </div>
+            </div>
+
             {/* Strategic Goals Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 24, alignItems: 'stretch' }}>
                 {strategicGoals.map((goal) => {
@@ -333,6 +379,132 @@ export default function StrategicDashboardPage() {
                                         </tr>
                                     );
                                 })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {fullKpiRows.length > 0 && (
+                <div style={{ ...cardStyle, marginBottom: 16, padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                        <div>
+                            <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', margin: 0 }}>KPI คำรับรอง 2569 ทั้งหมด</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', margin: '4px 0 0' }}>
+                                ดึงครบจากไฟล์ทบทวนคำรับรอง 69 แสดงทุกตัวชี้วัด พร้อมผลย้อนหลัง เป้าทบทวน และสถานะความเสี่ยง
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span className="status-badge rejected">ต้องเร่ง {kpiReviewSummary.below}</span>
+                            <span className="status-badge pending">ใกล้เป้า {kpiReviewSummary.near}</span>
+                            <span className="status-badge paid">ถึงเป้า {kpiReviewSummary.met}</span>
+                            <span className="status-badge">รอข้อมูล {unknownKpiCount}</span>
+                        </div>
+                    </div>
+                    <div style={{ overflow: 'auto', maxHeight: 520 }}>
+                        <table className="data-table" style={{ margin: 0, minWidth: 1180 }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ minWidth: 360 }}>ตัวชี้วัด</th>
+                                    <th style={{ minWidth: 260 }}>ยุทธศาสตร์ / เป้าประสงค์</th>
+                                    <th>หน่วย</th>
+                                    <th style={{ textAlign: 'right' }}>น้ำหนัก</th>
+                                    <th style={{ textAlign: 'right' }}>ผล 2566</th>
+                                    <th style={{ textAlign: 'right' }}>ผล 2567</th>
+                                    <th style={{ textAlign: 'right' }}>ผล 2568</th>
+                                    <th style={{ textAlign: 'right' }}>เป้า 2569</th>
+                                    <th style={{ textAlign: 'right' }}>ความคืบหน้า</th>
+                                    <th>สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {fullKpiRows.map((row, index) => {
+                                    const status = statusStyle(row.status);
+                                    return (
+                                        <tr key={`${row.code || 'kpi'}-${index}`}>
+                                            <td style={{ whiteSpace: 'normal', lineHeight: 1.45 }}>
+                                                <strong>{row.code}</strong> {String(row.indicator || '').replace(row.code || '', '').trim()}
+                                                {row.note && (
+                                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: 4, lineHeight: 1.35 }}>
+                                                        {row.note}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td style={{ whiteSpace: 'normal', lineHeight: 1.4, color: 'var(--text-secondary)' }}>
+                                                <div>{row.strategyIssue || '-'}</div>
+                                                {row.goal && <div style={{ marginTop: 4 }}>{row.goal}</div>}
+                                            </td>
+                                            <td>{row.unit || '-'}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.weight)}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.actual2566)}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.actual2567)}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.actual2568)}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.targetReviewed2569)}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                                {row.progress == null ? '-' : `${Math.round(row.progress)}%`}
+                                            </td>
+                                            <td>
+                                                <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 700, color: status.color, background: status.bg, whiteSpace: 'nowrap' }}>
+                                                    {status.label}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {developmentPlanRows.length > 0 && (
+                <div style={{ ...cardStyle, marginBottom: 16, padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                        <div>
+                            <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', margin: 0 }}>แผนพัฒนาส่วนงานและแผนกลยุทธ์ 2569-2572</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', margin: '4px 0 0' }}>
+                                ดึงครบจากไฟล์แบบเสนอแผนพัฒนาส่วนงาน แสดงเป้าหมายรายปีและกลยุทธ์ของคณะวิทยาศาสตร์
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span className="status-badge">2569: {formatKpiValue(planTargets.target2569)}</span>
+                            <span className="status-badge">2570: {formatKpiValue(planTargets.target2570)}</span>
+                            <span className="status-badge">2571: {formatKpiValue(planTargets.target2571)}</span>
+                            <span className="status-badge">2572: {formatKpiValue(planTargets.target2572)}</span>
+                        </div>
+                    </div>
+                    <div style={{ overflow: 'auto', maxHeight: 520 }}>
+                        <table className="data-table" style={{ margin: 0, minWidth: 1120 }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ minWidth: 260 }}>ประเด็นยุทธศาสตร์</th>
+                                    <th style={{ minWidth: 280 }}>เป้าประสงค์ / ตัวชี้วัด</th>
+                                    <th>หน่วย</th>
+                                    <th style={{ textAlign: 'right' }}>ผล 2568</th>
+                                    <th style={{ textAlign: 'right' }}>แผน 2569</th>
+                                    <th style={{ textAlign: 'right' }}>แผน 2570</th>
+                                    <th style={{ textAlign: 'right' }}>แผน 2571</th>
+                                    <th style={{ textAlign: 'right' }}>แผน 2572</th>
+                                    <th style={{ minWidth: 280 }}>กลยุทธ์</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {developmentPlanRows.map((row, index) => (
+                                    <tr key={`${row.indicator || 'plan'}-${index}`}>
+                                        <td style={{ whiteSpace: 'normal', lineHeight: 1.4 }}>{row.strategyIssue || '-'}</td>
+                                        <td style={{ whiteSpace: 'normal', lineHeight: 1.45 }}>
+                                            {row.goal && <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>{row.goal}</div>}
+                                            <strong>{row.indicator || '-'}</strong>
+                                        </td>
+                                        <td>{row.unit || '-'}</td>
+                                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.result2568)}</td>
+                                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.target2569)}</td>
+                                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.target2570)}</td>
+                                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.target2571)}</td>
+                                        <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.target2572)}</td>
+                                        <td style={{ whiteSpace: 'normal', lineHeight: 1.4 }}>{row.strategy || '-'}</td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
