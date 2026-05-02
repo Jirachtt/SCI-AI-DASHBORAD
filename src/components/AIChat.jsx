@@ -6,18 +6,30 @@ import { useTheme } from '../contexts/ThemeContext';
 import { ensureStudentList, onStudentDataChange } from '../services/studentDataService';
 import { getAIModelSettings, getAITokenStats, getWaitSeconds, resetConversation, sendMessageToGemini } from '../services/geminiService';
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
-import {
-    buildAIChatPrompt,
-    ChatMessage,
-    ExpandedChartModal,
-    generateChartFromFile,
-    getAllStudents,
-    MAIN_AI_QUICK_ACTIONS,
-    parseAIResponse,
-    parseUploadedStudents,
-    setUploadedStudentRows,
-    tryLocalResponse,
-} from '../pages/AIChatPage';
+
+let aiChatPageModulePromise = null;
+
+function loadAIChatPageModule() {
+    if (!aiChatPageModulePromise) {
+        aiChatPageModulePromise = import('../pages/AIChatPage');
+    }
+    return aiChatPageModulePromise;
+}
+
+const FALLBACK_QUICK_ACTIONS = [
+    { label: 'ถามข้อมูล ม.แม่โจ้', query: 'สรุปข้อมูลมหาวิทยาลัยแม่โจ้ที่ควรรู้', icon: MessageCircle },
+    { label: 'ค้นหานักศึกษา', query: 'ค้นหานักศึกษาคณะวิทยาศาสตร์', icon: MessageCircle },
+    { label: 'พยากรณ์ข้อมูล', query: 'พยากรณ์ข้อมูลจากข้อมูลจริงในเว็บ', icon: MessageCircle },
+    { label: 'สร้างกราฟ', query: 'สร้างกราฟจากข้อมูลปัจจุบันในระบบ', icon: MessageCircle },
+];
+
+function FallbackChatMessage({ msg }) {
+    return (
+        <div className={`chat-message ${msg.role === 'user' ? 'user' : 'bot'}`}>
+            <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+        </div>
+    );
+}
 
 const INITIAL_MESSAGE = {
     role: 'bot',
@@ -43,12 +55,33 @@ export default function AIChat() {
     const [typing, setTyping] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [uploadedFileData, setUploadedFileData] = useState(null);
+    const [aiModule, setAiModule] = useState(null);
+    const [aiModuleError, setAiModuleError] = useState('');
     const [, setStudentDataVersion] = useState(0);
+
+    const ensureAiModule = useCallback(async () => {
+        if (aiModule) return aiModule;
+        try {
+            const loaded = await loadAIChatPageModule();
+            setAiModule(loaded);
+            setAiModuleError('');
+            return loaded;
+        } catch (error) {
+            aiChatPageModulePromise = null;
+            setAiModuleError('โหลดเครื่องมือ AI ไม่สำเร็จ กรุณารีเฟรชหน้าเว็บอีกครั้ง');
+            throw error;
+        }
+    }, [aiModule]);
 
     useEffect(() => {
         ensureStudentList();
         return onStudentDataChange(() => setStudentDataVersion(v => v + 1));
     }, []);
+
+    useEffect(() => {
+        if (!isOpen || aiModule || aiModuleError) return;
+        ensureAiModule().catch(() => {});
+    }, [aiModule, aiModuleError, ensureAiModule, isOpen]);
 
     useEffect(() => {
         if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
@@ -83,13 +116,13 @@ export default function AIChat() {
     const handleNewChat = useCallback(() => {
         resetConversation();
         setUploadedFileData(null);
-        setUploadedStudentRows([]);
+        aiModule?.setUploadedStudentRows?.([]);
         setMessages([{
             role: 'bot',
             text: '**เริ่มบทสนทนาใหม่แล้ว**\n\nถามมาได้เลยครับ พร้อมช่วยเหมือนหน้า AI หลัก',
             chart: null,
         }]);
-    }, []);
+    }, [aiModule]);
 
     const handleClose = useCallback(() => {
         setIsOpen(false);
@@ -118,6 +151,7 @@ export default function AIChat() {
     };
 
     const retryWithCountdown = async (buildPrompt, retryId, sourceQuestion = '') => {
+        const tools = await ensureAiModule();
         const maxRetries = 3;
         for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
             const waitSec = Math.max(getWaitSeconds(), 5) + 2;
@@ -147,7 +181,7 @@ export default function AIChat() {
 
             try {
                 const aiText = await sendAI(buildPrompt());
-                const parsedAI = parseAIResponse(aiText, sourceQuestion);
+                const parsedAI = tools.parseAIResponse(aiText, sourceQuestion);
                 setMessages(prev => prev.map(message =>
                     message._retryId === retryId
                         ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart }
@@ -174,15 +208,16 @@ export default function AIChat() {
     };
 
     const runQuestion = async (question) => {
-        const localResult = tryLocalResponse(question);
+        const tools = await ensureAiModule();
+        const localResult = tools.tryLocalResponse(question);
         if (localResult) {
             setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
             return;
         }
 
-        const prompt = buildAIChatPrompt(question, uploadedFileData);
+        const prompt = tools.buildAIChatPrompt(question, uploadedFileData);
         const aiText = await sendAI(prompt);
-        const parsedAI = parseAIResponse(aiText, question);
+        const parsedAI = tools.parseAIResponse(aiText, question);
         setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
     };
 
@@ -203,7 +238,8 @@ export default function AIChat() {
                     chart: null,
                     _retryId: retryId,
                 }]);
-                await retryWithCountdown(() => buildAIChatPrompt(userMsg, uploadedFileData), retryId, userMsg);
+                const tools = await ensureAiModule();
+                await retryWithCountdown(() => tools.buildAIChatPrompt(userMsg, uploadedFileData), retryId, userMsg);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -235,7 +271,7 @@ export default function AIChat() {
         setTyping(true);
         try {
             const parsed = (ext === 'xlsx' || ext === 'xls')
-                ? parseXLSXContent(await file.arrayBuffer())
+                ? await parseXLSXContent(await file.arrayBuffer())
                 : parseCSVContent(await file.text());
 
             if (!parsed || parsed.rows.length === 0) {
@@ -247,10 +283,11 @@ export default function AIChat() {
                 return;
             }
 
+            const tools = await ensureAiModule();
             setUploadedFileData(parsed);
-            const uploadedStudents = parseUploadedStudents(parsed);
-            if (uploadedStudents.length > 0) setUploadedStudentRows(uploadedStudents);
-            const chart = generateChartFromFile(parsed, fileName);
+            const uploadedStudents = tools.parseUploadedStudents(parsed);
+            if (uploadedStudents.length > 0) tools.setUploadedStudentRows(uploadedStudents);
+            const chart = tools.generateChartFromFile(parsed, fileName);
 
             let summary = `**วิเคราะห์ไฟล์: ${fileName}**\n\n`;
             summary += `**ข้อมูล:** ${parsed.rowCount} แถว x ${parsed.headers.length} คอลัมน์\n`;
@@ -258,7 +295,7 @@ export default function AIChat() {
             summary += `**คอลัมน์ตัวเลข:** ${parsed.numericCols.join(', ') || 'ไม่พบ'}\n\n`;
             if (uploadedStudents.length > 0) {
                 summary += `**ตรวจพบข้อมูลนักศึกษา ${uploadedStudents.length} คน** - รวมกับข้อมูลระบบแล้ว\n`;
-                summary += `**รวมทั้งหมดตอนนี้:** ${getAllStudents().length} คน\n\n`;
+                summary += `**รวมทั้งหมดตอนนี้:** ${tools.getAllStudents().length} คน\n\n`;
                 summary += 'ลองถามต่อได้ เช่น "สร้างกราฟจำนวนนักศึกษาแต่ละสาขา" หรือ "นักศึกษาที่ GPA สูงสุด 10 คน"';
             } else {
                 summary += '**ตัวอย่างข้อมูล (5 แถวแรก):**\n';
@@ -275,7 +312,7 @@ export default function AIChat() {
             const dataPreview = parsed.rows.slice(0, 15).map(row => Object.values(row).join(', ')).join('\n');
             try {
                 const aiText = await sendAI(`ผู้ใช้อัปโหลดไฟล์ "${fileName}" มีข้อมูล ${parsed.rowCount} แถว คอลัมน์: ${parsed.headers.join(', ')}\n\nตัวอย่างข้อมูล:\n${dataPreview}\n\nช่วยวิเคราะห์และสรุปข้อมูลนี้แบบกระชับ`);
-                const parsedAI = parseAIResponse(aiText, `วิเคราะห์ไฟล์ ${fileName}`);
+                const parsedAI = tools.parseAIResponse(aiText, `วิเคราะห์ไฟล์ ${fileName}`);
                 setMessages(prev => [...prev, {
                     role: 'bot',
                     text: `**AI วิเคราะห์เพิ่มเติม:**\n\n${parsedAI.text}`,
@@ -348,6 +385,10 @@ export default function AIChat() {
         if (!dragRef.current.hasMoved) setIsOpen(prev => !prev);
     }, []);
 
+    const ChatMessageComponent = aiModule?.ChatMessage || FallbackChatMessage;
+    const ExpandedChartModalComponent = aiModule?.ExpandedChartModal;
+    const quickActions = aiModule?.MAIN_AI_QUICK_ACTIONS || FALLBACK_QUICK_ACTIONS;
+
     return (
         <>
             <button
@@ -410,8 +451,13 @@ export default function AIChat() {
 
                         <div className="ai-chat-messages ai-chat-popup-messages">
                             {messages.map((msg, index) => (
-                                <ChatMessage key={`${msg.role}-${index}`} msg={msg} onExpand={setExpandedChart} />
+                                <ChatMessageComponent key={`${msg.role}-${index}`} msg={msg} onExpand={setExpandedChart} />
                             ))}
+                            {aiModuleError && (
+                                <div className="chat-message bot ai-chat-module-error">
+                                    {aiModuleError}
+                                </div>
+                            )}
                             {typing && (
                                 <div className="typing-indicator">
                                     <span /><span /><span />
@@ -422,8 +468,8 @@ export default function AIChat() {
 
                         {messages.length <= 2 && (
                             <div className="chat-quick-actions">
-                                {MAIN_AI_QUICK_ACTIONS.slice(0, 4).map((action) => {
-                                    const Icon = action.icon;
+                                {quickActions.slice(0, 4).map((action) => {
+                                    const Icon = action.icon || MessageCircle;
                                     return (
                                         <button key={action.label} className="chat-quick-btn" onClick={() => submitQuestion(action.query)}>
                                             <Icon size={12} /> {action.label}
@@ -491,8 +537,8 @@ export default function AIChat() {
                 );
             })()}
 
-            {expandedChart && (
-                <ExpandedChartModal
+            {expandedChart && ExpandedChartModalComponent && (
+                <ExpandedChartModalComponent
                     chart={expandedChart}
                     onClose={() => setExpandedChart(null)}
                 />

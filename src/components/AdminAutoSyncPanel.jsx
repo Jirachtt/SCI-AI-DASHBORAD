@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle, Clock, Cloud, DatabaseZap, Link as LinkIcon, RefreshCw, Wifi } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Cloud, DatabaseZap, Link as LinkIcon, RefreshCw, ShieldCheck, Wifi } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getDatasetTrustStatus } from '../services/dataAccuracyService';
 import {
     DASHBOARD_DATASETS,
     ensureDashboardLiveData,
@@ -46,8 +47,8 @@ export default function AdminAutoSyncPanel({ onToast }) {
         };
     }, []);
 
-    const liveCount = useMemo(
-        () => DASHBOARD_DATASETS.filter(item => metas[item.id]?.isLive).length,
+    const readyCount = useMemo(
+        () => DASHBOARD_DATASETS.filter(item => getDatasetTrustStatus(item, metas[item.id]).isReady).length,
         [metas]
     );
 
@@ -78,8 +79,8 @@ export default function AdminAutoSyncPanel({ onToast }) {
                         <h3>Auto Sync จาก MJU Dashboard / API</h3>
                         <p>ทุกหน้าและ AI อ่านจาก Firestore realtime cache เดียวกัน เมื่อข้อมูล sync เข้ามา ทุกเครื่องจะเห็นข้อมูลล่าสุดทันที</p>
                     </div>
-                    <span className={`admin-data-badge ${liveCount > 0 ? 'live' : 'mock'}`}>
-                        {liveCount}/{DASHBOARD_DATASETS.length} live
+                    <span className={`admin-data-badge ${readyCount > 0 ? 'live' : 'mock'}`}>
+                        {readyCount}/{DASHBOARD_DATASETS.length} ready
                     </span>
                 </div>
 
@@ -101,8 +102,8 @@ export default function AdminAutoSyncPanel({ onToast }) {
                 {DASHBOARD_DATASETS.map(item => {
                     const meta = metas[item.id] || getDashboardDatasetMetaSync(item.id);
                     const isSyncing = syncingId === item.id;
-                    const needsApi = !meta.isLive && item.syncMode === 'api';
-                    const badgeLabel = meta.isLive ? 'Live' : needsApi ? 'ต้องใช้ API' : 'Fallback';
+                    const trust = getDatasetTrustStatus(item, meta);
+                    const needsSetup = !trust.isReady;
                     return (
                         <div key={item.id} className="auto-sync-card">
                             <div className="auto-sync-card-head">
@@ -110,19 +111,20 @@ export default function AdminAutoSyncPanel({ onToast }) {
                                     <h4>{item.label}</h4>
                                     <p>{item.id}</p>
                                 </div>
-                                <span className={`admin-data-badge ${meta.isLive ? 'live' : 'mock'}`}>
-                                    {badgeLabel}
+                                <span className={`admin-data-badge trust ${trust.tone}`}>
+                                    {trust.label}
                                 </span>
                             </div>
 
                             <div className="auto-sync-meta">
+                                <div><ShieldCheck size={14} /> <span>{trust.description}</span></div>
                                 <div><Clock size={14} /> {formatDate(meta.updatedAt)}</div>
                                 <div><CheckCircle size={14} /> {meta.rowCount == null ? '-' : `${meta.rowCount.toLocaleString('th-TH')} rows`}</div>
                                 <div><LinkIcon size={14} /> <span title={meta.sourceUrl || item.source}>{meta.sourceUrl || item.source}</span></div>
                             </div>
-                            {needsApi && (
+                            {needsSetup && (
                                 <div className="auto-sync-card-note">
-                                    ต้องตั้งค่า MJU_DASHBOARD_SOURCE_{item.id.toUpperCase()} หรือ official API/token ก่อน จึงจะ sync เป็นข้อมูลจริงได้
+                                    Configure the official endpoint, token, or source file for {item.id} before using it as trusted presentation data.
                                 </div>
                             )}
 

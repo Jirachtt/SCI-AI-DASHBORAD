@@ -244,6 +244,7 @@ export default function AdminDataAccuracyPanel({ onToast }) {
                             <span>{item.statusLabel}</span>
                             <small><Clock size={13} /> {item.updatedText}</small>
                             <small>{item.rowCount == null ? '-' : `${formatNumber(item.rowCount)} rows`}</small>
+                            <small>{item.description}</small>
                         </article>
                     ))}
                 </div>

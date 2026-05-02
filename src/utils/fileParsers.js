@@ -1,7 +1,6 @@
 // Shared CSV/XLSX parsers used by the AI chat upload flow and the admin
 // data-management upload flow. Both produce the same shape:
 //   { headers, rows, numericCols, labelCol, rowCount }
-import * as XLSX from 'xlsx';
 
 // RFC-4180 style splitter: respects "quoted, fields" and "" escapes.
 export function splitCSVLine(line, delimiter) {
@@ -50,7 +49,8 @@ export function parseCSVContent(text) {
     return { headers, rows, numericCols, labelCol, rowCount: rows.length };
 }
 
-export function parseXLSXContent(arrayBuffer) {
+export async function parseXLSXContent(arrayBuffer) {
+    const XLSX = await import('xlsx');
     const wb = XLSX.read(arrayBuffer, { type: 'array' });
     const sheetName = wb.SheetNames[0];
     if (!sheetName) return null;
@@ -73,7 +73,7 @@ export function parseXLSXContent(arrayBuffer) {
 export async function parseFile(file) {
     const ext = (file.name.split('.').pop() || '').toLowerCase();
     if (ext === 'xlsx' || ext === 'xls') {
-        return parseXLSXContent(await file.arrayBuffer());
+        return await parseXLSXContent(await file.arrayBuffer());
     }
     return parseCSVContent(await file.text());
 }

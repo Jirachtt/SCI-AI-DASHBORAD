@@ -2416,7 +2416,7 @@ export default function AIChatPage() {
 
         try {
             const parsed = (ext === 'xlsx' || ext === 'xls')
-                ? parseXLSXContent(await file.arrayBuffer())
+                ? await parseXLSXContent(await file.arrayBuffer())
                 : parseCSVContent(await file.text());
 
             if (!parsed || parsed.rows.length === 0) {

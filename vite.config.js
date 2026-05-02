@@ -28,6 +28,21 @@ export default defineConfig({
   define: {
     global: 'window', // Polyfill for react-grid-layout
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('firebase')) return 'vendor-firebase'
+          if (id.includes('xlsx')) return 'vendor-xlsx'
+          if (id.includes('chart.js') || id.includes('react-chartjs-2') || id.includes('recharts')) return 'vendor-charts'
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) return 'vendor-react'
+          if (id.includes('lucide-react')) return 'vendor-icons'
+          return undefined
+        },
+      },
+    },
+  },
   server: {
     allowedHosts: true,
     host: true // also good practice to expose to network if needed, though ngrok handles localhost usually

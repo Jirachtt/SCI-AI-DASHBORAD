@@ -3,6 +3,7 @@
 // by refreshing once instead of showing the crash screen.
 
 export const routeLoaders = {
+    '/dashboard': () => import('../pages/DashboardHome'),
     '/dashboard/tuition': () => import('../pages/TuitionPage'),
     '/dashboard/student-stats': () => import('../pages/StudentStatsPage'),
     '/dashboard/tcas': () => import('../pages/TcasPlanningPage'),

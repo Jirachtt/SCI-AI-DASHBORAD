@@ -2,16 +2,16 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { lazy, Suspense } from 'react';
-import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
-import MjuAuthCallbackPage from './pages/MjuAuthCallbackPage';
-import Layout from './components/Layout';
-import DashboardHome from './pages/DashboardHome';
 import { lazyRouteLoaders } from './utils/routePrefetch';
 import './index.css';
 
 // Lazy load heavy pages for better performance — shared with prefetchRoute
 // so hovering a sidebar link warms the same chunk cache the router uses.
+const Layout = lazy(() => import('./components/Layout'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const MjuAuthCallbackPage = lazy(() => import('./pages/MjuAuthCallbackPage'));
+const DashboardHome = lazy(lazyRouteLoaders['/dashboard']);
 const TuitionPage = lazy(lazyRouteLoaders['/dashboard/tuition']);
 const StudentStatsPage = lazy(lazyRouteLoaders['/dashboard/student-stats']);
 const TcasPlanningPage = lazy(lazyRouteLoaders['/dashboard/tcas']);
@@ -77,11 +77,11 @@ function PublicRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<PublicRoute><LoginPage /></PublicRoute>} />
-      <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
-      <Route path="/auth/mju/callback" element={<MjuAuthCallbackPage />} />
-      <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route index element={<DashboardHome />} />
+      <Route path="/" element={<PublicRoute><Suspense fallback={<AuthLoader />}><LoginPage /></Suspense></PublicRoute>} />
+      <Route path="/signup" element={<PublicRoute><Suspense fallback={<AuthLoader />}><SignUpPage /></Suspense></PublicRoute>} />
+      <Route path="/auth/mju/callback" element={<Suspense fallback={<AuthLoader />}><MjuAuthCallbackPage /></Suspense>} />
+      <Route path="/dashboard" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Layout /></Suspense></ProtectedRoute>}>
+        <Route index element={<Suspense fallback={<PageLoader />}><DashboardHome /></Suspense>} />
         <Route path="tuition" element={<Suspense fallback={<PageLoader />}><TuitionPage /></Suspense>} />
         <Route path="student-stats" element={<Suspense fallback={<PageLoader />}><StudentStatsPage /></Suspense>} />
         <Route path="tcas" element={<Suspense fallback={<PageLoader />}><TcasPlanningPage /></Suspense>} />

@@ -51,6 +51,85 @@ function formatDateTime(value) {
     });
 }
 
+const DATASET_TRUST_STATUSES = {
+    officialLive: {
+        key: 'official_live',
+        label: 'Official Live',
+        shortLabel: 'Official',
+        tone: 'success',
+        description: 'Synced from an official MJU Dashboard/API source.',
+        isReady: true,
+    },
+    uploadedFile: {
+        key: 'uploaded_file',
+        label: 'Uploaded File',
+        shortLabel: 'File',
+        tone: 'info',
+        description: 'Using an uploaded CSV/Excel file as the current source.',
+        isReady: true,
+    },
+    firestoreLive: {
+        key: 'firestore_live',
+        label: 'Firestore Live',
+        shortLabel: 'Live',
+        tone: 'success',
+        description: 'Using shared Firestore realtime data.',
+        isReady: true,
+    },
+    mjuApiNeeded: {
+        key: 'mju_api_needed',
+        label: 'MJU API Needed',
+        shortLabel: 'Needs API',
+        tone: 'warning',
+        description: 'Needs an official MJU endpoint/token before it can be treated as live.',
+        isReady: false,
+    },
+    uploadedFileNeeded: {
+        key: 'uploaded_file_needed',
+        label: 'Official File Needed',
+        shortLabel: 'Needs File',
+        tone: 'warning',
+        description: 'Needs the official CSV/Excel source file before presentation use.',
+        isReady: false,
+    },
+    referenceFallback: {
+        key: 'reference_fallback',
+        label: 'Reference/Fallback',
+        shortLabel: 'Reference',
+        tone: 'warning',
+        description: 'Reference cache only; verify with MJU source before relying on it.',
+        isReady: false,
+    },
+};
+
+function isUploadedFileSource(sourceType = '') {
+    return /file|upload|csv|excel|xlsx|manual/i.test(String(sourceType || ''));
+}
+
+function isOfficialSource(sourceType = '') {
+    return /mju|api|sync|official|dashboard/i.test(String(sourceType || ''));
+}
+
+export function getDatasetTrustStatus(itemOrId, meta = null) {
+    const item = typeof itemOrId === 'string'
+        ? DASHBOARD_DATASETS.find(dataset => dataset.id === itemOrId)
+        : itemOrId;
+    const resolvedMeta = meta || getDashboardDatasetMetaSync(item?.id);
+    const sourceType = resolvedMeta?.sourceType || '';
+    const isLive = Boolean(resolvedMeta?.isLive);
+
+    if (isLive && (item?.syncMode === 'file' || isUploadedFileSource(sourceType))) {
+        return DATASET_TRUST_STATUSES.uploadedFile;
+    }
+    if (isLive && (item?.syncMode === 'public' || isOfficialSource(sourceType))) {
+        return DATASET_TRUST_STATUSES.officialLive;
+    }
+    if (isLive) return DATASET_TRUST_STATUSES.firestoreLive;
+    if (item?.syncMode === 'api') return DATASET_TRUST_STATUSES.mjuApiNeeded;
+    if (item?.syncMode === 'file') return DATASET_TRUST_STATUSES.uploadedFileNeeded;
+    return DATASET_TRUST_STATUSES.referenceFallback;
+}
+
 function emptyLevelCounts() {
     return LEVELS.reduce((acc, item) => ({ ...acc, [item.key]: 0 }), {});
 }
@@ -289,6 +368,7 @@ export function getDataAccuracySnapshot() {
         const updatedAt = readDate(meta.updatedAt);
         const ageHours = updatedAt ? (Date.now() - updatedAt.getTime()) / 36e5 : null;
         const isFresh = meta.isLive && (ageHours == null || ageHours <= 24);
+        const trustStatus = getDatasetTrustStatus(item, meta);
         return {
             id: item.id,
             label: item.label,
@@ -300,8 +380,11 @@ export function getDataAccuracySnapshot() {
             updatedAt,
             updatedText: formatDateTime(updatedAt),
             rowCount: meta.rowCount ?? null,
-            tone: meta.isLive ? (isFresh ? 'success' : 'info') : 'warning',
-            statusLabel: meta.isLive ? (isFresh ? 'Live' : 'Live แต่ควรรีเฟรช') : 'Fallback',
+            trustStatus,
+            description: trustStatus.description,
+            confidenceLabel: trustStatus.label,
+            tone: meta.isLive ? (isFresh ? trustStatus.tone : 'info') : trustStatus.tone,
+            statusLabel: meta.isLive && !isFresh ? `${trustStatus.label} (stale)` : trustStatus.label,
         };
     });
     const liveCount = datasets.filter(item => item.isLive).length;
@@ -362,7 +445,7 @@ export function buildDataAccuracyContextForAI() {
     const snapshot = getDataAccuracySnapshot();
     const rec = snapshot.studentReconcile;
     const datasetSummary = snapshot.datasets
-        .map(item => `${item.id}: ${item.statusLabel}, rows=${item.rowCount ?? '-'}, updated=${item.updatedText}`)
+        .map(item => `${item.id}: ${item.statusLabel}, rows=${item.rowCount ?? '-'}, updated=${item.updatedText}, note=${item.description}`)
         .join('\n');
 
     return `DATA ACCURACY SNAPSHOT

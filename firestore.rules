@@ -1,16 +1,11 @@
 rules_version = '2';
 
-// MJU Science AI Dashboard — Firestore Security Rules
-//
-// Role model (see src/utils/accessControl.js):
-//   dean   → full admin (only role allowed to write system data)
-//   chair, staff, general, student, pending_* → read-only for shared data
-//
-// Design notes:
-//   - users/{uid} rules MUST NOT call get() on the same collection to check role
-//     (causes recursive evaluation and list-query rejection). Role-based writes
-//     are guarded by client-side canAccess + cross-collection rules below.
-//   - datasets/{} rules CAN call get() on users (different collection, safe).
+// SCI AI Dashboard - Firestore Security Rules
+// Security goal:
+// - Users can create/read their own profile safely.
+// - Users cannot promote themselves by editing role/status/role validity.
+// - Dean manages users and roles.
+// - Dean/Staff can write operational datasets; everyone signed in can read shared dashboard data.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -19,51 +14,96 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Safe to call from rules on OTHER collections (not users/{uid}) —
-    // this reads the caller's own user doc, which is a DIFFERENT uid than
-    // the doc being evaluated, so no recursion.
-    function callerIsDean() {
+    function callerHasProfile() {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'dean'
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
-    // ── users/{uid} ─────────────────────────────────────────────
-    // Read: any signed-in user (admin panel lists all users).
-    // Create: user creates own profile on signup.
-    // Update: user updates own doc; OR a dean updates any user (cross-uid get
-    //   is NOT recursive because it targets a different uid than the one
-    //   being evaluated).
+    function callerHasApprovedRole(roles) {
+      return callerHasProfile()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in roles;
+    }
+
+    function callerIsDean() {
+      return callerHasApprovedRole(['dean']);
+    }
+
+    function callerCanManageDashboardData() {
+      return callerHasApprovedRole(['dean', 'staff']);
+    }
+
+    function hasMjuSsoClaim() {
+      return isSignedIn()
+        && (
+          request.auth.token.mjuVerified == true
+          || request.auth.token.mjuRole != null
+          || request.auth.token.mjuUserType != null
+        );
+    }
+
+    function publicSignupRoleIsAllowed() {
+      return (
+        request.resource.data.role in ['general', 'student']
+        && request.resource.data.status == 'approved'
+      ) || (
+        request.resource.data.role in ['pending_staff', 'pending_chair']
+        && request.resource.data.status == 'pending'
+      );
+    }
+
+    function selfUserMutableKeys() {
+      return [
+        'name',
+        'avatar',
+        'photoURL',
+        'displayName',
+        'email',
+        'roleLabel',
+        'preferences',
+        'theme',
+        'lastLoginAt',
+        'lastSeenAt'
+      ];
+    }
+
+    function safeSelfUserUpdate(uid) {
+      return isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(selfUserMutableKeys())
+        && request.resource.data.get('role', null) == resource.data.get('role', null)
+        && request.resource.data.get('status', null) == resource.data.get('status', null)
+        && request.resource.data.get('roleValidity', null) == resource.data.get('roleValidity', null)
+        && request.resource.data.get('roleStartsAt', null) == resource.data.get('roleStartsAt', null)
+        && request.resource.data.get('roleExpiresAt', null) == resource.data.get('roleExpiresAt', null);
+    }
+
     match /users/{uid} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == uid;
-      allow update: if isSignedIn() && (
-        request.auth.uid == uid
-        || (request.auth.uid != uid
-            && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'dean'
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved')
-      );
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && (
+          publicSignupRoleIsAllowed()
+          || (
+            hasMjuSsoClaim()
+            && request.resource.data.role in ['dean', 'chair', 'staff', 'student', 'general']
+            && request.resource.data.status == 'approved'
+          )
+        );
+      allow update: if safeSelfUserUpdate(uid) || callerIsDean();
       allow delete: if false;
     }
 
-    // ── datasets/{datasetId} ────────────────────────────────────
-    // Live data uploaded by admin. Currently: 'students' (more domains later).
     match /datasets/{datasetId} {
       allow read: if isSignedIn();
-      allow write: if callerIsDean();
+      allow write: if callerCanManageDashboardData();
 
       match /history/{historyId} {
         allow read: if isSignedIn();
-        allow write: if callerIsDean();
+        allow write: if callerCanManageDashboardData();
       }
     }
 
-    // ── ai_chat_history/{sessionId} ──────────────────────────────
-    // Each session doc carries `uid` of the owner. Only that user (or a
-    // dean for support purposes) can read/update/delete; only the owner
-    // can create their own sessions.
     match /ai_chat_history/{sessionId} {
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid;
@@ -71,16 +111,12 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
     }
 
-    // ── auditLogs/{logId} ─────────────────────────────────────
-    // Append-only operational logs for admin uploads. Deans write; signed-in
-    // users can read the recent feed shown in the admin panel.
     match /auditLogs/{logId} {
       allow read: if isSignedIn();
-      allow create: if callerIsDean();
+      allow create: if callerCanManageDashboardData();
       allow update, delete: if false;
     }
 
-    // Default deny for any other collection
     match /{document=**} {
       allow read, write: if false;
     }
