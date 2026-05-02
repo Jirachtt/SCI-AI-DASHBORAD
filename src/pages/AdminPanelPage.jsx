@@ -6,7 +6,7 @@ import { collection, doc, getDocs, orderBy, query, updateDoc } from 'firebase/fi
 import {
     Shield, Users, Clock, Briefcase, Building, Check, X, Search, Filter,
     RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
-    Database, ScrollText
+    Database, ScrollText, ShieldCheck
 } from 'lucide-react';
 import { canAccess, getRoleBadgeColor, getRoleInfo, isPendingRole } from '../utils/accessControl';
 import {
@@ -21,6 +21,7 @@ import {
 import AdminDataUpload from '../components/AdminDataUpload';
 import AdminAuditLog from '../components/AdminAuditLog';
 import AdminAutoSyncPanel from '../components/AdminAutoSyncPanel';
+import AdminDataAccuracyPanel from '../components/AdminDataAccuracyPanel';
 import ExportPDFButton from '../components/ExportPDFButton';
 
 const MANAGEABLE_ROLES = ['dean', 'chair', 'staff', 'general', 'student'];
@@ -471,6 +472,12 @@ export default function AdminPanelPage() {
                     <Database size={16} /> Auto Sync
                 </button>
                 <button
+                    className={`admin-tab ${activeTab === 'accuracy' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('accuracy')}
+                >
+                    <ShieldCheck size={16} /> Data Accuracy
+                </button>
+                <button
                     className={`admin-tab ${activeTab === 'audit' ? 'active' : ''}`}
                     onClick={() => setActiveTab('audit')}
                 >
@@ -711,6 +718,13 @@ export default function AdminPanelPage() {
             {activeTab === 'data' && (
                 <div className="admin-tab-panel">
                     <AdminDataUpload onToast={showToast} />
+                </div>
+            )}
+
+            {/* Data accuracy tab */}
+            {activeTab === 'accuracy' && (
+                <div className="admin-tab-panel">
+                    <AdminDataAccuracyPanel onToast={showToast} />
                 </div>
             )}
 

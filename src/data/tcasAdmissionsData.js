@@ -2,7 +2,7 @@ export const tcasSources = [
     {
         label: 'TCAS Science MJU',
         url: 'https://sciencebase.mju.ac.th/tcas/',
-        note: 'รายชื่อหลักสูตรคณะวิทยาศาสตร์ที่เปิดรับนักศึกษา',
+        note: 'หน้ารวมหลักสูตรคณะวิทยาศาสตร์ที่เปิดรับนักศึกษา',
         status: 'official_public',
     },
     {
@@ -12,10 +12,16 @@ export const tcasSources = [
         status: 'official_public',
     },
     {
-        label: 'ไฟล์ย้อนหลังจากหน่วยรับเข้า/Reg',
+        label: 'คำนวณประมาณการปี 70_Ver5.xlsx',
         url: '',
-        note: 'ต้องนำเข้าเพิ่มเพื่อให้ตัวเลขย้อนหลัง 5 ปีเป็นข้อมูลจริงครบทุก TCAS round',
-        status: 'waiting_for_internal_file',
+        note: 'ใช้แถว 1/2570 ระดับปริญญาตรี ชั้นปี 1 รหัส 70 เป็นเป้าหมายรับเข้า/นิสิตใหม่ปี 2570',
+        status: 'internal_file',
+    },
+    {
+        label: 'Admissions/Reg API',
+        url: '',
+        note: 'ยังต้องเชื่อมข้อมูลสมัคร ผ่าน รายงานตัว คงอยู่ และลาออก/หายไปย้อนหลังจากระบบรับเข้า/ทะเบียน',
+        status: 'waiting_for_admissions_reg',
     },
 ];
 
@@ -32,31 +38,40 @@ export const tcasRound3Plan2569 = [
 ];
 
 export const tcasRoundPlan2569 = [
-    { round: 'Portfolio 1.1', plan: 42, enrolled: 31, sourceStatus: 'waiting_for_internal_file' },
-    { round: 'Portfolio 1.2', plan: 28, enrolled: 19, sourceStatus: 'waiting_for_internal_file' },
-    { round: 'Quota', plan: 52, enrolled: 36, sourceStatus: 'waiting_for_internal_file' },
+    { round: 'Portfolio 1.1', plan: null, enrolled: null, sourceStatus: 'waiting_for_admissions_reg' },
+    { round: 'Portfolio 1.2', plan: null, enrolled: null, sourceStatus: 'waiting_for_admissions_reg' },
+    { round: 'Quota', plan: null, enrolled: null, sourceStatus: 'waiting_for_admissions_reg' },
     { round: 'Admission', plan: 110, enrolled: null, sourceStatus: 'official_public' },
-    { round: 'Direct Admission', plan: 24, enrolled: null, sourceStatus: 'waiting_for_internal_file' },
+    { round: 'Direct Admission', plan: null, enrolled: null, sourceStatus: 'waiting_for_admissions_reg' },
 ];
 
-export const tcasFiveYearTrend = [
-    { year: 2565, plan: 210, applicants: 690, admitted: 185, enrolled: 146, retained: 128, withdrawn: 18, lateReport: 9, sourceStatus: 'seed_waiting_file' },
-    { year: 2566, plan: 205, applicants: 742, admitted: 192, enrolled: 151, retained: 136, withdrawn: 15, lateReport: 12, sourceStatus: 'seed_waiting_file' },
-    { year: 2567, plan: 215, applicants: 768, admitted: 201, enrolled: 158, retained: 142, withdrawn: 16, lateReport: 10, sourceStatus: 'seed_waiting_file' },
-    { year: 2568, plan: 220, applicants: 801, admitted: 206, enrolled: 163, retained: 149, withdrawn: 14, lateReport: 11, sourceStatus: 'seed_waiting_file' },
-    { year: 2569, plan: 256, applicants: 840, admitted: 224, enrolled: 171, retained: 158, withdrawn: 13, lateReport: 8, sourceStatus: 'mixed_official_seed' },
+// ยังไม่พบข้อมูลสมัคร/ผ่าน/รายงานตัว/คงอยู่ย้อนหลังในไฟล์ที่แนบมา จึงไม่ใส่เลข seed แทนข้อมูลจริง
+export const tcasFiveYearTrend = [];
+
+export const tcasIntakeTarget2570 = [
+    { major: 'เทคโนโลยีชีวภาพ', target2570: 50, tuitionPerTerm: 20000, projectedRevenuePerTerm: 1000000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
+    { major: 'เคมี', target2570: 40, tuitionPerTerm: 20000, projectedRevenuePerTerm: 800000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
+    { major: 'นวัตกรรมวัสดุ', target2570: 40, tuitionPerTerm: 15000, projectedRevenuePerTerm: 600000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
+    { major: 'คณิตศาสตร์', target2570: 25, tuitionPerTerm: 18000, projectedRevenuePerTerm: 450000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
+    { major: 'สถิติและการจัดการสารสนเทศ', target2570: 25, tuitionPerTerm: 16000, projectedRevenuePerTerm: 400000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
+    { major: 'วิทยาการคอมพิวเตอร์', target2570: 60, tuitionPerTerm: 20000, projectedRevenuePerTerm: 1200000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
+    { major: 'เทคโนโลยีสารสนเทศ', target2570: 60, tuitionPerTerm: 14000, projectedRevenuePerTerm: 840000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
+    { major: 'ฟิสิกส์ประยุกต์', target2570: 25, tuitionPerTerm: 16000, projectedRevenuePerTerm: 400000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
+    { major: 'นวัตกรรมเคมีอุตสาหกรรม', target2570: 30, tuitionPerTerm: 22000, projectedRevenuePerTerm: 660000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
+    { major: 'วิทยาการข้อมูลและปัญญาประดิษฐ์', target2570: 40, tuitionPerTerm: 16000, projectedRevenuePerTerm: 640000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
 ];
 
 export const tcasMajorOutlook = [
-    { major: 'วิทยาการคอมพิวเตอร์', demandIndex: 94, risk: 'แข่งขันสูง', nextAction: 'เพิ่มคอนเทนต์ portfolio + AI/Data showcase', target2570: 35 },
-    { major: 'เทคโนโลยีสารสนเทศ', demandIndex: 88, risk: 'แข่งขันสูง', nextAction: 'ทำแคมเปญ IT career path และวิชาข้ามสาขา', target2570: 38 },
-    { major: 'สถิติและการจัดการสารสนเทศ', demandIndex: 84, risk: 'โอกาสเติบโต', nextAction: 'สื่อสารจุดขาย Data/BI/ประกันภัย', target2570: 34 },
-    { major: 'เคมี', demandIndex: 73, risk: 'ต้องเร่ง conversion', nextAction: 'ชู lab skill + อุตสาหกรรมเคมีสีเขียว', target2570: 24 },
-    { major: 'เทคโนโลยีชีวภาพ', demandIndex: 76, risk: 'ต้องเร่ง conversion', nextAction: 'เชื่อมงานวิจัย biotech/food/agri innovation', target2570: 25 },
-    { major: 'คณิตศาสตร์', demandIndex: 68, risk: 'ตลาดเฉพาะทาง', nextAction: 'ทำเส้นทางอาชีพ data/math educator/actuary', target2570: 18 },
-    { major: 'ฟิสิกส์ประยุกต์', demandIndex: 62, risk: 'ต้องสร้าง awareness', nextAction: 'ชู sensor/material/energy applications', target2570: 16 },
-    { major: 'นวัตกรรมวัสดุ', demandIndex: 70, risk: 'ต้องสร้าง awareness', nextAction: 'สื่อสารวัสดุเพื่อเกษตรและสิ่งแวดล้อม', target2570: 20 },
-    { major: 'นวัตกรรมเคมีอุตสาหกรรม', demandIndex: 72, risk: 'หลักสูตรอยู่ระหว่างปรับภาพจำ', nextAction: 'ย้ำอุตสาหกรรมและสหกิจศึกษา', target2570: 21 },
+    { major: 'วิทยาการคอมพิวเตอร์', demandIndex: 94, risk: 'แข่งขันสูง', nextAction: 'เพิ่มคอนเทนต์ portfolio + AI/Data showcase', target2570: 60, sourceStatus: 'internal_file' },
+    { major: 'เทคโนโลยีสารสนเทศ', demandIndex: 88, risk: 'แข่งขันสูง', nextAction: 'ทำแคมเปญ IT career path และวิชาข้ามสาขา', target2570: 60, sourceStatus: 'internal_file' },
+    { major: 'สถิติและการจัดการสารสนเทศ', demandIndex: 84, risk: 'โอกาสเติบโต', nextAction: 'สื่อสารจุดขาย Data/BI/ประกันภัย', target2570: 25, sourceStatus: 'internal_file' },
+    { major: 'เคมี', demandIndex: 73, risk: 'ต้องเร่ง conversion', nextAction: 'ชู lab skill + อุตสาหกรรมเคมีสีเขียว', target2570: 40, sourceStatus: 'internal_file' },
+    { major: 'เทคโนโลยีชีวภาพ', demandIndex: 76, risk: 'ต้องเร่ง conversion', nextAction: 'เชื่อมงานวิจัย biotech/food/agri innovation', target2570: 50, sourceStatus: 'internal_file' },
+    { major: 'คณิตศาสตร์', demandIndex: 68, risk: 'ตลาดเฉพาะทาง', nextAction: 'ทำเส้นทางอาชีพ data/math educator/actuary', target2570: 25, sourceStatus: 'internal_file' },
+    { major: 'ฟิสิกส์ประยุกต์', demandIndex: 62, risk: 'ต้องสร้าง awareness', nextAction: 'ชู sensor/material/energy applications', target2570: 25, sourceStatus: 'internal_file' },
+    { major: 'นวัตกรรมวัสดุ', demandIndex: 70, risk: 'ต้องสร้าง awareness', nextAction: 'สื่อสารวัสดุเพื่อเกษตรและสิ่งแวดล้อม', target2570: 40, sourceStatus: 'internal_file' },
+    { major: 'นวัตกรรมเคมีอุตสาหกรรม', demandIndex: 72, risk: 'หลักสูตรอยู่ระหว่างปรับภาพจำ', nextAction: 'ย้ำอุตสาหกรรมและสหกิจศึกษา', target2570: 30, sourceStatus: 'internal_file' },
+    { major: 'วิทยาการข้อมูลและปัญญาประดิษฐ์', demandIndex: 86, risk: 'หลักสูตรใหม่ต้องเร่งรับรู้', nextAction: 'สื่อสารเส้นทางอาชีพ data/AI และผลงานจริงของผู้เรียน', target2570: 40, sourceStatus: 'internal_file' },
 ];
 
 export const tcasPlanningData = {
@@ -64,28 +79,31 @@ export const tcasPlanningData = {
     round3Plan2569: tcasRound3Plan2569,
     roundPlan2569: tcasRoundPlan2569,
     fiveYearTrend: tcasFiveYearTrend,
+    intakeTarget2570: tcasIntakeTarget2570,
     majorOutlook: tcasMajorOutlook,
     planningAssumptions: {
         tuitionPerTerm: 18500,
         termsInProgram: 8,
         targetRetentionRate2570: 0.9,
-        note: 'ตัวเลขย้อนหลังเป็น working seed เพื่อออกแบบ dashboard รอไฟล์จริงจาก Admissions/Reg',
+        note: 'รอบ 3 ปี 2569 ใช้ประกาศทางการจาก Admissions MJU 214.pdf; เป้าหมายปี 2570 ใช้ไฟล์คำนวณประมาณการปี 70_Ver5.xlsx; ข้อมูลสมัคร ผ่าน รายงานตัว คงอยู่ และลาออก/หายไปย้อนหลังยังไม่พบในไฟล์ที่แนบมา จึงรอเชื่อม Admissions/Reg API แทนการใช้เลข seed',
     },
 };
 
 export function getTcasSummary(data = tcasPlanningData) {
-    const latest = data.fiveYearTrend.at(-1);
-    const previous = data.fiveYearTrend.at(-2);
-    const officialRound3Plan = data.round3Plan2569.reduce((sum, item) => sum + item.plan, 0);
-    const retentionRate = latest?.enrolled ? latest.retained / latest.enrolled : 0;
-    const enrollmentGrowth = previous?.enrolled ? ((latest.enrolled - previous.enrolled) / previous.enrolled) * 100 : 0;
+    const latest = data.fiveYearTrend?.at?.(-1) || null;
+    const previous = data.fiveYearTrend?.at?.(-2) || null;
+    const officialRound3Plan = (data.round3Plan2569 || []).reduce((sum, item) => sum + Number(item.plan || 0), 0);
+    const intakeTarget2570Total = (data.intakeTarget2570 || []).reduce((sum, item) => sum + Number(item.target2570 || 0), 0);
+    const retentionRate = latest?.enrolled ? latest.retained / latest.enrolled : null;
+    const enrollmentGrowth = previous?.enrolled ? ((latest.enrolled - previous.enrolled) / previous.enrolled) * 100 : null;
 
     return {
         officialRound3Plan,
-        latestYear: latest?.year,
-        latestEnrolled: latest?.enrolled || 0,
-        latestRetained: latest?.retained || 0,
-        latestWithdrawn: latest?.withdrawn || 0,
+        intakeTarget2570Total,
+        latestYear: latest?.year || null,
+        latestEnrolled: latest?.enrolled ?? null,
+        latestRetained: latest?.retained ?? null,
+        latestWithdrawn: latest?.withdrawn ?? null,
         retentionRate,
         enrollmentGrowth,
     };

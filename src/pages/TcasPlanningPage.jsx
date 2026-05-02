@@ -13,7 +13,7 @@ import {
     TrendingUp,
     Users,
 } from 'lucide-react';
-import { Bar, Line } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 import {
     BarElement,
     CategoryScale,
@@ -39,14 +39,17 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend, Filler, themeAdaptorPlugin);
 
+const hasNumber = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
 const money = value => Number(value || 0).toLocaleString('th-TH', { maximumFractionDigits: 0 });
-const pct = value => `${(Number(value || 0) * 100).toFixed(1)}%`;
+const countText = value => (hasNumber(value) ? `${money(value)} คน` : 'รอข้อมูล');
+const pct = value => (hasNumber(value) ? `${(Number(value) * 100).toFixed(1)}%` : 'รอข้อมูล');
 
 function sourceLabel(status) {
     if (status === 'official_public') return 'ข้อมูลทางการ';
-    if (status === 'mixed_official_seed') return 'ทางการ+seed';
+    if (status === 'internal_file') return 'จากไฟล์อาจารย์';
+    if (status === 'waiting_for_admissions_reg') return 'รอ Admissions/Reg';
     if (status === 'waiting_for_internal_file') return 'รอไฟล์จริง';
-    return 'working seed';
+    return 'รอข้อมูลจริง';
 }
 
 export default function TcasPlanningPage() {
@@ -56,8 +59,21 @@ export default function TcasPlanningPage() {
     const [attritionRate, setAttritionRate] = useState(12);
 
     const hasAccess = canAccess(user?.role, 'tcas_admissions');
-    const data = liveTcasData || tcasPlanningData;
+    const data = liveTcasData ? {
+        ...tcasPlanningData,
+        ...liveTcasData,
+        planningAssumptions: {
+            ...tcasPlanningData.planningAssumptions,
+            ...(liveTcasData.planningAssumptions || {}),
+        },
+    } : tcasPlanningData;
     const summary = getTcasSummary(data);
+    const hasTrendData = (data.fiveYearTrend || []).some(item => (
+        hasNumber(item.enrolled) || hasNumber(item.retained) || hasNumber(item.withdrawn)
+    ));
+    const roundChartItems = (data.roundPlan2569 || []).filter(item => hasNumber(item.plan));
+    const hasRoundChartData = roundChartItems.length > 0;
+    const intakeTargetRows = data.intakeTarget2570 || [];
     const impact = calculateTcasImpact({
         intake,
         attritionRate,
@@ -105,24 +121,24 @@ export default function TcasPlanningPage() {
         }],
     };
 
-    const roundLineData = {
-        labels: data.roundPlan2569.map(item => item.round),
+    const roundPlanChartData = {
+        labels: roundChartItems.map(item => item.round),
         datasets: [
             {
                 label: 'แผนรับ',
-                data: data.roundPlan2569.map(item => item.plan),
+                data: roundChartItems.map(item => item.plan),
+                backgroundColor: 'rgba(123, 104, 238, 0.74)',
                 borderColor: '#7B68EE',
-                backgroundColor: 'rgba(123,104,238,0.16)',
-                fill: true,
-                tension: 0.35,
+                borderWidth: 1,
+                borderRadius: 6,
             },
             {
                 label: 'รายงานตัว',
-                data: data.roundPlan2569.map(item => item.enrolled),
+                data: roundChartItems.map(item => item.enrolled),
+                backgroundColor: 'rgba(0, 166, 81, 0.68)',
                 borderColor: '#00a651',
-                backgroundColor: 'rgba(0,166,81,0.12)',
-                fill: false,
-                tension: 0.35,
+                borderWidth: 1,
+                borderRadius: 6,
             },
         ],
     };
@@ -171,7 +187,7 @@ export default function TcasPlanningPage() {
             <section className="tcas-source-banner">
                 <div>
                     <span><FileSpreadsheet size={15} /> สถานะข้อมูล</span>
-                    <strong>ใช้ข้อมูลทางการที่พบได้สำหรับ TCAS รอบ 3 ปี 2569 และเตรียมช่องนำเข้าไฟล์ย้อนหลังจาก Reg/Admissions</strong>
+                    <strong>รอบ 3 ปี 2569 ใช้ประกาศทางการ และเป้าหมายปี 2570 ใช้ตัวเลขจากไฟล์คำนวณประมาณการปี 70</strong>
                     <p>{data.planningAssumptions.note}</p>
                 </div>
                 <div className="tcas-source-links">
@@ -196,21 +212,21 @@ export default function TcasPlanningPage() {
                 </article>
                 <article className="tcas-kpi-card">
                     <div><Users size={20} /></div>
-                    <strong>{summary.latestEnrolled}</strong>
-                    <span>รายงานตัวล่าสุด</span>
-                    <small>ปี {summary.latestYear} ชุดคำนวณรอไฟล์จริง</small>
+                    <strong>{countText(summary.intakeTarget2570Total)}</strong>
+                    <span>เป้าหมายรับเข้า 2570</span>
+                    <small>จากไฟล์คำนวณประมาณการปี 70_Ver5.xlsx</small>
                 </article>
                 <article className="tcas-kpi-card">
                     <div><TrendingUp size={20} /></div>
                     <strong>{pct(summary.retentionRate)}</strong>
                     <span>อัตราคงอยู่</span>
-                    <small>{summary.latestRetained}/{summary.latestEnrolled} คน</small>
+                    <small>รอข้อมูลรายงานตัว/คงอยู่จาก Admissions/Reg</small>
                 </article>
                 <article className="tcas-kpi-card">
                     <div><TrendingDown size={20} /></div>
-                    <strong>{summary.latestWithdrawn}</strong>
+                    <strong>{countText(summary.latestWithdrawn)}</strong>
                     <span>หายไป/ออกล่าสุด</span>
-                    <small>ใช้วิเคราะห์ผลกระทบรายได้</small>
+                    <small>ไม่ใช้เลข seed แทนข้อมูลจริง</small>
                 </article>
             </section>
 
@@ -223,7 +239,14 @@ export default function TcasPlanningPage() {
                         </div>
                     </div>
                     <div className="tcas-chart">
-                        <Bar data={trendChartData} options={commonOptions} />
+                        {hasTrendData ? (
+                            <Bar data={trendChartData} options={commonOptions} />
+                        ) : (
+                            <div className="tcas-empty-state">
+                                <strong>ยังไม่มีข้อมูลสมัคร/รายงานตัวย้อนหลังที่ตรวจสอบได้</strong>
+                                <span>ต้องรอ Admissions/Reg API หรือไฟล์จริงที่มีปี รอบ TCAS สมัคร ผ่าน รายงานตัว คงอยู่ และลาออก/หายไป</span>
+                            </div>
+                        )}
                     </div>
                 </article>
 
@@ -235,13 +258,20 @@ export default function TcasPlanningPage() {
                         </div>
                     </div>
                     <div className="tcas-chart tcas-chart-small">
-                        <Line data={roundLineData} options={commonOptions} />
+                        {hasRoundChartData ? (
+                            <Bar data={roundPlanChartData} options={commonOptions} />
+                        ) : (
+                            <div className="tcas-empty-state">
+                                <strong>รอข้อมูลแผนรับรายรอบ</strong>
+                                <span>ตอนนี้ยืนยันได้เฉพาะรอบ 3 Admission จากประกาศทางการ</span>
+                            </div>
+                        )}
                     </div>
                     <div className="tcas-round-list">
                         {data.roundPlan2569.map(round => (
                             <div key={round.round}>
                                 <span>{round.round}</span>
-                                <strong>{round.plan} คน</strong>
+                                <strong>{countText(round.plan)}</strong>
                                 <em>{sourceLabel(round.sourceStatus)}</em>
                             </div>
                         ))}
@@ -319,6 +349,35 @@ export default function TcasPlanningPage() {
                 </table>
             </section>
 
+            <section className="data-table-container tcas-table-section">
+                <div className="data-table-header">
+                    <span className="data-table-title">เป้าหมายรับเข้า/นิสิตใหม่ ปี 2570 จากไฟล์คำนวณ</span>
+                    <span className="status-badge normal">internal file</span>
+                </div>
+                <table className="data-table">
+                    <thead>
+                        <tr>
+                            <th>สาขา</th>
+                            <th>เป้าหมาย 2570</th>
+                            <th>ค่าธรรมเนียม/เทอม</th>
+                            <th>รายรับประมาณการ/เทอม</th>
+                            <th>แหล่งข้อมูล</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {intakeTargetRows.map(item => (
+                            <tr key={item.major}>
+                                <td><strong>{item.major}</strong></td>
+                                <td>{countText(item.target2570)}</td>
+                                <td>{money(item.tuitionPerTerm)} บาท</td>
+                                <td>{money(item.projectedRevenuePerTerm)} บาท</td>
+                                <td>{item.sourceSheet}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </section>
+
             <section className="tcas-outlook-grid">
                 {data.majorOutlook.map(item => (
                     <article key={item.major} className="tcas-outlook-card">
@@ -338,7 +397,7 @@ export default function TcasPlanningPage() {
             <section className="tcas-next-step">
                 <AlertTriangle size={18} />
                 <span>
-                    ขั้นถัดไปเมื่อนำไฟล์จากอาจารย์ผึ้งเข้ามา: map fields ปี, รอบ TCAS, สาขา, แผนรับ, สมัคร, ผ่าน, รายงานตัว, คงอยู่, ลาออก/หายไป, ค่าเทอม เพื่อให้กราฟนี้เป็นข้อมูลจริง 100%
+                    ข้อมูลที่ยังต้องขอเพิ่มเพื่อให้ TCAS ครบ 100% คือไฟล์หรือ API จาก Admissions/Reg ที่มีปี, รอบ TCAS, สาขา, สมัคร, ผ่าน, รายงานตัว, คงอยู่ และลาออก/หายไป ตอนนี้ระบบจะไม่ใช้เลข seed แทนข้อมูลจริง
                 </span>
             </section>
         </div>

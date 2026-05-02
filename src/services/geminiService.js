@@ -20,6 +20,7 @@ import {
     getSharedDashboardDatasetSync,
     getSharedDashboardFreshnessContext,
 } from './sharedDashboardDataService';
+import { buildDataAccuracyContextForAI } from './dataAccuracyService';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 if (!API_KEY) {
@@ -1140,6 +1141,7 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
     const memory = getAIUserMemory(userContext);
     const useMaejoWebMode = shouldUseWebSearch(userMessage);
     const localContexts = retrieveRelevantContexts(userMessage, userContext, settings);
+    const dataAccuracyContext = buildDataAccuracyContextForAI();
     const contexts = useMaejoWebMode
         ? [
             {
@@ -1174,6 +1176,9 @@ ROLE CONTEXT:
 
 LIVE DATA FRESHNESS:
 ${getSharedDashboardFreshnessContext()}
+
+DATA ACCURACY / SOURCE STATUS:
+${dataAccuracyContext}
 
 TOKEN SAVING RULES:
 - Maejo public web mode: ถ้าคำถามเป็นเรื่องทั่วไปของมหาวิทยาลัยแม่โจ้ เช่น ประวัติ คณะ หลักสูตร รับสมัคร TCAS ค่าเทอม ค่าธรรมเนียม ข่าว หน่วยงาน เบอร์ติดต่อ หรือสถานที่ ให้ตรวจ RETRIEVED CONTEXTS ของเว็บเราก่อน แล้วค่อยใช้ Google Search/เว็บทางการเมื่อข้อมูลไม่ครบ

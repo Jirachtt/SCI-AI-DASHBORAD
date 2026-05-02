@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Database, Upload, FileSpreadsheet, CheckCircle, AlertTriangle,
     RefreshCw, Save, X, Info
@@ -8,6 +8,7 @@ import { parseFile } from '../utils/fileParsers';
 import {
     uploadStudentList, getStudentListMeta, ensureStudentList, getStudentDataSourceStatus
 } from '../services/studentDataService';
+import { getStudentUploadQualityPreview } from '../services/dataAccuracyService';
 
 // Target schema for student rows stored in Firestore (datasets/students).
 // Order determines display order in the mapping UI.
@@ -99,6 +100,7 @@ export default function AdminDataUpload({ onToast }) {
     const [mapping, setMapping] = useState({});
     const [saving, setSaving] = useState(false);
     const [parseError, setParseError] = useState('');
+    const [acknowledgeMismatch, setAcknowledgeMismatch] = useState(false);
     const sourceStatus = getStudentDataSourceStatus();
 
     const loadMeta = async () => {
@@ -116,6 +118,7 @@ export default function AdminDataUpload({ onToast }) {
         setFileName('');
         setMapping({});
         setParseError('');
+        setAcknowledgeMismatch(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -132,6 +135,7 @@ export default function AdminDataUpload({ onToast }) {
             setParsed(result);
             setFileName(file.name);
             setMapping(autoMapHeaders(result.headers));
+            setAcknowledgeMismatch(false);
         } catch (err) {
             console.error('[AdminDataUpload] parse error:', err);
             setParseError('อ่านไฟล์ไม่สำเร็จ: ' + (err?.message || 'unknown'));
@@ -151,6 +155,16 @@ export default function AdminDataUpload({ onToast }) {
         const finalRows = Array.from(uniq.values());
         if (finalRows.length === 0) {
             onToast?.('error', 'ไม่มีข้อมูลที่ใช้ได้หลังตรวจสอบ');
+            return;
+        }
+
+        const quality = getStudentUploadQualityPreview(finalRows, {
+            originalRowCount: parsed.rowCount,
+            dedupedRowCount: finalRows.length,
+            duplicateCount: Math.max(0, parsed.rowCount - finalRows.length),
+        });
+        if (quality.difference != null && quality.difference !== 0 && !acknowledgeMismatch) {
+            onToast?.('error', 'จำนวนรายชื่อยังไม่ตรงกับยอดอ้างอิง กรุณาตรวจสอบหรือกดยืนยันก่อนบันทึก');
             return;
         }
 
@@ -178,6 +192,20 @@ export default function AdminDataUpload({ onToast }) {
     };
 
     const mappedRequired = TARGET_FIELDS.filter(f => f.required).every(f => mapping[f.key]);
+    const uploadQuality = useMemo(() => {
+        if (!parsed || !mappedRequired) return null;
+        const { rows, errors } = buildStudentRows(parsed, mapping);
+        const uniq = new Map();
+        rows.forEach(r => { if (r.id) uniq.set(r.id, r); });
+        const finalRows = Array.from(uniq.values());
+        return getStudentUploadQualityPreview(finalRows, {
+            originalRowCount: parsed.rowCount,
+            dedupedRowCount: finalRows.length,
+            duplicateCount: Math.max(0, parsed.rowCount - finalRows.length),
+            validationErrors: errors.length,
+        });
+    }, [mappedRequired, mapping, parsed]);
+    const hasUploadMismatch = Boolean(uploadQuality && uploadQuality.difference != null && uploadQuality.difference !== 0);
 
     return (
         <div className="admin-data-section">
@@ -260,7 +288,10 @@ export default function AdminDataUpload({ onToast }) {
                                 </label>
                                 <select
                                     value={mapping[field.key] || ''}
-                                    onChange={e => setMapping(m => ({ ...m, [field.key]: e.target.value }))}
+                                    onChange={e => {
+                                        setAcknowledgeMismatch(false);
+                                        setMapping(m => ({ ...m, [field.key]: e.target.value }));
+                                    }}
                                 >
                                     <option value="">— ไม่ใช้ —</option>
                                     {parsed.headers.map(h => (
@@ -295,6 +326,39 @@ export default function AdminDataUpload({ onToast }) {
                         </div>
                     </div>
 
+                    {uploadQuality && (
+                        <div className={`admin-data-quality-check ${hasUploadMismatch ? 'warning' : 'success'}`}>
+                            <div className="admin-data-quality-head">
+                                {hasUploadMismatch ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
+                                <div>
+                                    <h4>{hasUploadMismatch ? 'จำนวนรายชื่อยังไม่ตรงกับ MJU Dashboard' : 'จำนวนรายชื่อตรงกับยอดอ้างอิง'}</h4>
+                                    <p>
+                                        เทียบไฟล์นี้กับยอดอ้างอิง {uploadQuality.officialSourceLabel}
+                                        {uploadQuality.officialTotal != null ? ` (${uploadQuality.officialTotal.toLocaleString('th-TH')} คน)` : ''}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="admin-data-quality-grid">
+                                <div><span>แถวในไฟล์</span><strong>{uploadQuality.originalRowCount.toLocaleString('th-TH')}</strong></div>
+                                <div><span>หลังตัดรหัสซ้ำ</span><strong>{uploadQuality.dedupedRowCount.toLocaleString('th-TH')}</strong></div>
+                                <div><span>รหัสซ้ำ</span><strong>{uploadQuality.duplicateCount.toLocaleString('th-TH')}</strong></div>
+                                <div><span>ส่วนต่างจากอ้างอิง</span><strong className={hasUploadMismatch ? 'is-warning' : 'is-match'}>
+                                    {uploadQuality.difference == null ? '-' : `${uploadQuality.difference > 0 ? '+' : ''}${uploadQuality.difference.toLocaleString('th-TH')}`}
+                                </strong></div>
+                            </div>
+                            {hasUploadMismatch && (
+                                <label className="admin-data-confirm-row">
+                                    <input
+                                        type="checkbox"
+                                        checked={acknowledgeMismatch}
+                                        onChange={e => setAcknowledgeMismatch(e.target.checked)}
+                                    />
+                                    <span>ยืนยันบันทึกชุดนี้ชั่วคราว แม้จำนวนยังไม่ตรงกับยอดอ้างอิง</span>
+                                </label>
+                            )}
+                        </div>
+                    )}
+
                     <div className="admin-data-actions">
                         <span className="admin-data-hint">
                             {mappedRequired
@@ -304,7 +368,7 @@ export default function AdminDataUpload({ onToast }) {
                         <button
                             className="admin-data-btn primary"
                             onClick={handleSave}
-                            disabled={!mappedRequired || saving}
+                            disabled={!mappedRequired || saving || (hasUploadMismatch && !acknowledgeMismatch)}
                         >
                             {saving
                                 ? <><RefreshCw size={14} className="spin-animation" /> กำลังบันทึก...</>

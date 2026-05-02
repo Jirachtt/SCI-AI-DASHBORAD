@@ -24,6 +24,7 @@ import {
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import { ensureStudentList, getStudentListSync, isLiveData, onStudentDataChange } from '../services/studentDataService';
+import { appendStudentAnswerSourceNote, buildDataAccuracyContextForAI } from '../services/dataAccuracyService';
 import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
 import { exportChartAsCSV } from '../utils/exportUtils';
 
@@ -688,6 +689,14 @@ function ensureStudentCountGradeChart(chart, sourceQuestion = '') {
     return chart;
 }
 
+function withStudentSourceNote(result) {
+    if (!result?.text) return result;
+    return {
+        ...result,
+        text: appendStudentAnswerSourceNote(result.text),
+    };
+}
+
 // ==================== Smart Student Search ====================
 function searchStudents(query) {
     const ALL_STUDENTS = getAllStudents();
@@ -805,19 +814,19 @@ export function tryLocalResponse(question) {
     // to remember both metrics when building the chart JSON.
     if (wantsStudentCountGradeChart(question)) {
         const result = buildStudentCountGpaChartResponse(question);
-        if (result) return result;
+        if (result) return withStudentSourceNote(result);
     }
 
     // 3. Deterministic aggregate chart for Faculty of Science student counts by major.
     if (wantsStudentMajorCountChart(question)) {
         const result = buildStudentMajorCountChartResponse(question);
-        if (result) return result;
+        if (result) return withStudentSourceNote(result);
     }
 
     // 4. Deterministic aggregate chart for student counts by class year.
     if (wantsStudentClassYearChart(question)) {
         const result = buildStudentClassYearChartResponse(question);
-        if (result) return result;
+        if (result) return withStudentSourceNote(result);
     }
 
     // 5. Student search — only for specific structured lookups (ID, name, GPA filter)
@@ -833,7 +842,7 @@ export function tryLocalResponse(question) {
 
     if (isStudentLookup) {
         const studentResult = searchStudents(q);
-        if (studentResult) return studentResult;
+        if (studentResult) return withStudentSourceNote(studentResult);
     }
 
     return null; // Let AI handle everything else
@@ -849,7 +858,8 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
         ...buildLiveDashboardMergeSummary(),
     };
 
-    let context = '';
+    const dataAccuracyContext = buildDataAccuracyContextForAI();
+    let context = dataAccuracyContext ? `[DATA ACCURACY / SOURCE STATUS]\n${dataAccuracyContext}\n\n` : '';
     if (isStudentQ && allStudents.length > 0) {
         const byMajor = {};
         const byYear = {};
