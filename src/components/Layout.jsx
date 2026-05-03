@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Menu, Sun, Moon } from 'lucide-react';
 import { ensureStudentList } from '../services/studentDataService';
 import { ensureDashboardLiveData, startDashboardAutoSync } from '../services/dashboardLiveDataService';
+import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 
 export default function Layout() {
     const { theme, toggleTheme } = useTheme();
@@ -62,8 +63,8 @@ export default function Layout() {
                             <Menu size={24} />
                         </button>
                         <div className="header-title">
-                            <h1>Science AI Dashboard</h1>
-                            <p>คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                            <h1>{APP_NAME_TH}</h1>
+                            <p>{APP_NAME_EN}</p>
                         </div>
                     </div>
                     <div className="header-right">

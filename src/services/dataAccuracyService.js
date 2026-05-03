@@ -13,6 +13,7 @@ import {
     isLiveData,
     onStudentDataChange,
 } from './studentDataService';
+import { APP_NAME_EN } from '../config/appBrand';
 
 const SCIENCE_FACULTY_MATCH = 'วิทยาศาสตร์';
 
@@ -465,7 +466,7 @@ export function buildDataAccuracyReportRows(snapshot = getDataAccuracySnapshot()
         {
             section: 'summary',
             item: 'accuracy_score',
-            source: 'SCI-AI-DASHBOARD',
+            source: APP_NAME_EN,
             value: snapshot.score,
             status: `${snapshot.liveCount}/${snapshot.totalDatasets} live datasets`,
             updatedAt: formatDateTime(snapshot.generatedAt),

@@ -27,6 +27,7 @@ import { ensureStudentList, getStudentListSync, isLiveData, onStudentDataChange 
 import { appendStudentAnswerSourceNote, buildDataAccuracyContextForAI } from '../services/dataAccuracyService';
 import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
 import { exportChartAsCSV } from '../utils/exportUtils';
+import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -2225,7 +2226,7 @@ export default function AIChatPage() {
     const [messages, setMessages] = useState([
         {
             role: 'bot',
-            text: 'สวัสดีครับ ผม **MJU AI Assistant** (Powered by Gemini)\n\nพร้อมช่วยตอบ **ทุกเรื่องเกี่ยวกับมหาวิทยาลัยแม่โจ้** ถามมาได้เลยครับ\n\n**ฟีเจอร์ทั้งหมด:**\n• ถาม-ตอบทุกเรื่องแม่โจ้ (ประวัติ, คณะ, หลักสูตร, รับสมัคร, สถานที่, วิจัย)\n• สร้างกราฟจำนวนนักศึกษา, เกรด, งบประมาณ และพยากรณ์\n• ค้นหานักศึกษาตามรหัส, ชื่อ, สาขา, GPA\n• สั่งงานด้วยเสียง\n• **อัปโหลดไฟล์ CSV / Excel (.xlsx)** เพื่อวิเคราะห์และสร้างกราฟ\n\nเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ',
+            text: `สวัสดีครับ ผม **${AI_ASSISTANT_NAME}** (Powered by Gemini)\n\nผู้ช่วยของ **${APP_NAME_TH}** พร้อมช่วยตอบคำถามและวิเคราะห์ข้อมูลของคณะวิทยาศาสตร์ครับ\n\n**ฟีเจอร์ทั้งหมด:**\n• ถาม-ตอบทุกเรื่องแม่โจ้ (ประวัติ, คณะ, หลักสูตร, รับสมัคร, สถานที่, วิจัย)\n• สร้างกราฟจำนวนนักศึกษา, เกรด, งบประมาณ และพยากรณ์\n• ค้นหานักศึกษาตามรหัส, ชื่อ, สาขา, GPA\n• สั่งงานด้วยเสียง\n• **อัปโหลดไฟล์ CSV / Excel (.xlsx)** เพื่อวิเคราะห์และสร้างกราฟ\n\nเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ`,
             chart: null
         }
     ]);
@@ -2724,8 +2725,8 @@ export default function AIChatPage() {
                         <Sparkles size={22} />
                     </div>
                     <div>
-                        <h1>MJU AI Assistant</h1>
-                        <p>Powered by Gemini — ระบบ AI อัจฉริยะสำหรับคณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
+                        <h1>{AI_ASSISTANT_NAME}</h1>
+                        <p>Powered by Gemini — {APP_NAME_TH} / {APP_NAME_EN}</p>
                     </div>
                 </div>
                 <div className="ai-chat-page-header-actions">

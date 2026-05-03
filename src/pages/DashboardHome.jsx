@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
 import useDashboardDataset from '../hooks/useDashboardDataset';
+import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 
 const topics = [
     {
@@ -233,13 +234,16 @@ export default function DashboardHome() {
                         สวัสดี, {user?.name}
                     </h2>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', letterSpacing: 0 }}>
-                        ยินดีต้อนรับสู่ Science AI Dashboard — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้
+                        ยินดีต้อนรับสู่ {APP_NAME_TH}
+                    </p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', letterSpacing: 0, marginTop: 4 }}>
+                        {APP_NAME_EN}
                     </p>
                 </div>
 
                 {/* Action buttons */}
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <ExportPDFButton title="ภาพรวม Science AI Dashboard" label="PDF" />
+                <ExportPDFButton title={`ภาพรวม ${APP_NAME_TH}`} label="PDF" />
                 <button
                     onClick={() => setShowForecast(!showForecast)}
                     style={{

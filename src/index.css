@@ -2726,15 +2726,17 @@ html {
 }
 
 .login-logo h1 {
-  font-size: 1.5rem;
+  font-size: clamp(1rem, 2vw, 1.35rem);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 4px;
+  line-height: 1.35;
 }
 
 .login-logo p {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
+  line-height: 1.45;
 }
 
 .login-form .form-group {
@@ -3272,7 +3274,7 @@ html {
 }
 
 .sidebar-title h2 {
-  font-size: 0.96rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
@@ -3902,8 +3904,9 @@ html {
 }
 
 .main-header {
-  height: var(--header-height);
-  padding: 0 32px;
+  min-height: var(--header-height);
+  height: auto;
+  padding: 10px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3921,6 +3924,12 @@ html {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
+}
+
+.header-title {
+  min-width: 0;
+  max-width: min(980px, calc(100vw - 180px));
 }
 
 .menu-toggle {
@@ -3933,19 +3942,21 @@ html {
 }
 
 .header-title h1 {
-  font-size: 1.2rem;
+  font-size: clamp(0.9rem, 1.1vw, 1.05rem);
   font-weight: 700;
   background: linear-gradient(135deg, #fff 30%, var(--mju-green-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   letter-spacing: 0;
+  line-height: 1.25;
 }
 
 .header-title p {
-  font-size: var(--type-caption);
+  font-size: 0.72rem;
   color: var(--text-muted);
   letter-spacing: 0;
+  line-height: 1.25;
 }
 
 .header-right {

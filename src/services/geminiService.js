@@ -21,6 +21,7 @@ import {
     getSharedDashboardFreshnessContext,
 } from './sharedDashboardDataService';
 import { buildDataAccuracyContextForAI } from './dataAccuracyService';
+import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 if (!API_KEY) {
@@ -531,7 +532,7 @@ function buildBaseInstruction() {
 
     const dataTimestamp = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    return `You are "MJU Science AI Assistant", an intelligent AI built exclusively for the executive team of the Faculty of Science, Maejo University (MJU).
+    return `You are "${AI_ASSISTANT_NAME}", an intelligent AI assistant for "${APP_NAME_EN}" (${APP_NAME_TH}).
 
 ═══════════════════════════════════════════
  SECTION 1 — ROLE & ACCESS
@@ -1110,7 +1111,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
 function maejoLocalFirstContext(userMessage, localContexts = []) {
     const privateLookup = isStudentPrivateLookupQuery(userMessage);
     const localContextIds = localContexts.map(c => c.id).join(', ') || 'dashboard';
-    return `หลักการตอบแบบ local-first ของ SCI AI Dashboard:
+    return `หลักการตอบแบบ local-first ของ ${APP_NAME_TH}:
 - ใช้ข้อมูลในเว็บ/ระบบนี้ก่อนเสมอ โดย context ที่ดึงได้ตอนนี้คือ: ${localContextIds}
 - ถ้าข้อมูลในเว็บเราเป็น aggregate เช่น จำนวนนักศึกษาตามสาขา/ชั้นปี ให้ใช้ตอบหรือคำนวณก่อน
 - ถ้าถาม TCAS/การรับสมัคร/จำนวนรับเข้าแต่ละรอบ/ค่าเทอม/กำหนดการ/ประกาศล่าสุด และใน context ไม่มีตัวเลขหรือไม่มีรายละเอียดรายรอบ ให้ใช้ Google Search grounding ต่อจากแหล่งทางการ
@@ -1166,7 +1167,7 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
         ? 'ตอบภาษาไทย กระชับ ใช้ข้อมูลในเว็บ/ระบบนี้ก่อน หากข้อมูลไม่ครบให้ใช้ Google Search จากเว็บทางการหรือแหล่งน่าเชื่อถือเป็น fallback พร้อมบอกแหล่งที่มา และไม่ต้องสร้างกราฟถ้าผู้ใช้ไม่ได้ขอ'
         : 'ตอบภาษาไทย กระชับ อ้างอิงเฉพาะข้อมูลใน RETRIEVED CONTEXTS และห้ามเดาตัวเลข';
 
-    return `You are MJU Science AI Assistant for SCI-AI-DASHBOARD.
+    return `You are ${AI_ASSISTANT_NAME} for ${APP_NAME_EN} (${APP_NAME_TH}).
 ${answerScopeRule}
 
 ROLE CONTEXT:

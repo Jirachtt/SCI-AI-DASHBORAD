@@ -6,6 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { ensureStudentList, onStudentDataChange } from '../services/studentDataService';
 import { getAIModelSettings, getAITokenStats, getWaitSeconds, resetConversation, sendMessageToGemini } from '../services/geminiService';
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
+import { AI_ASSISTANT_NAME, APP_NAME_TH } from '../config/appBrand';
 
 let aiChatPageModulePromise = null;
 
@@ -33,7 +34,7 @@ function FallbackChatMessage({ msg }) {
 
 const INITIAL_MESSAGE = {
     role: 'bot',
-    text: 'สวัสดีครับ ผม **MJU AI Assistant** (Powered by Gemini)\n\nพร้อมช่วยตอบ **ทุกเรื่องเกี่ยวกับมหาวิทยาลัยแม่โจ้** ถามมาได้เลยครับ\n\n**ฟีเจอร์เหมือนหน้า AI หลัก:**\n- ถาม-ตอบเรื่องแม่โจ้และข้อมูลในเว็บแบบ realtime\n- สร้างกราฟและพยากรณ์จากข้อมูลจริงในระบบ\n- ค้นหานักศึกษาตามรหัส ชื่อ สาขา GPA\n- อัปโหลด CSV/Excel เพื่อวิเคราะห์และสร้างกราฟ\n- สั่งงานด้วยเสียง และขยาย/Export กราฟได้',
+    text: `สวัสดีครับ ผม **${AI_ASSISTANT_NAME}** (Powered by Gemini)\n\nผู้ช่วยของ **${APP_NAME_TH}** พร้อมตอบคำถามและวิเคราะห์ข้อมูลของคณะวิทยาศาสตร์ครับ\n\n**ฟีเจอร์เหมือนหน้า AI หลัก:**\n- ถาม-ตอบเรื่องแม่โจ้และข้อมูลในเว็บแบบ realtime\n- สร้างกราฟและพยากรณ์จากข้อมูลจริงในระบบ\n- ค้นหานักศึกษาตามรหัส ชื่อ สาขา GPA\n- อัปโหลด CSV/Excel เพื่อวิเคราะห์และสร้างกราฟ\n- สั่งงานด้วยเสียง และขยาย/Export กราฟได้`,
     chart: null,
 };
 
@@ -424,8 +425,8 @@ export default function AIChat() {
                             <div className="ai-chat-header-left">
                                 <div className="ai-chat-header-avatar"><Bot size={20} /></div>
                                 <div>
-                                    <h3>MJU AI Assistant</h3>
-                                    <p>Powered by Gemini</p>
+                                    <h3>{AI_ASSISTANT_NAME}</h3>
+                                    <p>{APP_NAME_TH}</p>
                                 </div>
                             </div>
                             <div className="ai-chat-popup-header-actions">

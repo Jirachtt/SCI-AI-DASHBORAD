@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { canAccess, getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
 import { getAIRateLimitSnapshot, getAITokenStats } from '../services/geminiService';
+import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
 import {
     Home, CreditCard, DollarSign, LogOut, Lock, FileText,
     GraduationCap, CheckCircle, BarChart3,
@@ -116,9 +117,9 @@ export default function Sidebar({ isOpen, onClose }) {
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
             <div className="sidebar-header">
                 <div className="sidebar-logo">SCI</div>
-                <div className="sidebar-title">
-                    <h2>Science AI Dashboard</h2>
-                    <p>คณะวิทยาศาสตร์ มจ.</p>
+                <div className="sidebar-title" title={APP_NAME_FULL}>
+                    <h2>{APP_NAME_SHORT_TH}</h2>
+                    <p>{APP_NAME_SHORT_EN}</p>
                 </div>
             </div>
 

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Lock, Mail, ShieldCheck, X, Sun, Moon, Landmark } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 
 export default function LoginPage() {
     const { user, loginWithEmail, loginWithGoogle, loginWithMjuSso, loginWithAdminCode } = useAuth();
@@ -88,8 +89,8 @@ export default function LoginPage() {
                 <div className="login-card">
                     <div className="login-logo">
                         <div className="mju-badge">MJU</div>
-                        <h1>MJU Dashboard</h1>
-                        <p>ระบบสารสนเทศมหาวิทยาลัยแม่โจ้</p>
+                        <h1>{APP_NAME_TH}</h1>
+                        <p>{APP_NAME_EN}</p>
                     </div>
 
                     {error && <div className="login-error">{error}</div>}

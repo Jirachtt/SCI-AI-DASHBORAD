@@ -5,9 +5,10 @@
 import { useState } from 'react';
 import { FileDown, Printer, TableProperties } from 'lucide-react';
 import { exportPageAsCSV } from '../utils/exportUtils';
+import { APP_NAME_TH } from '../config/appBrand';
 
 export default function ExportPDFButton({
-    title = 'รายงาน Science AI Dashboard',
+    title = `รายงาน ${APP_NAME_TH}`,
     label = 'PDF',
     variant = 'default',        // 'default' | 'ghost'
     includeDataExports = true,
