@@ -266,7 +266,7 @@ export default function Sidebar({ isOpen, onClose }) {
                         </div>
 
                         <div className="settings-popover-section">
-                            <div className="settings-token-card" aria-label="AI token คงเหลือ">
+                            <div className="settings-token-card" aria-label={`AI token คงเหลือ ${tokenBudget.remainingPercent}%`}>
                                 <div className="settings-token-head">
                                     <span className="settings-menu-icon"><Activity size={15} /></span>
                                     <span className="settings-menu-main">
@@ -274,7 +274,10 @@ export default function Sidebar({ isOpen, onClose }) {
                                         <small>สำหรับการตอบคำถามของเว็บ</small>
                                     </span>
                                 </div>
-                                <strong>{tokenBudget.remainingTokens.toLocaleString()}</strong>
+                                <div className="settings-token-value-row">
+                                    <strong>{tokenBudget.remainingTokens.toLocaleString()}</strong>
+                                    <span>{tokenBudget.remainingPercent}%</span>
+                                </div>
                                 <div className="settings-rate-bar settings-token-bar" aria-hidden="true">
                                     <span style={{ width: `${tokenBudget.remainingPercent}%` }} />
                                 </div>

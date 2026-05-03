@@ -3875,11 +3875,28 @@ html {
   gap: 10px;
 }
 
-.settings-token-card>strong {
-  display: block;
+.settings-token-value-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
   margin: 10px 0 6px;
+}
+
+.settings-token-value-row strong {
   color: var(--text-primary);
   font-size: 1.42rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.settings-token-value-row span {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(0, 166, 81, 0.14);
+  color: var(--mju-green-light);
+  font-size: 0.78rem;
   font-weight: 850;
   line-height: 1;
 }
