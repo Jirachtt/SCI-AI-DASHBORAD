@@ -7,6 +7,7 @@ import { ensureStudentList, onStudentDataChange } from '../services/studentDataS
 import { getAIModelSettings, getAITokenStats, getWaitSeconds, resetConversation, sendMessageToGemini } from '../services/geminiService';
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { AI_ASSISTANT_NAME, APP_NAME_TH } from '../config/appBrand';
+import { tryInstantAnswer } from '../services/aiInstantAnswerService';
 
 let aiChatPageModulePromise = null;
 
@@ -209,6 +210,12 @@ export default function AIChat() {
     };
 
     const runQuestion = async (question) => {
+        const instantResult = tryInstantAnswer(question);
+        if (instantResult) {
+            setMessages(prev => [...prev, { role: 'bot', text: instantResult.text, chart: instantResult.chart }]);
+            return;
+        }
+
         const tools = await ensureAiModule();
         const localResult = tools.tryLocalResponse(question);
         if (localResult) {

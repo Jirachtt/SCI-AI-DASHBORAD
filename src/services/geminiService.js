@@ -95,6 +95,11 @@ const MODEL_RATE_LIMITS = {
     'gemini-flash-latest': 15,
 };
 
+const AI_RESPONSE_CACHE_TTL_MS = 5 * 60 * 1000;
+const AI_WEB_RESPONSE_CACHE_TTL_MS = 60 * 1000;
+const AI_RESPONSE_CACHE_MAX_ENTRIES = 40;
+const aiResponseCache = new Map();
+
 function readStorage(key, fallback) {
     try {
         const raw = localStorage.getItem(key);
@@ -248,6 +253,78 @@ function recordTokenStats({ model, intent, inputText, outputText, contextCount }
             at: new Date().toISOString(),
         },
     });
+}
+
+function partText(part) {
+    return String(part?.text || '');
+}
+
+function normalizeCacheText(value) {
+    return String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 12000);
+}
+
+function currentConversationCacheScope() {
+    return conversationHistory
+        .slice(-4)
+        .map(item => `${item.role}:${(item.parts || []).map(partText).join(' ').slice(0, 220)}`)
+        .join('|');
+}
+
+function shouldScopeCacheToHistory(question) {
+    const q = String(question || '').toLowerCase();
+    return /อันนี้|เรื่องนี้|ก่อนหน้า|เมื่อกี้|ด้านบน|ต่อจาก|แล้วถ้า|แล้วกรณี|แล้วแบบ/.test(q);
+}
+
+function buildAIResponseCacheKey({ finalMessage, originalQuestion, userContext, settings, useSearch }) {
+    const settingScope = {
+        modelMode: settings.modelMode,
+        contextMode: settings.contextMode,
+        maxContexts: settings.maxContexts,
+        allowWebSearch: Boolean(settings.allowWebSearch),
+        theme: settings.theme || 'light',
+    };
+    return JSON.stringify({
+        q: normalizeCacheText(finalMessage || originalQuestion),
+        role: userContext?.role || 'general',
+        uid: userContext?.uid || userContext?.email || 'anonymous',
+        useSearch: Boolean(useSearch),
+        settings: settingScope,
+        rows: getStudentListSync().length,
+        freshness: getSharedDashboardFreshnessContext(),
+        history: shouldScopeCacheToHistory(originalQuestion) ? currentConversationCacheScope() : '',
+    });
+}
+
+function readAIResponseCache(cacheKey, useSearch) {
+    const entry = aiResponseCache.get(cacheKey);
+    if (!entry) return null;
+    const ttl = useSearch ? AI_WEB_RESPONSE_CACHE_TTL_MS : AI_RESPONSE_CACHE_TTL_MS;
+    if (Date.now() - entry.at > ttl) {
+        aiResponseCache.delete(cacheKey);
+        return null;
+    }
+    return entry.text;
+}
+
+function writeAIResponseCache(cacheKey, text, useSearch) {
+    if (!cacheKey || !text) return;
+    aiResponseCache.set(cacheKey, { text, at: Date.now(), useSearch: Boolean(useSearch) });
+    while (aiResponseCache.size > AI_RESPONSE_CACHE_MAX_ENTRIES) {
+        const oldestKey = aiResponseCache.keys().next().value;
+        aiResponseCache.delete(oldestKey);
+    }
+}
+
+function resolveMaxOutputTokens(settings, intent, isChartRequest, useSearch) {
+    const requested = Number(settings.maxOutputTokens) || DEFAULT_AI_SETTINGS.maxOutputTokens;
+    if (isChartRequest) return Math.min(requested, 4096);
+    if (useSearch) return Math.min(requested, 2048);
+    if (intent === 'lookup' || intent === 'general') return Math.min(requested, 1536);
+    if (intent === 'analysis') return Math.min(requested, 3072);
+    return Math.min(requested, DEFAULT_AI_SETTINGS.maxOutputTokens);
 }
 
 function memoryKey(userContext = {}) {
@@ -1261,6 +1338,30 @@ async function _sendMessageImpl(userMessage, options = {}) {
 6. ต้องแนบ \`\`\`json_chart\`\`\` block เสมอถ้ามีข้อมูล]`;
     }
 
+    const useSearch = settings.allowWebSearch && shouldUseWebSearch(originalQuestion);
+    const responseCacheKey = buildAIResponseCacheKey({
+        finalMessage,
+        originalQuestion,
+        userContext: options.user || {},
+        settings,
+        useSearch,
+    });
+    const cachedResponse = options.disableCache ? null : readAIResponseCache(responseCacheKey, useSearch);
+    if (cachedResponse) {
+        conversationHistory.push({
+            role: 'user',
+            parts: [{ text: finalMessage }]
+        });
+        conversationHistory.push({
+            role: 'model',
+            parts: [{ text: cachedResponse }]
+        });
+        if (conversationHistory.length > 16) {
+            conversationHistory = conversationHistory.slice(-16);
+        }
+        return cachedResponse;
+    }
+
     // Add user message to history
     conversationHistory.push({
         role: 'user',
@@ -1277,8 +1378,6 @@ async function _sendMessageImpl(userMessage, options = {}) {
     const baseInstruction = buildAgenticRagInstruction(originalQuestion, options.user || {}, settings);
     const systemText = baseInstruction;
 
-    // Check if this query should use Google Search for real-time Maejo data
-    const useSearch = settings.allowWebSearch && shouldUseWebSearch(originalQuestion);
     const retrievedContextCount = retrieveRelevantContexts(originalQuestion, options.user || {}, settings).length + (useSearch ? 2 : 0);
 
     const baseRequestBody = {
@@ -1290,7 +1389,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
             temperature: settings.temperature,
             topP: 0.85,
             topK: 40,
-            maxOutputTokens: settings.maxOutputTokens,
+            maxOutputTokens: resolveMaxOutputTokens(settings, intent, isChartRequest, useSearch),
         },
         safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -1377,6 +1476,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 conversationHistory = conversationHistory.slice(-16);
             }
 
+            writeAIResponseCache(responseCacheKey, aiText, useSearch);
             return aiText;
 
         } catch (error) {

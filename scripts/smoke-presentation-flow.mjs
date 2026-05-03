@@ -15,6 +15,8 @@ function expect(name, condition, detail = '') {
 }
 
 const aiChat = read('src/components/AIChat.jsx');
+const aiChatPage = read('src/pages/AIChatPage.jsx');
+const instantAnswerService = read('src/services/aiInstantAnswerService.js');
 const dataAccuracy = read('src/services/dataAccuracyService.js');
 const autoSyncPanel = read('src/components/AdminAutoSyncPanel.jsx');
 const uploadPanel = read('src/components/AdminDataUpload.jsx');
@@ -34,6 +36,16 @@ expect(
   'Floating AI chat has fallback UI when AI chunk fails',
   /FallbackChatMessage/.test(aiChat) && /aiModuleError/.test(aiChat),
   'Keeps the popup usable instead of taking down the page.'
+);
+
+expect(
+  'Instant AI answers are shared by main and floating chat',
+  /tryInstantAnswer/.test(instantAnswerService)
+    && /aiInstantAnswerService/.test(aiChatPage)
+    && /aiInstantAnswerService/.test(aiChat)
+    && /buildStudentSummaryAnswer/.test(instantAnswerService)
+    && /buildTcasAnswer/.test(instantAnswerService),
+  'Fast local answers must be committed with both chat entry points so deploys do not reference a missing module.'
 );
 
 expect(
