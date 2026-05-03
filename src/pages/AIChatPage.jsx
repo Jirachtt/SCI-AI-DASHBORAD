@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, Settings, Gauge, TableProperties } from 'lucide-react';
+import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, TableProperties } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import {
@@ -18,8 +18,7 @@ import zoomPlugin from 'chartjs-plugin-zoom';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import {
     sendMessageToGemini, resetConversation, getWaitSeconds,
-    getAIModelSettings, saveAIModelSettings, getAITokenStats,
-    resetAITokenStats, getAIModelCatalog, getAIUserMemory,
+    getAIModelSettings,
 } from '../services/geminiService';
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { SCIENCE_MAJORS } from '../data/studentListData';
@@ -28,6 +27,7 @@ import { appendStudentAnswerSourceNote, buildDataAccuracyContextForAI } from '..
 import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
 import { exportChartAsCSV } from '../utils/exportUtils';
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
+import { tryInstantAnswer } from '../services/aiInstantAnswerService';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -801,6 +801,9 @@ function searchStudents(query) {
 // Everything else → Gemini AI (smarter, context-aware answers)
 export function tryLocalResponse(question) {
     const q = question.toLowerCase();
+
+    const instantResult = tryInstantAnswer(question);
+    if (instantResult) return instantResult;
 
     // 1. Explicit forecast requests ONLY when forecast keyword + known data topic
     const forecastParsed = parseForecastRequest(question);
@@ -2204,9 +2207,6 @@ export default function AIChatPage() {
     const { theme } = useTheme();
     const [expandedChart, setExpandedChart] = useState(null);
     const [isListening, setIsListening] = useState(false);
-    const [settingsOpen, setSettingsOpen] = useState(false);
-    const [aiSettings, setAiSettings] = useState(() => getAIModelSettings());
-    const [tokenStats, setTokenStats] = useState(() => getAITokenStats());
     const recognitionRef = useRef(null);
     const fileInputRef = useRef(null);
     const [uploadedFileData, setUploadedFileData] = useState(null);
@@ -2233,21 +2233,9 @@ export default function AIChatPage() {
     const [input, setInput] = useState('');
     const [typing, setTyping] = useState(false);
     const messagesEnd = useRef(null);
-    const modelCatalog = getAIModelCatalog();
-    const userMemory = getAIUserMemory(user || {});
-
-    const updateAISetting = (key, value) => {
-        const next = saveAIModelSettings({ ...aiSettings, [key]: value });
-        setAiSettings(next);
-    };
-
-    const refreshTokenStats = () => setTokenStats(getAITokenStats());
-
     const sendAI = useCallback(async (prompt) => {
-        const text = await sendMessageToGemini(prompt, { user, theme, aiSettings });
-        setTokenStats(getAITokenStats());
-        return text;
-    }, [user, theme, aiSettings]);
+        return sendMessageToGemini(prompt, { user, theme, aiSettings: getAIModelSettings() });
+    }, [user, theme]);
 
     // ── Ensure the live student dataset is loaded before the user can chat ──
     // Layout already calls this on mount, but if the user lands directly on
@@ -2682,7 +2670,7 @@ export default function AIChatPage() {
                 setTyping(false);
                 return;
             }
-            const aiText = await sendAI(query);
+            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary));
             const parsedAI = parseAIResponse(aiText, query);
             setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
         } catch (error) {
@@ -2694,7 +2682,7 @@ export default function AIChatPage() {
                 setMessages(prev => [...prev, {
                     role: 'bot', text: '**API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
                 }]);
-                await retryWithCountdown(() => query, retryId, query);
+                await retryWithCountdown(() => buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary), retryId, query);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -2730,13 +2718,6 @@ export default function AIChatPage() {
                     </div>
                 </div>
                 <div className="ai-chat-page-header-actions">
-                    <button
-                        className="ai-chat-page-history-btn"
-                        onClick={() => setSettingsOpen(true)}
-                        aria-label="ตั้งค่าโมเดลและดู token"
-                    >
-                        <Settings size={15} /> ตั้งค่า AI
-                    </button>
                     {canPersist && (
                         <button
                             className="ai-chat-page-history-btn"
@@ -2816,119 +2797,6 @@ export default function AIChatPage() {
                                     })}
                                 </ul>
                             )}
-                        </div>
-                    </aside>
-                </div>
-            )}
-
-            {settingsOpen && (
-                <div className="chat-history-overlay" onClick={() => setSettingsOpen(false)}>
-                    <aside className="chat-history-drawer ai-settings-drawer" onClick={(e) => e.stopPropagation()}>
-                        <div className="chat-history-header">
-                            <div className="chat-history-title">
-                                <Settings size={18} />
-                                <span>AI Model & Token Settings</span>
-                            </div>
-                            <button
-                                className="chat-history-close"
-                                onClick={() => setSettingsOpen(false)}
-                                aria-label="ปิด"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <div className="ai-settings-body">
-                            <div className="ai-settings-metric-grid">
-                                <div className="ai-settings-metric">
-                                    <Gauge size={16} />
-                                    <span>Requests</span>
-                                    <strong>{tokenStats.requests || 0}</strong>
-                                </div>
-                                <div className="ai-settings-metric">
-                                    <TableProperties size={16} />
-                                    <span>Input tokens</span>
-                                    <strong>{Number(tokenStats.estimatedInputTokens || 0).toLocaleString()}</strong>
-                                </div>
-                                <div className="ai-settings-metric">
-                                    <FileSpreadsheet size={16} />
-                                    <span>Output tokens</span>
-                                    <strong>{Number(tokenStats.estimatedOutputTokens || 0).toLocaleString()}</strong>
-                                </div>
-                            </div>
-
-                            <label className="ai-settings-field">
-                                <span>Model routing</span>
-                                <select value={aiSettings.modelMode} onChange={e => updateAISetting('modelMode', e.target.value)}>
-                                    <option value="auto">Auto: เลือกตามความยากของคำถาม</option>
-                                    {modelCatalog.map(model => (
-                                        <option key={model.id} value={model.id}>
-                                            {model.label} ({model.tier})
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-
-                            <label className="ai-settings-field">
-                                <span>Context mode</span>
-                                <select value={aiSettings.contextMode} onChange={e => updateAISetting('contextMode', e.target.value)}>
-                                    <option value="agentic_rag">Agentic RAG: อ่านเฉพาะข้อมูลที่เกี่ยวข้อง</option>
-                                    <option value="full">Full context: ใช้ prompt เดิมแบบเต็ม</option>
-                                </select>
-                            </label>
-
-                            <label className="ai-settings-field">
-                                <span>Max output tokens: {aiSettings.maxOutputTokens}</span>
-                                <input
-                                    type="range"
-                                    min="512"
-                                    max="8192"
-                                    step="256"
-                                    value={aiSettings.maxOutputTokens}
-                                    onChange={e => updateAISetting('maxOutputTokens', Number(e.target.value))}
-                                />
-                            </label>
-
-                            <label className="ai-settings-field">
-                                <span>Temperature: {Number(aiSettings.temperature).toFixed(2)}</span>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="1"
-                                    step="0.05"
-                                    value={aiSettings.temperature}
-                                    onChange={e => updateAISetting('temperature', Number(e.target.value))}
-                                />
-                            </label>
-
-                            <label className="ai-settings-toggle">
-                                <input
-                                    type="checkbox"
-                                    checked={Boolean(aiSettings.allowWebSearch)}
-                                    onChange={e => updateAISetting('allowWebSearch', e.target.checked)}
-                                />
-                                <span>อนุญาต Google Search เฉพาะคำถามข้อมูลเว็บที่จำเป็น</span>
-                            </label>
-
-                            <div className="ai-settings-note">
-                                <strong>Memory ตาม role:</strong> {user?.roleLabel || user?.role || 'ไม่ระบุ'} · รูปแบบที่ชอบ: {userMemory.preferredFormat} · รายละเอียด: {userMemory.detailLevel}
-                            </div>
-
-                            <div className="ai-settings-model-list">
-                                {modelCatalog.map(model => (
-                                    <div key={model.id} className="ai-settings-model-row">
-                                        <span>{model.label}</span>
-                                        <small>{model.bestFor}{model.searchCapable ? ' · Search' : ''}</small>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <button
-                                className="admin-refresh-btn"
-                                onClick={() => { resetAITokenStats(); refreshTokenStats(); }}
-                            >
-                                <RotateCw size={14} /> Reset token stats
-                            </button>
                         </div>
                     </aside>
                 </div>

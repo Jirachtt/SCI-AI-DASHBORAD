@@ -4,13 +4,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { canAccess, getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
-import { getAIRateLimitSnapshot, getAITokenStats } from '../services/geminiService';
+import { getAITokenBudgetSnapshot } from '../services/geminiService';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
 import {
     Home, CreditCard, DollarSign, LogOut, Lock, FileText,
     GraduationCap, CheckCircle, BarChart3,
     Microscope, Target, UserCheck, BookOpen, Award,
-    Shield, UserCog, Clock, Bell, Bot, Settings, Gauge, ChevronDown,
+    Shield, UserCog, Clock, Bell, Bot, Settings,
     ChevronRight, UserRound, Palette, Activity, ScrollText, CalendarDays,
     ClipboardList
 } from 'lucide-react';
@@ -89,9 +89,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const [settingsOpen, setSettingsOpen] = useState(false);
-    const [rateLimitsOpen, setRateLimitsOpen] = useState(false);
-    const [rateLimitSnapshot, setRateLimitSnapshot] = useState(() => getAIRateLimitSnapshot());
-    const [tokenStats, setTokenStats] = useState(() => getAITokenStats());
+    const [tokenBudget, setTokenBudget] = useState(() => getAITokenBudgetSnapshot());
 
     const handleLogout = () => {
         setSettingsOpen(false);
@@ -101,17 +99,13 @@ export default function Sidebar({ isOpen, onClose }) {
 
     useEffect(() => {
         if (!settingsOpen) return undefined;
-        const refresh = () => {
-            setRateLimitSnapshot(getAIRateLimitSnapshot());
-            setTokenStats(getAITokenStats());
-        };
+        const refresh = () => setTokenBudget(getAITokenBudgetSnapshot());
         refresh();
         const interval = setInterval(refresh, 5000);
         return () => clearInterval(interval);
     }, [settingsOpen]);
 
     const badgeColor = getRoleBadgeColor(user?.role);
-    const totalTokens = Number(tokenStats.estimatedInputTokens || 0) + Number(tokenStats.estimatedOutputTokens || 0);
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -272,50 +266,22 @@ export default function Sidebar({ isOpen, onClose }) {
                         </div>
 
                         <div className="settings-popover-section">
-                            <button
-                                type="button"
-                                className="settings-menu-row"
-                                onClick={() => setRateLimitsOpen(open => !open)}
-                                aria-expanded={rateLimitsOpen}
-                            >
-                                <span className="settings-menu-icon"><Gauge size={15} /></span>
-                                <span className="settings-menu-main">
-                                    <span>Rate limits remaining</span>
-                                    <small>{rateLimitSnapshot.remaining} / {rateLimitSnapshot.totalLimit} requests · {rateLimitSnapshot.windowSeconds}s window</small>
-                                </span>
-                                <strong className="settings-rate-percent">{rateLimitSnapshot.remainingPercent}%</strong>
-                                {rateLimitsOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-                            </button>
-                            <div className="settings-rate-bar" aria-hidden="true">
-                                <span style={{ width: `${rateLimitSnapshot.remainingPercent}%` }} />
-                            </div>
-                            {rateLimitSnapshot.waitSeconds > 0 && (
-                                <div className="settings-rate-wait">
-                                    <Clock size={13} /> รอประมาณ {rateLimitSnapshot.waitSeconds}s ก่อนส่งคำถามต่อไป
+                            <div className="settings-token-card" aria-label="AI token คงเหลือ">
+                                <div className="settings-token-head">
+                                    <span className="settings-menu-icon"><Activity size={15} /></span>
+                                    <span className="settings-menu-main">
+                                        <span>AI token คงเหลือ</span>
+                                        <small>สำหรับการตอบคำถามของเว็บ</small>
+                                    </span>
                                 </div>
-                            )}
-                            {rateLimitsOpen && (
-                                <div className="settings-rate-detail">
-                                    {rateLimitSnapshot.byModel.map(model => (
-                                        <div key={model.id} className="settings-rate-model">
-                                            <div>
-                                                <span>{model.label}</span>
-                                                <small>{model.cooldownSeconds > 0 ? `cooldown ${model.cooldownSeconds}s` : `${model.remaining}/${model.limit} left`}</small>
-                                            </div>
-                                            <div className="settings-rate-mini">
-                                                <span style={{ width: `${model.remainingPercent}%` }} />
-                                            </div>
-                                        </div>
-                                    ))}
+                                <strong>{tokenBudget.remainingTokens.toLocaleString()}</strong>
+                                <div className="settings-rate-bar settings-token-bar" aria-hidden="true">
+                                    <span style={{ width: `${tokenBudget.remainingPercent}%` }} />
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="settings-popover-section">
-                            <div className="settings-usage-row">
-                                <Activity size={15} />
-                                <span>{Number(tokenStats.requests || 0).toLocaleString()} AI requests</span>
-                                <strong>{totalTokens.toLocaleString()} tokens</strong>
+                                <div className="settings-token-meta">
+                                    <span>ใช้ไป {tokenBudget.usedTokens.toLocaleString()} tokens</span>
+                                    <span>{tokenBudget.requests.toLocaleString()} คำถาม</span>
+                                </div>
                             </div>
                             <button type="button" className="settings-logout-row" onClick={handleLogout}>
                                 <LogOut size={16} />

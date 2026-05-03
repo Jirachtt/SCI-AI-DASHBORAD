@@ -3862,6 +3862,41 @@ html {
   font-size: 0.74rem;
 }
 
+.settings-token-card {
+  padding: 12px;
+  border: 1px solid rgba(0, 166, 81, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(0, 166, 81, 0.12), rgba(197, 160, 40, 0.08));
+}
+
+.settings-token-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-token-card>strong {
+  display: block;
+  margin: 10px 0 6px;
+  color: var(--text-primary);
+  font-size: 1.42rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.settings-token-bar {
+  margin: 0 0 8px;
+}
+
+.settings-token-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 .settings-logout-row {
   color: var(--danger);
   font-weight: 800;

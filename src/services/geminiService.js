@@ -49,6 +49,11 @@ const AI_SETTINGS_KEY = 'sci-ai-dashboard:ai-settings';
 const AI_TOKEN_STATS_KEY = 'sci-ai-dashboard:ai-token-stats';
 const AI_RATE_EVENTS_KEY = 'sci-ai-dashboard:ai-rate-events';
 const AI_MEMORY_KEY = 'sci-ai-dashboard:ai-user-memory';
+const DEFAULT_AI_TOKEN_BUDGET = 1_000_000;
+const AI_TOKEN_BUDGET = Math.max(
+    1,
+    Number(import.meta.env.VITE_AI_TOKEN_BUDGET || import.meta.env.VITE_AI_MONTHLY_TOKEN_LIMIT || DEFAULT_AI_TOKEN_BUDGET)
+);
 
 const DEFAULT_AI_SETTINGS = {
     modelMode: 'auto',
@@ -136,6 +141,20 @@ export function getAITokenStats() {
         byModel: {},
         lastRequest: null,
     });
+}
+
+export function getAITokenBudgetSnapshot() {
+    const stats = getAITokenStats();
+    const usedTokens = Number(stats.estimatedInputTokens || 0) + Number(stats.estimatedOutputTokens || 0);
+    const remainingTokens = Math.max(0, AI_TOKEN_BUDGET - usedTokens);
+    return {
+        budgetTokens: AI_TOKEN_BUDGET,
+        usedTokens,
+        remainingTokens,
+        remainingPercent: Math.round((remainingTokens / AI_TOKEN_BUDGET) * 100),
+        requests: Number(stats.requests || 0),
+        lastRequest: stats.lastRequest || null,
+    };
 }
 
 export function resetAITokenStats() {
