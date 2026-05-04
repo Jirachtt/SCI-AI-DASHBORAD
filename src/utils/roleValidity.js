@@ -16,6 +16,58 @@ export const ROLE_DURATION_LABELS = {
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
+function normalizeRoleDay(value) {
+    const d = parseRoleDate(value) || new Date();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
+}
+
+function addCalendarMonths(value, months = 0) {
+    const start = normalizeRoleDay(value);
+    const day = start.getDate();
+    const next = new Date(start);
+    next.setDate(1);
+    next.setMonth(next.getMonth() + Number(months || 0));
+    const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+    next.setDate(Math.min(day, lastDay));
+    next.setHours(12, 0, 0, 0);
+    return next;
+}
+
+function getCalendarDiffParts(fromValue, toValue) {
+    const from = normalizeRoleDay(fromValue);
+    const to = normalizeRoleDay(toValue);
+    if (to.getTime() <= from.getTime()) {
+        return { years: 0, months: 0, days: 0 };
+    }
+
+    let totalMonths = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+    let cursor = addCalendarMonths(from, totalMonths);
+
+    if (cursor.getTime() > to.getTime()) {
+        totalMonths -= 1;
+        cursor = addCalendarMonths(from, totalMonths);
+    }
+
+    return {
+        years: Math.floor(totalMonths / 12),
+        months: totalMonths % 12,
+        days: Math.max(0, Math.round((to.getTime() - cursor.getTime()) / ONE_DAY_MS)),
+    };
+}
+
+function formatDurationParts(parts) {
+    const units = [
+        ['years', 'ปี'],
+        ['months', 'เดือน'],
+        ['days', 'วัน'],
+    ];
+    const text = units
+        .filter(([key]) => Number(parts[key]) > 0)
+        .map(([key, label]) => `${Number(parts[key]).toLocaleString('th-TH')} ${label}`);
+
+    return text.length ? text.join(' ') : '0 วัน';
+}
+
 export function parseRoleDate(value) {
     if (!value) return null;
     if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
@@ -80,6 +132,16 @@ export function getRoleDurationLabel(role) {
     return ROLE_DURATION_LABELS[role] || ROLE_DURATION_LABELS.general;
 }
 
+export function formatRoleRemainingText(validity = {}) {
+    const now = new Date();
+    const expiresAt = parseRoleDate(validity.expiresAt) || now;
+    const isExpired = validity.status === 'expired' || Number(validity.daysRemaining) < 0;
+    const parts = isExpired
+        ? getCalendarDiffParts(expiresAt, now)
+        : getCalendarDiffParts(now, expiresAt);
+    return formatDurationParts(parts);
+}
+
 export function buildRoleValidityPatch(role, startValue = new Date()) {
     const start = parseRoleDate(startValue) || new Date();
     const durationYears = getDefaultRoleDurationYears(role);
@@ -106,6 +168,7 @@ export function getRoleValidity(user = {}) {
     let status = 'active';
     if (daysRemaining < 0) status = 'expired';
     else if (daysRemaining <= 30) status = 'expiring';
+    const remainingText = formatRoleRemainingText({ expiresAt, daysRemaining, status });
 
     return {
         role,
@@ -116,6 +179,7 @@ export function getRoleValidity(user = {}) {
         totalDays,
         progress,
         status,
+        remainingText,
         label: getRoleDurationLabel(role),
     };
 }

@@ -17,6 +17,17 @@ import useDashboardDataset from '../hooks/useDashboardDataset';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, themeAdaptorPlugin);
 
+const TUITION_BREAKDOWN_COLORS = [
+    '#0f766e',
+    '#b45309',
+    '#2563eb',
+    '#be123c',
+    '#6d28d9',
+    '#374151',
+    '#0e7490',
+    '#9f1239',
+];
+
 export default function TuitionPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
@@ -77,8 +88,10 @@ export default function TuitionPage() {
         labels: tuitionData.breakdown.map(b => b.label),
         datasets: [{
             data: tuitionData.breakdown.map(b => b.value),
-            backgroundColor: ['#22c55e', '#f59e0b', '#3b82f6', '#8b5cf6', '#f97316', '#ec4899'],
-            borderWidth: 0,
+            backgroundColor: tuitionData.breakdown.map((_, index) => TUITION_BREAKDOWN_COLORS[index % TUITION_BREAKDOWN_COLORS.length]),
+            borderWidth: 1,
+            spacing: 3,
+            hoverOffset: 8,
         }]
     };
 

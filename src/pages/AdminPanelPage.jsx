@@ -13,6 +13,7 @@ import {
     addRoleMonths,
     buildRoleValidityPatch,
     formatRoleDate,
+    formatRoleRemainingText,
     fromRoleDateInput,
     getRoleDurationLabel,
     getRoleValidity,
@@ -88,9 +89,10 @@ const formatDate = (value) => {
 };
 
 const getRoleTermText = (validity) => {
-    if (validity.status === 'expired') return `หมดอายุแล้ว ${Math.abs(validity.daysRemaining).toLocaleString('th-TH')} วัน`;
-    if (validity.status === 'expiring') return `ใกล้หมดอายุ เหลือ ${validity.daysRemaining.toLocaleString('th-TH')} วัน`;
-    return `เหลือ ${validity.daysRemaining.toLocaleString('th-TH')} วัน`;
+    const remainingText = validity.remainingText || formatRoleRemainingText(validity);
+    if (validity.status === 'expired') return `หมดอายุแล้ว ${remainingText}`;
+    if (validity.status === 'expiring') return `ใกล้หมดอายุ เหลือ ${remainingText}`;
+    return `เหลือ ${remainingText}`;
 };
 
 const getDisplayStatus = (u = {}) => {
