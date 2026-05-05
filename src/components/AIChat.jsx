@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Bot, FileSpreadsheet, Maximize2, MessageCircle, Mic, MicOff, Paperclip, RotateCcw, Send, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -47,6 +47,7 @@ export default function AIChat() {
     const { user } = useAuth();
     const { theme } = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
     const fileInputRef = useRef(null);
     const recognitionRef = useRef(null);
     const messagesEnd = useRef(null);
@@ -396,6 +397,8 @@ export default function AIChat() {
     const ChatMessageComponent = aiModule?.ChatMessage || FallbackChatMessage;
     const ExpandedChartModalComponent = aiModule?.ExpandedChartModal;
     const quickActions = aiModule?.MAIN_AI_QUICK_ACTIONS || FALLBACK_QUICK_ACTIONS;
+
+    if (location.pathname.startsWith('/dashboard/ai-chat')) return null;
 
     return (
         <>

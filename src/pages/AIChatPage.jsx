@@ -2827,8 +2827,13 @@ export default function AIChatPage() {
         { icon: Maximize2, title: 'ขยาย/ซูมกราฟ', desc: 'คลิก "ขยาย" เพื่อดูกราฟเต็มจอพร้อมซูม', color: '#f43f5e', gradient: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)' },
     ];
 
+    const hasStartedConversation = messages.some(msg => msg.role === 'user');
+    const startsWithWelcomeMessage = messages[0]?.role === 'bot' && !messages[0]?.chart && messages[0]?.text?.includes(AI_ASSISTANT_NAME);
+    const showCommandCenter = !hasStartedConversation;
+    const visibleMessages = hasStartedConversation && startsWithWelcomeMessage ? messages.slice(1) : (hasStartedConversation ? messages : []);
+
     return (
-        <div className="ai-chat-page">
+        <div className={`ai-chat-page ${showCommandCenter ? 'is-welcome' : 'is-active'}`}>
             {/* Header */}
             <div className="ai-chat-page-header">
                 <div className="ai-chat-page-header-left">
@@ -2933,7 +2938,7 @@ export default function AIChatPage() {
             <div className="ai-chat-page-body">
                 {/* Main Chat Area */}
                 <div className="ai-chat-page-main">
-                    {messages.length <= 2 && (
+                    {showCommandCenter && (
                         <section className="ai-command-briefing" aria-label="AI dashboard briefing">
                             <div className="ai-command-briefing-copy">
                                 <div className="ai-command-kicker">
@@ -2964,7 +2969,7 @@ export default function AIChatPage() {
                     )}
 
                     {/* Quick Actions Bar */}
-                    {messages.length <= 2 && (
+                    {showCommandCenter && (
                         <div className="ai-chat-page-quick-actions">
                             <div className="ai-chat-page-quick-label">
                                 <Zap size={13} /> QUICK ACTIONS — เลือกงานที่ต้องการให้ AI ช่วย
@@ -3000,7 +3005,7 @@ export default function AIChatPage() {
 
                     {/* Messages */}
                     <div className="ai-chat-page-messages">
-                        {messages.map((msg, i) => (
+                        {visibleMessages.map((msg, i) => (
                             <ChatMessage key={i} msg={msg} onExpand={setExpandedChart} />
                         ))}
                         {typing && (
