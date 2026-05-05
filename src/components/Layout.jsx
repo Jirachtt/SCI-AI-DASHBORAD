@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import AIChat from './AIChat';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, Sun, Moon } from 'lucide-react';
+import { Activity, Menu, Sparkles, Sun, Moon } from 'lucide-react';
 import { ensureStudentList } from '../services/studentDataService';
 import { ensureDashboardLiveData, startDashboardAutoSync } from '../services/dashboardLiveDataService';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
@@ -59,7 +59,7 @@ export default function Layout() {
             <div className="main-content">
                 <header className="main-header">
                     <div className="header-left">
-                        <button className="menu-toggle" onClick={() => setSidebarOpen(true)}>
+                        <button className="menu-toggle" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
                             <Menu size={24} />
                         </button>
                         <div className="header-title">
@@ -68,6 +68,16 @@ export default function Layout() {
                         </div>
                     </div>
                     <div className="header-right">
+                        <div className="header-intel-pills" aria-label="System status">
+                            <span className="header-status-pill header-status-live">
+                                <Activity size={14} />
+                                Live Data
+                            </span>
+                            <span className="header-status-pill header-status-ai">
+                                <Sparkles size={14} />
+                                Decision AI
+                            </span>
+                        </div>
                         <button
                             className={`theme-toggle ${theme}`}
                             onClick={toggleTheme}

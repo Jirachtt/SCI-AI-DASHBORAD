@@ -221,7 +221,7 @@ export default function CourseAnalyticsPage() {
                 </aside>
             </section>
 
-            <section className="course-layout">
+            <section className="course-layout course-grade-strength-layout">
                 <article className="chart-card">
                     <div className="chart-card-header">
                         <div>
@@ -249,17 +249,23 @@ export default function CourseAnalyticsPage() {
                         <Microscope size={22} color="#7B68EE" />
                     </div>
                     <div className="course-strength-grid">
-                        {data.branchStrengths.map(branch => (
+                        {data.branchStrengths.map((branch, index) => (
                             <article key={branch.major} className="course-strength-card">
-                                <div>
-                                    <FlaskConical size={16} />
-                                    <strong>{branch.major}</strong>
+                                <div className="course-strength-card-top">
+                                    <span className="course-strength-icon"><FlaskConical size={16} /></span>
+                                    <div>
+                                        <span className="course-strength-kicker">#{String(index + 1).padStart(2, '0')}</span>
+                                        <strong>{branch.major}</strong>
+                                    </div>
                                 </div>
                                 <p>{branch.showcase}</p>
                                 <div className="course-strength-tags">
                                     {branch.strengths.map(strength => <span key={strength}>{strength}</span>)}
                                 </div>
-                                <small>{branch.flagshipCourses.join(' · ')}</small>
+                                <div className="course-strength-courses">
+                                    <span>รายวิชาเด่น</span>
+                                    <small>{branch.flagshipCourses.join(' / ')}</small>
+                                </div>
                             </article>
                         ))}
                     </div>

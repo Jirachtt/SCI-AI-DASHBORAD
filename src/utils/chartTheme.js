@@ -3,13 +3,13 @@ const MIN_CHART_FONT_SIZE = 12;
 const DEFAULT_CHART_FONT_SIZE = 13;
 
 export const LIGHT_CHART_PALETTE = [
-    '#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2',
-    '#9333ea', '#0f766e', '#ea580c', '#be123c', '#4f46e5', '#15803d',
+    '#2563eb', '#16a34a', '#f97316', '#9333ea', '#dc2626', '#0891b2',
+    '#ca8a04', '#be185d', '#4f46e5', '#0f766e', '#b45309', '#64748b',
 ];
 
 export const DARK_CHART_PALETTE = [
-    '#7dd3fc', '#c4b5fd', '#34d399', '#fbbf24', '#fb7185', '#22d3ee',
-    '#f0abfc', '#86efac', '#fdba74', '#f9a8d4', '#93c5fd', '#fca5a5',
+    '#60a5fa', '#4ade80', '#fb923c', '#c084fc', '#f87171', '#22d3ee',
+    '#facc15', '#f472b6', '#a5b4fc', '#5eead4', '#fdba74', '#cbd5e1',
 ];
 
 const LIGHT_CHART_SURFACE = '#ffffff';
@@ -50,7 +50,7 @@ export function getCurrentChartTheme(theme = activeThemeName()) {
         tooltipBg: isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(15, 23, 42, 0.96)',
         tooltipTitle: isLight ? '#0f172a' : '#ffffff',
         tooltipBody: isLight ? '#334155' : '#e5edf8',
-        tooltipBorder: isLight ? 'rgba(37, 99, 235, 0.28)' : 'rgba(125, 211, 252, 0.38)',
+        tooltipBorder: isLight ? 'rgba(37, 99, 235, 0.26)' : 'rgba(96, 165, 250, 0.44)',
     };
 }
 
@@ -212,6 +212,17 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
             dataset.hoverBackgroundColor = adaptColorValue(dataset.backgroundColor, fallback, themeConfig, 0.96, Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor.length : 0, 2.8);
             dataset.hoverBorderColor = adaptColorValue(dataset.borderColor, fallback, themeConfig, 1, Array.isArray(dataset.borderColor) ? dataset.borderColor.length : 0, 2.8);
             if (dataset.borderWidth == null) dataset.borderWidth = themeConfig.theme === 'dark' ? 1.2 : 1;
+            if (type === 'bar') {
+                if (dataset.borderRadius == null) dataset.borderRadius = 8;
+                if (dataset.borderSkipped == null) dataset.borderSkipped = false;
+                if (dataset.maxBarThickness == null) dataset.maxBarThickness = 54;
+            }
+            if (isSlice) {
+                dataset.borderColor = themeConfig.surface;
+                if (dataset.borderWidth == null || dataset.borderWidth < 2) dataset.borderWidth = 2;
+                if (dataset.hoverOffset == null) dataset.hoverOffset = 8;
+                if (dataset.spacing == null) dataset.spacing = 2;
+            }
         }
 
         if (isLine || isPointChart) {
@@ -220,6 +231,10 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
             dataset.pointBorderColor = themeConfig.surface;
             if (dataset.pointBorderWidth == null) dataset.pointBorderWidth = 2;
             if (dataset.borderWidth == null) dataset.borderWidth = themeConfig.theme === 'dark' ? 2.8 : 2.4;
+            if (dataset.tension == null) dataset.tension = 0.34;
+            if (dataset.pointRadius == null) dataset.pointRadius = isPointChart ? 4.8 : 3.6;
+            if (dataset.pointHoverRadius == null) dataset.pointHoverRadius = isPointChart ? 7 : 6;
+            if (dataset.pointHitRadius == null) dataset.pointHitRadius = 12;
         }
     });
 
@@ -234,6 +249,26 @@ export const themeAdaptorPlugin = {
 
         sanitizeChartDatasetColors(chart, themeConfig.theme);
         options.font = withDashboardFont(options.font, '600');
+        options.interaction = {
+            mode: 'index',
+            intersect: false,
+            ...(options.interaction || {}),
+        };
+        options.elements = options.elements || {};
+        options.elements.line = {
+            borderCapStyle: 'round',
+            borderJoinStyle: 'round',
+            ...(options.elements.line || {}),
+        };
+        options.elements.point = {
+            hoverBorderWidth: 3,
+            ...(options.elements.point || {}),
+        };
+        options.elements.bar = {
+            borderRadius: 8,
+            borderSkipped: false,
+            ...(options.elements.bar || {}),
+        };
 
         const scales = options.scales || {};
         for (const key of Object.keys(scales)) {
@@ -278,12 +313,21 @@ export const themeAdaptorPlugin = {
             if (tooltip.displayColors == null) tooltip.displayColors = true;
             if (tooltip.boxPadding == null) tooltip.boxPadding = 4;
             tooltip.caretPadding = tooltip.caretPadding ?? 8;
+            tooltip.titleMarginBottom = tooltip.titleMarginBottom ?? 8;
+            tooltip.bodySpacing = tooltip.bodySpacing ?? 5;
+            tooltip.usePointStyle = tooltip.usePointStyle ?? true;
+            tooltip.multiKeyBackground = themeConfig.surface;
         }
 
         const legend = options.plugins?.legend;
         if (legend?.labels) {
             legend.labels.color = themeConfig.text;
             legend.labels.font = withDashboardFont(legend.labels.font, '700');
+            legend.labels.usePointStyle = legend.labels.usePointStyle ?? true;
+            legend.labels.pointStyle = legend.labels.pointStyle || 'roundedRect';
+            legend.labels.boxWidth = legend.labels.boxWidth ?? 10;
+            legend.labels.boxHeight = legend.labels.boxHeight ?? 10;
+            legend.labels.padding = Math.max(Number(legend.labels.padding) || 0, 14);
         }
 
         const title = options.plugins?.title;

@@ -132,6 +132,15 @@ export default function AIChat() {
         resetConversation();
     }, []);
 
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') handleClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleClose, isOpen]);
+
     const toggleListening = () => {
         if (!recognitionRef.current) {
             setMessages(prev => [...prev, {
@@ -430,7 +439,7 @@ export default function AIChat() {
                 panelStyle.bottom = panelBottom;
 
                 return (
-                    <div className="ai-chat-panel" style={panelStyle}>
+                    <div className="ai-chat-panel" style={panelStyle} role="dialog" aria-label={AI_ASSISTANT_NAME}>
                         <div className="ai-chat-header">
                             <div className="ai-chat-header-left">
                                 <div className="ai-chat-header-avatar"><Bot size={20} /></div>
