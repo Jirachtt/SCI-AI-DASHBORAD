@@ -363,12 +363,16 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const completeMjuSsoLogin = async (search) => {
+    const completeMjuSsoLogin = async (search, hash = '') => {
         if (!auth) return firebaseUnavailable();
-        const callback = readMjuSsoCallback(search);
+        const callback = readMjuSsoCallback(search, hash);
         if (!callback.ok) {
             clearMjuSsoState();
-            return { success: false, error: callback.error };
+            return {
+                success: false,
+                error: callback.error,
+                detectedParamKeys: callback.detectedParamKeys || [],
+            };
         }
 
         try {
@@ -377,10 +381,14 @@ export function AuthProvider({ children }) {
             return { success: true, returnTo: callback.returnTo };
         } catch (error) {
             clearMjuSsoState();
+            const invalidCustomToken = ['auth/invalid-custom-token', 'auth/custom-token-mismatch'].includes(error?.code);
             return {
                 success: false,
                 code: error?.code || 'mju-sso/login-failed',
-                error: error?.message || 'เข้าสู่ระบบผ่านบัญชีแม่โจ้ไม่สำเร็จ'
+                error: invalidCustomToken
+                    ? `ระบบแม่โจ้ส่งค่า ${callback.tokenParam || 'token'} กลับมาแล้ว แต่ยังใช้กับ Firebase ไม่ได้ ต้องมี backend/bridge แปลง token จาก MJU SSO เป็น Firebase custom token ก่อน`
+                    : error?.message || 'เข้าสู่ระบบผ่านบัญชีแม่โจ้ไม่สำเร็จ',
+                detectedParamKeys: callback.detectedParamKeys || [],
             };
         }
     };

@@ -8,6 +8,20 @@ export const MJU_SSO_CLIENT_ID = import.meta.env.VITE_MJU_AUTH_CLIENT_ID || DEFA
 export const MJU_SSO_START_URL = import.meta.env.VITE_MJU_AUTH_START_URL || `https://sso.mju.ac.th/signin.aspx?cid=${MJU_SSO_CLIENT_ID}`;
 export const MJU_SSO_SIGNOUT_URL = import.meta.env.VITE_MJU_AUTH_SIGNOUT_URL || `https://sso.mju.ac.th/signout.aspx?cid=${MJU_SSO_CLIENT_ID}`;
 export const MJU_SSO_TOKEN_PARAM = import.meta.env.VITE_MJU_AUTH_TOKEN_PARAM || 'token';
+const MJU_SSO_TOKEN_PARAM_CANDIDATES = [
+    MJU_SSO_TOKEN_PARAM,
+    'token',
+    'firebaseToken',
+    'customToken',
+    'custom_token',
+    'access_token',
+    'id_token',
+    'jwt',
+    'sso_token',
+    'auth_token',
+    'authToken',
+];
+const MJU_SSO_EXCHANGE_PARAM_CANDIDATES = ['code', 'ticket', 'sso_ticket', 'session', 'sid'];
 
 export function isMjuSsoConfigured() {
     return Boolean(MJU_SSO_CLIENT_ID && MJU_SSO_START_URL);
@@ -53,27 +67,73 @@ export function getMjuSsoRegisteredUrls(origin = window.location.origin) {
     };
 }
 
-export function readMjuSsoCallback(search) {
+function callbackParams(search = '', hash = '') {
     const params = new URLSearchParams(search);
+    const hashText = String(hash || '').replace(/^#/, '');
+    if (hashText) {
+        const hashParams = new URLSearchParams(hashText);
+        hashParams.forEach((value, key) => {
+            if (!params.has(key)) params.set(key, value);
+        });
+    }
+    return params;
+}
+
+function uniqueKeys(params) {
+    return [...new Set([...params.keys()])].filter(Boolean);
+}
+
+function findFirstParam(params, keys) {
+    const lowered = new Map(uniqueKeys(params).map(key => [key.toLowerCase(), key]));
+    for (const key of keys) {
+        const actual = lowered.get(String(key).toLowerCase());
+        const value = actual ? params.get(actual) : '';
+        if (value) return { key: actual, value };
+    }
+    return { key: '', value: '' };
+}
+
+export function readMjuSsoCallback(search, hash = '') {
+    const params = callbackParams(search, hash);
+    const detectedParamKeys = uniqueKeys(params);
     const error = params.get('error') || params.get('error_description');
     if (error) {
-        return { ok: false, error };
+        return { ok: false, error, detectedParamKeys };
     }
 
     const state = params.get('state');
     const expectedState = sessionStorage.getItem(SSO_STATE_KEY);
-    if (!state || !expectedState || state !== expectedState) {
-        return { ok: false, error: 'MJU SSO state ไม่ตรงกัน กรุณาเริ่มเข้าสู่ระบบใหม่' };
+    if (state && expectedState && state !== expectedState) {
+        return {
+            ok: false,
+            error: 'MJU SSO state ไม่ตรงกัน กรุณาเริ่มเข้าสู่ระบบใหม่',
+            detectedParamKeys,
+        };
     }
 
-    const token = params.get(MJU_SSO_TOKEN_PARAM) || params.get('firebaseToken') || params.get('customToken');
+    const tokenParam = findFirstParam(params, MJU_SSO_TOKEN_PARAM_CANDIDATES);
+    const token = tokenParam.value;
     if (!token) {
-        return { ok: false, error: 'ไม่พบ Firebase custom token จาก MJU SSO bridge' };
+        const exchangeParam = findFirstParam(params, MJU_SSO_EXCHANGE_PARAM_CANDIDATES);
+        const foundText = detectedParamKeys.length
+            ? ` ระบบส่ง parameter มา: ${detectedParamKeys.join(', ')}`
+            : ' ระบบยังไม่ได้ส่ง parameter กลับมา';
+        const hint = exchangeParam.key
+            ? `พบ ${exchangeParam.key} แล้ว แต่ยังไม่ใช่ Firebase custom token ต้องมี backend/bridge สำหรับแลกค่า ${exchangeParam.key} เป็น custom token ก่อน`
+            : 'ยังไม่พบ token ที่ใช้เข้าสู่ระบบได้';
+        return {
+            ok: false,
+            error: `${hint}.${foundText}`,
+            detectedParamKeys,
+        };
     }
 
     return {
         ok: true,
         token,
+        tokenParam: tokenParam.key,
+        detectedParamKeys,
+        stateWarning: expectedState && !state ? 'MJU SSO ไม่ได้ส่ง state กลับมา แต่ระบบยอมรับ token เพื่อรองรับ SSO ของมหาวิทยาลัย' : '',
         returnTo: sessionStorage.getItem(SSO_RETURN_KEY) || '/dashboard',
     };
 }

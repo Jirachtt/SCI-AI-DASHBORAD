@@ -11,7 +11,7 @@ export default function MjuAuthCallbackPage() {
     useEffect(() => {
         let cancelled = false;
 
-        completeMjuSsoLogin(window.location.search).then(result => {
+        completeMjuSsoLogin(window.location.search, window.location.hash).then(result => {
             if (cancelled) return;
             if (result.success) {
                 navigate(result.returnTo || '/dashboard', { replace: true });
