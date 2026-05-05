@@ -78,7 +78,12 @@
       "Bash(ffmpeg -i \"C:\\\\Users\\\\JR\\\\Downloads\\\\B3.jfif\" -vf \"scale=1000:-1\" \"C:\\\\Users\\\\JR\\\\Downloads\\\\B3_small.jpg\" -y)",
       "Bash(npx --yes eslint src/pages/AIChatPage.jsx src/services/geminiService.js)",
       "WebFetch(domain:sciencebase.mju.ac.th)",
-      "WebFetch(domain:secretary-science.mju.ac.th)"
+      "WebFetch(domain:secretary-science.mju.ac.th)",
+      "Bash(npx firebase *)",
+      "Bash(cp src/data/studentListData.js src/data/_chk.mjs)",
+      "Bash(rm src/data/_chk.mjs)",
+      "Bash(awk -F, 'NR>1 {print $5\",\"$6}' students_1450.csv)",
+      "Bash(sort -k2)"
     ]
   },
   "enabledPlugins": {

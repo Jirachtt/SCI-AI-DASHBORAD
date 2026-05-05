@@ -15,6 +15,7 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firest
 import { isPendingRole } from '../utils/accessControl';
 import { buildRoleValidityPatch, getRoleValidity } from '../utils/roleValidity';
 import {
+    buildMjuSsoSignoutUrl,
     buildMjuSsoStartUrl,
     clearMjuSsoState,
     normalizeMjuRoleFromClaims,
@@ -41,6 +42,35 @@ const normalizeRoleLabel = (role, roleLabel, fallback = 'นักศึกษ�
         return ROLE_LABELS_BY_ROLE.dean;
     }
     return current;
+};
+
+const hasMjuSsoClaims = (claims = {}) => Boolean(
+    claims.mjuVerified ||
+    claims.mjuId ||
+    claims.mjuRole ||
+    claims.mjuUserType ||
+    claims.studentId ||
+    claims.employeeId
+);
+
+const buildMjuUserPatchFromClaims = (claims = {}, currentUser, createdAt = new Date().toISOString()) => {
+    const role = normalizeMjuRoleFromClaims(claims);
+    return {
+        name: claims.name || claims.displayName || currentUser.displayName || 'MJU User',
+        email: currentUser.email || claims.email || '',
+        role,
+        roleLabel: roleLabelForMjuRole(role),
+        avatar: role === 'student' ? 'ST' : 'MJU',
+        status: 'approved',
+        authProvider: 'mju_sso',
+        mjuVerified: true,
+        mjuId: claims.mjuId || claims.studentId || claims.employeeId || claims.username || null,
+        studentId: claims.studentId || null,
+        employeeId: claims.employeeId || null,
+        department: claims.department || claims.faculty || null,
+        faculty: claims.faculty || null,
+        ...buildRoleValidityPatch(role, createdAt),
+    };
 };
 
 const firebaseUnavailable = () => ({
@@ -125,11 +155,21 @@ export function AuthProvider({ children }) {
                 try {
                     const userDocRef = doc(db, "users", currentUser.uid);
                     const userDoc = await getDoc(userDocRef);
+                    const tokenResult = await currentUser.getIdTokenResult().catch(() => null);
+                    const claims = tokenResult?.claims || {};
+                    const isMjuSsoLogin = hasMjuSsoClaims(claims);
 
                     if (!mounted) return;
 
                     if (userDoc.exists()) {
-                        const userData = userDoc.data();
+                        let userData = userDoc.data();
+                        if (isMjuSsoLogin) {
+                            const mjuPatch = buildMjuUserPatchFromClaims(claims, currentUser, userData.createdAt || new Date().toISOString());
+                            await updateDoc(userDocRef, mjuPatch).catch((err) => {
+                                console.warn('[Auth] Failed to update MJU SSO role:', err?.message || err);
+                            });
+                            userData = { ...userData, ...mjuPatch };
+                        }
                         const role = userData.role || 'student';
                         const roleValidity = getRoleValidity({ ...userData, role });
                         const roleExpired = roleValidity.status === 'expired' && role !== 'general' && !isPendingRole(role);
@@ -157,6 +197,15 @@ export function AuthProvider({ children }) {
                             approvedBy: userData.approvedBy || null,
                             approvedAt: userData.approvedAt || null
                         }));
+                    } else if (isMjuSsoLogin) {
+                        const createdAt = new Date().toISOString();
+                        const newDoc = {
+                            ...buildMjuUserPatchFromClaims(claims, currentUser, createdAt),
+                            createdAt: serverTimestamp(),
+                        };
+                        await setDoc(userDocRef, newDoc);
+                        if (!mounted) return;
+                        setUser(prev => ({ ...prev, ...newDoc, role: newDoc.role }));
                     } else if (currentUser.providerData?.some(p => p.providerId === 'google.com')) {
                         // First-time Google sign-in — provision a student doc.
                         const createdAt = new Date().toISOString();
@@ -173,29 +222,6 @@ export function AuthProvider({ children }) {
                         await setDoc(userDocRef, newDoc);
                         if (!mounted) return;
                         setUser(prev => ({ ...prev, ...newDoc, role: 'student' }));
-                    } else {
-                        const tokenResult = await currentUser.getIdTokenResult().catch(() => null);
-                        const claims = tokenResult?.claims || {};
-                        if (claims.mjuVerified || claims.mjuId || claims.mjuRole || claims.mjuUserType) {
-                            const createdAt = new Date().toISOString();
-                            const role = normalizeMjuRoleFromClaims(claims);
-                            const newDoc = {
-                                name: claims.name || claims.displayName || currentUser.displayName || 'MJU User',
-                                email: currentUser.email || claims.email || '',
-                                role,
-                                roleLabel: roleLabelForMjuRole(role),
-                                avatar: role === 'student' ? 'ST' : 'MJU',
-                                status: 'approved',
-                                authProvider: 'mju_sso',
-                                mjuId: claims.mjuId || claims.studentId || claims.employeeId || claims.username || null,
-                                department: claims.department || claims.faculty || null,
-                                createdAt: serverTimestamp(),
-                                ...buildRoleValidityPatch(role, createdAt)
-                            };
-                            await setDoc(userDocRef, newDoc);
-                            if (!mounted) return;
-                            setUser(prev => ({ ...prev, ...newDoc, role }));
-                        }
                     }
                 } catch (err) {
                     console.error("Error fetching user data:", err);
@@ -420,12 +446,17 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const logout = async () => {
+    const logout = async (options = {}) => {
         try {
+            const shouldRedirectToMjuSignout = user?.authProvider === 'mju_sso' && !options.localOnly;
             localStorage.removeItem('admin_bypass');
             if (auth) await signOut(auth);
             setUser(null);
-            return { success: true };
+            if (shouldRedirectToMjuSignout) {
+                window.location.assign(buildMjuSsoSignoutUrl());
+                return { success: true, redirecting: true };
+            }
+            return { success: true, redirecting: false };
         } catch (error) {
             return { success: false, error: error.message };
         }

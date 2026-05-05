@@ -186,7 +186,11 @@ export default function AdminPanelPage() {
     }, [isAdminBypass, showToast]);
 
     useEffect(() => {
-        if (canViewPanel) loadUsers();
+        if (!canViewPanel) return undefined;
+        const timer = window.setTimeout(() => {
+            void loadUsers();
+        }, 0);
+        return () => window.clearTimeout(timer);
     }, [canViewPanel, loadUsers]);
 
     const pendingUsers = useMemo(

@@ -23,26 +23,28 @@ import {
 import { buildDataAccuracyContextForAI } from './dataAccuracyService';
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-if (!API_KEY) {
+const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
+if (!GEMINI_PROXY_ENDPOINT) {
     console.warn('[Gemini] ⚠️ VITE_GEMINI_API_KEY is not set.');
 }
 
-// Models ordered by free-tier quota: highest RPM / lite first to preserve heavier models
+// Models ordered for decision-support quality first, with lite models kept near
+// the front so the shared free-tier quota stays usable during busy sessions.
 const MODELS = [
-    'gemini-2.0-flash-lite',    // 30 RPM free — no google_search support
-    'gemini-2.5-flash-lite',    // fallback lite — independent quota pool
+    'gemini-2.5-flash-lite',    // fast, cost-efficient, supports google_search
+    'gemini-2.5-flash',         // stronger analysis / chart reasoning
     'gemini-flash-lite-latest', // alias to latest lite — extra headroom
-    'gemini-2.0-flash',         // 15 RPM free — supports google_search
-    'gemini-2.5-flash',         // 10 RPM free — supports google_search
     'gemini-flash-latest',      // alias fallback — supports google_search
+    'gemini-2.0-flash-lite',    // older high-RPM fallback
+    'gemini-2.0-flash',         // older search-capable fallback
 ];
 
 // Models that support Google Search grounding for real-time web data
 const SEARCH_CAPABLE_MODELS = new Set([
-    'gemini-2.0-flash',
+    'gemini-2.5-flash-lite',
     'gemini-2.5-flash',
     'gemini-flash-latest',
+    'gemini-2.0-flash',
 ]);
 
 const AI_SETTINGS_KEY = 'sci-ai-dashboard:ai-settings';
@@ -87,12 +89,39 @@ const MODEL_INFO = {
 };
 
 const MODEL_RATE_LIMITS = {
-    'gemini-2.0-flash-lite': 30,
-    'gemini-2.5-flash-lite': 30,
-    'gemini-flash-lite-latest': 30,
-    'gemini-2.0-flash': 15,
+    'gemini-2.5-flash-lite': 15,
     'gemini-2.5-flash': 10,
-    'gemini-flash-latest': 15,
+    'gemini-flash-lite-latest': 15,
+    'gemini-flash-latest': 10,
+    'gemini-2.0-flash-lite': 30,
+    'gemini-2.0-flash': 15,
+};
+
+const AI_STRUCTURED_RESPONSE_SCHEMA = {
+    type: 'object',
+    propertyOrdering: ['answer', 'chartJson', 'sources', 'actions'],
+    properties: {
+        answer: {
+            type: 'string',
+            description: 'Thai answer for the user. Keep it concise and decision-oriented.',
+        },
+        chartJson: {
+            type: 'string',
+            description: 'Empty string if no chart is needed. If a chart is needed, provide only a valid JSON string with chartType, data, and optional options.',
+        },
+        sources: {
+            type: 'array',
+            description: 'Human-readable source labels used to answer.',
+            items: { type: 'string' },
+        },
+        actions: {
+            type: 'array',
+            description: 'Short follow-up actions the UI can suggest, in Thai.',
+            items: { type: 'string' },
+        },
+    },
+    required: ['answer', 'sources', 'actions'],
+    additionalProperties: false,
 };
 
 const AI_RESPONSE_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -257,6 +286,140 @@ function recordTokenStats({ model, intent, inputText, outputText, contextCount }
 
 function partText(part) {
     return String(part?.text || '');
+}
+
+function contentText(content) {
+    return (content?.parts || []).map(partText).join('');
+}
+
+function candidateText(candidate) {
+    return contentText(candidate?.content);
+}
+
+function responseText(data) {
+    return candidateText(data?.candidates?.[0]);
+}
+
+function uniqueModels(models) {
+    return [...new Set(models.filter(model => MODELS.includes(model)))];
+}
+
+function normalizeStringArray(value) {
+    if (!Array.isArray(value)) return [];
+    return value
+        .map(item => String(item || '').trim())
+        .filter(Boolean)
+        .slice(0, 8);
+}
+
+function parseJsonLikeText(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return null;
+    const fenced = raw.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    const candidate = (fenced?.[1] || raw).trim();
+    try {
+        return JSON.parse(candidate);
+    } catch {
+        return null;
+    }
+}
+
+function chartBlockFromStructuredValue(value) {
+    if (!value) return '';
+    let chart = value;
+    if (typeof value === 'string') {
+        chart = parseJsonLikeText(value);
+    }
+    if (!chart || typeof chart !== 'object' || !chart.chartType || !chart.data) return '';
+    return `\`\`\`json_chart\n${JSON.stringify(chart)}\n\`\`\``;
+}
+
+function coerceStructuredAIResponse(text) {
+    const parsed = parseJsonLikeText(text);
+    if (!parsed || typeof parsed !== 'object' || !('answer' in parsed)) return String(text || '').trim();
+
+    const sections = [];
+    const answer = String(parsed.answer || '').trim();
+    if (answer) sections.push(answer);
+
+    const chartBlock = chartBlockFromStructuredValue(parsed.chartJson || parsed.chart);
+    if (chartBlock) sections.push(chartBlock);
+
+    const sources = normalizeStringArray(parsed.sources);
+    if (sources.length) {
+        sections.push(`**แหล่งข้อมูลที่ใช้:**\n${sources.map(source => `- ${source}`).join('\n')}`);
+    }
+
+    const actions = normalizeStringArray(parsed.actions);
+    if (actions.length) {
+        sections.push(`**ต่อยอดได้:**\n${actions.map(action => `- ${action}`).join('\n')}`);
+    }
+
+    return sections.join('\n\n') || String(text || '').trim();
+}
+
+const CONTEXT_SOURCE_LABELS = {
+    students: 'Student records / Shared Data Hub',
+    tcas: 'TCAS admissions dataset',
+    course_analytics: 'Course analytics dataset',
+    academic_rules: 'Academic rules dataset',
+    tuition: 'Tuition dataset',
+    graduation: 'Graduation dataset',
+    budget: 'Budget and finance dataset',
+    research: 'Research dataset',
+    hr: 'HR dataset',
+    strategic: 'Strategic OKR dataset',
+    student_life: 'Student life dataset',
+    dashboard: 'Dashboard summary dataset',
+    sci_ai_dashboard_local_first: 'SCI AI Dashboard local-first context',
+    trusted_external_fallback: 'Trusted external public sources',
+};
+
+function localContextSourceLines(localContexts = []) {
+    return localContexts
+        .map(context => context?.id)
+        .filter(Boolean)
+        .map(id => `- ${CONTEXT_SOURCE_LABELS[id] || id}`);
+}
+
+function safeMarkdownLinkLabel(text) {
+    return String(text || 'Source')
+        .replace(/[[\]\n\r]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 140) || 'Source';
+}
+
+function groundingSourceLines(candidate) {
+    const chunks = candidate?.groundingMetadata?.groundingChunks || [];
+    const sources = chunks
+        .map(chunk => chunk?.web)
+        .filter(web => web?.uri)
+        .map(web => {
+            const label = safeMarkdownLinkLabel(web.title || web.uri);
+            return `- [${label}](${web.uri})`;
+        });
+    return [...new Set(sources)].slice(0, 8);
+}
+
+function appendAnswerMetadata(text, { data, localContexts, model, useSearch }) {
+    const candidate = data?.candidates?.[0];
+    const groundedSources = groundingSourceLines(candidate);
+    const localSources = localContextSourceLines(localContexts);
+    const sourceLines = [...new Set([...localSources, ...groundedSources])].slice(0, 10);
+    let output = String(text || '').trim();
+
+    if (sourceLines.length && !output.includes('แหล่งข้อมูล')) {
+        output += `\n\n**แหล่งข้อมูลที่ใช้:**\n${sourceLines.join('\n')}`;
+    }
+
+    const engine = MODEL_INFO[model]?.label || model;
+    const groundingNote = useSearch && groundedSources.length ? ' + Google Search grounding' : '';
+    if (engine && !output.includes('AI engine:')) {
+        output += `\n\n_AI engine: ${engine}${groundingNote}_`;
+    }
+
+    return output.trim();
 }
 
 function normalizeCacheText(value) {
@@ -436,10 +599,6 @@ function extractUserQuestionFromPrompt(message) {
     return idx >= 0 ? text.slice(idx + marker.length).trim() : text.trim();
 }
 
-function getApiUrl(modelId) {
-    return `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${API_KEY}`;
-}
-
 // Request timeout (30 seconds)
 const REQUEST_TIMEOUT_MS = 30000;
 
@@ -530,6 +689,62 @@ async function fetchSmart(url, options) {
     }
 
     return response;
+}
+
+async function postGeminiModel(model, requestBody, options = {}) {
+    return fetchSmart(GEMINI_PROXY_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, requestBody, stream: options.stream === true }),
+    });
+}
+
+function parseGeminiSseEvent(eventText) {
+    const dataLines = String(eventText || '')
+        .split(/\r?\n/)
+        .filter(line => line.startsWith('data:'))
+        .map(line => line.slice(5).trim())
+        .filter(Boolean);
+    if (!dataLines.length) return null;
+    const dataText = dataLines.join('\n');
+    if (dataText === '[DONE]') return { done: true };
+    return parseJsonLikeText(dataText);
+}
+
+async function readGeminiStream(response, onChunk) {
+    if (!response.body?.getReader) {
+        const data = await response.json();
+        return { text: responseText(data), data };
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let text = '';
+    let lastData = null;
+
+    const handleEvent = (eventText) => {
+        const data = parseGeminiSseEvent(eventText);
+        if (!data || data.done) return;
+        lastData = data;
+        const delta = responseText(data);
+        if (!delta) return;
+        text += delta;
+        onChunk?.(text, delta);
+    };
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split(/\r?\n\r?\n/);
+        buffer = events.pop() || '';
+        events.forEach(handleEvent);
+    }
+
+    buffer += decoder.decode();
+    if (buffer.trim()) handleEvent(buffer);
+    return { text, data: lastData };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -971,10 +1186,10 @@ function modelOrderForIntent(intent, settings) {
         return [settings.modelMode, ...MODELS.filter(model => model !== settings.modelMode)];
     }
     if (intent === 'web_lookup') {
-        return ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest', ...MODELS.filter(model => !SEARCH_CAPABLE_MODELS.has(model))];
+        return uniqueModels(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash', ...MODELS]);
     }
     if (intent === 'chart_analysis' || intent === 'analysis') {
-        return ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-flash-lite-latest'];
+        return uniqueModels(['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.0-flash', 'gemini-flash-lite-latest', 'gemini-2.0-flash-lite']);
     }
     return MODELS;
 }
@@ -1339,6 +1554,11 @@ async function _sendMessageImpl(userMessage, options = {}) {
     }
 
     const useSearch = settings.allowWebSearch && shouldUseWebSearch(originalQuestion);
+    const wantsStructuredOutput = isChartRequest && !useSearch && settings.structuredOutput !== false;
+    if (wantsStructuredOutput) {
+        finalMessage += `\n\n[System: Return a JSON object that matches the configured responseJsonSchema. Put user-facing Thai prose in "answer". Put chart config JSON as a string in "chartJson" only when a chart is needed. Fill "sources" with the retrieved dataset labels used and "actions" with 1-3 useful next actions.]`;
+    }
+    const requestLocalContexts = retrieveRelevantContexts(originalQuestion, options.user || {}, settings);
     const responseCacheKey = buildAIResponseCacheKey({
         finalMessage,
         originalQuestion,
@@ -1359,6 +1579,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
         if (conversationHistory.length > 16) {
             conversationHistory = conversationHistory.slice(-16);
         }
+        options.onChunk?.(cachedResponse, { cached: true });
         return cachedResponse;
     }
 
@@ -1378,7 +1599,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
     const baseInstruction = buildAgenticRagInstruction(originalQuestion, options.user || {}, settings);
     const systemText = baseInstruction;
 
-    const retrievedContextCount = retrieveRelevantContexts(originalQuestion, options.user || {}, settings).length + (useSearch ? 2 : 0);
+    const retrievedContextCount = requestLocalContexts.length + (useSearch ? 2 : 0);
 
     const baseRequestBody = {
         system_instruction: {
@@ -1399,10 +1620,16 @@ async function _sendMessageImpl(userMessage, options = {}) {
         ]
     };
 
+    if (wantsStructuredOutput) {
+        baseRequestBody.generationConfig.responseMimeType = 'application/json';
+        baseRequestBody.generationConfig.responseJsonSchema = AI_STRUCTURED_RESPONSE_SCHEMA;
+    }
+
     // Try each model in order, skip models on cooldown
     const candidateModels = useSearch
-        ? ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest', ...MODELS.filter(model => !SEARCH_CAPABLE_MODELS.has(model))]
+        ? modelOrderForIntent('web_lookup', settings)
         : modelOrderForIntent(intent, settings);
+    const wantsStreaming = typeof options.onChunk === 'function' && !wantsStructuredOutput;
     for (const model of candidateModels) {
         if (isModelOnCooldown(model)) {
             console.log(`[Gemini] Skipping ${model} (cooldown)`);
@@ -1411,22 +1638,26 @@ async function _sendMessageImpl(userMessage, options = {}) {
 
         try {
             // Build per-model request body — add google_search for capable models
-            const requestBody = { ...baseRequestBody };
+            const requestBody = {
+                ...baseRequestBody,
+                generationConfig: { ...baseRequestBody.generationConfig },
+            };
             if (useSearch && SEARCH_CAPABLE_MODELS.has(model)) {
                 requestBody.tools = [{ google_search: {} }];
                 console.log(`[Gemini] 🔍 ${model} + Google Search (real web data)`);
             }
 
             console.log(`[Gemini] Trying model: ${model}...`);
-            const apiUrl = getApiUrl(model);
-
-            const response = await fetchSmart(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
+            if (wantsStreaming) options.onChunk?.('', { reset: true, model });
+            const response = await postGeminiModel(model, requestBody, { stream: wantsStreaming });
 
             if (response.status === 429) {
+                const quotaError = await response.clone().json().catch(() => ({}));
+                if (quotaError?.global) {
+                    lastError = new Error('QUOTA_EXCEEDED');
+                    allQuotaExhausted = true;
+                    break;
+                }
                 setModelCooldown(model);
                 lastError = new Error('QUOTA_EXCEEDED');
                 continue;
@@ -1448,14 +1679,31 @@ async function _sendMessageImpl(userMessage, options = {}) {
             }
 
             allQuotaExhausted = false;
-            const data = await response.json();
-            const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (!aiText) {
+            let data;
+            let rawAiText;
+            const contentType = response.headers.get('content-type') || '';
+            if (wantsStreaming && contentType.includes('text/event-stream')) {
+                const streamed = await readGeminiStream(response, (fullText, delta) => {
+                    options.onChunk?.(fullText, { delta, model });
+                });
+                data = streamed.data || {};
+                rawAiText = streamed.text;
+            } else {
+                data = await response.json();
+                rawAiText = responseText(data);
+            }
+            if (!String(rawAiText || '').trim()) {
                 console.warn(`[Gemini] ${model} empty response`);
                 lastError = new Error(`${model}: Empty response`);
                 continue;
             }
+            const normalizedAiText = wantsStructuredOutput ? coerceStructuredAIResponse(rawAiText) : rawAiText;
+            const aiText = appendAnswerMetadata(normalizedAiText, {
+                data,
+                localContexts: requestLocalContexts,
+                model,
+                useSearch,
+            });
 
             console.log(`[Gemini] ✅ ${model} OK`);
             onModelSuccess(model);
@@ -1525,17 +1773,14 @@ export async function getDashboardInsights() {
         if (isModelOnCooldown(model)) continue;
 
         try {
-            const apiUrl = getApiUrl(model);
-            const response = await fetchSmart(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                    generationConfig: { temperature: 0.2, maxOutputTokens: 1024 }
-                })
+            const response = await postGeminiModel(model, {
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.2, maxOutputTokens: 1024 }
             });
 
             if (response.status === 429) {
+                const quotaError = await response.clone().json().catch(() => ({}));
+                if (quotaError?.global) break;
                 setModelCooldown(model);
                 continue;
             }

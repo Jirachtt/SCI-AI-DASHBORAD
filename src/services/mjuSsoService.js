@@ -1,11 +1,16 @@
 const SSO_STATE_KEY = 'mju_sso_state';
 const SSO_RETURN_KEY = 'mju_sso_return_to';
+const DEFAULT_MJU_SSO_CLIENT_ID = '74dade2afc8449ecb975165f6451619f';
+const MJU_SSO_CALLBACK_PATH = '/auth/mju/callback';
+const MJU_SSO_AFTER_SIGNOUT_PATH = '/auth/mju/signout';
 
-export const MJU_SSO_START_URL = import.meta.env.VITE_MJU_AUTH_START_URL || '';
+export const MJU_SSO_CLIENT_ID = import.meta.env.VITE_MJU_AUTH_CLIENT_ID || DEFAULT_MJU_SSO_CLIENT_ID;
+export const MJU_SSO_START_URL = import.meta.env.VITE_MJU_AUTH_START_URL || `https://sso.mju.ac.th/signin.aspx?cid=${MJU_SSO_CLIENT_ID}`;
+export const MJU_SSO_SIGNOUT_URL = import.meta.env.VITE_MJU_AUTH_SIGNOUT_URL || `https://sso.mju.ac.th/signout.aspx?cid=${MJU_SSO_CLIENT_ID}`;
 export const MJU_SSO_TOKEN_PARAM = import.meta.env.VITE_MJU_AUTH_TOKEN_PARAM || 'token';
 
 export function isMjuSsoConfigured() {
-    return Boolean(MJU_SSO_START_URL);
+    return Boolean(MJU_SSO_CLIENT_ID && MJU_SSO_START_URL);
 }
 
 function randomState() {
@@ -23,12 +28,29 @@ export function buildMjuSsoStartUrl(returnTo = '/dashboard') {
     sessionStorage.setItem(SSO_STATE_KEY, state);
     sessionStorage.setItem(SSO_RETURN_KEY, returnTo);
 
-    const callbackUrl = new URL('/auth/mju/callback', window.location.origin).toString();
+    const callbackUrl = new URL(MJU_SSO_CALLBACK_PATH, window.location.origin).toString();
     const url = new URL(MJU_SSO_START_URL, window.location.origin);
     url.searchParams.set('redirect_uri', callbackUrl);
     url.searchParams.set('state', state);
-    url.searchParams.set('client', 'sci-ai-dashboard');
+    url.searchParams.set('cid', url.searchParams.get('cid') || MJU_SSO_CLIENT_ID);
+    url.searchParams.set('client', MJU_SSO_CLIENT_ID);
     return url.toString();
+}
+
+export function buildMjuSsoSignoutUrl() {
+    const afterSignoutUrl = new URL(MJU_SSO_AFTER_SIGNOUT_PATH, window.location.origin).toString();
+    const url = new URL(MJU_SSO_SIGNOUT_URL, window.location.origin);
+    url.searchParams.set('cid', url.searchParams.get('cid') || MJU_SSO_CLIENT_ID);
+    url.searchParams.set('redirect_uri', afterSignoutUrl);
+    url.searchParams.set('return_url', afterSignoutUrl);
+    return url.toString();
+}
+
+export function getMjuSsoRegisteredUrls(origin = window.location.origin) {
+    return {
+        webhookUrl: new URL(MJU_SSO_CALLBACK_PATH, origin).toString(),
+        afterSignoutUrl: new URL(MJU_SSO_AFTER_SIGNOUT_PATH, origin).toString(),
+    };
 }
 
 export function readMjuSsoCallback(search) {

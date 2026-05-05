@@ -11,6 +11,7 @@ const Layout = lazy(() => import('./components/Layout'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignUpPage = lazy(() => import('./pages/SignUpPage'));
 const MjuAuthCallbackPage = lazy(() => import('./pages/MjuAuthCallbackPage'));
+const MjuSignoutPage = lazy(() => import('./pages/MjuSignoutPage'));
 const DashboardHome = lazy(lazyRouteLoaders['/dashboard']);
 const TuitionPage = lazy(lazyRouteLoaders['/dashboard/tuition']);
 const StudentStatsPage = lazy(lazyRouteLoaders['/dashboard/student-stats']);
@@ -80,6 +81,7 @@ function AppRoutes() {
       <Route path="/" element={<PublicRoute><Suspense fallback={<AuthLoader />}><LoginPage /></Suspense></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><Suspense fallback={<AuthLoader />}><SignUpPage /></Suspense></PublicRoute>} />
       <Route path="/auth/mju/callback" element={<Suspense fallback={<AuthLoader />}><MjuAuthCallbackPage /></Suspense>} />
+      <Route path="/auth/mju/signout" element={<Suspense fallback={<AuthLoader />}><MjuSignoutPage /></Suspense>} />
       <Route path="/dashboard" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Layout /></Suspense></ProtectedRoute>}>
         <Route index element={<Suspense fallback={<PageLoader />}><DashboardHome /></Suspense>} />
         <Route path="tuition" element={<Suspense fallback={<PageLoader />}><TuitionPage /></Suspense>} />

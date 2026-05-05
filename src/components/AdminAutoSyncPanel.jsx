@@ -66,7 +66,7 @@ export default function AdminAutoSyncPanel({ onToast }) {
         } finally {
             setSyncingId('');
         }
-    }, [onToast, user?.email, user?.uid]);
+    }, [onToast, user]);
 
     return (
         <div className="admin-data-section">

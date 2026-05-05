@@ -13,26 +13,26 @@
   "dependencies": {
     "chart.js": "^4.5.1",
     "chartjs-plugin-zoom": "^2.2.0",
-    "firebase": "^12.9.0",
+    "firebase": "^12.12.1",
     "lucide-react": "^0.563.0",
-    "react": "^19.2.0",
+    "react": "^19.2.5",
     "react-chartjs-2": "^5.3.1",
-    "react-dom": "^19.2.0",
-    "react-grid-layout": "^2.2.2",
+    "react-dom": "^19.2.5",
+    "react-grid-layout": "^2.2.3",
     "react-resizable": "^3.1.3",
-    "react-router-dom": "^7.13.0",
-    "recharts": "^3.7.0",
+    "react-router-dom": "^7.14.2",
+    "recharts": "^3.8.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/react": "^19.2.7",
+    "@eslint/js": "^9.39.4",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
+    "@vitejs/plugin-react": "^5.2.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.2"
   }
 }

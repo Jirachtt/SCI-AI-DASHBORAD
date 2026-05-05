@@ -3,6 +3,9 @@ logs
 *.log
 readiness-*.png
 chrome-*-profile*/
+.tmp/
+__pycache__/
+*.pyc
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

@@ -37,6 +37,160 @@ function expandWeighted(items, labelKey = 'label') {
     return items.flatMap(item => Array.from({ length: item.count }, () => item[labelKey]));
 }
 
+const EDUCATION_DEFS = [
+    { key: 'doctoral', label: 'ปริญญาเอก', shortLabel: 'ป.เอก', color: '#0f766e', pattern: /เอก|doctoral|doctor|phd/i },
+    { key: 'master', label: 'ปริญญาโท', shortLabel: 'ป.โท', color: '#0e7490', pattern: /โท|master|msc/i },
+    { key: 'bachelor', label: 'ปริญญาตรี', shortLabel: 'ป.ตรี', color: '#b45309', pattern: /ตรี|bachelor|bsc/i },
+    { key: 'vocational', label: 'ปวส.', shortLabel: 'ปวส.', color: '#be185d', pattern: /ปวส|ประกาศนียบัตรวิชาชีพชั้นสูง|higher vocational|diploma/i },
+    { key: 'primary', label: 'ประถมศึกษา', shortLabel: 'ประถม', color: '#ea580c', pattern: /ประถม|primary/i },
+];
+
+const EDUCATION_YEAR_SOURCE_KEYS = [
+    'byEducationByYear',
+    'educationByYear',
+    'educationTrend',
+    'educationHistory',
+    'educationByAcademicYear',
+];
+
+function toNumber(value, fallback = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function educationMetaFor(value, index = 0) {
+    const text = String(value || '');
+    return EDUCATION_DEFS.find(def => def.pattern.test(text)) || {
+        key: `other-${index}`,
+        label: text || 'ไม่ระบุ',
+        shortLabel: text || 'อื่นๆ',
+        color: ['#64748b', '#7c3aed', '#0891b2', '#ca8a04'][index % 4],
+    };
+}
+
+function normalizeEducationRows(rows = []) {
+    return (rows || [])
+        .map((row, index) => {
+            const level = row?.level || row?.label || row?.name || row?.degree || row?.education || row?.key || '';
+            const meta = educationMetaFor(level, index);
+            return {
+                ...row,
+                key: row?.key || meta.key,
+                level: meta.label,
+                shortLabel: row?.shortLabel || meta.shortLabel,
+                count: toNumber(row?.count ?? row?.value ?? row?.total ?? row?.amount),
+                color: meta.color,
+                order: row?.order ?? index + 1,
+            };
+        })
+        .filter(row => row.count > 0)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+function educationRowsFromEntry(entry) {
+    if (Array.isArray(entry)) return normalizeEducationRows(entry);
+    if (!entry || typeof entry !== 'object') return [];
+
+    const nestedRows = entry.byEducation || entry.education || entry.items || entry.rows || entry.data;
+    if (Array.isArray(nestedRows)) return normalizeEducationRows(nestedRows);
+
+    const rows = EDUCATION_DEFS
+        .map(def => ({
+            key: def.key,
+            level: def.label,
+            count: entry[def.key] ?? entry[def.label] ?? entry[def.shortLabel],
+        }))
+        .filter(row => row.count != null);
+    return normalizeEducationRows(rows);
+}
+
+function entryYear(entry, fallbackYear) {
+    const value = entry?.year ?? entry?.academicYear ?? entry?.fiscalYear ?? entry?.budgetYear ?? fallbackYear;
+    if (value == null) return null;
+    return String(value).replace(/^ปี\s*/u, '');
+}
+
+function collectEducationYearRows(source, targetMap) {
+    if (Array.isArray(source)) {
+        source.forEach(entry => {
+            const year = entryYear(entry);
+            const rows = educationRowsFromEntry(entry);
+            if (year && rows.length) targetMap.set(String(year), { year: String(year), rows, source: 'direct' });
+        });
+        return;
+    }
+
+    if (source && typeof source === 'object') {
+        Object.entries(source).forEach(([year, value]) => {
+            const rows = educationRowsFromEntry(value);
+            if (rows.length) targetMap.set(String(year), { year: String(year), rows, source: 'direct' });
+        });
+    }
+}
+
+function scaleEducationRows(rows = [], targetTotal = 0) {
+    const sourceTotal = rows.reduce((sum, row) => sum + toNumber(row.count), 0);
+    if (!sourceTotal || !targetTotal) return rows;
+
+    let remaining = Math.max(0, Math.round(targetTotal));
+    return rows.map((row, index) => {
+        const count = index === rows.length - 1
+            ? remaining
+            : Math.max(0, Math.round((toNumber(row.count) / sourceTotal) * targetTotal));
+        remaining -= count;
+        return { ...row, count };
+    }).filter(row => row.count > 0);
+}
+
+function buildEducationYearOptions(sci = {}) {
+    const byYear = new Map();
+    EDUCATION_YEAR_SOURCE_KEYS.forEach(key => collectEducationYearRows(sci[key], byYear));
+
+    const baseRows = normalizeEducationRows(sci.byEducation || []);
+    if (!baseRows.length) return [];
+
+    const latestActualTrend = [...(sci.trend || [])].reverse().find(row => row.type !== 'forecast') || sci.trend?.[sci.trend.length - 1];
+    const latestYear = String(sci.educationYear || sci.year || latestActualTrend?.year || new Date().getFullYear() + 543);
+    if (!byYear.has(latestYear)) {
+        byYear.set(latestYear, { year: latestYear, rows: baseRows, source: 'current' });
+    }
+
+    const baseTotal = baseRows.reduce((sum, row) => sum + toNumber(row.count), 0);
+    const targetField = Math.abs(baseTotal - toNumber(sci.academic)) <= Math.abs(baseTotal - toNumber(sci.total))
+        ? 'academic'
+        : 'total';
+
+    (sci.trend || []).forEach(row => {
+        const year = entryYear(row);
+        if (!year || byYear.has(year)) return;
+        const targetTotal = toNumber(row[targetField]);
+        if (!targetTotal) return;
+        byYear.set(String(year), {
+            year: String(year),
+            rows: scaleEducationRows(baseRows, targetTotal),
+            source: row.type === 'forecast' ? 'forecast' : 'scaled',
+        });
+    });
+
+    return [...byYear.values()]
+        .map(option => ({
+            ...option,
+            total: option.rows.reduce((sum, row) => sum + toNumber(row.count), 0),
+        }))
+        .sort((a, b) => toNumber(b.year) - toNumber(a.year));
+}
+
+function educationSourceLabel(source) {
+    if (source === 'direct') return 'ข้อมูลวุฒิรายปีจากระบบ';
+    if (source === 'scaled') return 'อ้างอิงสัดส่วนวุฒิล่าสุดกับยอดบุคลากรรายปี';
+    if (source === 'forecast') return 'คาดการณ์จากสัดส่วนวุฒิล่าสุด';
+    return 'ข้อมูลวุฒิล่าสุด';
+}
+
+function educationCount(rows = [], key) {
+    return rows.find(row => row.key === key)?.count || 0;
+}
+
 function buildPersonnelDirectory(sci) {
     const academicPositions = expandWeighted(sci.academicPositions.filter(p => p.count > 0), 'position');
     const academicEducation = expandWeighted(sci.byEducation, 'level');
@@ -87,9 +241,15 @@ function buildPersonnelDirectory(sci) {
 export default function HRDashboardPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
+    const [educationYear, setEducationYear] = useState('');
     const { data: hrData } = useDashboardDataset('hr');
     const sci = hrData.scienceFaculty;
     const personnelRows = useMemo(() => buildPersonnelDirectory(sci), [sci]);
+    const educationYearOptions = useMemo(() => buildEducationYearOptions(sci), [sci]);
+    const selectedEducationYear = educationYearOptions.some(option => option.year === educationYear)
+        ? educationYear
+        : educationYearOptions[0]?.year || '';
+    const selectedEducation = educationYearOptions.find(option => option.year === selectedEducationYear) || educationYearOptions[0];
     if (!canAccess(user?.role, 'hr_overview')) return <AccessDenied />;
 
     // Department bar chart
@@ -409,7 +569,7 @@ export default function HRDashboardPage() {
         { label: 'บุคลากรทั้งหมด', value: sci.total, icon: Users, color: '#006838', suffix: 'คน' },
         { label: 'สายวิชาการ', value: sci.academic, icon: GraduationCap, color: '#2E86AB', suffix: 'คน' },
         { label: 'สายสนับสนุน', value: sci.support, icon: UserCheck, color: '#C5A028', suffix: 'คน' },
-        { label: 'ปริญญาเอก', value: sci.byEducation[0].count, icon: Award, color: '#A23B72', suffix: 'คน' },
+        { label: 'ปริญญาเอก', value: educationCount(normalizeEducationRows(sci.byEducation), 'doctoral'), icon: Award, color: '#0f766e', suffix: 'คน' },
         { label: 'รศ.+ ผศ.', value: sci.academicPositions[1].count + sci.academicPositions[2].count, icon: TrendingUp, color: '#7B68EE', suffix: 'คน' },
         { label: 'เกษียณใน 5 ปี', value: sci.diversity.retirementIn5Years, icon: Building2, color: '#E91E63', suffix: 'คน' },
     ];
@@ -505,13 +665,57 @@ export default function HRDashboardPage() {
             {/* Row 4: Education + Diversity table */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 16 }}>วุฒิการศึกษาสายวิชาการ</h3>
-                    <div style={{ display: 'flex', gap: 16 }}>
-                        {sci.byEducation.map((ed, i) => (
-                            <div key={i} style={{ flex: 1, background: `${ed.color}15`, borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                                <div style={{ fontSize: '2rem' }}>{ed.icon}</div>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: ed.color }}>{ed.count}</div>
-                                <div style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>{ed.level}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+                        <div>
+                            <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: 4 }}>วุฒิการศึกษาสายวิชาการ</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
+                                ปี {selectedEducation?.year || '-'} · {educationSourceLabel(selectedEducation?.source)}
+                            </p>
+                        </div>
+                        {educationYearOptions.length > 1 && (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: '0.86rem', fontWeight: 700 }}>
+                                ปี
+                                <select
+                                    value={selectedEducationYear}
+                                    onChange={(event) => setEducationYear(event.target.value)}
+                                    style={{
+                                        minWidth: 108,
+                                        height: 38,
+                                        borderRadius: 10,
+                                        border: '1px solid var(--border-color)',
+                                        background: 'var(--bg-primary)',
+                                        color: 'var(--text-primary)',
+                                        fontWeight: 700,
+                                        padding: '0 10px',
+                                    }}
+                                >
+                                    {educationYearOptions.map(option => (
+                                        <option key={option.year} value={option.year}>{option.year}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        )}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(112px, 1fr))', gap: 12 }}>
+                        {(selectedEducation?.rows || []).map((ed) => (
+                            <div
+                                key={ed.key}
+                                style={{
+                                    minHeight: 132,
+                                    background: `linear-gradient(180deg, ${ed.color}16, ${ed.color}08)`,
+                                    border: `1px solid ${ed.color}2f`,
+                                    borderRadius: 14,
+                                    padding: '16px 12px',
+                                    textAlign: 'center',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <div style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>{ed.shortLabel}</div>
+                                <div style={{ fontSize: '1.55rem', fontWeight: 800, color: ed.color, marginTop: 12, lineHeight: 1 }}>{ed.count.toLocaleString('th-TH')}</div>
+                                <div style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: 8, lineHeight: 1.3 }}>{ed.level}</div>
                             </div>
                         ))}
                     </div>

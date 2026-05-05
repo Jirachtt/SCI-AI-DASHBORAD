@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Database, Upload, FileSpreadsheet, CheckCircle, AlertTriangle,
     RefreshCw, Save, X, Info
@@ -103,15 +103,20 @@ export default function AdminDataUpload({ onToast }) {
     const [acknowledgeMismatch, setAcknowledgeMismatch] = useState(false);
     const sourceStatus = getStudentDataSourceStatus();
 
-    const loadMeta = async () => {
+    const loadMeta = useCallback(async () => {
         setMetaLoading(true);
         await ensureStudentList();
         const m = await getStudentListMeta();
         setMeta(m);
         setMetaLoading(false);
-    };
+    }, []);
 
-    useEffect(() => { loadMeta(); }, []);
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            void loadMeta();
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, [loadMeta]);
 
     const resetUpload = () => {
         setParsed(null);

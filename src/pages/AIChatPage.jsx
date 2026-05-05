@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, TableProperties } from 'lucide-react';
+import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, TableProperties, Database, ShieldCheck, Clock3, Gauge, Layers3, GraduationCap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import {
@@ -43,6 +43,13 @@ const AI_CHART_TOOLTIP_STYLE = {
     displayColors: true,
     boxPadding: 5,
 };
+
+const AI_THINKING_STEPS = [
+    'เลือกโมเดลและสิทธิ์ข้อมูล',
+    'อ่านบริบทที่เกี่ยวข้อง',
+    'ตรวจแหล่งข้อมูลและตัวเลข',
+    'จัดรูปคำตอบและกราฟ',
+];
 
 // ==================== Linear Regression Forecasting ====================
 function linearRegression(dataPoints) {
@@ -2067,7 +2074,21 @@ export function ChatMessage({ msg, onExpand }) {
     const formatText = (text) => {
         if (!text) return null;
         return text.split('\n').map((line, i) => {
-            const parts = line.split(/(\*\*.*?\*\*|_.*?_|`.*?`)/g).map((part, j) => {
+            const parts = line.split(/(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|\*\*.*?\*\*|_.*?_|`.*?`)/g).map((part, j) => {
+                const linkMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+                if (linkMatch) {
+                    return (
+                        <a
+                            key={j}
+                            className="ai-page-msg-link"
+                            href={linkMatch[2]}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            {linkMatch[1]}
+                        </a>
+                    );
+                }
                 if (part.startsWith('**') && part.endsWith('**')) {
                     return <strong key={j}>{part.slice(2, -2)}</strong>;
                 }
@@ -2192,14 +2213,38 @@ export function generateChartFromFile(parsed, fileName) {
 }
 
 export const MAIN_AI_QUICK_ACTIONS = [
-    { label: 'แผนรับ TCAS 5 ปี', query: 'สรุปแผนรับ TCAS คณะวิทยาศาสตร์ย้อนหลัง 5 ปี พร้อมแนวโน้มและรอบ 3 ปี 2569', icon: FileSpreadsheet },
-    { label: 'กราฟเกรดรายวิชา', query: 'สร้างกราฟการกระจายเกรดรายวิชา SCI331 และสรุป GPA เฉลี่ยรายวิชา', icon: BarChart3 },
-    { label: 'จำนวน+GPA ตามสาขา', query: 'สร้างกราฟจำนวนนักศึกษาและ GPA เฉลี่ย คณะวิทยาศาสตร์ แยกตามสาขา', icon: BarChart3 },
-    { label: 'นักศึกษาแยกชั้นปี', query: 'สร้างกราฟจำนวนนักศึกษาคณะวิทยาศาสตร์ แยกตามชั้นปี', icon: TrendingUp },
-    { label: 'GPA สูงสุด 10 คน', query: 'แสดงรายชื่อนักศึกษาที่ GPA สูงสุด 10 คน', icon: Search },
-    { label: 'GPA ต่ำ/รอพินิจ', query: 'แสดงรายชื่อนักศึกษาที่เกรดต่ำหรือรอพินิจ 10 คน', icon: Search },
-    { label: 'พยากรณ์ GPA+สำเร็จ', query: 'พยากรณ์อัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ปี 2570 2571 เป็นกราฟ', icon: Sparkles },
-    { label: 'พยากรณ์รายรับคณะวิทย์', query: 'พยากรณ์รายรับงบประมาณคณะวิทยาศาสตร์ ปี 2570 2571 เป็นกราฟ', icon: ChartLine },
+    { label: 'แผนรับ TCAS 5 ปี', query: 'สรุปแผนรับ TCAS คณะวิทยาศาสตร์ย้อนหลัง 5 ปี พร้อมแนวโน้มและรอบ 3 ปี 2569', icon: FileSpreadsheet, group: 'planning' },
+    { label: 'กราฟเกรดรายวิชา', query: 'สร้างกราฟการกระจายเกรดรายวิชา SCI331 และสรุป GPA เฉลี่ยรายวิชา', icon: BarChart3, group: 'analysis' },
+    { label: 'จำนวน+GPA ตามสาขา', query: 'สร้างกราฟจำนวนนักศึกษาและ GPA เฉลี่ย คณะวิทยาศาสตร์ แยกตามสาขา', icon: BarChart3, group: 'student' },
+    { label: 'นักศึกษาแยกชั้นปี', query: 'สร้างกราฟจำนวนนักศึกษาคณะวิทยาศาสตร์ แยกตามชั้นปี', icon: TrendingUp, group: 'student' },
+    { label: 'GPA สูงสุด 10 คน', query: 'แสดงรายชื่อนักศึกษาที่ GPA สูงสุด 10 คน', icon: Search, group: 'lookup' },
+    { label: 'GPA ต่ำ/รอพินิจ', query: 'แสดงรายชื่อนักศึกษาที่เกรดต่ำหรือรอพินิจ 10 คน', icon: Search, group: 'lookup' },
+    { label: 'พยากรณ์ GPA+สำเร็จ', query: 'พยากรณ์อัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ปี 2570 2571 เป็นกราฟ', icon: Sparkles, group: 'forecast' },
+    { label: 'พยากรณ์รายรับคณะวิทย์', query: 'พยากรณ์รายรับงบประมาณคณะวิทยาศาสตร์ ปี 2570 2571 เป็นกราฟ', icon: ChartLine, group: 'forecast' },
+];
+
+const ROLE_DISPLAY = {
+    dean: 'คณบดี',
+    chair: 'ประธานหลักสูตร',
+    staff: 'เจ้าหน้าที่',
+    student: 'นักศึกษา',
+    general: 'ผู้ใช้ทั่วไป',
+    admin: 'ผู้ดูแลระบบ',
+};
+
+const QUICK_ACTION_GROUPS = [
+    { id: 'student', title: 'วิเคราะห์นักศึกษา', desc: 'จำนวน, GPA, ชั้นปี', icon: GraduationCap, color: '#2563eb' },
+    { id: 'lookup', title: 'ค้นหา/เฝ้าระวัง', desc: 'รายชื่อและกลุ่มเสี่ยง', icon: Search, color: '#7c3aed' },
+    { id: 'forecast', title: 'พยากรณ์', desc: 'แนวโน้มและกราฟ', icon: ChartLine, color: '#0f766e' },
+    { id: 'planning', title: 'แผนและรับสมัคร', desc: 'TCAS / แผนรับ', icon: FileSpreadsheet, color: '#b45309' },
+    { id: 'analysis', title: 'วิเคราะห์เชิงลึก', desc: 'รายวิชาและไฟล์', icon: BarChart3, color: '#be123c' },
+];
+
+const DECISION_PROMPTS = [
+    'สาขาไหนมีนักศึกษาลดลงมากที่สุด และควรทำอะไรต่อ',
+    'นักศึกษากลุ่มเสี่ยง GPA ต่ำกว่า 2.00 มีแนวโน้มอย่างไร',
+    'TCAS ปี 2569 สาขาไหนควรเพิ่มหรือลดแผนรับ',
+    'งบประมาณคณะวิทย์ปี 2570 ควรระวังจุดไหน',
 ];
 
 export default function AIChatPage() {
@@ -2223,6 +2268,31 @@ export default function AIChatPage() {
         name: 'ข้อมูล Dashboard',
         ...buildLiveDashboardMergeSummary(),
     };
+    const allStudentsForStatus = getAllStudents();
+    const roleLabel = ROLE_DISPLAY[user?.role] || user?.role || 'ยังไม่ระบุ';
+    const liveSourceLabel = isLiveData() ? 'Firestore live' : 'ข้อมูลในระบบ';
+    const dashboardDatasetCount = Array.isArray(dashboardMergeSummary.rows) ? dashboardMergeSummary.rows.length : 0;
+    const uploadedFileLabel = uploadedFileData
+        ? `${uploadedFileData.rowCount.toLocaleString('th-TH')} แถว`
+        : 'ยังไม่มีไฟล์แนบ';
+    const aiStatusCards = [
+        { icon: Database, label: 'ข้อมูลนักศึกษา', value: allStudentsForStatus.length.toLocaleString('th-TH'), detail: liveSourceLabel, color: '#0f766e' },
+        { icon: Layers3, label: 'ชุดข้อมูล Dashboard', value: dashboardDatasetCount.toLocaleString('th-TH'), detail: 'อ่านเฉพาะเรื่องที่ถาม', color: '#2563eb' },
+        { icon: ShieldCheck, label: 'สิทธิ์คำตอบ', value: roleLabel, detail: 'อิงตาม role ในระบบ', color: '#7c3aed' },
+        { icon: FileSpreadsheet, label: 'ไฟล์วิเคราะห์', value: uploadedFileLabel, detail: uploadedFileData ? 'พร้อมนำไปรวมบริบท' : 'CSV / Excel', color: '#b45309' },
+    ];
+    const contextSources = [
+        { label: 'Student records', value: `${allStudentsForStatus.length.toLocaleString('th-TH')} คน`, state: isLiveData() ? 'live' : 'ready' },
+        { label: 'Dashboard datasets', value: `${dashboardDatasetCount.toLocaleString('th-TH')} ชุด`, state: 'ready' },
+        { label: 'Forecast engine', value: 'Linear + AI', state: 'ready' },
+        { label: 'Uploaded file', value: uploadedFileData ? uploadedFileLabel : 'ไม่มี', state: uploadedFileData ? 'ready' : 'idle' },
+    ];
+    const quickActionGroups = QUICK_ACTION_GROUPS
+        .map(group => ({
+            ...group,
+            actions: MAIN_AI_QUICK_ACTIONS.filter(action => action.group === group.id),
+        }))
+        .filter(group => group.actions.length > 0);
     const [messages, setMessages] = useState([
         {
             role: 'bot',
@@ -2232,9 +2302,10 @@ export default function AIChatPage() {
     ]);
     const [input, setInput] = useState('');
     const [typing, setTyping] = useState(false);
+    const [thinkingStepIndex, setThinkingStepIndex] = useState(0);
     const messagesEnd = useRef(null);
-    const sendAI = useCallback(async (prompt) => {
-        return sendMessageToGemini(prompt, { user, theme, aiSettings: getAIModelSettings() });
+    const sendAI = useCallback(async (prompt, onChunk) => {
+        return sendMessageToGemini(prompt, { user, theme, aiSettings: getAIModelSettings(), onChunk });
     }, [user, theme]);
 
     // ── Ensure the live student dataset is loaded before the user can chat ──
@@ -2275,8 +2346,21 @@ export default function AIChatPage() {
     };
 
     useEffect(() => {
+        const hasUserMessage = messages.some(m => m.role === 'user');
+        if (!hasUserMessage && !typing) return;
         messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, typing]);
+
+    useEffect(() => {
+        if (!typing) {
+            setThinkingStepIndex(0);
+            return undefined;
+        }
+        const timer = setInterval(() => {
+            setThinkingStepIndex(prev => (prev + 1) % AI_THINKING_STEPS.length);
+        }, 1400);
+        return () => clearInterval(timer);
+    }, [typing]);
 
     const handleNewChat = useCallback(() => {
         resetConversation();
@@ -2490,6 +2574,43 @@ export default function AIChatPage() {
         }
     };
 
+    const createAIStreamUpdater = useCallback((sourceQuestion) => {
+        const streamId = `ai_stream_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+        const renderStream = (fullText, isFinal = false) => {
+            const parsedAI = parseAIResponse(fullText || '', sourceQuestion);
+            const nextMessage = {
+                role: 'bot',
+                text: parsedAI.text || 'กำลังเรียบเรียงคำตอบจากข้อมูลที่เกี่ยวข้อง...',
+                chart: parsedAI.chart,
+                streaming: !isFinal,
+                _streamId: streamId,
+            };
+
+            setMessages(prev => {
+                const exists = prev.some(m => m._streamId === streamId);
+                if (!exists) return [...prev, nextMessage];
+                return prev.map(m => (m._streamId === streamId ? { ...m, ...nextMessage } : m));
+            });
+        };
+
+        return {
+            update(fullText, meta = {}) {
+                if (meta.reset) {
+                    setMessages(prev => prev.filter(m => m._streamId !== streamId));
+                    return;
+                }
+                renderStream(fullText, false);
+            },
+            finalize(fullText) {
+                renderStream(fullText, true);
+            },
+            remove() {
+                setMessages(prev => prev.filter(m => m._streamId !== streamId));
+            },
+        };
+    }, []);
+
     // Robust auto-retry with live countdown for quota errors
     const retryWithCountdown = async (buildMessage, retryId, sourceQuestion = '') => {
         const MAX_RETRIES = 3;
@@ -2543,6 +2664,7 @@ export default function AIChatPage() {
         setInput('');
         setTyping(true);
 
+        let stream = null;
         try {
             // Try local response first (forecast, student search)
             const localResult = tryLocalResponse(userMsg);
@@ -2603,10 +2725,11 @@ export default function AIChatPage() {
 
                 return context ? `${context}คำถาม: ${userMsg}` : userMsg;
             };
-            const aiText = await sendAI(buildMsg());
-            const parsedAI = parseAIResponse(aiText, userMsg);
-            setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
+            stream = createAIStreamUpdater(userMsg);
+            const aiText = await sendAI(buildMsg(), stream.update);
+            stream.finalize(aiText);
         } catch (error) {
+            stream?.remove();
             console.error('[AIChatPage] Gemini API error:', error);
             const errMsg = error.message || 'ไม่ทราบสาเหตุ';
             const isQuota = /รอ|quota|API ถูกใช้งาน|QUOTA/.test(errMsg);
@@ -2656,12 +2779,11 @@ export default function AIChatPage() {
 
     const handleKeyDown = (e) => { if (e.key === 'Enter') handleSend(); };
 
-    const quickActions = MAIN_AI_QUICK_ACTIONS;
-
     const handleQuickAction = async (query) => {
         if (typing) return;
         setMessages(prev => [...prev, { role: 'user', text: query }]);
         setTyping(true);
+        let stream = null;
         try {
             // Try local response first (forecast, student search)
             const localResult = tryLocalResponse(query);
@@ -2670,10 +2792,11 @@ export default function AIChatPage() {
                 setTyping(false);
                 return;
             }
-            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary));
-            const parsedAI = parseAIResponse(aiText, query);
-            setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
+            stream = createAIStreamUpdater(query);
+            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary), stream.update);
+            stream.finalize(aiText);
         } catch (error) {
+            stream?.remove();
             console.error('[AIChatPage] Quick action error:', error);
             const errMsg = error.message || '';
             const isQuota = /รอ|quota|API ถูกใช้งาน|QUOTA/.test(errMsg);
@@ -2715,6 +2838,11 @@ export default function AIChatPage() {
                     <div>
                         <h1>{AI_ASSISTANT_NAME}</h1>
                         <p>Powered by Gemini — {APP_NAME_TH} / {APP_NAME_EN}</p>
+                        <div className="ai-chat-page-header-meta">
+                            <span><Database size={12} /> {liveSourceLabel}</span>
+                            <span><ShieldCheck size={12} /> {roleLabel}</span>
+                            <span><Clock3 size={12} /> บริบทสดในหน้า</span>
+                        </div>
                     </div>
                 </div>
                 <div className="ai-chat-page-header-actions">
@@ -2805,19 +2933,65 @@ export default function AIChatPage() {
             <div className="ai-chat-page-body">
                 {/* Main Chat Area */}
                 <div className="ai-chat-page-main">
+                    {messages.length <= 2 && (
+                        <section className="ai-command-briefing" aria-label="AI dashboard briefing">
+                            <div className="ai-command-briefing-copy">
+                                <div className="ai-command-kicker">
+                                    <Gauge size={14} /> Decision Command Center
+                                </div>
+                                <h2>ถาม วิเคราะห์ และสร้างกราฟจากข้อมูลคณะได้ในที่เดียว</h2>
+                                <p>
+                                    AI จะเลือกอ่านเฉพาะข้อมูลที่เกี่ยวข้องกับคำถาม เช่น นักศึกษา TCAS งบประมาณ HR และไฟล์ที่แนบ
+                                    เพื่อประหยัด token และลดคำตอบลอยจากข้อมูลไม่เกี่ยวข้อง
+                                </p>
+                            </div>
+                            <div className="ai-command-status-grid">
+                                {aiStatusCards.map((card) => {
+                                    const Icon = card.icon;
+                                    return (
+                                        <div key={card.label} className="ai-command-status-card" style={{ '--accent': card.color }}>
+                                            <div className="ai-command-status-icon"><Icon size={16} /></div>
+                                            <div>
+                                                <span>{card.label}</span>
+                                                <strong>{card.value}</strong>
+                                                <small>{card.detail}</small>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    )}
+
                     {/* Quick Actions Bar */}
                     {messages.length <= 2 && (
                         <div className="ai-chat-page-quick-actions">
                             <div className="ai-chat-page-quick-label">
-                                <Zap size={13} /> QUICK ACTIONS — คลิกเพื่อลองใช้งาน
+                                <Zap size={13} /> QUICK ACTIONS — เลือกงานที่ต้องการให้ AI ช่วย
                             </div>
-                            <div className="ai-chat-page-quick-grid">
-                                {quickActions.map((action, i) => {
-                                    const ActionIcon = action.icon;
+                            <div className="ai-chat-page-quick-groups">
+                                {quickActionGroups.map((group) => {
+                                    const GroupIcon = group.icon;
                                     return (
-                                        <button key={i} className="ai-chat-page-quick-btn" onClick={() => handleQuickAction(action.query)}>
-                                            <ActionIcon size={14} /> {action.label}
-                                        </button>
+                                        <section key={group.id} className="ai-chat-page-quick-group" style={{ '--group-color': group.color }}>
+                                            <div className="ai-chat-page-quick-group-head">
+                                                <span><GroupIcon size={15} /></span>
+                                                <div>
+                                                    <strong>{group.title}</strong>
+                                                    <small>{group.desc}</small>
+                                                </div>
+                                            </div>
+                                            <div className="ai-chat-page-quick-grid">
+                                                {group.actions.map((action) => {
+                                                    const ActionIcon = action.icon;
+                                                    return (
+                                                        <button key={action.label} className="ai-chat-page-quick-btn" onClick={() => handleQuickAction(action.query)}>
+                                                            <ActionIcon size={14} /> {action.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </section>
                                     );
                                 })}
                             </div>
@@ -2834,7 +3008,13 @@ export default function AIChatPage() {
                                 <div className="ai-page-msg-avatar"><Sparkles size={18} style={{ color: '#00e676' }} /></div>
                                 <div className="ai-page-msg-content">
                                     <div className="ai-page-typing">
-                                        <span /><span /><span />
+                                        <div className="ai-page-typing-dots" aria-hidden="true">
+                                            <span /><span /><span />
+                                        </div>
+                                        <div className="ai-page-typing-text">
+                                            <strong>{AI_THINKING_STEPS[thinkingStepIndex]}</strong>
+                                            <small>กำลังเตรียมคำตอบจากข้อมูลที่เกี่ยวข้อง</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2903,7 +3083,29 @@ export default function AIChatPage() {
 
                 {/* Right Sidebar — Feature Cards */}
                 <div className="ai-chat-page-sidebar">
-                    <h3><Sparkles size={16} /> ฟีเจอร์ทั้งหมด</h3>
+                    <h3><Sparkles size={16} /> Context ที่ AI ใช้อยู่</h3>
+                    <div className="ai-context-source-list">
+                        {contextSources.map((source) => (
+                            <div key={source.label} className={`ai-context-source ${source.state}`}>
+                                <div>
+                                    <span>{source.label}</span>
+                                    <strong>{source.value}</strong>
+                                </div>
+                                <small>{source.state === 'live' ? 'live' : source.state === 'idle' ? 'idle' : 'ready'}</small>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="ai-decision-prompts">
+                        <h4><Zap size={14} /> คำถามเชิงตัดสินใจ</h4>
+                        {DECISION_PROMPTS.map((prompt) => (
+                            <button key={prompt} type="button" onClick={() => handleQuickAction(prompt)} disabled={typing}>
+                                {prompt}
+                            </button>
+                        ))}
+                    </div>
+
+                    <h3><Sparkles size={16} /> ความสามารถหลัก</h3>
                     <div className="ai-chat-page-feature-list">
                         {featureCards.map((card, i) => {
                             const Icon = card.icon;
@@ -2924,14 +3126,22 @@ export default function AIChatPage() {
                     <div className="ai-chat-page-tips">
                         <h4>ตัวอย่างคำถาม</h4>
                         <ul>
-                            <li>"สร้างกราฟจำนวนนักศึกษาและเกรด"</li>
-                            <li>"แม่โจ้มีกี่คณะ แต่ละคณะมีสาขาอะไร"</li>
-                            <li>"การรับสมัคร TCAS มีกี่รอบ"</li>
-                            <li>"พยากรณ์งบประมาณคณะวิทย์ ปี 70 71"</li>
-                            <li>"แสดงนักศึกษาสาขาคอม ชั้นปี 3"</li>
-                            <li>"ค่าเทอมแม่โจ้เท่าไหร่"</li>
-                            <li>"นักศึกษาที่มี GPA สูงสุด 10 คน"</li>
-                            <li>"แม่โจ้อยู่ที่ไหน เดินทางยังไง"</li>
+                            {[
+                                'สร้างกราฟจำนวนนักศึกษาและเกรด',
+                                'แม่โจ้มีกี่คณะ แต่ละคณะมีสาขาอะไร',
+                                'การรับสมัคร TCAS มีกี่รอบ',
+                                'พยากรณ์งบประมาณคณะวิทย์ ปี 70 71',
+                                'แสดงนักศึกษาสาขาคอม ชั้นปี 3',
+                                'ค่าเทอมแม่โจ้เท่าไหร่',
+                                'นักศึกษาที่มี GPA สูงสุด 10 คน',
+                                'แม่โจ้อยู่ที่ไหน เดินทางยังไง',
+                            ].map(prompt => (
+                                <li key={prompt}>
+                                    <button type="button" onClick={() => handleQuickAction(prompt)} disabled={typing}>
+                                        "{prompt}"
+                                    </button>
+                                </li>
+                            ))}
                         </ul>
                     </div>
                 </div>

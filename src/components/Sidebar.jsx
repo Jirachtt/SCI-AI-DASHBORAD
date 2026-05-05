@@ -91,10 +91,10 @@ export default function Sidebar({ isOpen, onClose }) {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [tokenBudget, setTokenBudget] = useState(() => getAITokenBudgetSnapshot());
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         setSettingsOpen(false);
-        logout();
-        navigate('/');
+        const result = await logout();
+        if (!result?.redirecting) navigate('/');
     };
 
     useEffect(() => {
