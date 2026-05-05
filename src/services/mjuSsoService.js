@@ -21,7 +21,8 @@ const MJU_SSO_TOKEN_PARAM_CANDIDATES = [
     'auth_token',
     'authToken',
 ];
-const MJU_SSO_EXCHANGE_PARAM_CANDIDATES = ['code', 'ticket', 'sso_ticket', 'session', 'sid'];
+const MJU_SSO_EXCHANGE_PARAM_CANDIDATES = ['ac', 'code', 'ticket', 'sso_ticket', 'session', 'sid'];
+export const MJU_SSO_EXCHANGE_ENDPOINT = import.meta.env.VITE_MJU_AUTH_EXCHANGE_ENDPOINT || '/api/mju-sso-exchange';
 
 export function isMjuSsoConfigured() {
     return Boolean(MJU_SSO_CLIENT_ID && MJU_SSO_START_URL);
@@ -124,6 +125,8 @@ export function readMjuSsoCallback(search, hash = '') {
         return {
             ok: false,
             error: `${hint}.${foundText}`,
+            exchangeParam: exchangeParam.key,
+            exchangeCode: exchangeParam.value,
             detectedParamKeys,
         };
     }
@@ -135,6 +138,35 @@ export function readMjuSsoCallback(search, hash = '') {
         detectedParamKeys,
         stateWarning: expectedState && !state ? 'MJU SSO ไม่ได้ส่ง state กลับมา แต่ระบบยอมรับ token เพื่อรองรับ SSO ของมหาวิทยาลัย' : '',
         returnTo: sessionStorage.getItem(SSO_RETURN_KEY) || '/dashboard',
+    };
+}
+
+export async function exchangeMjuSsoCode({ code, codeParam, detectedParamKeys } = {}) {
+    if (!code) {
+        return { ok: false, error: 'ไม่พบรหัสสำหรับแลก token จาก MJU SSO' };
+    }
+
+    const response = await fetch(MJU_SSO_EXCHANGE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            code,
+            codeParam: codeParam || 'ac',
+            detectedParamKeys: detectedParamKeys || [],
+        }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || !body?.token) {
+        return {
+            ok: false,
+            error: body?.message || body?.error || 'แลก token จาก MJU SSO ไม่สำเร็จ',
+            status: response.status,
+        };
+    }
+    return {
+        ok: true,
+        token: body.token,
+        claims: body.claims || {},
     };
 }
 

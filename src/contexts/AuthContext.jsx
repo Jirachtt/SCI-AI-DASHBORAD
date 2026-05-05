@@ -18,6 +18,7 @@ import {
     buildMjuSsoSignoutUrl,
     buildMjuSsoStartUrl,
     clearMjuSsoState,
+    exchangeMjuSsoCode,
     normalizeMjuRoleFromClaims,
     readMjuSsoCallback,
     roleLabelForMjuRole
@@ -367,6 +368,34 @@ export function AuthProvider({ children }) {
         if (!auth) return firebaseUnavailable();
         const callback = readMjuSsoCallback(search, hash);
         if (!callback.ok) {
+            if (callback.exchangeCode) {
+                const exchange = await exchangeMjuSsoCode({
+                    code: callback.exchangeCode,
+                    codeParam: callback.exchangeParam,
+                    detectedParamKeys: callback.detectedParamKeys,
+                });
+                if (exchange.ok) {
+                    try {
+                        await signInWithCustomToken(auth, exchange.token);
+                        clearMjuSsoState();
+                        return { success: true, returnTo: sessionStorage.getItem('mju_sso_return_to') || '/dashboard' };
+                    } catch (error) {
+                        clearMjuSsoState();
+                        return {
+                            success: false,
+                            code: error?.code || 'mju-sso/exchanged-token-failed',
+                            error: error?.message || 'เข้าสู่ระบบด้วย token ที่แลกจาก MJU SSO ไม่สำเร็จ',
+                            detectedParamKeys: callback.detectedParamKeys || [],
+                        };
+                    }
+                }
+                clearMjuSsoState();
+                return {
+                    success: false,
+                    error: exchange.error,
+                    detectedParamKeys: callback.detectedParamKeys || [],
+                };
+            }
             clearMjuSsoState();
             return {
                 success: false,
