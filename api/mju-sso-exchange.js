@@ -5,6 +5,7 @@ import { createSign } from 'node:crypto';
 
 const FIREBASE_AUDIENCE = 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit';
 const DEFAULT_CLIENT_ID = '74dade2afc8449ecb975165f6451619f';
+const DEFAULT_MJU_TOKEN_URL = 'https://sso.mju.ac.th/token.aspx';
 
 function sendJson(res, status, body) {
   res.statusCode = status;
@@ -91,38 +92,55 @@ export function firstValue(data, keys) {
 
 function normalizeRole(data = {}) {
   const raw = firstValue(data, ['role', 'mjuRole', 'mju_user_role', 'userType', 'mjuUserType', 'type']).toLowerCase();
-  const id = firstValue(data, ['mjuId', 'studentId', 'employeeId', 'username', 'userId', 'uid']);
+  const studentId = firstValue(data, ['studentId', 'studentID', 'studentCode']);
+  const staffId = firstValue(data, ['employeeId', 'personID', 'humanID']);
+  const id = firstValue(data, ['mjuId', 'studentId', 'studentID', 'studentCode', 'employeeId', 'personID', 'humanID', 'username', 'userId', 'uid']);
   if (['dean', 'คณบดี'].includes(raw)) return 'dean';
   if (['chair', 'program_chair', 'head', 'หัวหน้าหลักสูตร', 'ประธานหลักสูตร'].includes(raw)) return 'chair';
   if (['staff', 'teacher', 'lecturer', 'faculty', 'employee', 'บุคลากร', 'อาจารย์', 'เจ้าหน้าที่'].includes(raw)) return 'staff';
   if (['student', 'นักศึกษา', 'นิสิต'].includes(raw)) return 'student';
+  if (studentId) return 'student';
+  if (staffId) return 'staff';
   if (/^\d{8,13}$/.test(id)) return 'student';
   return 'general';
 }
 
 export function tokenFromExchangeBody(data = {}) {
-  return firstValue(data, ['token', 'firebaseToken', 'customToken', 'custom_token']);
+  return firstValue(data, ['token', 'firebaseToken', 'customToken', 'custom_token', 'access_token', 'id_token', 'jwt', 'sso_token', 'auth_token', 'authToken']);
+}
+
+function fullNameFromMjuData(data = {}) {
+  const directName = firstValue(data, ['name', 'displayName', 'fullName', 'fullname', 'thaiName']);
+  if (directName) return directName;
+
+  const title = firstValue(data, ['titleName', 'titleNameTh', 'title']);
+  const firstName = firstValue(data, ['firstName', 'firstNameTh']);
+  const lastName = firstValue(data, ['lastName', 'lastNameTh']);
+  return `${title}${firstName}${lastName ? ` ${lastName}` : ''}`.trim();
 }
 
 export function buildClaims(data = {}) {
-  const id = firstValue(data, ['mjuId', 'studentId', 'employeeId', 'username', 'userId', 'uid']);
+  const studentId = firstValue(data, ['studentId', 'studentID', 'studentCode']);
+  const employeeId = firstValue(data, ['employeeId', 'personID', 'humanID']);
+  const id = firstValue(data, ['mjuId', 'studentId', 'studentID', 'studentCode', 'employeeId', 'personID', 'humanID', 'username', 'userId', 'uid']);
   const role = normalizeRole(data);
   return {
     mjuVerified: true,
     mjuId: id,
-    studentId: firstValue(data, ['studentId']),
-    employeeId: firstValue(data, ['employeeId']),
+    studentId,
+    employeeId,
     mjuRole: role,
     mjuUserType: firstValue(data, ['userType', 'mjuUserType', 'type']) || role,
-    email: firstValue(data, ['email', 'mail']),
-    name: firstValue(data, ['name', 'displayName', 'fullName', 'fullname', 'thaiName']),
+    email: firstValue(data, ['email', 'mail', 'e_mail']),
+    name: fullNameFromMjuData(data),
+    photoURL: firstValue(data, ['photoURL', 'pictureUrl', 'personnelPhoto']),
     department: firstValue(data, ['department', 'division', 'major']),
     faculty: firstValue(data, ['faculty']),
   };
 }
 
 export async function callMjuExchangeEndpoint({ code, codeParam }) {
-  const exchangeUrl = process.env.MJU_SSO_EXCHANGE_URL;
+  const exchangeUrl = process.env.MJU_SSO_EXCHANGE_URL || DEFAULT_MJU_TOKEN_URL;
   if (!exchangeUrl) {
     const err = new Error('ได้รับค่า ac จาก MJU SSO แล้ว แต่ยังไม่ได้ตั้ง MJU_SSO_EXCHANGE_URL สำหรับตรวจสอบ/แลก ac เป็นข้อมูลผู้ใช้');
     err.statusCode = 501;
@@ -132,11 +150,8 @@ export async function callMjuExchangeEndpoint({ code, codeParam }) {
   const method = String(process.env.MJU_SSO_EXCHANGE_METHOD || 'POST').toUpperCase();
   const clientId = process.env.MJU_SSO_CLIENT_ID || process.env.VITE_MJU_AUTH_CLIENT_ID || DEFAULT_CLIENT_ID;
   const payload = {
-    [codeParam || 'ac']: code,
-    ac: code,
+    clientID: clientId,
     code,
-    cid: clientId,
-    clientId,
   };
   const headers = { 'Content-Type': 'application/json' };
   if (process.env.MJU_SSO_CLIENT_SECRET) {
@@ -147,6 +162,7 @@ export async function callMjuExchangeEndpoint({ code, codeParam }) {
   const options = { method, headers };
   if (method === 'GET') {
     Object.entries(payload).forEach(([key, value]) => url.searchParams.set(key, value));
+    if (codeParam && codeParam !== 'code') url.searchParams.set(codeParam, code);
   } else {
     options.body = JSON.stringify(payload);
   }
@@ -201,7 +217,7 @@ export default async function handler(req, res) {
     }
 
     const claims = buildClaims(exchangeData);
-    const uid = claims.mjuId || claims.email || firstValue(exchangeData, ['uid', 'id']);
+    const uid = claims.mjuId || claims.email || firstValue(exchangeData, ['uid', 'id', 'studentID', 'studentCode', 'personID', 'humanID']);
     if (!uid) {
       sendJson(res, 502, {
         error: 'MJU_SSO_PROFILE_INCOMPLETE',

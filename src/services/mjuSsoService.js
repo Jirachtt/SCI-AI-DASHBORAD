@@ -184,12 +184,16 @@ export function normalizeMjuRoleFromClaims(claims = {}) {
         claims.mjuUserType ||
         ''
     ).toLowerCase();
-    const mjuId = String(claims.mjuId || claims.studentId || claims.employeeId || claims.username || '');
+    const studentId = String(claims.studentId || claims.studentID || claims.studentCode || '');
+    const staffId = String(claims.employeeId || claims.personID || claims.humanID || '');
+    const mjuId = String(claims.mjuId || studentId || staffId || claims.username || '');
 
     if (['dean', 'คณบดี'].includes(raw)) return 'dean';
     if (['chair', 'program_chair', 'head', 'หัวหน้าหลักสูตร', 'ประธานหลักสูตร'].includes(raw)) return 'chair';
     if (['staff', 'teacher', 'lecturer', 'faculty', 'employee', 'บุคลากร', 'อาจารย์', 'เจ้าหน้าที่'].includes(raw)) return 'staff';
     if (['student', 'นิสิต', 'นักศึกษา'].includes(raw)) return 'student';
+    if (studentId) return 'student';
+    if (staffId) return 'staff';
     if (/^\d{8,13}$/.test(mjuId)) return 'student';
     return 'general';
 }

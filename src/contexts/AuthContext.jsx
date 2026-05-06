@@ -51,7 +51,11 @@ const hasMjuSsoClaims = (claims = {}) => Boolean(
     claims.mjuRole ||
     claims.mjuUserType ||
     claims.studentId ||
-    claims.employeeId
+    claims.studentID ||
+    claims.studentCode ||
+    claims.employeeId ||
+    claims.personID ||
+    claims.humanID
 );
 
 const buildMjuUserPatchFromClaims = (claims = {}, currentUser, createdAt = new Date().toISOString()) => {
@@ -61,13 +65,14 @@ const buildMjuUserPatchFromClaims = (claims = {}, currentUser, createdAt = new D
         email: currentUser.email || claims.email || '',
         role,
         roleLabel: roleLabelForMjuRole(role),
-        avatar: role === 'student' ? 'ST' : 'MJU',
+        avatar: claims.photoURL || (role === 'student' ? 'ST' : 'MJU'),
+        photoURL: claims.photoURL || null,
         status: 'approved',
         authProvider: 'mju_sso',
         mjuVerified: true,
-        mjuId: claims.mjuId || claims.studentId || claims.employeeId || claims.username || null,
-        studentId: claims.studentId || null,
-        employeeId: claims.employeeId || null,
+        mjuId: claims.mjuId || claims.studentId || claims.studentID || claims.studentCode || claims.employeeId || claims.personID || claims.humanID || claims.username || null,
+        studentId: claims.studentId || claims.studentID || claims.studentCode || null,
+        employeeId: claims.employeeId || claims.personID || claims.humanID || null,
         department: claims.department || claims.faculty || null,
         faculty: claims.faculty || null,
         ...buildRoleValidityPatch(role, createdAt),

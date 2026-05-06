@@ -13,28 +13,20 @@ import {
 const FRONTEND_CALLBACK_PATH = '/auth/mju/callback';
 const AUTH_CODE_KEYS = ['ac', 'code', 'ticket', 'sso_ticket', 'session', 'sid'];
 const TOKEN_KEYS = ['token', 'firebaseToken', 'customToken', 'custom_token', 'access_token', 'id_token', 'jwt', 'sso_token', 'auth_token', 'authToken'];
-const PROFILE_KEYS = [
+const PROFILE_ID_KEYS = [
   'mjuId',
   'studentId',
+  'studentID',
+  'studentCode',
   'employeeId',
+  'personID',
+  'humanID',
   'username',
   'userId',
   'uid',
   'email',
   'mail',
-  'name',
-  'displayName',
-  'fullName',
-  'fullname',
-  'thaiName',
-  'userType',
-  'mjuUserType',
-  'role',
-  'mjuRole',
-  'faculty',
-  'department',
-  'division',
-  'major',
+  'e_mail',
 ];
 
 function originFromRequest(req) {
@@ -114,7 +106,7 @@ function frontendUrl(req, fragmentParams = {}) {
 }
 
 function canCreateUserToken(data = {}) {
-  return Boolean(firstValue(data, PROFILE_KEYS));
+  return Boolean(firstValue(data, PROFILE_ID_KEYS));
 }
 
 async function tokenFromProfile(data = {}) {
@@ -123,7 +115,7 @@ async function tokenFromProfile(data = {}) {
 
   if (!canCreateUserToken(data)) return '';
   const claims = buildClaims(data);
-  const uid = claims.mjuId || claims.email || firstValue(data, ['uid', 'id']);
+  const uid = claims.mjuId || claims.email || firstValue(data, ['uid', 'id', 'studentID', 'studentCode', 'personID', 'humanID']);
   return createFirebaseCustomToken(`mju:${uid}`, claims);
 }
 
@@ -169,17 +161,15 @@ export default async function handler(req, res) {
   const codeParam = firstPresent(payload, AUTH_CODE_KEYS);
   if (codeParam.value) {
     try {
-      if (process.env.MJU_SSO_EXCHANGE_URL) {
-        const exchangeData = await callMjuExchangeEndpoint({ code: codeParam.value, codeParam: codeParam.key });
-        const customToken = await tokenFromProfile(exchangeData);
-        if (customToken) {
-          redirect(res, frontendUrl(req, {
-            customToken,
-            tokenParam: 'exchange',
-            state,
-          }));
-          return;
-        }
+      const exchangeData = await callMjuExchangeEndpoint({ code: codeParam.value, codeParam: codeParam.key });
+      const customToken = await tokenFromProfile(exchangeData);
+      if (customToken) {
+        redirect(res, frontendUrl(req, {
+          customToken,
+          tokenParam: 'exchange',
+          state,
+        }));
+        return;
       }
     } catch {
       // Fall through to the frontend callback with ac so the UI can show the actionable message.
