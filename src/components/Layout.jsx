@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import AIChat from './AIChat';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Activity, Menu, Sparkles, Sun, Moon } from 'lucide-react';
+import { Activity, Menu, Sun, Moon } from 'lucide-react';
 import { ensureStudentList } from '../services/studentDataService';
 import { ensureDashboardLiveData, startDashboardAutoSync } from '../services/dashboardLiveDataService';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
@@ -72,10 +72,6 @@ export default function Layout() {
                             <span className="header-status-pill header-status-live">
                                 <Activity size={14} />
                                 Live Data
-                            </span>
-                            <span className="header-status-pill header-status-ai">
-                                <Sparkles size={14} />
-                                Decision AI
                             </span>
                         </div>
                         <button
