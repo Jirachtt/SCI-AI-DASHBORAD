@@ -1063,8 +1063,8 @@ export function parseAIResponse(text, sourceQuestion = '') {
                     if ((rawJson.chartType === 'pie' || rawJson.chartType === 'doughnut') && Array.isArray(ds.backgroundColor)) {
                         ds.borderWidth = ds.borderWidth || 2;
                         ds.borderColor = ds.borderColor || 'rgba(15, 20, 35, 0.8)';
-                        ds.hoverOffset = Math.min(Number(ds.hoverOffset) || 0, 2);
-                        ds.spacing = Math.min(Number(ds.spacing) || 0, 1);
+                        ds.hoverOffset = 6;
+                        ds.spacing = 1;
                     }
                 });
                 sanitizeChartDatasetColors(rawJson);

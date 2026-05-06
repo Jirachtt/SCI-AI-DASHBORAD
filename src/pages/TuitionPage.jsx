@@ -91,7 +91,7 @@ export default function TuitionPage() {
             backgroundColor: tuitionData.breakdown.map((_, index) => TUITION_BREAKDOWN_COLORS[index % TUITION_BREAKDOWN_COLORS.length]),
             borderWidth: 1,
             spacing: 1,
-            hoverOffset: 0,
+            hoverOffset: 6,
         }]
     };
 

@@ -220,8 +220,11 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
             if (isSlice) {
                 dataset.borderColor = themeConfig.surface;
                 if (dataset.borderWidth == null || dataset.borderWidth < 2) dataset.borderWidth = 2;
-                dataset.hoverOffset = Math.min(Number(dataset.hoverOffset) || 0, 2);
-                dataset.spacing = Math.min(Number(dataset.spacing) || 0, 1);
+                const requestedHoverOffset = Number(dataset.hoverOffset);
+                dataset.hoverOffset = Number.isFinite(requestedHoverOffset)
+                    ? Math.min(Math.max(requestedHoverOffset, 4), 8)
+                    : 6;
+                dataset.spacing = Math.min(Number(dataset.spacing) || 1, 2);
             }
         }
 
@@ -259,7 +262,7 @@ export const themeAdaptorPlugin = {
         options.transitions.active = {
             ...(options.transitions.active || {}),
             animation: {
-                duration: isSliceChart ? 0 : 120,
+                duration: isSliceChart ? 140 : 120,
                 ...(options.transitions.active?.animation || {}),
             },
         };
@@ -357,5 +360,18 @@ export const themeAdaptorPlugin = {
             subtitle.color = themeConfig.muted;
             subtitle.font = withDashboardFont(subtitle.font, '600');
         }
+    },
+    afterEvent(chart, args) {
+        const chartType = baseChartType(chart);
+        if (!['pie', 'doughnut', 'polarArea'].includes(chartType)) return;
+
+        const eventType = args?.event?.type;
+        if (!['mouseout', 'mouseleave'].includes(eventType)) return;
+
+        chart.setActiveElements([]);
+        if (chart.tooltip?.setActiveElements) {
+            chart.tooltip.setActiveElements([], { x: 0, y: 0 });
+        }
+        chart.update('none');
     }
 };
