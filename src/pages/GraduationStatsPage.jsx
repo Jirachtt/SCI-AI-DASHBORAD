@@ -190,13 +190,22 @@ export default function GraduationStatsPage() {
         responsive: true,
         maintainAspectRatio: false,
         indexAxis: 'y',
+        interaction: {
+            mode: 'index',
+            axis: 'y',
+            intersect: false,
+        },
         layout: {
             padding: { left: 4, right: 16 }
         },
         plugins: {
             legend: { labels: { color: 'var(--text-muted)', font: { size: 11 } } },
             tooltip: {
+                mode: 'index',
+                axis: 'y',
+                intersect: false,
                 callbacks: {
+                    title: (items) => graduationByMajorRows[items?.[0]?.dataIndex]?.major || items?.[0]?.label || '',
                     label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.x} คน`
                 }
             }

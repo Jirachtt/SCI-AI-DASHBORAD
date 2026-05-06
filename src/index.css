@@ -10543,9 +10543,9 @@ body {
   content: '';
   position: absolute;
   inset: 0 0 auto;
-  height: 3px;
-  background: linear-gradient(90deg, var(--mju-green), #22c55e, #38bdf8, var(--mju-gold));
-  opacity: 0.86;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(52, 211, 153, 0.64) 14%, rgba(20, 184, 166, 0.46) 64%, transparent 100%);
+  opacity: 0.68;
 }
 
 .section-header > * {
@@ -11777,6 +11777,16 @@ body {
   background:
     linear-gradient(135deg, rgba(15, 23, 42, 0.032), transparent 48%),
     var(--surface-panel);
+}
+
+[data-theme="light"] .section-header::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 104, 56, 0.34) 16%, rgba(15, 23, 42, 0.12) 72%, transparent 100%);
+  opacity: 0.56;
+}
+
+[data-theme="dark"] .section-header::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(52, 211, 153, 0.66) 14%, rgba(34, 211, 238, 0.28) 70%, transparent 100%);
+  opacity: 0.62;
 }
 
 .stat-card,
