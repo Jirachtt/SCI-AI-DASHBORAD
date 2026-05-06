@@ -11888,6 +11888,43 @@ body {
   overflow: hidden;
 }
 
+.chart-card canvas,
+.ai-page-chart-wrapper,
+.chart-drilldown-modal canvas {
+  animation: premiumChartCanvasIn 560ms var(--motion-smooth) 80ms both;
+  transform-origin: 50% 62%;
+  will-change: opacity, transform;
+}
+
+.chart-card:nth-of-type(2n) canvas {
+  animation-delay: 120ms;
+}
+
+.chart-card:nth-of-type(3n) canvas {
+  animation-delay: 160ms;
+}
+
+@keyframes premiumChartCanvasIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-card canvas,
+  .ai-page-chart-wrapper,
+  .chart-drilldown-modal canvas {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 [data-theme="light"] .chart-card::after,
 [data-theme="light"] .ai-page-chart-container::after {
   border-color: rgba(255, 255, 255, 0.72);

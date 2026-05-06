@@ -15,6 +15,7 @@ import {
     getSharedDashboardDatasetMetaSync,
     getSharedDashboardDatasetSync,
 } from './sharedDashboardDataService';
+import { buildAIAccessDeniedResult, canAIUseAnyInternalSection } from '../utils/aiAccessPolicy';
 
 const CHART_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
 
@@ -534,20 +535,24 @@ function buildTcasAnswer(question) {
     return { text, chart };
 }
 
-export function tryInstantAnswer(question) {
+export function tryInstantAnswer(question, userContext = {}) {
     const builders = [
-        buildCourseGradeAnswer,
-        buildActivityAnswer,
-        buildBudgetCautionAnswer,
-        buildStudentRiskTrendAnswer,
-        buildStudentMajorDeclineAnswer,
-        buildTcasAnswer,
-        buildStudentSummaryAnswer,
+        { build: buildCourseGradeAnswer, sections: ['course_analytics'] },
+        { build: buildActivityAnswer, sections: ['student_life'] },
+        { build: buildBudgetCautionAnswer, sections: ['budget_forecast', 'financial', 'faculty_budget'] },
+        { build: buildStudentRiskTrendAnswer, sections: ['student_stats'] },
+        { build: buildStudentMajorDeclineAnswer, sections: ['student_stats'] },
+        { build: buildTcasAnswer, sections: ['tcas_admissions'] },
+        { build: buildStudentSummaryAnswer, sections: ['student_stats'] },
     ];
 
-    for (const builder of builders) {
-        const result = builder(question);
-        if (result) return result;
+    for (const { build, sections } of builders) {
+        const result = build(question);
+        if (!result) continue;
+        if (!canAIUseAnyInternalSection(userContext, sections)) {
+            return buildAIAccessDeniedResult(userContext, sections);
+        }
+        return result;
     }
 
     return null;

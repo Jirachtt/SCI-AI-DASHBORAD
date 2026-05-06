@@ -8,6 +8,7 @@ import { getAIModelSettings, getAITokenStats, getWaitSeconds, resetConversation,
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { AI_ASSISTANT_NAME, APP_NAME_TH } from '../config/appBrand';
 import { tryInstantAnswer } from '../services/aiInstantAnswerService';
+import { canAIUseAction } from '../utils/aiAccessPolicy';
 
 let aiChatPageModulePromise = null;
 
@@ -20,9 +21,9 @@ function loadAIChatPageModule() {
 
 const FALLBACK_QUICK_ACTIONS = [
     { label: 'ถามข้อมูล ม.แม่โจ้', query: 'สรุปข้อมูลมหาวิทยาลัยแม่โจ้ที่ควรรู้', icon: MessageCircle },
-    { label: 'ค้นหานักศึกษา', query: 'ค้นหานักศึกษาคณะวิทยาศาสตร์', icon: MessageCircle },
-    { label: 'พยากรณ์ข้อมูล', query: 'พยากรณ์ข้อมูลจากข้อมูลจริงในเว็บ', icon: MessageCircle },
-    { label: 'สร้างกราฟ', query: 'สร้างกราฟจากข้อมูลปัจจุบันในระบบ', icon: MessageCircle },
+    { label: 'สรุป Dashboard', query: 'สรุปภาพรวม Dashboard ที่ฉันมีสิทธิ์ดู', icon: MessageCircle, requiredSections: ['dashboard'] },
+    { label: 'ค่าธรรมเนียม', query: 'สรุปข้อมูลค่าธรรมเนียมที่ฉันมีสิทธิ์ดู', icon: MessageCircle, requiredSections: ['tuition'] },
+    { label: 'กฎ/เกียรตินิยม', query: 'สรุปกฎระเบียบและเงื่อนไขเกียรตินิยม', icon: MessageCircle, requiredSections: ['academic_rules'] },
 ];
 
 function FallbackChatMessage({ msg }) {
@@ -220,20 +221,20 @@ export default function AIChat() {
     };
 
     const runQuestion = async (question) => {
-        const instantResult = tryInstantAnswer(question);
+        const instantResult = tryInstantAnswer(question, user);
         if (instantResult) {
             setMessages(prev => [...prev, { role: 'bot', text: instantResult.text, chart: instantResult.chart }]);
             return;
         }
 
         const tools = await ensureAiModule();
-        const localResult = tools.tryLocalResponse(question);
+        const localResult = tools.tryLocalResponse(question, user);
         if (localResult) {
             setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
             return;
         }
 
-        const prompt = tools.buildAIChatPrompt(question, uploadedFileData);
+        const prompt = tools.buildAIChatPrompt(question, uploadedFileData, null, user);
         const aiText = await sendAI(prompt);
         const parsedAI = tools.parseAIResponse(aiText, question);
         setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
@@ -257,7 +258,7 @@ export default function AIChat() {
                     _retryId: retryId,
                 }]);
                 const tools = await ensureAiModule();
-                await retryWithCountdown(() => tools.buildAIChatPrompt(userMsg, uploadedFileData), retryId, userMsg);
+                await retryWithCountdown(() => tools.buildAIChatPrompt(userMsg, uploadedFileData, null, user), retryId, userMsg);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -405,7 +406,8 @@ export default function AIChat() {
 
     const ChatMessageComponent = aiModule?.ChatMessage || FallbackChatMessage;
     const ExpandedChartModalComponent = aiModule?.ExpandedChartModal;
-    const quickActions = aiModule?.MAIN_AI_QUICK_ACTIONS || FALLBACK_QUICK_ACTIONS;
+    const quickActions = (aiModule?.MAIN_AI_QUICK_ACTIONS || FALLBACK_QUICK_ACTIONS)
+        .filter(action => canAIUseAction(user, action));
 
     if (location.pathname.startsWith('/dashboard/ai-chat')) return null;
 

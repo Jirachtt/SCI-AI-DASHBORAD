@@ -70,6 +70,7 @@ const ACCESS_LEVELS = {
             'dashboard', 'tuition', 'student_life',
             'graduation_check', 'student_stats',
             'course_analytics',
+            'ai_chat',
             'academic_rules'
         ]
     },

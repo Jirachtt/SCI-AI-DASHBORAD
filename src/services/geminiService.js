@@ -14,7 +14,15 @@ import { buildAcademicRulesContext } from '../data/academicRulesData';
 import { tcasPlanningData } from '../data/tcasAdmissionsData';
 import { courseAnalyticsData } from '../data/courseAnalyticsData';
 import { isLiveData } from './studentDataService';
-import { canAccess, getRoleInfo } from '../utils/accessControl';
+import { getRoleInfo } from '../utils/accessControl';
+import {
+    canAIUseAnyInternalSection,
+    canAIUseInternalSection,
+    canAIUseInternalDomain,
+    getAIAccessInstruction,
+    isAIUnrestrictedRole,
+    resolveAIRole,
+} from '../utils/aiAccessPolicy';
 import {
     getSharedDashboardDatasetMetaSync,
     getSharedDashboardDatasetSync,
@@ -1195,21 +1203,7 @@ function modelOrderForIntent(intent, settings) {
 }
 
 function domainAllowed(role, domain) {
-    if (!role || role === 'dean') return true;
-    const accessMap = {
-        students: ['student_stats', 'student_list'],
-        tcas: ['tcas_admissions'],
-        course_analytics: ['course_analytics'],
-        tuition: ['tuition'],
-        graduation: ['graduation_check', 'graduation_stats'],
-        budget: ['budget_forecast', 'financial', 'faculty_budget'],
-        research: ['research_overview'],
-        hr: ['hr_overview'],
-        strategic: ['strategic_overview'],
-        student_life: ['student_life'],
-        dashboard: ['dashboard'],
-    };
-    return (accessMap[domain] || ['dashboard']).some(section => canAccess(role, section));
+    return canAIUseInternalDomain(role, domain);
 }
 
 function liveDatasetContext(id, label) {
@@ -1379,7 +1373,8 @@ function courseAnalyticsContext() {
 
 function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) {
     const q = String(userMessage || '').toLowerCase();
-    const includeStudentRows = needsStudentDetail(userMessage);
+    const role = resolveAIRole(userContext);
+    const includeStudentRows = needsStudentDetail(userMessage) && canAIUseInternalSection(role, 'student_list');
     const candidates = [
         { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี|tcas|admission|รับสมัคร|รับเข้า|รอบ/, text: () => studentAggregateContext(includeStudentRows) },
         { id: 'tcas', sections: ['tcas_admissions'], keywords: /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|รอบ\s*tcas|portfolio|quota|ผลกระทบ|ออกกี่คน|ค่าเทอมรวม/i, text: tcasContext },
@@ -1394,9 +1389,8 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
         { id: 'student_life', sections: ['student_life'], keywords: /กิจกรรม|พฤติกรรม|student life|ชั่วโมงกิจกรรม|ชั่วโมงคณะ|รับน้อง|ไหว้ครู|เดือนนี้|เดือนหน้า/, text: studentLifeContext },
     ];
 
-    const role = userContext?.role || 'general';
     const scored = candidates
-        .filter(c => domainAllowed(role, c.id) || c.sections.some(section => canAccess(role, section)))
+        .filter(c => domainAllowed(role, c.id) || canAIUseAnyInternalSection(role, c.sections))
         .map(c => ({ ...c, score: c.keywords.test(q) ? 10 : 0 }))
         .filter(c => c.score > 0);
 
@@ -1450,7 +1444,7 @@ function chartPaletteInstruction(theme = 'light') {
 }
 
 function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}) {
-    const role = userContext?.role || 'general';
+    const role = resolveAIRole(userContext);
     const roleInfo = getRoleInfo(role);
     const memory = getAIUserMemory(userContext);
     const useMaejoWebMode = shouldUseWebSearch(userMessage);
@@ -1471,11 +1465,7 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
         : localContexts;
     const contextText = contexts.map((c, idx) => `### Context ${idx + 1}: ${c.id}\n${c.text}`).join('\n\n');
     const roleLabel = roleInfo?.label || userContext?.roleLabel || role;
-    const accessNote = useMaejoWebMode
-        ? 'ข้อมูลสาธารณะของมหาวิทยาลัยแม่โจ้ตอบได้ทุก role แต่ห้ามเปิดเผยข้อมูลส่วนบุคคลหรือข้อมูลภายในที่ไม่มีสิทธิ์'
-        : role === 'dean'
-        ? 'คณบดีเข้าถึงข้อมูลได้ครบทุกโดเมนตามระบบ'
-        : 'ตอบเฉพาะข้อมูลในบริบทและสิทธิ์ของ role นี้เท่านั้น ถ้าข้อมูลอยู่นอกสิทธิ์ให้บอกว่าต้องใช้สิทธิ์สูงกว่า';
+    const accessNote = getAIAccessInstruction(role, useMaejoWebMode);
     const answerScopeRule = useMaejoWebMode
         ? 'ตอบภาษาไทย กระชับ ใช้ข้อมูลในเว็บ/ระบบนี้ก่อน หากข้อมูลไม่ครบให้ใช้ Google Search จากเว็บทางการหรือแหล่งน่าเชื่อถือเป็น fallback พร้อมบอกแหล่งที่มา และไม่ต้องสร้างกราฟถ้าผู้ใช้ไม่ได้ขอ'
         : 'ตอบภาษาไทย กระชับ อ้างอิงเฉพาะข้อมูลใน RETRIEVED CONTEXTS และห้ามเดาตัวเลข';
@@ -1486,6 +1476,7 @@ ${answerScopeRule}
 ROLE CONTEXT:
 - role=${role} (${roleLabel})
 - ${accessNote}
+- unrestricted_internal_access=${isAIUnrestrictedRole(role) ? 'yes' : 'no'}
 - user preference memory: preferredFormat=${memory.preferredFormat}, detailLevel=${memory.detailLevel}, frequentTopics=${Object.entries(memory.topics || {}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v]) => `${k}:${v}`).join(', ') || '-'}
 
 LIVE DATA FRESHNESS:

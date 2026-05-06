@@ -244,9 +244,161 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
     return chart;
 }
 
+const PREMIUM_CHART_MOTION = {
+    initialDuration: 860,
+    updateDuration: 420,
+    sliceDuration: 900,
+    maxInitialDelay: 380,
+    maxUpdateDelay: 120,
+    easing: 'easeOutQuart',
+};
+
+function prefersReducedMotion() {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function chartUpdateMode(args) {
+    return args?.mode || 'default';
+}
+
+function isMotionSuppressed(mode, animationConfig) {
+    return mode === 'none' || animationConfig === false || prefersReducedMotion();
+}
+
+function chartDatasetCount(chart) {
+    return Array.isArray(chart?.data?.datasets) ? chart.data.datasets.length : 0;
+}
+
+function chartDataCount(chart) {
+    const labelCount = Array.isArray(chart?.data?.labels) ? chart.data.labels.length : 0;
+    const maxDatasetLength = Array.isArray(chart?.data?.datasets)
+        ? chart.data.datasets.reduce((max, dataset) => Math.max(max, Array.isArray(dataset?.data) ? dataset.data.length : 0), 0)
+        : 0;
+    return Math.max(labelCount, maxDatasetLength, 1);
+}
+
+function chartElementDelay(context, chart, isSliceChart, isInitialMotion) {
+    if (context?.type !== 'data') return 0;
+    const mode = context?.mode || 'default';
+    if (!['default', 'reset', 'show'].includes(mode)) return 0;
+
+    const datasetIndex = Number(context?.datasetIndex) || 0;
+    const dataIndex = Number(context?.dataIndex) || 0;
+    const maxDelay = isInitialMotion ? PREMIUM_CHART_MOTION.maxInitialDelay : PREMIUM_CHART_MOTION.maxUpdateDelay;
+    const dataCount = Math.max(chartDataCount(chart), 1);
+    const datasetCount = Math.max(chartDatasetCount(chart), 1);
+    const perDataDelay = isSliceChart ? 30 : Math.max(10, Math.min(26, 320 / dataCount));
+    const perDatasetDelay = isSliceChart ? 16 : Math.max(20, Math.min(58, 140 / datasetCount));
+
+    return Math.min(datasetIndex * perDatasetDelay + dataIndex * perDataDelay, maxDelay);
+}
+
+function baselineForScale(context, axisKey) {
+    const scale = context?.chart?.scales?.[axisKey];
+    if (!scale || typeof scale.getPixelForValue !== 'function') return undefined;
+    return scale.getPixelForValue(0);
+}
+
+function applyPremiumChartMotion(chart, options, chartType, isSliceChart, args) {
+    const mode = chartUpdateMode(args);
+    const existingAnimation = options.animation;
+    if (isMotionSuppressed(mode, existingAnimation)) return;
+
+    const isInitialMotion = !chart.$mjuHasAnimated;
+    const isBarChart = chartType === 'bar';
+    const isLineChart = chartType === 'line';
+    const isPointChart = ['scatter', 'bubble'].includes(chartType);
+    const duration = isInitialMotion
+        ? (isSliceChart ? PREMIUM_CHART_MOTION.sliceDuration : PREMIUM_CHART_MOTION.initialDuration)
+        : PREMIUM_CHART_MOTION.updateDuration;
+    const easing = PREMIUM_CHART_MOTION.easing;
+    const previousWasPremiumMotion = existingAnimation?.$mjuPremiumMotion === true;
+    const previousDelay = typeof existingAnimation?.delay === 'function' && !existingAnimation.delay.$mjuPremiumDelay
+        ? existingAnimation.delay
+        : null;
+
+    const premiumDelay = (context) => {
+        const inheritedDelay = previousDelay ? Number(previousDelay(context)) || 0 : 0;
+        return Math.min(
+            inheritedDelay + chartElementDelay(context, chart, isSliceChart, isInitialMotion),
+            isInitialMotion ? PREMIUM_CHART_MOTION.maxInitialDelay : PREMIUM_CHART_MOTION.maxUpdateDelay
+        );
+    };
+    premiumDelay.$mjuPremiumDelay = true;
+
+    options.animation = {
+        ...(existingAnimation && typeof existingAnimation === 'object' ? existingAnimation : {}),
+        duration: previousWasPremiumMotion || !(Number(existingAnimation?.duration) > 0)
+            ? duration
+            : existingAnimation.duration,
+        easing: existingAnimation?.easing || easing,
+        delay: premiumDelay,
+        $mjuPremiumMotion: true,
+    };
+
+    if (isSliceChart) {
+        options.animation.animateRotate = existingAnimation?.animateRotate ?? true;
+        options.animation.animateScale = existingAnimation?.animateScale ?? true;
+    }
+
+    const animations = { ...(options.animations || {}) };
+    animations.colors = {
+        duration: isInitialMotion ? 360 : 220,
+        easing,
+        ...(animations.colors || {}),
+    };
+
+    if (isBarChart) {
+        const indexAxis = options.indexAxis === 'y' ? 'y' : 'x';
+        const valueAxis = indexAxis === 'y' ? 'x' : 'y';
+        animations[valueAxis] = {
+            duration,
+            easing,
+            from: (context) => baselineForScale(context, valueAxis),
+            ...(animations[valueAxis] || {}),
+        };
+    }
+
+    if (isLineChart || isPointChart) {
+        animations.x = {
+            duration: Math.round(duration * 0.92),
+            easing,
+            ...(animations.x || {}),
+        };
+        animations.y = {
+            duration,
+            easing,
+            ...(animations.y || {}),
+        };
+        animations.radius = {
+            duration: Math.round(duration * 0.72),
+            easing,
+            from: 0,
+            ...(animations.radius || {}),
+        };
+    }
+
+    if (isSliceChart) {
+        animations.outerRadius = {
+            duration,
+            easing,
+            from: 0,
+            ...(animations.outerRadius || {}),
+        };
+        animations.circumference = {
+            duration,
+            easing,
+            ...(animations.circumference || {}),
+        };
+    }
+
+    options.animations = animations;
+}
+
 export const themeAdaptorPlugin = {
     id: 'themeAdaptor',
-    beforeUpdate(chart) {
+    beforeUpdate(chart, args) {
         const themeConfig = getCurrentChartTheme();
         const options = mutableChartOptions(chart);
 
@@ -254,6 +406,7 @@ export const themeAdaptorPlugin = {
         const isSliceChart = ['pie', 'doughnut', 'polarArea'].includes(chartType);
 
         sanitizeChartDatasetColors(chart, themeConfig.theme);
+        applyPremiumChartMotion(chart, options, chartType, isSliceChart, args);
         options.font = withDashboardFont(options.font, '600');
         options.interaction = isSliceChart
             ? { ...(options.interaction || {}), mode: 'nearest', intersect: true }
@@ -360,6 +513,9 @@ export const themeAdaptorPlugin = {
             subtitle.color = themeConfig.muted;
             subtitle.font = withDashboardFont(subtitle.font, '600');
         }
+    },
+    afterUpdate(chart) {
+        chart.$mjuHasAnimated = true;
     },
     afterEvent(chart, args) {
         const chartType = baseChartType(chart);

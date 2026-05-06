@@ -28,6 +28,12 @@ import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastS
 import { exportChartAsCSV } from '../utils/exportUtils';
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 import { tryInstantAnswer } from '../services/aiInstantAnswerService';
+import {
+    buildAIAccessDeniedResult,
+    canAIUseAction,
+    canAIUseAllInternalSections,
+    canAIUseInternalSection,
+} from '../utils/aiAccessPolicy';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -133,6 +139,24 @@ const DATASETS = {
         yAxisID: 'y',
     },
 };
+
+const FORECAST_DATASET_SECTIONS = {
+    universityBudgetRevenue: ['budget_forecast'],
+    universityBudgetExpense: ['budget_forecast'],
+    universityBudget: ['budget_forecast'],
+    scienceBudgetRevenue: ['budget_forecast'],
+    scienceBudgetExpense: ['budget_forecast'],
+    universityStudents: ['student_stats'],
+    scienceStudents: ['student_stats'],
+    scienceGPA: ['student_stats'],
+    scienceGraduationRate: ['graduation_stats'],
+    scienceGraduated: ['graduation_stats'],
+};
+
+function getForecastRequiredSections(parsed) {
+    const datasets = Array.isArray(parsed?.datasets) ? parsed.datasets : [];
+    return [...new Set(datasets.flatMap(key => FORECAST_DATASET_SECTIONS[key] || ['dashboard']))];
+}
 
 // ==================== Request Parser ====================
 function parseForecastRequest(question) {
@@ -806,15 +830,19 @@ function searchStudents(query) {
 // 1. Explicit forecast requests (with "พยากรณ์"/"predict" keywords)
 // 2. Student search by ID/name/major/GPA (structured lookups)
 // Everything else → Gemini AI (smarter, context-aware answers)
-export function tryLocalResponse(question) {
+export function tryLocalResponse(question, userContext = {}) {
     const q = question.toLowerCase();
 
-    const instantResult = tryInstantAnswer(question);
+    const instantResult = tryInstantAnswer(question, userContext);
     if (instantResult) return instantResult;
 
     // 1. Explicit forecast requests ONLY when forecast keyword + known data topic
     const forecastParsed = parseForecastRequest(question);
     if (forecastParsed) {
+        const requiredSections = getForecastRequiredSections(forecastParsed);
+        if (!canAIUseAllInternalSections(userContext, requiredSections)) {
+            return buildAIAccessDeniedResult(userContext, requiredSections);
+        }
         const result = generateForecastResponse(forecastParsed);
         if (result) return result;
         // If no datasets matched, fall through to AI
@@ -824,18 +852,27 @@ export function tryLocalResponse(question) {
     // This data already exists in the web app, so do not rely on the model
     // to remember both metrics when building the chart JSON.
     if (wantsStudentCountGradeChart(question)) {
+        if (!canAIUseInternalSection(userContext, 'student_stats')) {
+            return buildAIAccessDeniedResult(userContext, ['student_stats']);
+        }
         const result = buildStudentCountGpaChartResponse(question);
         if (result) return withStudentSourceNote(result);
     }
 
     // 3. Deterministic aggregate chart for Faculty of Science student counts by major.
     if (wantsStudentMajorCountChart(question)) {
+        if (!canAIUseInternalSection(userContext, 'student_stats')) {
+            return buildAIAccessDeniedResult(userContext, ['student_stats']);
+        }
         const result = buildStudentMajorCountChartResponse(question);
         if (result) return withStudentSourceNote(result);
     }
 
     // 4. Deterministic aggregate chart for student counts by class year.
     if (wantsStudentClassYearChart(question)) {
+        if (!canAIUseInternalSection(userContext, 'student_stats')) {
+            return buildAIAccessDeniedResult(userContext, ['student_stats']);
+        }
         const result = buildStudentClassYearChartResponse(question);
         if (result) return withStudentSourceNote(result);
     }
@@ -852,6 +889,9 @@ export function tryLocalResponse(question) {
          (q.includes('สาขา') || q.includes('ชั้นปี') || q.match(/\d{2,}/)));
 
     if (isStudentLookup) {
+        if (!canAIUseInternalSection(userContext, 'student_list')) {
+            return buildAIAccessDeniedResult(userContext, ['student_list']);
+        }
         const studentResult = searchStudents(q);
         if (studentResult) return withStudentSourceNote(studentResult);
     }
@@ -860,10 +900,12 @@ export function tryLocalResponse(question) {
 }
 
 // ==================== Parse AI Generated Chart ====================
-export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMergeSummary = null) {
+export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMergeSummary = null, userContext = {}) {
     const allStudents = getAllStudents();
     const qLower = String(question || '').toLowerCase();
     const isStudentQ = /นักศึกษา|นิสิต|gpa|เกรด|สาขา|ชั้นปี|รายชื่อ|จำนวนนักศึกษา|student/.test(qLower);
+    const canUseStudentStats = canAIUseInternalSection(userContext, 'student_stats');
+    const canUseStudentRows = canAIUseInternalSection(userContext, 'student_list');
     const dashboardSummary = dashboardMergeSummary || {
         name: 'ข้อมูล Dashboard',
         ...buildLiveDashboardMergeSummary(),
@@ -871,7 +913,10 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
 
     const dataAccuracyContext = buildDataAccuracyContextForAI();
     let context = dataAccuracyContext ? `[DATA ACCURACY / SOURCE STATUS]\n${dataAccuracyContext}\n\n` : '';
-    if (isStudentQ && allStudents.length > 0) {
+    if (isStudentQ && !canUseStudentStats) {
+        context += '[ACCESS LIMITED]\nRole นี้ไม่มีสิทธิ์อ่านข้อมูลนักศึกษาภายในจากระบบ ห้ามแนบ/เดารายชื่อนักศึกษา GPA หรือสถิติภายใน ให้ตอบเฉพาะข้อมูลสาธารณะหรือแจ้งว่าต้องใช้สิทธิ์สูงกว่า\n\n';
+    }
+    if (isStudentQ && canUseStudentStats && allStudents.length > 0) {
         const byMajor = {};
         const byYear = {};
         allStudents.forEach(s => {
@@ -899,20 +944,28 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
 
         const idMentioned = String(question || '').match(/\b6\d{9}\b/);
         if (idMentioned) {
-            const found = allStudents.find(s => s.id === idMentioned[0]);
-            context += found
-                ? `รหัสที่ผู้ใช้ระบุ ${found.id}: ${found.prefix || ''}${found.name}, สาขา${found.major}, ปี ${found.year}, ${found.level || ''}, GPA ${found.gpa}, ${found.status}\n`
-                : `รหัสที่ผู้ใช้ระบุ ${idMentioned[0]}: ไม่พบในฐานข้อมูล\n`;
+            if (canUseStudentRows) {
+                const found = allStudents.find(s => s.id === idMentioned[0]);
+                context += found
+                    ? `รหัสที่ผู้ใช้ระบุ ${found.id}: ${found.prefix || ''}${found.name}, สาขา${found.major}, ปี ${found.year}, ${found.level || ''}, GPA ${found.gpa}, ${found.status}\n`
+                    : `รหัสที่ผู้ใช้ระบุ ${idMentioned[0]}: ไม่พบในฐานข้อมูล\n`;
+            } else {
+                context += `ผู้ใช้ระบุรหัสนักศึกษา ${idMentioned[0]} แต่ role นี้ไม่มีสิทธิ์ student_list จึงห้ามเปิดเผยข้อมูลรายบุคคล\n`;
+            }
         }
 
-        const sample = allStudents
-            .slice(0, 15)
-            .map(s => `${s.id},${s.name},${s.major},ปี ${s.year},GPA ${s.gpa},${s.status}`)
-            .join('\n');
-        context += `ตัวอย่างข้อมูล (15 คนแรก):\n${sample}]\n\n`;
+        if (canUseStudentRows) {
+            const sample = allStudents
+                .slice(0, 15)
+                .map(s => `${s.id},${s.name},${s.major},ปี ${s.year},GPA ${s.gpa},${s.status}`)
+                .join('\n');
+            context += `ตัวอย่างข้อมูล (15 คนแรก):\n${sample}]\n\n`;
+        } else {
+            context += 'ไม่มีการแนบตัวอย่างรายชื่อรายบุคคล เพราะ role นี้อ่านได้เฉพาะสถิติรวม ไม่ใช่ student_list\n\n';
+        }
     }
 
-    if (uploadedFileData && !isStudentFile(uploadedFileData.headers)) {
+    if (uploadedFileData) {
         const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
         const dashRows = Array.isArray(dashboardSummary?.rows) ? dashboardSummary.rows : [];
         const dashHeaders = Array.isArray(dashboardSummary?.headers) ? dashboardSummary.headers : [];
@@ -2214,14 +2267,14 @@ export function generateChartFromFile(parsed, fileName) {
 }
 
 export const MAIN_AI_QUICK_ACTIONS = [
-    { label: 'แผนรับ TCAS 5 ปี', query: 'สรุปแผนรับ TCAS คณะวิทยาศาสตร์ย้อนหลัง 5 ปี พร้อมแนวโน้มและรอบ 3 ปี 2569', icon: FileSpreadsheet, group: 'planning' },
-    { label: 'กราฟเกรดรายวิชา', query: 'สร้างกราฟการกระจายเกรดรายวิชา SCI331 และสรุป GPA เฉลี่ยรายวิชา', icon: BarChart3, group: 'analysis' },
-    { label: 'จำนวน+GPA ตามสาขา', query: 'สร้างกราฟจำนวนนักศึกษาและ GPA เฉลี่ย คณะวิทยาศาสตร์ แยกตามสาขา', icon: BarChart3, group: 'student' },
-    { label: 'นักศึกษาแยกชั้นปี', query: 'สร้างกราฟจำนวนนักศึกษาคณะวิทยาศาสตร์ แยกตามชั้นปี', icon: TrendingUp, group: 'student' },
-    { label: 'GPA สูงสุด 10 คน', query: 'แสดงรายชื่อนักศึกษาที่ GPA สูงสุด 10 คน', icon: Search, group: 'lookup' },
-    { label: 'GPA ต่ำ/รอพินิจ', query: 'แสดงรายชื่อนักศึกษาที่เกรดต่ำหรือรอพินิจ 10 คน', icon: Search, group: 'lookup' },
-    { label: 'พยากรณ์ GPA+สำเร็จ', query: 'พยากรณ์อัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ปี 2570 2571 เป็นกราฟ', icon: Sparkles, group: 'forecast' },
-    { label: 'พยากรณ์รายรับคณะวิทย์', query: 'พยากรณ์รายรับงบประมาณคณะวิทยาศาสตร์ ปี 2570 2571 เป็นกราฟ', icon: ChartLine, group: 'forecast' },
+    { label: 'แผนรับ TCAS 5 ปี', query: 'สรุปแผนรับ TCAS คณะวิทยาศาสตร์ย้อนหลัง 5 ปี พร้อมแนวโน้มและรอบ 3 ปี 2569', icon: FileSpreadsheet, group: 'planning', requiredSections: ['tcas_admissions'] },
+    { label: 'กราฟเกรดรายวิชา', query: 'สร้างกราฟการกระจายเกรดรายวิชา SCI331 และสรุป GPA เฉลี่ยรายวิชา', icon: BarChart3, group: 'analysis', requiredSections: ['course_analytics'] },
+    { label: 'จำนวน+GPA ตามสาขา', query: 'สร้างกราฟจำนวนนักศึกษาและ GPA เฉลี่ย คณะวิทยาศาสตร์ แยกตามสาขา', icon: BarChart3, group: 'student', requiredSections: ['student_stats'] },
+    { label: 'นักศึกษาแยกชั้นปี', query: 'สร้างกราฟจำนวนนักศึกษาคณะวิทยาศาสตร์ แยกตามชั้นปี', icon: TrendingUp, group: 'student', requiredSections: ['student_stats'] },
+    { label: 'GPA สูงสุด 10 คน', query: 'แสดงรายชื่อนักศึกษาที่ GPA สูงสุด 10 คน', icon: Search, group: 'lookup', requiredSections: ['student_list'] },
+    { label: 'GPA ต่ำ/รอพินิจ', query: 'แสดงรายชื่อนักศึกษาที่เกรดต่ำหรือรอพินิจ 10 คน', icon: Search, group: 'lookup', requiredSections: ['student_list'] },
+    { label: 'พยากรณ์ GPA+สำเร็จ', query: 'พยากรณ์อัตราสำเร็จการศึกษาและ GPA เฉลี่ยคณะวิทยาศาสตร์ ปี 2570 2571 เป็นกราฟ', icon: Sparkles, group: 'forecast', requiredSections: ['student_stats', 'graduation_stats'] },
+    { label: 'พยากรณ์รายรับคณะวิทย์', query: 'พยากรณ์รายรับงบประมาณคณะวิทยาศาสตร์ ปี 2570 2571 เป็นกราฟ', icon: ChartLine, group: 'forecast', requiredSections: ['budget_forecast'] },
 ];
 
 const ROLE_DISPLAY = {
@@ -2242,10 +2295,21 @@ const QUICK_ACTION_GROUPS = [
 ];
 
 const DECISION_PROMPTS = [
-    'สาขาไหนมีนักศึกษาลดลงมากที่สุด และควรทำอะไรต่อ',
-    'นักศึกษากลุ่มเสี่ยง GPA ต่ำกว่า 2.00 มีแนวโน้มอย่างไร',
-    'TCAS ปี 2569 สาขาไหนควรเพิ่มหรือลดแผนรับ',
-    'งบประมาณคณะวิทย์ปี 2570 ควรระวังจุดไหน',
+    { label: 'สาขาไหนมีนักศึกษาลดลงมากที่สุด และควรทำอะไรต่อ', query: 'สาขาไหนมีนักศึกษาลดลงมากที่สุด และควรทำอะไรต่อ', requiredSections: ['student_stats'] },
+    { label: 'นักศึกษากลุ่มเสี่ยง GPA ต่ำกว่า 2.00 มีแนวโน้มอย่างไร', query: 'นักศึกษากลุ่มเสี่ยง GPA ต่ำกว่า 2.00 มีแนวโน้มอย่างไร', requiredSections: ['student_stats'] },
+    { label: 'TCAS ปี 2569 สาขาไหนควรเพิ่มหรือลดแผนรับ', query: 'TCAS ปี 2569 สาขาไหนควรเพิ่มหรือลดแผนรับ', requiredSections: ['tcas_admissions'] },
+    { label: 'งบประมาณคณะวิทย์ปี 2570 ควรระวังจุดไหน', query: 'งบประมาณคณะวิทย์ปี 2570 ควรระวังจุดไหน', requiredSections: ['budget_forecast'] },
+];
+
+const SUGGESTED_PROMPTS = [
+    { label: 'สร้างกราฟจำนวนนักศึกษาและเกรด', query: 'สร้างกราฟจำนวนนักศึกษาและเกรด', requiredSections: ['student_stats'] },
+    { label: 'แม่โจ้มีกี่คณะ แต่ละคณะมีสาขาอะไร', query: 'แม่โจ้มีกี่คณะ แต่ละคณะมีสาขาอะไร' },
+    { label: 'การรับสมัคร TCAS มีกี่รอบ', query: 'การรับสมัคร TCAS มีกี่รอบ', requiredSections: ['tcas_admissions'] },
+    { label: 'พยากรณ์งบประมาณคณะวิทย์ ปี 70 71', query: 'พยากรณ์งบประมาณคณะวิทย์ ปี 70 71', requiredSections: ['budget_forecast'] },
+    { label: 'แสดงนักศึกษาสาขาคอม ชั้นปี 3', query: 'แสดงนักศึกษาสาขาคอม ชั้นปี 3', requiredSections: ['student_list'] },
+    { label: 'ค่าเทอมแม่โจ้เท่าไหร่', query: 'ค่าเทอมแม่โจ้เท่าไหร่', requiredSections: ['tuition'] },
+    { label: 'นักศึกษาที่มี GPA สูงสุด 10 คน', query: 'นักศึกษาที่มี GPA สูงสุด 10 คน', requiredSections: ['student_list'] },
+    { label: 'แม่โจ้อยู่ที่ไหน เดินทางยังไง', query: 'แม่โจ้อยู่ที่ไหน เดินทางยังไง' },
 ];
 
 export default function AIChatPage() {
@@ -2291,9 +2355,11 @@ export default function AIChatPage() {
     const quickActionGroups = QUICK_ACTION_GROUPS
         .map(group => ({
             ...group,
-            actions: MAIN_AI_QUICK_ACTIONS.filter(action => action.group === group.id),
+            actions: MAIN_AI_QUICK_ACTIONS.filter(action => action.group === group.id && canAIUseAction(user, action)),
         }))
         .filter(group => group.actions.length > 0);
+    const decisionPrompts = DECISION_PROMPTS.filter(prompt => canAIUseAction(user, prompt));
+    const suggestedPrompts = SUGGESTED_PROMPTS.filter(prompt => canAIUseAction(user, prompt));
     const [messages, setMessages] = useState([
         {
             role: 'bot',
@@ -2668,64 +2734,13 @@ export default function AIChatPage() {
         let stream = null;
         try {
             // Try local response first (forecast, student search)
-            const localResult = tryLocalResponse(userMsg);
+            const localResult = tryLocalResponse(userMsg, user);
             if (localResult) {
                 setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
                 setTyping(false);
                 return;
             }
-            const buildMsg = () => {
-                // Always include student data summary for student-related questions
-                const allStudents = getAllStudents();
-                const qLower = userMsg.toLowerCase();
-                const isStudentQ = /นักศึกษา|นิสิต|gpa|เกรด|สาขา|ชั้นปี|รายชื่อ|จำนวนนักศึกษา|student/.test(qLower);
-
-                let context = '';
-
-                if (isStudentQ && allStudents.length > 0) {
-                    // Build a compact student stats summary for Gemini
-                    const byMajor = {};
-                    const byYear = {};
-                    allStudents.forEach(s => {
-                        byMajor[s.major] = byMajor[s.major] || { count: 0, gpas: [] };
-                        byMajor[s.major].count++;
-                        byMajor[s.major].gpas.push(s.gpa);
-                        const yKey = `ชั้นปี ${s.year}`;
-                        byYear[yKey] = (byYear[yKey] || 0) + 1;
-                    });
-                    const majorStats = Object.entries(byMajor).map(([m, v]) => {
-                        const avg = (v.gpas.reduce((a, b) => a + b, 0) / v.gpas.length).toFixed(2);
-                        return `${m}: ${v.count} คน, GPA เฉลี่ย ${avg}`;
-                    }).join('\n');
-                    const yearStats = Object.entries(byYear).map(([y, c]) => `${y}: ${c} คน`).join(', ');
-
-                    context += `[บริบทนักศึกษา: ข้อมูลรวม ${allStudents.length} คน (ข้อมูลระบบ + ข้อมูลที่อัปโหลด)\n`;
-                    context += `สรุปตามสาขา:\n${majorStats}\n`;
-                    context += `สรุปตามชั้นปี: ${yearStats}\n`;
-                    // If user pasted a specific student ID, include that exact row
-                    const idMentioned = userMsg.match(/\b6\d{9}\b/);
-                    if (idMentioned) {
-                        const found = allStudents.find(s => s.id === idMentioned[0]);
-                        if (found) {
-                            context += `รหัสที่ผู้ใช้ระบุ ${found.id}: ${found.prefix}${found.name}, สาขา${found.major}, ปี ${found.year}, ${found.level}, GPA ${found.gpa}, ${found.status}\n`;
-                        } else {
-                            context += `รหัสที่ผู้ใช้ระบุ ${idMentioned[0]}: ไม่พบในฐานข้อมูล\n`;
-                        }
-                    }
-                    // Include sample rows for AI to reference
-                    const sample = allStudents.slice(0, 15).map(s => `${s.id},${s.name},${s.major},ปี ${s.year},GPA ${s.gpa},${s.status}`).join('\n');
-                    context += `ตัวอย่างข้อมูล (15 คนแรก):\n${sample}]\n\n`;
-                }
-
-                if (uploadedFileData && !isStudentFile(uploadedFileData.headers)) {
-                    // Non-student uploaded file
-                    const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
-                    const dashPreview = dashboardMergeSummary.rows.map(r => Object.values(r).join(', ')).join('\n');
-                    context += `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nข้อมูล Dashboard สำหรับเปรียบเทียบ (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}\n\nสามารถรวมข้อมูลไฟล์กับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้ ถ้าผู้ใช้ขอ]\n\n`;
-                }
-
-                return context ? `${context}คำถาม: ${userMsg}` : userMsg;
-            };
+            const buildMsg = () => buildAIChatPrompt(userMsg, uploadedFileData, dashboardMergeSummary, user);
             stream = createAIStreamUpdater(userMsg);
             const aiText = await sendAI(buildMsg(), stream.update);
             stream.finalize(aiText);
@@ -2739,32 +2754,7 @@ export default function AIChatPage() {
                 setMessages(prev => [...prev, {
                     role: 'bot', text: '**API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
                 }]);
-                const buildMsg = () => {
-                    // Reuse the same enriched context builder as handleSend
-                    const allStudents = getAllStudents();
-                    const qLower = userMsg.toLowerCase();
-                    const isStudentQ = /นักศึกษา|นิสิต|gpa|เกรด|สาขา|ชั้นปี|รายชื่อ|จำนวนนักศึกษา|student/.test(qLower);
-                    let context = '';
-                    if (isStudentQ && allStudents.length > 0) {
-                        const byMajor = {};
-                        allStudents.forEach(s => {
-                            byMajor[s.major] = byMajor[s.major] || { count: 0, gpas: [] };
-                            byMajor[s.major].count++;
-                            byMajor[s.major].gpas.push(s.gpa);
-                        });
-                        const majorStats = Object.entries(byMajor).map(([m, v]) => {
-                            const avg = (v.gpas.reduce((a, b) => a + b, 0) / v.gpas.length).toFixed(2);
-                            return `${m}: ${v.count} คน, GPA เฉลี่ย ${avg}`;
-                        }).join('\n');
-                        context += `[บริบทนักศึกษาทั้งหมด ${allStudents.length} คน:\n${majorStats}]\n\n`;
-                    }
-                    if (uploadedFileData && !isStudentFile(uploadedFileData.headers)) {
-                        const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
-                        const dashPreview = dashboardMergeSummary.rows.map(r => Object.values(r).join(', ')).join('\n');
-                        context += `[บริบท: ข้อมูลไฟล์ คอลัมน์: ${uploadedFileData.headers.join(', ')} ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}\n\nDashboard (${dashboardMergeSummary.headers.join(', ')}):\n${dashPreview}]\n\n`;
-                    }
-                    return context ? `${context}คำถาม: ${userMsg}` : userMsg;
-                };
+                const buildMsg = () => buildAIChatPrompt(userMsg, uploadedFileData, dashboardMergeSummary, user);
                 await retryWithCountdown(buildMsg, retryId, userMsg);
             } else {
                 setMessages(prev => [...prev, {
@@ -2787,14 +2777,14 @@ export default function AIChatPage() {
         let stream = null;
         try {
             // Try local response first (forecast, student search)
-            const localResult = tryLocalResponse(query);
+            const localResult = tryLocalResponse(query, user);
             if (localResult) {
                 setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
                 setTyping(false);
                 return;
             }
             stream = createAIStreamUpdater(query);
-            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary), stream.update);
+            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary, user), stream.update);
             stream.finalize(aiText);
         } catch (error) {
             stream?.remove();
@@ -2806,7 +2796,7 @@ export default function AIChatPage() {
                 setMessages(prev => [...prev, {
                     role: 'bot', text: '**API ถูกใช้งานบ่อยเกินไป** — กำลังเตรียมลองใหม่...', chart: null, _retryId: retryId
                 }]);
-                await retryWithCountdown(() => buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary), retryId, query);
+                await retryWithCountdown(() => buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary, user), retryId, query);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -3102,14 +3092,16 @@ export default function AIChatPage() {
                         ))}
                     </div>
 
-                    <div className="ai-decision-prompts">
-                        <h4><Zap size={14} /> คำถามเชิงตัดสินใจ</h4>
-                        {DECISION_PROMPTS.map((prompt) => (
-                            <button key={prompt} type="button" onClick={() => handleQuickAction(prompt)} disabled={typing}>
-                                {prompt}
-                            </button>
-                        ))}
-                    </div>
+                    {decisionPrompts.length > 0 && (
+                        <div className="ai-decision-prompts">
+                            <h4><Zap size={14} /> คำถามเชิงตัดสินใจ</h4>
+                            {decisionPrompts.map((prompt) => (
+                                <button key={prompt.label} type="button" onClick={() => handleQuickAction(prompt.query)} disabled={typing}>
+                                    {prompt.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     <h3><Sparkles size={16} /> ความสามารถหลัก</h3>
                     <div className="ai-chat-page-feature-list">
@@ -3132,19 +3124,10 @@ export default function AIChatPage() {
                     <div className="ai-chat-page-tips">
                         <h4>ตัวอย่างคำถาม</h4>
                         <ul>
-                            {[
-                                'สร้างกราฟจำนวนนักศึกษาและเกรด',
-                                'แม่โจ้มีกี่คณะ แต่ละคณะมีสาขาอะไร',
-                                'การรับสมัคร TCAS มีกี่รอบ',
-                                'พยากรณ์งบประมาณคณะวิทย์ ปี 70 71',
-                                'แสดงนักศึกษาสาขาคอม ชั้นปี 3',
-                                'ค่าเทอมแม่โจ้เท่าไหร่',
-                                'นักศึกษาที่มี GPA สูงสุด 10 คน',
-                                'แม่โจ้อยู่ที่ไหน เดินทางยังไง',
-                            ].map(prompt => (
-                                <li key={prompt}>
-                                    <button type="button" onClick={() => handleQuickAction(prompt)} disabled={typing}>
-                                        "{prompt}"
+                            {suggestedPrompts.map(prompt => (
+                                <li key={prompt.label}>
+                                    <button type="button" onClick={() => handleQuickAction(prompt.query)} disabled={typing}>
+                                        "{prompt.label}"
                                     </button>
                                 </li>
                             ))}
