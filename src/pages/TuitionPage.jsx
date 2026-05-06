@@ -90,8 +90,8 @@ export default function TuitionPage() {
             data: tuitionData.breakdown.map(b => b.value),
             backgroundColor: tuitionData.breakdown.map((_, index) => TUITION_BREAKDOWN_COLORS[index % TUITION_BREAKDOWN_COLORS.length]),
             borderWidth: 1,
-            spacing: 3,
-            hoverOffset: 8,
+            spacing: 1,
+            hoverOffset: 0,
         }]
     };
 

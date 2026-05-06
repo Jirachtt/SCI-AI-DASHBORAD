@@ -220,8 +220,8 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
             if (isSlice) {
                 dataset.borderColor = themeConfig.surface;
                 if (dataset.borderWidth == null || dataset.borderWidth < 2) dataset.borderWidth = 2;
-                if (dataset.hoverOffset == null) dataset.hoverOffset = 8;
-                if (dataset.spacing == null) dataset.spacing = 2;
+                dataset.hoverOffset = Math.min(Number(dataset.hoverOffset) || 0, 2);
+                dataset.spacing = Math.min(Number(dataset.spacing) || 0, 1);
             }
         }
 
@@ -247,12 +247,28 @@ export const themeAdaptorPlugin = {
         const themeConfig = getCurrentChartTheme();
         const options = mutableChartOptions(chart);
 
+        const chartType = baseChartType(chart);
+        const isSliceChart = ['pie', 'doughnut', 'polarArea'].includes(chartType);
+
         sanitizeChartDatasetColors(chart, themeConfig.theme);
         options.font = withDashboardFont(options.font, '600');
-        options.interaction = {
-            mode: 'index',
-            intersect: false,
-            ...(options.interaction || {}),
+        options.interaction = isSliceChart
+            ? { ...(options.interaction || {}), mode: 'nearest', intersect: true }
+            : { mode: 'index', intersect: false, ...(options.interaction || {}) };
+        options.transitions = options.transitions || {};
+        options.transitions.active = {
+            ...(options.transitions.active || {}),
+            animation: {
+                duration: isSliceChart ? 0 : 120,
+                ...(options.transitions.active?.animation || {}),
+            },
+        };
+        options.transitions.resize = {
+            ...(options.transitions.resize || {}),
+            animation: {
+                duration: 0,
+                ...(options.transitions.resize?.animation || {}),
+            },
         };
         options.elements = options.elements || {};
         options.elements.line = {
