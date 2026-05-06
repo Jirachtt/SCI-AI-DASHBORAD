@@ -25,7 +25,6 @@ export function resolveAIRole(roleOrUser) {
     const rawRole = typeof roleOrUser === 'string' ? roleOrUser : roleOrUser?.role;
     return rawRole && getRoleInfo(rawRole) ? rawRole : 'general';
 }
-
 export function isAIUnrestrictedRole(roleOrUser) {
     return UNRESTRICTED_AI_ROLES.has(resolveAIRole(roleOrUser));
 }
@@ -88,4 +87,3 @@ export function getAIAccessInstruction(roleOrUser, usePublicWebMode = false) {
     }
     return 'ตอบเฉพาะข้อมูลภายในที่ role นี้มีสิทธิ์เข้าถึงเท่านั้น ถ้าข้อมูลอยู่นอกสิทธิ์ให้บอกว่าต้องใช้สิทธิ์สูงกว่า';
 }
-
