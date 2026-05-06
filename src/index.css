@@ -11994,6 +11994,63 @@ body {
   }
 }
 
+/* Premium grid canvas: restores the earlier technical table texture with softer depth. */
+:root {
+  --premium-grid-small: rgba(148, 163, 184, 0.052);
+  --premium-grid-large: rgba(52, 211, 153, 0.075);
+  --premium-grid-sheen: rgba(0, 166, 81, 0.075);
+  --premium-grid-blue: rgba(56, 189, 248, 0.050);
+}
+
+[data-theme="light"] {
+  --premium-grid-small: rgba(15, 23, 42, 0.040);
+  --premium-grid-large: rgba(0, 104, 56, 0.070);
+  --premium-grid-sheen: rgba(0, 104, 56, 0.060);
+  --premium-grid-blue: rgba(37, 99, 235, 0.034);
+}
+
+.app-layout,
+[data-theme="light"] .app-layout {
+  background:
+    radial-gradient(circle at 16% 10%, var(--premium-grid-sheen), transparent 31%),
+    radial-gradient(circle at 88% 76%, var(--premium-grid-blue), transparent 35%),
+    linear-gradient(180deg, color-mix(in srgb, var(--app-canvas) 92%, #ffffff), var(--app-canvas));
+}
+
+.app-layout::before {
+  background-image:
+    linear-gradient(to right, var(--premium-grid-small) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--premium-grid-small) 1px, transparent 1px),
+    linear-gradient(to right, var(--premium-grid-large) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--premium-grid-large) 1px, transparent 1px);
+  background-size: 28px 28px, 28px 28px, 168px 168px, 168px 168px;
+  background-position: 0 0, 0 0, -1px -1px, -1px -1px;
+  mask-image:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.86), rgba(0, 0, 0, 0.74) 54%, transparent 100%);
+  opacity: 0.92;
+}
+
+[data-theme="light"] .app-layout::before {
+  opacity: 0.74;
+  mask-image:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.76), rgba(0, 0, 0, 0.56) 58%, transparent 100%);
+}
+
+.main-content {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--mju-green) 3%, transparent), transparent 360px);
+}
+
+.page-content {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--app-canvas) 62%, transparent), transparent 240px);
+}
+
+[data-theme="light"] .page-content {
+  background:
+    linear-gradient(180deg, rgba(255, 254, 250, 0.20), transparent 240px);
+}
+
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
 
