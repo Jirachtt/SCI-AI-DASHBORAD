@@ -13,7 +13,7 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-async function readJsonBody(req) {
+export async function readJsonBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   if (typeof req.body === 'string') return JSON.parse(req.body || '{}');
 
@@ -67,7 +67,7 @@ function signJwt(payload) {
   return `${unsignedJwt}.${signature}`;
 }
 
-function createFirebaseCustomToken(uid, claims = {}) {
+export function createFirebaseCustomToken(uid, claims = {}) {
   const { clientEmail } = readServiceAccount();
   const now = Math.floor(Date.now() / 1000);
   return signJwt({
@@ -81,7 +81,7 @@ function createFirebaseCustomToken(uid, claims = {}) {
   });
 }
 
-function firstValue(data, keys) {
+export function firstValue(data, keys) {
   for (const key of keys) {
     const value = data?.[key];
     if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
@@ -100,11 +100,11 @@ function normalizeRole(data = {}) {
   return 'general';
 }
 
-function tokenFromExchangeBody(data = {}) {
+export function tokenFromExchangeBody(data = {}) {
   return firstValue(data, ['token', 'firebaseToken', 'customToken', 'custom_token']);
 }
 
-function buildClaims(data = {}) {
+export function buildClaims(data = {}) {
   const id = firstValue(data, ['mjuId', 'studentId', 'employeeId', 'username', 'userId', 'uid']);
   const role = normalizeRole(data);
   return {
@@ -121,7 +121,7 @@ function buildClaims(data = {}) {
   };
 }
 
-async function callMjuExchangeEndpoint({ code, codeParam }) {
+export async function callMjuExchangeEndpoint({ code, codeParam }) {
   const exchangeUrl = process.env.MJU_SSO_EXCHANGE_URL;
   if (!exchangeUrl) {
     const err = new Error('ได้รับค่า ac จาก MJU SSO แล้ว แต่ยังไม่ได้ตั้ง MJU_SSO_EXCHANGE_URL สำหรับตรวจสอบ/แลก ac เป็นข้อมูลผู้ใช้');

@@ -1,7 +1,7 @@
 const SSO_STATE_KEY = 'mju_sso_state';
 const SSO_RETURN_KEY = 'mju_sso_return_to';
 const DEFAULT_MJU_SSO_CLIENT_ID = '74dade2afc8449ecb975165f6451619f';
-const MJU_SSO_CALLBACK_PATH = '/auth/mju/callback';
+const MJU_SSO_WEBHOOK_PATH = '/api/mju-sso-callback';
 const MJU_SSO_AFTER_SIGNOUT_PATH = '/auth/mju/signout';
 
 export const MJU_SSO_CLIENT_ID = import.meta.env.VITE_MJU_AUTH_CLIENT_ID || DEFAULT_MJU_SSO_CLIENT_ID;
@@ -43,7 +43,7 @@ export function buildMjuSsoStartUrl(returnTo = '/dashboard') {
     sessionStorage.setItem(SSO_STATE_KEY, state);
     sessionStorage.setItem(SSO_RETURN_KEY, returnTo);
 
-    const callbackUrl = new URL(MJU_SSO_CALLBACK_PATH, window.location.origin).toString();
+    const callbackUrl = new URL(MJU_SSO_WEBHOOK_PATH, window.location.origin).toString();
     const url = new URL(MJU_SSO_START_URL, window.location.origin);
     url.searchParams.set('redirect_uri', callbackUrl);
     url.searchParams.set('state', state);
@@ -63,7 +63,7 @@ export function buildMjuSsoSignoutUrl() {
 
 export function getMjuSsoRegisteredUrls(origin = window.location.origin) {
     return {
-        webhookUrl: new URL(MJU_SSO_CALLBACK_PATH, origin).toString(),
+        webhookUrl: new URL(MJU_SSO_WEBHOOK_PATH, origin).toString(),
         afterSignoutUrl: new URL(MJU_SSO_AFTER_SIGNOUT_PATH, origin).toString(),
     };
 }
