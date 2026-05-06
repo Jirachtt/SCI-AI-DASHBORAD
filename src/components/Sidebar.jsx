@@ -12,7 +12,7 @@ import {
     Microscope, Target, UserCheck, BookOpen, Award,
     Shield, UserCog, Clock, Bell, Bot, Settings,
     ChevronRight, UserRound, Palette, Activity, ScrollText, CalendarDays,
-    ClipboardList
+    ClipboardList, X
 } from 'lucide-react';
 
 const FEATURED_AI_CHAT = {
@@ -103,6 +103,15 @@ export default function Sidebar({ isOpen, onClose }) {
         refresh();
         const interval = setInterval(refresh, 5000);
         return () => clearInterval(interval);
+    }, [settingsOpen]);
+
+    useEffect(() => {
+        if (!settingsOpen) return undefined;
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') setSettingsOpen(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, [settingsOpen]);
 
     const badgeColor = getRoleBadgeColor(user?.role);
@@ -209,8 +218,9 @@ export default function Sidebar({ isOpen, onClose }) {
                 <button
                     type="button"
                     className={`sidebar-settings-button ${settingsOpen ? 'active' : ''}`}
-                    onClick={() => setSettingsOpen(true)}
-                    aria-label="เปิด Settings"
+                    onClick={() => setSettingsOpen(open => !open)}
+                    aria-expanded={settingsOpen}
+                    aria-label={settingsOpen ? 'ปิด Settings' : 'เปิด Settings'}
                 >
                     <Settings size={16} />
                     <span>Settings</span>
@@ -230,6 +240,14 @@ export default function Sidebar({ isOpen, onClose }) {
                         aria-label="Settings"
                         onClick={(e) => e.stopPropagation()}
                     >
+                        <button
+                            type="button"
+                            className="settings-popover-close"
+                            onClick={() => setSettingsOpen(false)}
+                            aria-label="ปิด Settings"
+                        >
+                            <X size={15} />
+                        </button>
                         <div className="settings-popover-section">
                             <div className="settings-popover-label">
                                 <UserRound size={13} />

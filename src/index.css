@@ -12051,6 +12051,194 @@ body {
     linear-gradient(180deg, rgba(255, 254, 250, 0.20), transparent 240px);
 }
 
+/* Layout balance + Thai text clipping fixes */
+button,
+.export-actions button,
+.ai-page-chart-btn,
+.chart-card button,
+.filter-apply-btn,
+.admin-refresh-btn,
+.back-button,
+.chat-quick-btn,
+.settings-menu-row,
+.settings-logout-row,
+.course-strength-tags span,
+.course-reg-fields span,
+.tcas-source-links a,
+.tcas-source-links span,
+.status-badge {
+  line-height: 1.45;
+  overflow: visible;
+}
+
+.export-actions {
+  align-items: center;
+  gap: 10px;
+}
+
+.export-actions button,
+.back-button,
+.admin-refresh-btn,
+.filter-apply-btn,
+.ai-page-chart-btn,
+.chart-card button {
+  min-height: 42px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  align-items: center;
+}
+
+.settings-popover-overlay {
+  z-index: 1400;
+}
+
+.settings-popover {
+  width: min(356px, calc(100vw - 24px));
+  max-height: min(74dvh, 680px);
+  padding: 12px;
+  scrollbar-gutter: stable;
+}
+
+.settings-popover-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  background: var(--surface-panel-soft);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.settings-popover-close:hover {
+  border-color: var(--surface-border-strong);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--mju-green) 12%, transparent);
+}
+
+.settings-popover-section:first-of-type {
+  padding-top: 4px;
+}
+
+.settings-popover-section:first-of-type .settings-popover-label {
+  padding-right: 42px;
+}
+
+.sidebar-settings-button[aria-expanded="true"] svg:last-child {
+  transform: rotate(90deg);
+}
+
+.settings-token-value-row strong {
+  line-height: 1.15;
+  padding-top: 2px;
+}
+
+.settings-token-meta {
+  align-items: center;
+}
+
+.course-strength-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  grid-auto-rows: 1fr;
+}
+
+.course-strength-card {
+  height: 100%;
+  min-height: 236px;
+}
+
+.course-strength-card p,
+.course-strength-courses small {
+  overflow-wrap: anywhere;
+}
+
+.course-strength-tags {
+  align-items: flex-start;
+}
+
+.course-strength-tags span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tcas-chart-small {
+  min-height: 238px;
+}
+
+.tcas-round-list div,
+.tcas-impact-results div,
+.course-grade-summary div {
+  min-height: 38px;
+  align-items: center;
+}
+
+.tcas-round-list div {
+  display: grid;
+  grid-template-columns: minmax(92px, 1fr) minmax(70px, 0.72fr) max-content;
+  gap: 8px;
+}
+
+.tcas-round-list span,
+.tcas-round-list strong,
+.tcas-round-list em {
+  line-height: 1.45;
+}
+
+.science-activity-layout {
+  grid-template-columns: minmax(0, 1.42fr) minmax(340px, 0.76fr);
+  gap: 16px;
+}
+
+.science-activity-side {
+  gap: 16px;
+}
+
+.science-activity-admin-hint {
+  grid-column: 1 / -1;
+  margin-top: 14px;
+}
+
+.science-activity-hint-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.science-activity-inline-link {
+  margin-left: 0;
+}
+
+@media (max-width: 1280px) {
+  .course-strength-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .course-strength-grid,
+  .science-activity-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .science-activity-hint-body {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .science-activity-inline-link {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
 
