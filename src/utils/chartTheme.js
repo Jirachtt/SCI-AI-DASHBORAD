@@ -3,17 +3,17 @@ const MIN_CHART_FONT_SIZE = 12;
 const DEFAULT_CHART_FONT_SIZE = 13;
 
 export const LIGHT_CHART_PALETTE = [
-    '#2563eb', '#16a34a', '#f97316', '#9333ea', '#dc2626', '#0891b2',
-    '#ca8a04', '#be185d', '#4f46e5', '#0f766e', '#b45309', '#64748b',
+    '#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2',
+    '#be123c', '#0f766e', '#4f46e5', '#ca8a04', '#475569', '#16a34a',
 ];
 
 export const DARK_CHART_PALETTE = [
-    '#60a5fa', '#4ade80', '#fb923c', '#c084fc', '#f87171', '#22d3ee',
-    '#facc15', '#f472b6', '#a5b4fc', '#5eead4', '#fdba74', '#cbd5e1',
+    '#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#fb7185', '#22d3ee',
+    '#f97316', '#e879f9', '#2dd4bf', '#f43f5e', '#cbd5e1', '#86efac',
 ];
 
-const LIGHT_CHART_SURFACE = '#ffffff';
-const DARK_CHART_SURFACE = '#131929';
+const LIGHT_CHART_SURFACE = '#fffefa';
+const DARK_CHART_SURFACE = '#111827';
 
 function withDashboardFont(font = {}, fallbackWeight) {
     const next = { family: DASHBOARD_FONT_FAMILY };
@@ -43,14 +43,14 @@ export function getCurrentChartTheme(theme = activeThemeName()) {
         theme: isLight ? 'light' : 'dark',
         palette: getChartPalette(theme),
         surface: isLight ? LIGHT_CHART_SURFACE : DARK_CHART_SURFACE,
-        text: isLight ? '#1f2937' : '#f1f5f9',
-        muted: isLight ? '#475569' : '#d6deea',
-        grid: isLight ? 'rgba(15, 23, 42, 0.10)' : 'rgba(226, 232, 240, 0.16)',
-        axis: isLight ? 'rgba(15, 23, 42, 0.18)' : 'rgba(226, 232, 240, 0.22)',
-        tooltipBg: isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(15, 23, 42, 0.96)',
+        text: isLight ? '#0f172a' : '#f8fafc',
+        muted: isLight ? '#334155' : '#dbeafe',
+        grid: isLight ? 'rgba(15, 23, 42, 0.075)' : 'rgba(226, 232, 240, 0.13)',
+        axis: isLight ? 'rgba(15, 23, 42, 0.16)' : 'rgba(226, 232, 240, 0.20)',
+        tooltipBg: isLight ? 'rgba(255, 254, 250, 0.98)' : 'rgba(13, 20, 33, 0.97)',
         tooltipTitle: isLight ? '#0f172a' : '#ffffff',
-        tooltipBody: isLight ? '#334155' : '#e5edf8',
-        tooltipBorder: isLight ? 'rgba(37, 99, 235, 0.26)' : 'rgba(96, 165, 250, 0.44)',
+        tooltipBody: isLight ? '#334155' : '#e7eefc',
+        tooltipBorder: isLight ? 'rgba(5, 150, 105, 0.24)' : 'rgba(52, 211, 153, 0.32)',
     };
 }
 
@@ -326,12 +326,12 @@ export const themeAdaptorPlugin = {
             tooltip.borderColor = themeConfig.tooltipBorder;
             tooltip.borderWidth = 1;
             if (!tooltip.cornerRadius) tooltip.cornerRadius = 10;
-            if (!tooltip.padding) tooltip.padding = 12;
+            if (!tooltip.padding) tooltip.padding = 13;
             tooltip.titleFont = withDashboardFont(tooltip.titleFont, '700');
             tooltip.bodyFont = withDashboardFont(tooltip.bodyFont, '600');
             if (tooltip.displayColors == null) tooltip.displayColors = true;
-            if (tooltip.boxPadding == null) tooltip.boxPadding = 4;
-            tooltip.caretPadding = tooltip.caretPadding ?? 8;
+            if (tooltip.boxPadding == null) tooltip.boxPadding = 6;
+            tooltip.caretPadding = tooltip.caretPadding ?? 10;
             tooltip.titleMarginBottom = tooltip.titleMarginBottom ?? 8;
             tooltip.bodySpacing = tooltip.bodySpacing ?? 5;
             tooltip.usePointStyle = tooltip.usePointStyle ?? true;
