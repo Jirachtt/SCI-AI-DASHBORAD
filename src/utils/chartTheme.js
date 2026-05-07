@@ -43,13 +43,13 @@ export function getCurrentChartTheme(theme = activeThemeName()) {
         theme: isLight ? 'light' : 'dark',
         palette: getChartPalette(theme),
         surface: isLight ? LIGHT_CHART_SURFACE : DARK_CHART_SURFACE,
-        text: isLight ? '#0f172a' : '#f8fafc',
-        muted: isLight ? '#334155' : '#dbeafe',
+        text: isLight ? '#0f172a' : '#ffffff',
+        muted: isLight ? '#334155' : '#f8fafc',
         grid: isLight ? 'rgba(15, 23, 42, 0.075)' : 'rgba(226, 232, 240, 0.13)',
         axis: isLight ? 'rgba(15, 23, 42, 0.16)' : 'rgba(226, 232, 240, 0.20)',
         tooltipBg: isLight ? 'rgba(255, 254, 250, 0.98)' : 'rgba(13, 20, 33, 0.97)',
         tooltipTitle: isLight ? '#0f172a' : '#ffffff',
-        tooltipBody: isLight ? '#334155' : '#e7eefc',
+        tooltipBody: isLight ? '#334155' : '#f8fafc',
         tooltipBorder: isLight ? 'rgba(5, 150, 105, 0.24)' : 'rgba(52, 211, 153, 0.32)',
     };
 }

@@ -17,13 +17,13 @@
   --bg-glass: rgba(16, 20, 36, 0.82);
   --bg-sidebar: #0A0E1A;
 
-  --text-primary: #F9FAFB;
-  --text-secondary: #E2E8F0;
-  --text-muted: #C4CEDA;
-  --text-subtle: #9AA8BA;
+  --text-primary: #FFFFFF;
+  --text-secondary: #FFFFFF;
+  --text-muted: #F8FAFC;
+  --text-subtle: #F8FAFC;
 
-  --chart-text: #F1F5F9;
-  --chart-muted: #D6DEEA;
+  --chart-text: #FFFFFF;
+  --chart-muted: #F8FAFC;
   --chart-grid: rgba(226, 232, 240, 0.16);
   --chart-axis: rgba(226, 232, 240, 0.22);
   --chart-surface: #131929;
@@ -11519,13 +11519,13 @@ body {
   --bg-glass: rgba(12, 22, 28, 0.82);
   --bg-sidebar: #06110f;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #e2e8f0;
-  --text-muted: #cbd5e1;
-  --text-subtle: #94a3b8;
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-muted: #f8fafc;
+  --text-subtle: #f8fafc;
 
-  --chart-text: #f8fafc;
-  --chart-muted: #dbeafe;
+  --chart-text: #ffffff;
+  --chart-muted: #f8fafc;
   --chart-grid: rgba(226, 232, 240, 0.13);
   --chart-axis: rgba(226, 232, 240, 0.20);
   --chart-surface: #111827;
@@ -11787,6 +11787,51 @@ body {
 [data-theme="dark"] .section-header::before {
   background: linear-gradient(90deg, transparent 0%, rgba(52, 211, 153, 0.66) 14%, rgba(34, 211, 238, 0.28) 70%, transparent 100%);
   opacity: 0.62;
+}
+
+.header-title h1,
+.section-header h1,
+.section-header h2,
+.ai-chat-page-header-left h1,
+.dashboard-welcome h2,
+[data-theme="light"] .header-title h1,
+[data-theme="light"] .section-header h1,
+[data-theme="light"] .section-header h2,
+[data-theme="light"] .ai-chat-page-header-left h1,
+[data-theme="light"] .dashboard-welcome h2,
+[data-theme="dark"] .header-title h1,
+[data-theme="dark"] .section-header h1,
+[data-theme="dark"] .section-header h2,
+[data-theme="dark"] .ai-chat-page-header-left h1,
+[data-theme="dark"] .dashboard-welcome h2 {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.header-title h1,
+.section-header h1,
+.section-header h2,
+.ai-chat-page-header-left h1,
+.dashboard-welcome h2 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .header-title h1,
+[data-theme="dark"] .section-header h1,
+[data-theme="dark"] .section-header h2,
+[data-theme="dark"] .ai-chat-page-header-left h1,
+[data-theme="dark"] .dashboard-welcome h2 {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .header-title h1,
+[data-theme="light"] .section-header h1,
+[data-theme="light"] .section-header h2,
+[data-theme="light"] .ai-chat-page-header-left h1,
+[data-theme="light"] .dashboard-welcome h2 {
+  color: #0f172a !important;
 }
 
 .stat-card,
