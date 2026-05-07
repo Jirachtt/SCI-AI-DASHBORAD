@@ -9,6 +9,7 @@ import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { AI_ASSISTANT_NAME, APP_NAME_TH } from '../config/appBrand';
 import { tryInstantAnswer } from '../services/aiInstantAnswerService';
 import { canAIUseAction } from '../utils/aiAccessPolicy';
+import { isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
 
 let aiChatPageModulePromise = null;
 
@@ -107,11 +108,12 @@ export default function AIChat() {
         messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, typing]);
 
-    const sendAI = useCallback(async (prompt) => {
+    const sendAI = useCallback(async (prompt, sendOptions = {}) => {
         const text = await sendMessageToGemini(prompt, {
             user,
             theme,
             aiSettings: getAIModelSettings(),
+            ...sendOptions,
         });
         getAITokenStats();
         return text;
@@ -193,7 +195,7 @@ export default function AIChat() {
             });
 
             try {
-                const aiText = await sendAI(buildPrompt());
+                const aiText = await sendAI(buildPrompt(), { disableCache: isExecutiveRecommendationIntent(sourceQuestion) });
                 const parsedAI = tools.parseAIResponse(aiText, sourceQuestion);
                 setMessages(prev => prev.map(message =>
                     message._retryId === retryId
@@ -221,21 +223,22 @@ export default function AIChat() {
     };
 
     const runQuestion = async (question) => {
-        const instantResult = tryInstantAnswer(question, user);
+        const adviceMode = isExecutiveRecommendationIntent(question);
+        const instantResult = adviceMode ? null : tryInstantAnswer(question, user);
         if (instantResult) {
             setMessages(prev => [...prev, { role: 'bot', text: instantResult.text, chart: instantResult.chart }]);
             return;
         }
 
         const tools = await ensureAiModule();
-        const localResult = tools.tryLocalResponse(question, user);
+        const localResult = adviceMode ? null : tools.tryLocalResponse(question, user);
         if (localResult) {
             setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
             return;
         }
 
         const prompt = tools.buildAIChatPrompt(question, uploadedFileData, null, user);
-        const aiText = await sendAI(prompt);
+        const aiText = await sendAI(prompt, { disableCache: adviceMode });
         const parsedAI = tools.parseAIResponse(aiText, question);
         setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
     };
@@ -330,7 +333,7 @@ export default function AIChat() {
 
             const dataPreview = parsed.rows.slice(0, 15).map(row => Object.values(row).join(', ')).join('\n');
             try {
-                const aiText = await sendAI(`ผู้ใช้อัปโหลดไฟล์ "${fileName}" มีข้อมูล ${parsed.rowCount} แถว คอลัมน์: ${parsed.headers.join(', ')}\n\nตัวอย่างข้อมูล:\n${dataPreview}\n\nช่วยวิเคราะห์และสรุปข้อมูลนี้แบบกระชับ`);
+                const aiText = await sendAI(`ผู้ใช้อัปโหลดไฟล์ "${fileName}" มีข้อมูล ${parsed.rowCount} แถว คอลัมน์: ${parsed.headers.join(', ')}\n\nตัวอย่างข้อมูล:\n${dataPreview}\n\nช่วยวิเคราะห์และสรุปข้อมูลนี้แบบกระชับ`, { disableCache: true });
                 const parsedAI = tools.parseAIResponse(aiText, `วิเคราะห์ไฟล์ ${fileName}`);
                 setMessages(prev => [...prev, {
                     role: 'bot',

@@ -34,6 +34,11 @@ import {
     canAIUseAllInternalSections,
     canAIUseInternalSection,
 } from '../utils/aiAccessPolicy';
+import { isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
+import {
+    coerceStructuredAIResponseMarkdown,
+    stripRawStructuredAIResponseText,
+} from '../utils/aiChartResponse';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -453,6 +458,14 @@ export const getAllStudents = () => {
     return [...filtered, ..._uploadedStudentRows];
 };
 
+function getTrustedStudentsForAdvice() {
+    const base = isLiveData() ? getStudentListSync() : [];
+    if (_uploadedStudentRows.length === 0) return base;
+    const idSet = new Set(_uploadedStudentRows.map(s => s.id));
+    const filtered = base.filter(s => !idSet.has(s.id));
+    return [...filtered, ..._uploadedStudentRows];
+}
+
 export function setUploadedStudentRows(rows = []) {
     _uploadedStudentRows = Array.isArray(rows) ? rows : [];
     return getAllStudents();
@@ -832,6 +845,7 @@ function searchStudents(query) {
 // Everything else → Gemini AI (smarter, context-aware answers)
 export function tryLocalResponse(question, userContext = {}) {
     const q = question.toLowerCase();
+    if (isExecutiveRecommendationIntent(question)) return null;
 
     const instantResult = tryInstantAnswer(question, userContext);
     if (instantResult) return instantResult;
@@ -901,7 +915,8 @@ export function tryLocalResponse(question, userContext = {}) {
 
 // ==================== Parse AI Generated Chart ====================
 export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMergeSummary = null, userContext = {}) {
-    const allStudents = getAllStudents();
+    const adviceMode = isExecutiveRecommendationIntent(question);
+    const allStudents = adviceMode ? getTrustedStudentsForAdvice() : getAllStudents();
     const qLower = String(question || '').toLowerCase();
     const isStudentQ = /นักศึกษา|นิสิต|gpa|เกรด|สาขา|ชั้นปี|รายชื่อ|จำนวนนักศึกษา|student/.test(qLower);
     const canUseStudentStats = canAIUseInternalSection(userContext, 'student_stats');
@@ -913,6 +928,9 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
 
     const dataAccuracyContext = buildDataAccuracyContextForAI();
     let context = dataAccuracyContext ? `[DATA ACCURACY / SOURCE STATUS]\n${dataAccuracyContext}\n\n` : '';
+    if (adviceMode) {
+        context += '[EXECUTIVE ADVICE DATA POLICY]\nคำถามนี้เป็นคำถามเชิงคำแนะนำ/วางแผน ต้องใช้เฉพาะข้อมูลจริงหรือไฟล์ที่ผู้ใช้อัปโหลดในแชทเท่านั้น ห้ามใช้ mock/fallback/demo/reference เป็นฐานคำแนะนำเชิงบริหาร ถ้าข้อมูลจริงไม่พร้อมให้แจ้ง dataset ที่ต้อง sync/อัปโหลดก่อน\n\n';
+    }
     if (isStudentQ && !canUseStudentStats) {
         context += '[ACCESS LIMITED]\nRole นี้ไม่มีสิทธิ์อ่านข้อมูลนักศึกษาภายในจากระบบ ห้ามแนบ/เดารายชื่อนักศึกษา GPA หรือสถิติภายใน ให้ตอบเฉพาะข้อมูลสาธารณะหรือแจ้งว่าต้องใช้สิทธิ์สูงกว่า\n\n';
     }
@@ -935,7 +953,10 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
         }).join('\n');
         const yearStats = Object.entries(byYear).map(([year, count]) => `${year}: ${count} คน`).join(', ');
 
-        context += `[บริบทนักศึกษา: ข้อมูลรวม ${allStudents.length} คน (ข้อมูลระบบ + ข้อมูลที่อัปโหลด)\n`;
+        const studentSourceLabel = adviceMode
+            ? (isLiveData() && _uploadedStudentRows.length > 0 ? 'ข้อมูล live/realtime + ไฟล์ที่ผู้ใช้อัปโหลด' : isLiveData() ? 'ข้อมูล live/realtime' : 'ไฟล์ที่ผู้ใช้อัปโหลด')
+            : 'ข้อมูลระบบ + ข้อมูลที่อัปโหลด';
+        context += `[บริบทนักศึกษา: ข้อมูลรวม ${allStudents.length} คน (${studentSourceLabel})\n`;
         context += `สรุปตามสาขา:\n${majorStats}\n`;
         context += `สรุปตามชั้นปี: ${yearStats}\n`;
         if (wantsStudentCountGradeChart(question)) {
@@ -963,6 +984,8 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
         } else {
             context += 'ไม่มีการแนบตัวอย่างรายชื่อรายบุคคล เพราะ role นี้อ่านได้เฉพาะสถิติรวม ไม่ใช่ student_list\n\n';
         }
+    } else if (adviceMode && isStudentQ && canUseStudentStats) {
+        context += '[ข้อมูลนักศึกษา]\nข้อมูลนักศึกษาจริงยังไม่พร้อมสำหรับคำแนะนำเชิงบริหารจากสถานการณ์จริง: ตอนนี้ฐานนักศึกษายังไม่ใช่ live/official และไม่มีไฟล์นักศึกษาที่ผู้ใช้อัปโหลดในแชทนี้ ให้แจ้งว่าต้อง sync Firestore หรืออัปโหลดไฟล์นักศึกษาจริงก่อน ห้ามใช้ตัวเลข mock\n\n';
     }
 
     if (uploadedFileData) {
@@ -971,8 +994,10 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
         const dashHeaders = Array.isArray(dashboardSummary?.headers) ? dashboardSummary.headers : [];
         const dashPreview = dashRows.map(r => Object.values(r).join(', ')).join('\n');
         context += `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}`;
-        if (dashRows.length > 0) {
+        if (dashRows.length > 0 && !adviceMode) {
             context += `\n\nข้อมูล Dashboard สำหรับเปรียบเทียบ (${dashHeaders.join(', ')}):\n${dashPreview}`;
+        } else if (dashRows.length > 0 && adviceMode) {
+            context += '\n\nงดแนบข้อมูล Dashboard สำหรับเปรียบเทียบในโหมดคำแนะนำเชิงบริหาร เพราะต้องใช้เฉพาะข้อมูลจริง/ไฟล์ที่อัปโหลดเท่านั้น';
         }
         context += `\n\nสามารถรวมข้อมูลไฟล์กับข้อมูล Dashboard เพื่อสร้างกราฟเปรียบเทียบได้ ถ้าผู้ใช้ขอ]\n\n`;
     }
@@ -981,6 +1006,8 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
 }
 
 export function parseAIResponse(text, sourceQuestion = '') {
+    text = coerceStructuredAIResponseMarkdown(text, { includeInvalidChartMessage: true }) ?? String(text || '');
+
     // Accept 1-3 backticks on the fence — Gemini occasionally emits a single
     // backtick or markdown that renders as inline code instead of a block.
     let regex = /`{1,3}json_chart\s*([\s\S]*?)\s*`{1,3}/;
@@ -1234,6 +1261,7 @@ export function parseAIResponse(text, sourceQuestion = '') {
     // (e.g. `[{"id":"...","n":"..."}, ...]`) after json_chart extraction.
     // json_chart blocks were already removed above, so anything left is unwanted.
     cleanText = stripRawDatasetDumps(cleanText);
+    cleanText = stripRawStructuredAIResponseText(cleanText);
 
     return { text: cleanText, chart: chartConfig };
 }
@@ -2371,8 +2399,8 @@ export default function AIChatPage() {
     const [typing, setTyping] = useState(false);
     const [thinkingStepIndex, setThinkingStepIndex] = useState(0);
     const messagesEnd = useRef(null);
-    const sendAI = useCallback(async (prompt, onChunk) => {
-        return sendMessageToGemini(prompt, { user, theme, aiSettings: getAIModelSettings(), onChunk });
+    const sendAI = useCallback(async (prompt, onChunk, sendOptions = {}) => {
+        return sendMessageToGemini(prompt, { user, theme, aiSettings: getAIModelSettings(), onChunk, ...sendOptions });
     }, [user, theme]);
 
     // ── Ensure the live student dataset is loaded before the user can chat ──
@@ -2619,7 +2647,7 @@ export default function AIChatPage() {
             const aiPrompt = `ผู้ใช้อัปโหลดไฟล์ "${fileName}" มีข้อมูล ${parsed.rowCount} แถว คอลัมน์: ${parsed.headers.join(', ')}\n\nตัวอย่างข้อมูล:\n${dataPreview}\n\nช่วยวิเคราะห์และสรุปข้อมูลนี้ให้หน่อย จุดที่น่าสนใจ แนวโน้ม และข้อเสนอแนะ`;
 
             try {
-                const aiText = await sendAI(aiPrompt);
+                const aiText = await sendAI(aiPrompt, undefined, { disableCache: isExecutiveRecommendationIntent(aiPrompt) });
                 const parsedAI = parseAIResponse(aiText, aiPrompt);
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -2701,7 +2729,7 @@ export default function AIChatPage() {
                 }, 1000);
             });
             try {
-                const aiText = await sendAI(buildMessage());
+                const aiText = await sendAI(buildMessage(), undefined, { disableCache: isExecutiveRecommendationIntent(sourceQuestion) });
                 const parsedAI = parseAIResponse(aiText, sourceQuestion);
                 setMessages(prev => prev.map(m =>
                     m._retryId === retryId
@@ -2732,9 +2760,10 @@ export default function AIChatPage() {
         setTyping(true);
 
         let stream = null;
+        const adviceMode = isExecutiveRecommendationIntent(userMsg);
         try {
             // Try local response first (forecast, student search)
-            const localResult = tryLocalResponse(userMsg, user);
+            const localResult = adviceMode ? null : tryLocalResponse(userMsg, user);
             if (localResult) {
                 setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
                 setTyping(false);
@@ -2742,7 +2771,7 @@ export default function AIChatPage() {
             }
             const buildMsg = () => buildAIChatPrompt(userMsg, uploadedFileData, dashboardMergeSummary, user);
             stream = createAIStreamUpdater(userMsg);
-            const aiText = await sendAI(buildMsg(), stream.update);
+            const aiText = await sendAI(buildMsg(), stream.update, { disableCache: adviceMode });
             stream.finalize(aiText);
         } catch (error) {
             stream?.remove();
@@ -2775,16 +2804,17 @@ export default function AIChatPage() {
         setMessages(prev => [...prev, { role: 'user', text: query }]);
         setTyping(true);
         let stream = null;
+        const adviceMode = isExecutiveRecommendationIntent(query);
         try {
             // Try local response first (forecast, student search)
-            const localResult = tryLocalResponse(query, user);
+            const localResult = adviceMode ? null : tryLocalResponse(query, user);
             if (localResult) {
                 setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
                 setTyping(false);
                 return;
             }
             stream = createAIStreamUpdater(query);
-            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary, user), stream.update);
+            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary, user), stream.update, { disableCache: adviceMode });
             stream.finalize(aiText);
         } catch (error) {
             stream?.remove();

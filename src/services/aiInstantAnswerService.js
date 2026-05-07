@@ -16,11 +16,17 @@ import {
     getSharedDashboardDatasetSync,
 } from './sharedDashboardDataService';
 import { buildAIAccessDeniedResult, canAIUseAnyInternalSection } from '../utils/aiAccessPolicy';
+import { isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
 
 const CHART_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
 
 function normalizeText(value) {
     return String(value || '').toLowerCase().trim();
+}
+
+function buildDataToConnectNote(items = []) {
+    if (!items.length) return '';
+    return `\n**ข้อมูลที่ควรเชื่อมเพิ่มเพื่อยืนยัน**\n${items.map((item, index) => `${index + 1}. ${item}`).join('\n')}\n`;
 }
 
 function isChartIntent(text) {
@@ -146,11 +152,24 @@ function buildStudentRiskTrendAnswer(question) {
         text += '\n\n';
     }
 
-    text += `**ควรทำต่อทันที**\n`;
-    text += `1. ให้อาจารย์ที่ปรึกษานัดกลุ่ม GPA < 1.75 ภายในสัปดาห์นี้ก่อน\n`;
-    text += `2. แยกสาเหตุรายวิชา: ติด F/U, ถอนรายวิชา, หน่วยกิตค้าง, หรือขาดเรียน แล้วทำแผนลงซ้ำ/ติวเสริม\n`;
-    text += `3. ติดตามหลังกลางภาคและก่อนลงทะเบียนรอบถัดไป โดยใช้ Alert Center เรียง GPA ต่ำสุดขึ้นก่อน\n`;
-    text += `4. หากเป็นปี 3-4 ให้ตรวจเงื่อนไขจบควบคู่กับชั่วโมงกิจกรรมและหน่วยกิตทันที\n\n`;
+    if (isExecutiveRecommendationIntent(question)) {
+        text += `**แผนลดความเสี่ยงระดับคณะสำหรับคณบดี**\n`;
+        text += `1. ตั้งนโยบาย Early Warning กลางของคณะ: GPA < 2.00 ต้องมีเจ้าของเคส, GPA < 1.75 เป็นกลุ่มเร่งด่วน และต้องมีแผนช่วยเหลือภายในรอบสัปดาห์\n`;
+        text += `2. ให้สาขาที่มีจำนวนเสี่ยงสูงทำ retention plan รายสาขา แยกปี 1-2 สำหรับพื้นฐานอ่อน และปี 3-4 สำหรับแผนจบ/ลงซ้ำ\n`;
+        text += `3. เปิด bridge/tutoring กลางคณะในรายวิชาพื้นฐานที่สร้าง F/U สูง แล้วผูกงบสนับสนุนกับผลลดจำนวน GPA < 2.00\n`;
+        text += `4. ใช้ Alert Center เป็น dashboard follow-up รายเดือน ให้หัวหน้าสาขารายงานจำนวนดีขึ้น/แย่ลง ไม่ใช่ดูเฉพาะรายชื่อรายบุคคล\n`;
+        text += `5. KPI ที่ควรติดตาม: จำนวน GPA < 2.00, จำนวน GPA < 1.75, อัตราคงอยู่ปี 1, จำนวนผู้กลับมาเกิน 2.00 และความพร้อมจบของปี 3-4\n`;
+        text += buildDataToConnectNote([
+            'ประวัติ GPA รายเทอมและรายวิชาที่ติด F/U เพื่อแยกสาเหตุเชิงวิชาการ',
+            'ข้อมูลการเข้าเรียน/ถอนรายวิชา/ลงซ้ำ เพื่อวัดผลของระบบพี่เลี้ยงและติวพื้นฐาน',
+        ]);
+        text += '\n';
+    } else {
+        text += `**แนวทางดูแลเบื้องต้น**\n`;
+        text += `1. เริ่มจากกลุ่ม GPA < 1.75 ก่อน เพราะมีโอกาสพ้นสภาพสูงสุด\n`;
+        text += `2. แยกสาเหตุรายวิชา: ติด F/U, ถอนรายวิชา, หน่วยกิตค้าง หรือขาดเรียน แล้วจัดแผนลงซ้ำ/ติวเสริม\n`;
+        text += `3. ติดตามหลังกลางภาคและก่อนลงทะเบียนรอบถัดไป โดยใช้ Alert Center เรียง GPA ต่ำสุดขึ้นก่อน\n\n`;
+    }
     text += `_${sourceLine()}_`;
 
     return { text, chart: null };
@@ -207,11 +226,28 @@ function buildStudentMajorDeclineAnswer(question) {
         `${index + 1}. ${row.major}: ปี 1 ${formatNumber(row.years[1])} คน, เฉลี่ยปี 2-4 ${formatNumber(row.upperAvg, 1)} คน, gap ${formatNumber(row.intakeGap, 1)} คน, GPA เฉลี่ย ${row.avgGpa == null ? '-' : formatNumber(row.avgGpa, 2)}`
     ).join('\n');
 
-    text += `\n\n**ควรทำอะไรต่อ**\n`;
-    text += `1. ดึงข้อมูล Reg/TCAS ย้อนหลัง 5 ปีของสาขาที่ติดอันดับ เพื่อแยก “รับเข้าน้อย” ออกจาก “คงอยู่น้อย/ลาออกเยอะ”\n`;
-    text += `2. ตรวจจุดหลุดใน funnel: สมัคร > ผ่านคัดเลือก > รายงานตัว > คงอยู่หลังปี 1\n`;
-    text += `3. ใช้จุดเด่นสาขาและรายวิชาที่น่าสนใจทำแคมเปญ TCAS รอบถัดไป เฉพาะสาขาที่ gap สูง\n`;
-    text += `4. ถ้า gap มาพร้อม GPA ต่ำ ให้เพิ่มพี่เลี้ยง/ติวพื้นฐานในปี 1 ก่อนจะกลายเป็นกลุ่มเสี่ยงพ้นสภาพ\n\n`;
+    if (isExecutiveRecommendationIntent(question)) {
+        const targetMajor = top?.major || rows[0]?.major || 'สาขาที่มี gap สูง';
+        const targetGpa = top?.avgGpa == null ? null : Number(top.avgGpa);
+        const gpaSignal = targetGpa != null && targetGpa < 3
+            ? ` โดย GPA เฉลี่ยของสาขานี้อยู่ที่ ${formatNumber(targetGpa, 2)} จึงควรวางแผนรักษานักศึกษาปี 1 ควบคู่กับแผนรับเข้า`
+            : '';
+        text += `\n\n**ข้อเสนอแนะเชิงบริหารสำหรับคณบดี**\n`;
+        text += `1. จัด **${targetMajor}** เป็นสาขาเฝ้าระวังรอบวางแผน TCAS ถัดไป${gpaSignal}\n`;
+        text += `2. ปรับแผนรับเข้าแบบรายสาขา: สาขา gap สูงควรมีเป้ารับขั้นต่ำ, แคมเปญเฉพาะกลุ่มโรงเรียนเป้าหมาย และติดตามยอดสมัคร-ผ่าน-รายงานตัวเป็นรายรอบ\n`;
+        text += `3. ทำแผนรักษานักศึกษาปี 1 ตั้งแต่ก่อนเปิดเทอม เช่น bootcamp พื้นฐาน, ระบบพี่เลี้ยง และ checkpoint หลังกลางภาค เพื่อไม่ให้จำนวนรับเข้ากลายเป็น dropout\n`;
+        text += `4. ให้หัวหน้าสาขาใช้จุดเด่นสาขา/รายวิชาน่าสนใจเป็นข้อเสนอขาย TCAS ไม่ใช้สื่อกลางแบบเดียวกันทั้งคณะ โดยเน้นสาขาที่ gap สูงก่อน\n`;
+        text += `5. KPI ที่ควรติดตามรายเดือน/รายเทอม: applicant → admit → enroll → retain หลังปี 1, gap ปี 1 เทียบปี 2-4, GPA เฉลี่ยปี 1, จำนวน GPA < 2.00 และรายได้ค่าเทอมต่อ cohort\n`;
+        text += buildDataToConnectNote([
+            'ข้อมูล Reg/TCAS ย้อนหลัง 5 ปี เพื่อยืนยันว่าปัญหาอยู่ที่รับเข้าน้อย คงอยู่น้อย หรือลาออกสูง',
+            'ข้อมูล funnel สมัคร > ผ่านคัดเลือก > รายงานตัว > คงอยู่หลังปี 1 เพื่อชี้จุดที่ต้องลงทุนแก้ก่อน',
+        ]);
+        text += '\n';
+    } else {
+        text += `\n\n**อ่านผลอย่างไร**\n`;
+        text += `- นี่เป็นสัญญาณจาก snapshot ปัจจุบัน ไม่ใช่ time-series ยืนยันแนวโน้มย้อนหลัง\n`;
+        text += `- สาขาที่ gap สูงควรถูกใช้เป็นรายการเฝ้าระวังในการวางแผนรับเข้าและดูแลนักศึกษาปี 1\n\n`;
+    }
     text += `_${sourceLine()}_`;
 
     return { text, chart: null };
@@ -290,10 +326,11 @@ function buildBudgetCautionAnswer(question) {
         text += '\n';
     }
 
-    text += `\n**ข้อเสนอแนะสำหรับคณบดี/ผู้บริหาร**\n`;
-    text += `- ทำ sensitivity 3 ฉากทัศน์: รับนักศึกษาได้ 90%, 100%, 110% ของเป้า แล้วดูผลต่อรายรับ\n`;
-    text += `- ตั้ง alert เมื่อรายจ่ายจริงเกินแผนรายไตรมาส หรือรายรับค่าธรรมเนียมต่ำกว่าแผน\n`;
-    text += `- ผูกงบโครงการยุทธศาสตร์กับ KPI ที่ขาดเป้าหมายก่อนเป็นอันดับแรก\n\n`;
+    text += `\n**ข้อเสนอแนะเชิงบริหารสำหรับคณบดี**\n`;
+    text += `1. ตั้งกรอบงบ 3 ฉากทัศน์: รับนักศึกษาได้ 90%, 100%, 110% ของเป้า แล้วล็อกผลกระทบต่อรายรับและเงินสดก่อนอนุมัติโครงการใหม่\n`;
+    text += `2. แยกงบจำเป็น/งบยืดหยุ่น/งบยุทธศาสตร์ เพื่อให้ตัดลดได้เร็วถ้ารายรับค่าธรรมเนียมต่ำกว่าแผน\n`;
+    text += `3. ให้โครงการยุทธศาสตร์ที่ใช้งบปี ${current.year} ต้องผูก KPI ชัด เช่น เพิ่มรับเข้า ลด dropout เพิ่มรายได้วิจัย หรือเพิ่มอัตราสำเร็จการศึกษา\n`;
+    text += `4. ตั้ง dashboard ติดตามรายเดือน: revenue realization, expense burn rate, cash margin, intake vs budget base และโครงการที่เบิกแล้วแต่ KPI ไม่ขยับ\n\n`;
     text += `_${datasetSourceLine('science_budget', dataset?.source || 'Faculty Budget / คำนวณประมาณการปี 70')}_`;
 
     return { text, chart: null };
@@ -406,6 +443,14 @@ function buildActivityAnswer(question) {
         text += `\nเดือนหน้า (${summary.nextMonthLabel}) มี ${summary.nextMonth.length} กิจกรรม รวม ${summary.nextMonthHours} ชม.`;
     }
 
+    if (isExecutiveRecommendationIntent(question)) {
+        text += `\n\n**ข้อเสนอแนะเชิงบริหารสำหรับกิจกรรมนักศึกษา**\n`;
+        text += `1. ใช้กิจกรรมเดือนนี้และเดือนหน้าเป็นจุดสัมผัส retention โดยเฉพาะนักศึกษาปี 1 และกลุ่ม GPA เสี่ยงที่ต้องการระบบพี่เลี้ยง\n`;
+        text += `2. ถ้าชั่วโมงคณะยังขาด ให้จัดกิจกรรมเพิ่มที่เชื่อมกับจุดเด่นสาขา เช่น lab visit, career talk หรือ workshop ที่ช่วยขายภาพหลักสูตรไปพร้อมกัน\n`;
+        text += `3. ให้กิจกรรมหลักอย่างรับน้อง/ไหว้ครูมีตัวชี้วัดครบ: จำนวนผู้เข้าร่วมจริง, ชั่วโมงที่เติมได้, นักศึกษากลุ่มเสี่ยงที่เข้าร่วม และ feedback หลังงาน\n`;
+        text += `4. KPI ติดตาม: ชั่วโมงกิจกรรมที่เหลือ, จำนวนกิจกรรมที่เหลือ, อัตราเข้าร่วมรายชั้นปี และสัดส่วนนักศึกษาที่ครบเงื่อนไขก่อนปี 4\n`;
+    }
+
     text += '\n\n_แหล่งข้อมูล: ตารางกิจกรรมคณะวิทยาศาสตร์ในระบบ_';
     return { text, chart: null };
 }
@@ -504,6 +549,19 @@ function buildTcasAnswer(question) {
         text += `- รายได้ที่อาจหายไปตลอดหลักสูตร: ${formatNumber(impact.lostRevenue)} บาท`;
     }
 
+    if (isExecutiveRecommendationIntent(question)) {
+        text += `\n\n**ข้อเสนอแนะเชิงบริหารสำหรับแผนรับเข้า**\n`;
+        text += `1. แบ่งสาขาเป็น 3 กลุ่ม: Growth (มีแรงดึงดูด), Maintain (รักษาฐาน), Rescue (gap สูง/รับเข้าน้อย) แล้วกำหนดเป้ารับและงบประชาสัมพันธ์ไม่เท่ากัน\n`;
+        text += `2. ใช้เป้ารับปี 2570 ผูกกับรายได้ค่าเทอมต่อ cohort เพื่อให้คณบดีเห็นผลการรับเข้าเป็นผลกระทบทางการเงิน ไม่ใช่แค่จำนวนคน\n`;
+        text += `3. ให้สาขา Rescue ทำแคมเปญเฉพาะจุดขาย เช่น รายวิชาที่น่าสนใจ งานวิจัยเด่น อาชีพปลายทาง และโรงเรียนเป้าหมาย\n`;
+        text += `4. ตั้ง checkpoint รายรอบ TCAS: สมัคร, ผ่านคัดเลือก, ยืนยันสิทธิ์, รายงานตัว และคงอยู่หลังปี 1 เพื่อปรับแผนทันก่อนรอบถัดไป\n`;
+        text += `5. KPI ติดตาม: conversion rate รายรอบ, enrollment rate, year-1 retention, dropout ปี 1 และรายได้จริงเทียบเป้าประมาณการ\n`;
+        text += buildDataToConnectNote([
+            'ข้อมูล TCAS/Reg ย้อนหลัง 5 ปีรายสาขา เพื่อคำนวณ conversion rate และ dropout จริง',
+            'ข้อมูลโรงเรียนต้นทาง/ช่องทางสมัคร เพื่อเลือกแคมเปญและพื้นที่ประชาสัมพันธ์ที่คุ้มที่สุด',
+        ]);
+    }
+
     const chart = isChartIntent(q) ? {
         chartType: 'bar',
         data: {
@@ -536,6 +594,8 @@ function buildTcasAnswer(question) {
 }
 
 export function tryInstantAnswer(question, userContext = {}) {
+    if (isExecutiveRecommendationIntent(question)) return null;
+
     const builders = [
         { build: buildCourseGradeAnswer, sections: ['course_analytics'] },
         { build: buildActivityAnswer, sections: ['student_life'] },

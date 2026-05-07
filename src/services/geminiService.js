@@ -30,6 +30,12 @@ import {
 } from './sharedDashboardDataService';
 import { buildDataAccuracyContextForAI } from './dataAccuracyService';
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
+import {
+    executiveAdviceDatasetStatus,
+    isExecutiveRecommendationIntent,
+    isTrustedForExecutiveAdvice,
+} from '../utils/aiAdvicePolicy';
+import { coerceStructuredAIResponseMarkdown } from '../utils/aiChartResponse';
 
 const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
 if (!GEMINI_PROXY_ENDPOINT) {
@@ -312,14 +318,6 @@ function uniqueModels(models) {
     return [...new Set(models.filter(model => MODELS.includes(model)))];
 }
 
-function normalizeStringArray(value) {
-    if (!Array.isArray(value)) return [];
-    return value
-        .map(item => String(item || '').trim())
-        .filter(Boolean)
-        .slice(0, 8);
-}
-
 function parseJsonLikeText(text) {
     const raw = String(text || '').trim();
     if (!raw) return null;
@@ -332,38 +330,9 @@ function parseJsonLikeText(text) {
     }
 }
 
-function chartBlockFromStructuredValue(value) {
-    if (!value) return '';
-    let chart = value;
-    if (typeof value === 'string') {
-        chart = parseJsonLikeText(value);
-    }
-    if (!chart || typeof chart !== 'object' || !chart.chartType || !chart.data) return '';
-    return `\`\`\`json_chart\n${JSON.stringify(chart)}\n\`\`\``;
-}
-
 function coerceStructuredAIResponse(text) {
-    const parsed = parseJsonLikeText(text);
-    if (!parsed || typeof parsed !== 'object' || !('answer' in parsed)) return String(text || '').trim();
-
-    const sections = [];
-    const answer = String(parsed.answer || '').trim();
-    if (answer) sections.push(answer);
-
-    const chartBlock = chartBlockFromStructuredValue(parsed.chartJson || parsed.chart);
-    if (chartBlock) sections.push(chartBlock);
-
-    const sources = normalizeStringArray(parsed.sources);
-    if (sources.length) {
-        sections.push(`**แหล่งข้อมูลที่ใช้:**\n${sources.map(source => `- ${source}`).join('\n')}`);
-    }
-
-    const actions = normalizeStringArray(parsed.actions);
-    if (actions.length) {
-        sections.push(`**ต่อยอดได้:**\n${actions.map(action => `- ${action}`).join('\n')}`);
-    }
-
-    return sections.join('\n\n') || String(text || '').trim();
+    const normalized = coerceStructuredAIResponseMarkdown(text, { includeInvalidChartMessage: true });
+    return normalized ?? String(text || '').trim();
 }
 
 const CONTEXT_SOURCE_LABELS = {
@@ -1206,9 +1175,17 @@ function domainAllowed(role, domain) {
     return canAIUseInternalDomain(role, domain);
 }
 
-function liveDatasetContext(id, label) {
+function liveDatasetContext(id, label, { adviceMode = false } = {}) {
     const meta = getSharedDashboardDatasetMetaSync(id);
     const currentData = getSharedDashboardDatasetSync(id);
+    if (adviceMode && !isTrustedForExecutiveAdvice(meta)) {
+        return {
+            data: null,
+            sourceLabel: null,
+            missing: executiveAdviceDatasetStatus(meta, `${label} (${id})`),
+            untrusted: true,
+        };
+    }
     if (currentData) {
         const updated = meta.updatedAt ? `, updated=${meta.updatedAt.toLocaleString('th-TH')}` : '';
         const linked = meta.usesSharedDataHub ? `, linked students=${meta.linkedStudentRows || 0}` : '';
@@ -1225,7 +1202,10 @@ function liveDatasetContext(id, label) {
     };
 }
 
-function studentAggregateContext(includeRows = false) {
+function studentAggregateContext(includeRows = false, { adviceMode = false } = {}) {
+    if (adviceMode && !isLiveData()) {
+        return 'ข้อมูลนักศึกษาคณะวิทยาศาสตร์: ยังไม่พร้อมสำหรับคำแนะนำเชิงบริหารจากสถานการณ์จริง (status=fallback/mock) ต้อง sync Firestore หรืออัปโหลดไฟล์นักศึกษาจริงก่อน';
+    }
     const list = getStudentListSync();
     const sourceLabel = isLiveData() ? 'live/realtime' : 'ข้อมูลที่เว็บใช้อยู่ตอนนี้';
     const stats = getSharedDashboardDatasetSync('student_stats') || {};
@@ -1263,9 +1243,9 @@ function studentAggregateContext(includeRows = false) {
     return `ข้อมูลนิสิตคณะวิทยาศาสตร์ (${sourceLabel}) รวม ${contextTotal.toLocaleString('th-TH')} คน\n${levelSummary ? `ตามระดับ: ${levelSummary}\n` : ''}ตามสาขา:\n${majorSummary}\nตามชั้นปี: ${yearSummary}\nGPA < 2.00: ${atRisk} คน${rows}`;
 }
 
-function budgetContext() {
-    const universityLive = liveDatasetContext('university_budget', 'งบประมาณมหาวิทยาลัย');
-    const scienceLive = liveDatasetContext('science_budget', 'งบประมาณคณะวิทยาศาสตร์');
+function budgetContext(options = {}) {
+    const universityLive = liveDatasetContext('university_budget', 'งบประมาณมหาวิทยาลัย', options);
+    const scienceLive = liveDatasetContext('science_budget', 'งบประมาณคณะวิทยาศาสตร์', options);
     const sections = [];
 
     if (universityLive.data) {
@@ -1285,8 +1265,8 @@ function budgetContext() {
     return sections.join('\n\n');
 }
 
-function graduationContext() {
-    const live = liveDatasetContext('graduation', 'สถิติสำเร็จการศึกษา');
+function graduationContext(options = {}) {
+    const live = liveDatasetContext('graduation', 'สถิติสำเร็จการศึกษา', options);
     if (!live.data) return live.missing;
 
     const history = live.data.history || live.data.graduationHistory || [];
@@ -1297,8 +1277,8 @@ function graduationContext() {
     return `สถิติสำเร็จการศึกษา (${live.sourceLabel}):\n${history.map(g => `${g.year}: สำเร็จ ${g.graduated}, อัตรา ${g.rate}%, GPA เฉลี่ย ${g.avgGPA}`).join('\n')}\nปัจจุบัน: ${JSON.stringify(current)}\nแยกสาขา: ${byMajor.map(m => `${m.major}: ${m.rate}% (${m.expected}/${m.total})`).join('; ')}\nเกียรตินิยม: ${Object.entries(honors || {}).map(([k, v]) => `${k}:${v}`).join(', ')}\nGPA distribution: ${distribution.map(g => `${g.range}:${g.count}`).join(', ')}`;
 }
 
-function researchContext() {
-    const live = liveDatasetContext('research', 'งานวิจัย');
+function researchContext(options = {}) {
+    const live = liveDatasetContext('research', 'งานวิจัย', options);
     if (!live.data) return live.missing;
     const source = live.data;
     const researchData = {
@@ -1315,8 +1295,8 @@ function researchContext() {
     })}`;
 }
 
-function hrContext() {
-    const live = liveDatasetContext('hr', 'บุคลากร');
+function hrContext(options = {}) {
+    const live = liveDatasetContext('hr', 'บุคลากร', options);
     if (!live.data) return live.missing;
     const source = live.data;
     const hrData = {
@@ -1334,8 +1314,8 @@ function hrContext() {
     })}`;
 }
 
-function strategicContext() {
-    const live = liveDatasetContext('strategic', 'ยุทธศาสตร์และ OKR');
+function strategicContext(options = {}) {
+    const live = liveDatasetContext('strategic', 'ยุทธศาสตร์และ OKR', options);
     if (!live.data) return live.missing;
     const strategicData = live.data;
     return `ยุทธศาสตร์และ OKR (${live.sourceLabel}):\n${JSON.stringify(strategicData)}`;
@@ -1345,28 +1325,28 @@ function academicRulesContext() {
     return buildAcademicRulesContext();
 }
 
-function tuitionContext() {
-    const live = liveDatasetContext('tuition', 'ค่าเล่าเรียน');
+function tuitionContext(options = {}) {
+    const live = liveDatasetContext('tuition', 'ค่าเล่าเรียน', options);
     if (!live.data) return live.missing;
     const tuitionData = live.data;
     return `ค่าเล่าเรียน (${live.sourceLabel}):\n${JSON.stringify(tuitionData)}`;
 }
 
-function studentLifeContext() {
-    const live = liveDatasetContext('student_life', 'กิจกรรมคณะวิทยาศาสตร์/ชั่วโมงกิจกรรม');
+function studentLifeContext(options = {}) {
+    const live = liveDatasetContext('student_life', 'กิจกรรมคณะวิทยาศาสตร์/ชั่วโมงกิจกรรม', options);
     if (!live.data) return live.missing;
     const studentLifeData = live.data;
     return `กิจกรรมคณะวิทยาศาสตร์และชั่วโมงกิจกรรม (${live.sourceLabel}):\n${JSON.stringify(studentLifeData)}`;
 }
 
-function tcasContext() {
-    const live = liveDatasetContext('tcas_admissions', 'แผนรับนักศึกษา TCAS');
+function tcasContext(options = {}) {
+    const live = liveDatasetContext('tcas_admissions', 'แผนรับนักศึกษา TCAS', options);
     if (!live.data) return live.missing;
     return `แผนรับนักศึกษา TCAS (${live.sourceLabel}):\n${JSON.stringify(live.data)}`;
 }
 
-function courseAnalyticsContext() {
-    const live = liveDatasetContext('course_analytics', 'รายวิชา เกรด และจุดเด่นสาขา');
+function courseAnalyticsContext(options = {}) {
+    const live = liveDatasetContext('course_analytics', 'รายวิชา เกรด และจุดเด่นสาขา', options);
     if (!live.data) return live.missing;
     return `รายวิชา เกรด และจุดเด่นสาขา (${live.sourceLabel}):\n${JSON.stringify(live.data)}`;
 }
@@ -1375,18 +1355,20 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const q = String(userMessage || '').toLowerCase();
     const role = resolveAIRole(userContext);
     const includeStudentRows = needsStudentDetail(userMessage) && canAIUseInternalSection(role, 'student_list');
+    const adviceMode = isExecutiveRecommendationIntent(userMessage);
+    const contextOptions = { adviceMode };
     const candidates = [
-        { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี|tcas|admission|รับสมัคร|รับเข้า|รอบ/, text: () => studentAggregateContext(includeStudentRows) },
-        { id: 'tcas', sections: ['tcas_admissions'], keywords: /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|รอบ\s*tcas|portfolio|quota|ผลกระทบ|ออกกี่คน|ค่าเทอมรวม/i, text: tcasContext },
-        { id: 'course_analytics', sections: ['course_analytics'], keywords: /รายวิชา|วิชา|course|เกรดรายวิชา|กระจายเกรด|แผนเรียน|ข้ามสาขา|จุดเด่นสาขา|เชี่ยวชาญ|expertise/i, text: courseAnalyticsContext },
+        { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี|tcas|admission|รับสมัคร|รับเข้า|รอบ/, text: () => studentAggregateContext(includeStudentRows, contextOptions) },
+        { id: 'tcas', sections: ['tcas_admissions'], keywords: /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|รอบ\s*tcas|portfolio|quota|ผลกระทบ|ออกกี่คน|ค่าเทอมรวม/i, text: () => tcasContext(contextOptions) },
+        { id: 'course_analytics', sections: ['course_analytics'], keywords: /รายวิชา|วิชา|course|เกรดรายวิชา|กระจายเกรด|แผนเรียน|ข้ามสาขา|จุดเด่นสาขา|เชี่ยวชาญ|expertise/i, text: () => courseAnalyticsContext(contextOptions) },
         { id: 'academic_rules', sections: ['academic_rules', 'graduation_check', 'graduation_stats'], keywords: /กฎ|กฏ|ระเบียบ|ข้อบังคับ|เกียรตินิยม|เรียนดี|สำเร็จการศึกษา|พ้นสภาพ|หน่วยกิต|คะแนนความประพฤติ|f\s*หรือ\s*u|gpa\s*3\./i, text: academicRulesContext },
-        { id: 'tuition', sections: ['tuition'], keywords: /ค่าเทอม|ค่าเล่าเรียน|tuition|ค่าธรรมเนียม|ชำระ|ค้างจ่าย|ค้างชำระ/, text: tuitionContext },
-        { id: 'graduation', sections: ['graduation_check', 'graduation_stats'], keywords: /สำเร็จ|จบ|graduation|เกียรติ|pending|รอพินิจ/, text: graduationContext },
-        { id: 'budget', sections: ['budget_forecast', 'financial', 'faculty_budget'], keywords: /งบ|budget|รายรับ|รายจ่าย|เงิน|finance/, text: budgetContext },
-        { id: 'research', sections: ['research_overview'], keywords: /วิจัย|research|scopus|citation|สิทธิบัตร|ทุน/, text: researchContext },
-        { id: 'hr', sections: ['hr_overview'], keywords: /บุคลากร|อาจารย์|staff|hr|เกษียณ|ตำแหน่ง/, text: hrContext },
-        { id: 'strategic', sections: ['strategic_overview'], keywords: /ยุทธศาสตร์|okr|kpi|เป้าหมาย|ตัวชี้วัด/, text: strategicContext },
-        { id: 'student_life', sections: ['student_life'], keywords: /กิจกรรม|พฤติกรรม|student life|ชั่วโมงกิจกรรม|ชั่วโมงคณะ|รับน้อง|ไหว้ครู|เดือนนี้|เดือนหน้า/, text: studentLifeContext },
+        { id: 'tuition', sections: ['tuition'], keywords: /ค่าเทอม|ค่าเล่าเรียน|tuition|ค่าธรรมเนียม|ชำระ|ค้างจ่าย|ค้างชำระ/, text: () => tuitionContext(contextOptions) },
+        { id: 'graduation', sections: ['graduation_check', 'graduation_stats'], keywords: /สำเร็จ|จบ|graduation|เกียรติ|pending|รอพินิจ/, text: () => graduationContext(contextOptions) },
+        { id: 'budget', sections: ['budget_forecast', 'financial', 'faculty_budget'], keywords: /งบ|budget|รายรับ|รายจ่าย|เงิน|finance/, text: () => budgetContext(contextOptions) },
+        { id: 'research', sections: ['research_overview'], keywords: /วิจัย|research|scopus|citation|สิทธิบัตร|ทุน/, text: () => researchContext(contextOptions) },
+        { id: 'hr', sections: ['hr_overview'], keywords: /บุคลากร|อาจารย์|staff|hr|เกษียณ|ตำแหน่ง/, text: () => hrContext(contextOptions) },
+        { id: 'strategic', sections: ['strategic_overview'], keywords: /ยุทธศาสตร์|okr|kpi|เป้าหมาย|ตัวชี้วัด/, text: () => strategicContext(contextOptions) },
+        { id: 'student_life', sections: ['student_life'], keywords: /กิจกรรม|พฤติกรรม|student life|ชั่วโมงกิจกรรม|ชั่วโมงคณะ|รับน้อง|ไหว้ครู|เดือนนี้|เดือนหน้า/, text: () => studentLifeContext(contextOptions) },
     ];
 
     const scored = candidates
@@ -1399,7 +1381,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
             id: 'dashboard',
             score: 1,
             text: () => {
-                const live = liveDatasetContext('dashboard_summary', 'ภาพรวม Dashboard');
+                const live = liveDatasetContext('dashboard_summary', 'ภาพรวม Dashboard', contextOptions);
                 return live.data
                     ? `ภาพรวม Dashboard (realtime):\n${JSON.stringify(live.data)}`
                     : live.missing;
@@ -1415,6 +1397,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
 
 function maejoLocalFirstContext(userMessage, localContexts = []) {
     const privateLookup = isStudentPrivateLookupQuery(userMessage);
+    const adviceMode = isExecutiveRecommendationIntent(userMessage);
     const localContextIds = localContexts.map(c => c.id).join(', ') || 'dashboard';
     return `หลักการตอบแบบ local-first ของ ${APP_NAME_TH}:
 - ใช้ข้อมูลในเว็บ/ระบบนี้ก่อนเสมอ โดย context ที่ดึงได้ตอนนี้คือ: ${localContextIds}
@@ -1424,6 +1407,7 @@ function maejoLocalFirstContext(userMessage, localContexts = []) {
 - ถ้าข้อมูลนอกเว็บเป็นข้อมูลสาธารณะ ให้ใช้เฉพาะแหล่งทางการ/น่าเชื่อถือ และแยกให้ชัดว่าอะไรคือข้อมูลในเว็บเรา อะไรคือข้อมูล fallback ภายนอก
 - สาขาคณะวิทยาศาสตร์ที่เว็บเรารู้จัก: ${SCIENCE_MAJORS.join(', ')}
 - ข้อมูลทั่วไปที่รู้ในเว็บ: มหาวิทยาลัยแม่โจ้ (Maejo University/MJU/มจ.), วิทยาเขตหลักเชียงใหม่ พร้อมวิทยาเขตแพร่และชุมพร, ใช้แหล่งทางการของมหาวิทยาลัยเป็นหลักเมื่อต้องตรวจข้อมูลล่าสุด
+${adviceMode ? '- โหมดคำแนะนำเชิงบริหาร: ห้ามใช้ตัวเลขหรือสรุปจาก fallback/mock/demo/reference เป็นฐานคำแนะนำ ถ้า context บอกว่าข้อมูลจริงยังไม่พร้อม ให้บอกข้อจำกัดและรายการข้อมูลที่ต้อง sync/อัปโหลดก่อน ไม่แต่งตัวเลขแทน' : ''}
 ${privateLookup ? '- คำถามนี้มีลักษณะข้อมูลรายบุคคล/การเงินของนักศึกษา: ห้ามเดารายชื่อหรือสถานะชำระเงิน ถ้าไม่มี field สถานะชำระในระบบ ให้บอกชัดว่าเว็บเรายังไม่มีข้อมูลส่วนนี้ และให้ค้นเว็บได้เฉพาะกำหนดการ/ประกาศ/ระเบียบค่าธรรมเนียมแบบสาธารณะเท่านั้น' : ''}`;
 }
 
@@ -1466,6 +1450,17 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
     const contextText = contexts.map((c, idx) => `### Context ${idx + 1}: ${c.id}\n${c.text}`).join('\n\n');
     const roleLabel = roleInfo?.label || userContext?.roleLabel || role;
     const accessNote = getAIAccessInstruction(role, useMaejoWebMode);
+    const executiveRecommendationMode = isExecutiveRecommendationIntent(userMessage);
+    const executiveRecommendationInstruction = executiveRecommendationMode
+        ? `EXECUTIVE RECOMMENDATION MODE:
+- ผู้ใช้ถามเชิง "ควรวางแผน/แนะนำ/ตัดสินใจ" ให้ตอบเหมือน brief สำหรับคณบดีหรือผู้บริหาร
+- โครงคำตอบหลัก: สรุปสถานการณ์ → ความหมายต่อคณะ → ข้อเสนอแนะเชิงบริหาร → KPI/ตัวชี้วัดติดตาม → ข้อมูลที่ควรเชื่อมเพิ่ม
+- ข้อเสนอแนะหลักต้องเป็นการตัดสินใจ/แผนที่ทำได้จากข้อมูลปัจจุบัน เช่น แผนรับเข้า, retention, งบ, KPI, เจ้าของงาน, รอบติดตาม
+- ห้ามให้คำแนะนำหลักเป็นแค่ "ไปดึงข้อมูลเพิ่ม" หรือ "ต้องหาข้อมูลก่อน"; ถ้าข้อมูลยังขาด ให้ย้ายไปท้ายคำตอบในหัวข้อ "ข้อมูลที่ควรเชื่อมเพิ่มเพื่อยืนยัน"
+- ห้ามใช้ fallback/mock/demo/reference เป็นฐานคำแนะนำเชิงบริหาร ถ้า context บอกว่าข้อมูลจริงยังไม่พร้อม ให้ตอบว่า "ยังให้ข้อเสนอเชิงบริหารจากสถานการณ์จริงไม่ได้" และระบุ dataset ที่ต้อง sync/อัปโหลดก่อน
+- ถ้าข้อมูลเป็น snapshot ให้บอกข้อจำกัดสั้นๆ แต่ยังต้องสรุปสัญญาณและแผนบริหารจาก snapshot โดยไม่แต่งตัวเลขใหม่
+`
+        : '';
     const answerScopeRule = useMaejoWebMode
         ? 'ตอบภาษาไทย กระชับ ใช้ข้อมูลในเว็บ/ระบบนี้ก่อน หากข้อมูลไม่ครบให้ใช้ Google Search จากเว็บทางการหรือแหล่งน่าเชื่อถือเป็น fallback พร้อมบอกแหล่งที่มา และไม่ต้องสร้างกราฟถ้าผู้ใช้ไม่ได้ขอ'
         : 'ตอบภาษาไทย กระชับ อ้างอิงเฉพาะข้อมูลใน RETRIEVED CONTEXTS และห้ามเดาตัวเลข';
@@ -1484,6 +1479,8 @@ ${getSharedDashboardFreshnessContext()}
 
 DATA ACCURACY / SOURCE STATUS:
 ${dataAccuracyContext}
+
+${executiveRecommendationInstruction}
 
 TOKEN SAVING RULES:
 - Maejo public web mode: ถ้าคำถามเป็นเรื่องทั่วไปหรือข้อมูลสาธารณะของมหาวิทยาลัยแม่โจ้ เช่น ประวัติ คณะ หลักสูตร รับสมัคร TCAS ค่าเทอม ค่าธรรมเนียม งบประมาณ แผนยุทธศาสตร์ KPI ข่าว หน่วยงาน เบอร์ติดต่อ หรือสถานที่ ให้ตรวจ RETRIEVED CONTEXTS ของเว็บเราก่อน แล้วค่อยใช้ Google Search/เว็บทางการเมื่อข้อมูลไม่ครบ
@@ -1529,6 +1526,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
     settings.theme = options.theme || settings.theme || (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : 'light') || 'light';
     const originalQuestion = extractUserQuestionFromPrompt(userMessage);
     const intent = classifyQueryIntent(originalQuestion);
+    const executiveRecommendationMode = isExecutiveRecommendationIntent(originalQuestion);
     updateAIUserMemory(options.user || {}, originalQuestion);
 
     // Detect chart/graph request keywords and append reminder
@@ -1560,7 +1558,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
         settings,
         useSearch,
     });
-    const cachedResponse = options.disableCache ? null : readAIResponseCache(responseCacheKey, useSearch);
+    const cachedResponse = (options.disableCache || executiveRecommendationMode) ? null : readAIResponseCache(responseCacheKey, useSearch);
     if (cachedResponse) {
         conversationHistory.push({
             role: 'user',
@@ -1718,7 +1716,9 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 conversationHistory = conversationHistory.slice(-16);
             }
 
-            writeAIResponseCache(responseCacheKey, aiText, useSearch);
+            if (!executiveRecommendationMode) {
+                writeAIResponseCache(responseCacheKey, aiText, useSearch);
+            }
             return aiText;
 
         } catch (error) {
