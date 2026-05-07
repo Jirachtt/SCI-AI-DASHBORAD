@@ -134,19 +134,19 @@ export default function AdminDataAccuracyPanel({ onToast }) {
                     <div className="data-accuracy-score-card">
                         <span>MJU Dashboard</span>
                         <strong>{formatNumber(rec.officialTotal)} คน</strong>
-                        <small>{rec.officialIsLive ? 'Live sync' : 'Reference / fallback'} · {formatDate(rec.officialUpdatedAt)}</small>
+                        <small>Official total · {rec.officialIsLive ? 'Live sync' : 'Reference / fallback'} · {formatDate(rec.officialUpdatedAt)}</small>
                     </div>
                     <div className="data-accuracy-score-card">
                         <span>รายชื่อในระบบ</span>
                         <strong>{formatNumber(rec.localTotal)} คน</strong>
-                        <small>{rec.studentSourceLabel} · {formatDate(rec.studentUpdatedAt)}</small>
+                        <small>{rec.studentSourceLabel} · {rec.studentRosterAccuracyLabel} · {formatDate(rec.studentUpdatedAt)}</small>
                     </div>
                     <div className="data-accuracy-score-card">
                         <span>ส่วนต่าง</span>
                         <strong className={rec.difference === 0 ? 'is-match' : 'is-warning'}>
                             {rec.difference == null ? '-' : formatNumber(Math.abs(rec.difference))} คน
                         </strong>
-                        <small>{rec.difference === 0 ? 'พร้อมใช้ตอบและคำนวณ' : rec.recommendation}</small>
+                        <small>{rec.studentRowsSummary || (rec.difference === 0 ? 'พร้อมใช้ตอบและคำนวณ' : rec.recommendation)}</small>
                     </div>
                 </div>
 
@@ -154,6 +154,12 @@ export default function AdminDataAccuracyPanel({ onToast }) {
                     {toneIcon(rec.tone)}
                     <span>{rec.recommendation}</span>
                 </div>
+                {rec.studentRosterWarning ? (
+                    <div className="data-accuracy-reconcile-note warning">
+                        <AlertTriangle size={16} />
+                        <span>{rec.studentRosterWarning}</span>
+                    </div>
+                ) : null}
             </div>
 
             <div className="data-accuracy-grid">
@@ -206,13 +212,13 @@ export default function AdminDataAccuracyPanel({ onToast }) {
                         </div>
                         <div>
                             <span>Student rows source</span>
-                            <strong>{rec.studentSourceLabel}</strong>
+                            <strong>{rec.studentSourceLabel} / {rec.studentRosterAccuracyLabel}</strong>
                             <small>{rec.studentFileName || 'datasets/students'}</small>
                         </div>
                         <div>
                             <span>AI rule</span>
-                            <strong>ตอบพร้อมสถานะแหล่งข้อมูล</strong>
-                            <small>ถ้ายอดไม่ตรง AI ต้องบอกส่วนต่าง ไม่เดาตัวเลขเอง</small>
+                            <strong>ยอดรวมใช้ MJU Dashboard / รายคนใช้เฉพาะไฟล์จริง</strong>
+                            <small>ถ้า student rows เป็น sample/generated AI ต้องไม่ยืนยันรายชื่อจริงหรือ GPA รายคน และต้องแนะนำให้อัปโหลดไฟล์จาก Reg/คณะ</small>
                         </div>
                     </div>
                 </section>

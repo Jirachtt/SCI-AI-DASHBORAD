@@ -8,6 +8,7 @@ import {
 import {
     ensureStudentList,
     getStudentDataSourceStatus,
+    getStudentRosterTrustStatus,
     getStudentListMeta,
     getStudentListSync,
     isLiveData,
@@ -228,11 +229,13 @@ function getOfficialScienceSnapshot() {
 function getStudentRowsSnapshot() {
     const rows = getStudentListSync();
     const sourceStatus = getStudentDataSourceStatus();
+    const trustStatus = getStudentRosterTrustStatus();
     return {
         rows,
         total: Array.isArray(rows) ? rows.length : 0,
         byLevel: countsFromStudentRows(Array.isArray(rows) ? rows : []),
         sourceStatus,
+        trustStatus,
         meta: _studentMetaCache,
         isLive: isLiveData(),
     };
@@ -302,6 +305,17 @@ export function getStudentReconciliationSnapshot() {
         localTotal,
         officialLive: official.isLive,
     });
+    const defaultRecommendation = difference === 0
+        ? 'ใช้รายชื่อนักศึกษาชุดนี้ตอบคำถามและคำนวณต่อได้'
+        : difference > 0
+            ? `ต้องเติม/อัปโหลดรายชื่ออีก ${Math.abs(difference).toLocaleString('th-TH')} คน เพื่อให้รายชื่อรายบุคคลตรงกับยอดรวม`
+            : `ตรวจรายชื่อซ้ำหรือข้อมูลเกิน ${Math.abs(difference).toLocaleString('th-TH')} คน เมื่อเทียบกับยอดอ้างอิง`;
+    const recommendation = local.trustStatus.isBundledSample
+        ? 'รายชื่อรายคนยังเป็น sample/generated ใช้ยืนยันรายชื่อจริงหรือ GPA รายคนไม่ได้ ให้ใช้ยอดรวมจาก MJU Dashboard และอัปโหลดไฟล์รายชื่อจริงจาก Reg/คณะก่อน'
+        : defaultRecommendation;
+    const studentRowsSummary = officialTotal == null
+        ? `official unknown / rows ${localTotal.toLocaleString('th-TH')}`
+        : `official ${officialTotal.toLocaleString('th-TH')} / rows ${localTotal.toLocaleString('th-TH')} / ต่าง ${Math.abs(difference).toLocaleString('th-TH')} คน`;
 
     return {
         ...status,
@@ -319,14 +333,16 @@ export function getStudentReconciliationSnapshot() {
         officialSourceType: official.sourceType,
         studentSourceLabel: local.sourceStatus.label,
         studentSourceMode: local.sourceStatus.mode,
+        studentRosterAccuracyLabel: local.trustStatus.accuracyLabel,
+        studentRosterCanAnswerIndividual: local.trustStatus.canAnswerIndividual,
+        studentRosterCanUseDerivedStats: local.trustStatus.canUseForDerivedStats,
+        studentRosterWarning: local.trustStatus.warning,
+        studentRosterIsSample: local.trustStatus.isBundledSample,
+        studentRowsSummary,
         studentUpdatedAt: local.meta?.updatedAt || null,
         studentFileName: local.meta?.fileName || null,
         studentIsLive: local.isLive,
-        recommendation: difference === 0
-            ? 'ใช้ยอดนักศึกษาชุดนี้ตอบคำถามและคำนวณต่อได้'
-            : difference > 0
-                ? `ต้องเติม/อัปโหลดรายชื่ออีก ${Math.abs(difference).toLocaleString('th-TH')} คน เพื่อให้รายชื่อรายบุคคลตรงกับยอดรวม`
-                : `ตรวจรายชื่อซ้ำหรือข้อมูลเกิน ${Math.abs(difference).toLocaleString('th-TH')} คน เมื่อเทียบกับยอดอ้างอิง`,
+        recommendation,
     };
 }
 
@@ -428,13 +444,16 @@ export function buildStudentAnswerSourceNote() {
     const officialText = reconcile.officialTotal == null
         ? 'ยังไม่มี snapshot ทางการจาก MJU Dashboard'
         : `ยอดอ้างอิง MJU Dashboard ${reconcile.officialTotal.toLocaleString('th-TH')} คน`;
+    const rowModeText = reconcile.studentRosterCanAnswerIndividual
+        ? 'ใช้ตอบรายชื่อ/GPA รายคนได้'
+        : 'เป็น sample/generated ใช้ยืนยันรายชื่อจริงหรือ GPA รายคนไม่ได้';
     const diffText = reconcile.difference == null
         ? 'ยังเทียบส่วนต่างไม่ได้'
         : reconcile.difference === 0
             ? 'ยอดตรงกัน'
             : `ส่วนต่าง ${Math.abs(reconcile.difference).toLocaleString('th-TH')} คน (${reconcile.difference > 0 ? 'รายชื่อในระบบน้อยกว่า' : 'รายชื่อในระบบมากกว่า'})`;
 
-    return `_แหล่งข้อมูล: รายชื่อในระบบ ${reconcile.localTotal.toLocaleString('th-TH')} คน (${reconcile.studentSourceLabel}); ${officialText}; ${diffText}; อัปเดตล่าสุด ${formatDateTime(reconcile.studentUpdatedAt || reconcile.officialUpdatedAt)}_`;
+    return `_แหล่งข้อมูล: ยอดรวมใช้ ${officialText}; รายชื่อในระบบ ${reconcile.localTotal.toLocaleString('th-TH')} คน (${reconcile.studentSourceLabel}, ${rowModeText}); ${diffText}; อัปเดตล่าสุด ${formatDateTime(reconcile.studentUpdatedAt || reconcile.officialUpdatedAt)}_`;
 }
 
 export function appendStudentAnswerSourceNote(text) {
@@ -452,9 +471,11 @@ export function buildDataAccuracyContextForAI() {
     return `DATA ACCURACY SNAPSHOT
 - overall score: ${snapshot.score}/100
 - student official total: ${rec.officialTotal ?? 'unknown'} (${rec.officialSourceLabel}, ${rec.officialIsLive ? 'live' : 'reference/fallback'}, updated=${formatDateTime(rec.officialUpdatedAt)})
-- student row list: ${rec.localTotal} (${rec.studentSourceLabel}, updated=${formatDateTime(rec.studentUpdatedAt)})
+- student row list: ${rec.localTotal} (${rec.studentSourceLabel}, ${rec.studentRosterAccuracyLabel}, canAnswerIndividual=${rec.studentRosterCanAnswerIndividual}, updated=${formatDateTime(rec.studentUpdatedAt)})
+- student rows summary: ${rec.studentRowsSummary}
 - student reconcile: ${rec.label}${rec.difference == null ? '' : `, difference=${rec.difference}`}
-- rule: ถ้าถามยอดรวมคณะวิทยาศาสตร์ ให้ตอบยอดอ้างอิง MJU Dashboard ก่อน; ถ้าถามรายชื่อ/รายบุคคล ให้ใช้ datasets/students และบอกสถานะ reconcile ถ้ายอดไม่ตรง
+- rule: ถ้าถามยอดรวม/สถิติรวมคณะวิทยาศาสตร์ ให้ตอบยอดอ้างอิง MJU Dashboard ก่อนเสมอ
+- rule: ถ้าถามรายชื่อ/รายคน/GPA รายคน ให้ใช้ datasets/students เฉพาะเมื่อ canAnswerIndividual=true เท่านั้น; ถ้าเป็น sample/generated ให้ปฏิเสธการยืนยันรายชื่อจริงและแนะนำให้อัปโหลดไฟล์จริงจาก Reg/คณะ
 - rule: ห้ามเดาตัวเลข ถ้าข้อมูลชุดใดเป็น fallback/reference ให้บอกแหล่งข้อมูลและสถานะ
 DATASET HEALTH
 ${datasetSummary}`;
@@ -486,9 +507,9 @@ export function buildDataAccuracyReportRows(snapshot = getDataAccuracySnapshot()
             item: 'student_rows',
             source: rec.studentSourceLabel,
             value: rec.localTotal,
-            status: rec.studentIsLive ? 'live' : rec.studentSourceMode,
+            status: rec.studentRosterCanAnswerIndividual ? (rec.studentIsLive ? 'live' : rec.studentSourceMode) : 'sample/generated',
             updatedAt: formatDateTime(rec.studentUpdatedAt),
-            note: rec.studentFileName || 'datasets/students',
+            note: rec.studentRosterWarning || rec.studentFileName || 'datasets/students',
         },
         {
             section: 'student_reconcile',

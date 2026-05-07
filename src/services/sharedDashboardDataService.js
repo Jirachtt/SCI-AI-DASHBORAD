@@ -6,7 +6,9 @@ import {
     onDashboardLiveDataChange,
 } from './dashboardLiveDataService';
 import {
+    canUseStudentRowsAsRealRoster,
     ensureStudentList,
+    getStudentRosterTrustStatus,
     getStudentListSync,
     isLiveData as isStudentListLive,
     onStudentDataChange,
@@ -646,6 +648,7 @@ function computeWeightedOverallGpa({
 
 function getLinkedDataset(id) {
     const base = getDashboardDatasetSync(id);
+    if (!canUseStudentRowsAsRealRoster()) return base;
     if (id === 'student_stats') return patchStudentStats(base);
     if (id === 'dashboard_summary') return patchDashboardSummary(base);
     if (id === 'graduation') return patchGraduationData(base);
@@ -670,12 +673,24 @@ export function getSharedDashboardDatasetMetaSync(id) {
     if (!LINKED_STUDENT_DATASETS.has(id)) return meta;
 
     const payload = getSharedDashboardDatasetSync(id);
+    const rosterTrust = getStudentRosterTrustStatus();
+    if (!rosterTrust.canAnswerIndividual) {
+        return {
+            ...meta,
+            rowCount: getPayloadRowCount(payload),
+            usesSharedDataHub: false,
+            linkedStudentRows: 0,
+            studentRosterMode: rosterTrust.mode,
+            studentRosterWarning: rosterTrust.warning,
+        };
+    }
+
     const studentRows = getStudentListSync();
     const studentLive = isStudentListLive();
     return {
         ...meta,
-        isLive: Boolean(meta.isLive || studentLive),
-        sourceType: studentLive ? 'linked_realtime' : meta.sourceType,
+        isLive: Boolean(meta.isLive || studentLive || rosterTrust.canAnswerIndividual),
+        sourceType: studentLive ? 'linked_realtime' : 'linked_upload',
         rowCount: getPayloadRowCount(payload),
         linkedSources: [
             ...(Array.isArray(meta.linkedSources) ? meta.linkedSources : []),

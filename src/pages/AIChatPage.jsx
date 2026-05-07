@@ -22,8 +22,8 @@ import {
 } from '../services/geminiService';
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { SCIENCE_MAJORS } from '../data/studentListData';
-import { ensureStudentList, getStudentListSync, isLiveData, onStudentDataChange } from '../services/studentDataService';
-import { appendStudentAnswerSourceNote, buildDataAccuracyContextForAI } from '../services/dataAccuracyService';
+import { ensureStudentList, getStudentListSync, getStudentRosterTrustStatus, isLiveData, onStudentDataChange } from '../services/studentDataService';
+import { appendStudentAnswerSourceNote, buildDataAccuracyContextForAI, getStudentReconciliationSnapshot } from '../services/dataAccuracyService';
 import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
 import { exportChartAsCSV } from '../utils/exportUtils';
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
@@ -458,8 +458,20 @@ export const getAllStudents = () => {
     return [...filtered, ..._uploadedStudentRows];
 };
 
+function hasTrustedStudentRowsForChat() {
+    return _uploadedStudentRows.length > 0 || getStudentRosterTrustStatus().canAnswerIndividual;
+}
+
+function getTrustedStudentsForRows() {
+    if (_uploadedStudentRows.length > 0) {
+        if (getStudentRosterTrustStatus().canAnswerIndividual) return getAllStudents();
+        return _uploadedStudentRows;
+    }
+    return getStudentRosterTrustStatus().canAnswerIndividual ? getStudentListSync() : [];
+}
+
 function getTrustedStudentsForAdvice() {
-    const base = isLiveData() ? getStudentListSync() : [];
+    const base = getStudentRosterTrustStatus().canAnswerIndividual ? getStudentListSync() : [];
     if (_uploadedStudentRows.length === 0) return base;
     const idSet = new Set(_uploadedStudentRows.map(s => s.id));
     const filtered = base.filter(s => !idSet.has(s.id));
@@ -481,7 +493,7 @@ function wantsStudentCountGradeChart(question) {
 }
 
 function getStudentCountGpaByMajorRows() {
-    const allStudents = getAllStudents().filter(s => s?.major);
+    const allStudents = getTrustedStudentsForRows().filter(s => s?.major);
     const scienceStudents = allStudents.filter(s => SCIENCE_MAJORS.includes(s.major));
     const students = scienceStudents.length > 0 ? scienceStudents : allStudents;
     const byMajor = new Map();
@@ -663,7 +675,7 @@ function wantsStudentClassYearChart(question) {
 function getStudentClassYearRows(question = '') {
     const q = String(question || '').toLowerCase();
     const wantsScienceScope = /คณะวิทย|วิทยาศาสตร์|คณะวิทย์|science/.test(q);
-    const allStudents = getAllStudents().filter(s => s?.year);
+    const allStudents = getTrustedStudentsForRows().filter(s => s?.year);
     const scopedStudents = wantsScienceScope
         ? allStudents.filter(s => SCIENCE_MAJORS.includes(s.major))
         : allStudents;
@@ -736,15 +748,30 @@ function ensureStudentCountGradeChart(chart, sourceQuestion = '') {
 
 function withStudentSourceNote(result) {
     if (!result?.text) return result;
+    const chatUploadNote = _uploadedStudentRows.length > 0
+        ? `\n\n_หมายเหตุ: คำตอบนี้รวมข้อมูลจากไฟล์ที่ผู้ใช้แนบในแชท ${_uploadedStudentRows.length.toLocaleString('th-TH')} แถว ซึ่งถือเป็น user-provided data สำหรับคำถามนี้_`
+        : '';
     return {
         ...result,
-        text: appendStudentAnswerSourceNote(result.text),
+        text: `${appendStudentAnswerSourceNote(result.text)}${chatUploadNote}`,
+    };
+}
+
+function buildStudentRowsUnavailableChatResult(topic = 'รายชื่อหรือ GPA รายคน') {
+    const rec = getStudentReconciliationSnapshot();
+    const officialText = rec.officialTotal == null
+        ? 'ยังไม่พบยอดรวมทางการจาก MJU Dashboard'
+        : `ยอดรวมทางการจาก MJU Dashboard คือ **${rec.officialTotal.toLocaleString('th-TH')} คน**`;
+    return {
+        text: `ตอนนี้ยังสร้าง/ตอบ${topic}จากข้อมูลจริงไม่ได้ครับ เพราะรายชื่อในระบบยังเป็น **sample/generated** ไม่ใช่รายชื่อจริงจาก Reg/คณะ\n\n${officialText}\n\nวิธีทำให้ตรงของจริงที่สุดตอนยังไม่มี API key คืออัปโหลดไฟล์ CSV/XLSX export จาก Reg/คณะผ่านหน้า Admin Data Upload ก่อน แล้ว AI จะใช้รายชื่อ/GPA จากไฟล์นั้นแทน sample\n\n_แหล่งข้อมูล: ยอดรวมใช้ MJU Dashboard; รายชื่อรายคนตอนนี้ = ${rec.studentSourceLabel} (${rec.studentRosterAccuracyLabel}); ${rec.studentRowsSummary}_`,
+        chart: null,
     };
 }
 
 // ==================== Smart Student Search ====================
 function searchStudents(query) {
-    const ALL_STUDENTS = getAllStudents();
+    const ALL_STUDENTS = getTrustedStudentsForRows();
+    if (ALL_STUDENTS.length === 0) return buildStudentRowsUnavailableChatResult('รายชื่อรายคน');
     const q = query.toLowerCase();
     let limit = 0;
     const limitMatch = q.match(/(\d+)\s*(คน|ราย|รายการ)/);
@@ -869,6 +896,9 @@ export function tryLocalResponse(question, userContext = {}) {
         if (!canAIUseInternalSection(userContext, 'student_stats')) {
             return buildAIAccessDeniedResult(userContext, ['student_stats']);
         }
+        if (!hasTrustedStudentRowsForChat()) {
+            return buildStudentRowsUnavailableChatResult('กราฟจำนวนนักศึกษา + GPA แยกสาขา');
+        }
         const result = buildStudentCountGpaChartResponse(question);
         if (result) return withStudentSourceNote(result);
     }
@@ -878,6 +908,9 @@ export function tryLocalResponse(question, userContext = {}) {
         if (!canAIUseInternalSection(userContext, 'student_stats')) {
             return buildAIAccessDeniedResult(userContext, ['student_stats']);
         }
+        if (!hasTrustedStudentRowsForChat()) {
+            return buildStudentRowsUnavailableChatResult('กราฟจำนวนนักศึกษาแยกสาขาจากรายชื่อจริง');
+        }
         const result = buildStudentMajorCountChartResponse(question);
         if (result) return withStudentSourceNote(result);
     }
@@ -886,6 +919,9 @@ export function tryLocalResponse(question, userContext = {}) {
     if (wantsStudentClassYearChart(question)) {
         if (!canAIUseInternalSection(userContext, 'student_stats')) {
             return buildAIAccessDeniedResult(userContext, ['student_stats']);
+        }
+        if (!hasTrustedStudentRowsForChat()) {
+            return buildStudentRowsUnavailableChatResult('กราฟจำนวนนักศึกษาแยกชั้นปีจากรายชื่อจริง');
         }
         const result = buildStudentClassYearChartResponse(question);
         if (result) return withStudentSourceNote(result);
@@ -916,11 +952,13 @@ export function tryLocalResponse(question, userContext = {}) {
 // ==================== Parse AI Generated Chart ====================
 export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMergeSummary = null, userContext = {}) {
     const adviceMode = isExecutiveRecommendationIntent(question);
-    const allStudents = adviceMode ? getTrustedStudentsForAdvice() : getAllStudents();
+    const allStudents = adviceMode ? getTrustedStudentsForAdvice() : getTrustedStudentsForRows();
+    const studentRosterTrust = getStudentRosterTrustStatus();
+    const studentReconcile = getStudentReconciliationSnapshot();
     const qLower = String(question || '').toLowerCase();
     const isStudentQ = /นักศึกษา|นิสิต|gpa|เกรด|สาขา|ชั้นปี|รายชื่อ|จำนวนนักศึกษา|student/.test(qLower);
     const canUseStudentStats = canAIUseInternalSection(userContext, 'student_stats');
-    const canUseStudentRows = canAIUseInternalSection(userContext, 'student_list');
+    const canUseStudentRows = canAIUseInternalSection(userContext, 'student_list') && hasTrustedStudentRowsForChat();
     const dashboardSummary = dashboardMergeSummary || {
         name: 'ข้อมูล Dashboard',
         ...buildLiveDashboardMergeSummary(),
@@ -933,6 +971,13 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
     }
     if (isStudentQ && !canUseStudentStats) {
         context += '[ACCESS LIMITED]\nRole นี้ไม่มีสิทธิ์อ่านข้อมูลนักศึกษาภายในจากระบบ ห้ามแนบ/เดารายชื่อนักศึกษา GPA หรือสถิติภายใน ให้ตอบเฉพาะข้อมูลสาธารณะหรือแจ้งว่าต้องใช้สิทธิ์สูงกว่า\n\n';
+    }
+    if (isStudentQ && canUseStudentStats) {
+        context += `[STUDENT OFFICIAL AGGREGATE]\nยอดรวม/สถิติรวมต้องอ้าง MJU Dashboard ก่อน: officialTotal=${studentReconcile.officialTotal ?? 'unknown'}, source=${studentReconcile.officialSourceLabel}, status=${studentReconcile.officialIsLive ? 'live' : 'reference/fallback'}\n`;
+        context += `studentRows=${studentReconcile.localTotal}, rowSource=${studentReconcile.studentSourceLabel}, rowTrust=${studentReconcile.studentRosterAccuracyLabel}, canUseRowsForRealRoster=${studentRosterTrust.canAnswerIndividual || _uploadedStudentRows.length > 0}, reconcile=${studentReconcile.studentRowsSummary}\n`;
+        if (!studentRosterTrust.canAnswerIndividual && _uploadedStudentRows.length === 0) {
+            context += 'สำคัญ: รายชื่อในระบบตอนนี้เป็น sample/generated ห้ามใช้ยืนยันรายชื่อจริง, GPA รายคน, กลุ่มเสี่ยงรายคน หรือกราฟจากรายชื่อจริง ให้ตอบยอดรวมจาก MJU Dashboard และบอกให้ผู้ใช้อัปโหลดไฟล์จริงจาก Reg/คณะหากต้องใช้รายคน\n\n';
+        }
     }
     if (isStudentQ && canUseStudentStats && allStudents.length > 0) {
         const byMajor = {};

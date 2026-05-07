@@ -364,6 +364,32 @@ export function getStudentDataSourceStatus() {
     };
 }
 
+export function getStudentRosterTrustStatus() {
+    const source = getStudentDataSourceStatus();
+    const canAnswerIndividual = Boolean(source.isUploaded && !source.isBundledSample);
+    const isOfficialRoster = source.mode === 'firestore';
+    const isUserUploadedRoster = source.mode === 'local_upload';
+
+    return {
+        ...source,
+        canAnswerIndividual,
+        canUseForOfficialRoster: canAnswerIndividual,
+        canUseForDerivedStats: canAnswerIndividual,
+        isOfficialRoster,
+        isUserUploadedRoster,
+        accuracyLabel: canAnswerIndividual
+            ? (isOfficialRoster ? 'Official/Firestore roster' : 'Uploaded roster')
+            : 'Sample/generated roster',
+        warning: canAnswerIndividual
+            ? ''
+            : 'รายชื่อ bundled เป็น sample/generated จึงห้ามใช้ยืนยันรายชื่อจริงหรือ GPA รายคน',
+    };
+}
+
+export function canUseStudentRowsAsRealRoster() {
+    return getStudentRosterTrustStatus().canAnswerIndividual;
+}
+
 export function isUsingBundledSampleData() {
     return getStudentDataSourceStatus().isBundledSample;
 }

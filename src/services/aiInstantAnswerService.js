@@ -10,13 +10,14 @@ import {
 } from '../data/scienceActivitiesData';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import { scienceFacultyBudgetData } from '../data/mockData';
-import { getStudentListSync, isLiveData } from './studentDataService';
+import { getStudentListSync, getStudentRosterTrustStatus, isLiveData } from './studentDataService';
 import {
     getSharedDashboardDatasetMetaSync,
     getSharedDashboardDatasetSync,
 } from './sharedDashboardDataService';
 import { buildAIAccessDeniedResult, canAIUseAnyInternalSection } from '../utils/aiAccessPolicy';
 import { isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
+import { getStudentReconciliationSnapshot } from './dataAccuracyService';
 
 const CHART_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
 
@@ -68,9 +69,31 @@ function datasetSourceLine(datasetId, label) {
 }
 
 function sourceLine() {
+    const roster = getStudentRosterTrustStatus();
+    if (roster.canAnswerIndividual && roster.isUserUploadedRoster) {
+        return 'แหล่งข้อมูล: ไฟล์รายชื่อนักศึกษาที่อัปโหลดล่าสุด';
+    }
+    if (!roster.canAnswerIndividual) {
+        return 'แหล่งข้อมูล: ยอดรวมใช้ MJU Dashboard; รายชื่อรายคนยังเป็น sample/generated จนกว่าจะอัปโหลดไฟล์จริง';
+    }
     return isLiveData()
         ? 'แหล่งข้อมูล: ข้อมูลนักศึกษา live/realtime จาก Firestore หรือไฟล์อัปโหลดล่าสุด'
         : 'แหล่งข้อมูล: ข้อมูลนักศึกษาที่เว็บใช้ตอนนี้ (fallback/demo จนกว่าจะ sync ข้อมูลจริง)';
+}
+
+function hasTrustedStudentRows() {
+    return getStudentRosterTrustStatus().canAnswerIndividual;
+}
+
+function buildStudentRowsUnavailableAnswer(topic = 'รายชื่อหรือ GPA รายคน') {
+    const rec = getStudentReconciliationSnapshot();
+    const officialText = rec.officialTotal == null
+        ? 'ยังไม่พบยอดรวมทางการจาก MJU Dashboard'
+        : `ยอดรวมทางการจาก MJU Dashboard คือ **${formatNumber(rec.officialTotal)} คน**`;
+    return {
+        text: `ตอนนี้ยังยืนยัน${topic}จากข้อมูลจริงไม่ได้ครับ เพราะรายชื่อในระบบยังเป็น **sample/generated** ไม่ใช่รายชื่อจริงจาก Reg/คณะ\n\n${officialText}\n\nถ้าต้องการให้ AI ตอบรายชื่อรายคน, GPA รายคน, กลุ่มเสี่ยง GPA < 2.00 หรือกราฟที่ใช้ GPA จริง ให้ใช้ไฟล์ CSV/XLSX export จาก Reg/คณะ แล้วอัปโหลดเข้า Admin Data Upload ก่อน ระบบจะใช้ไฟล์นั้นแทน sample ทันที\n\n_แหล่งข้อมูล: ยอดรวมใช้ MJU Dashboard; รายชื่อรายคนในระบบตอนนี้ = ${rec.studentSourceLabel} (${rec.studentRosterAccuracyLabel}); ${rec.studentRowsSummary}_`,
+        chart: null,
+    };
 }
 
 function getScienceStudents() {
@@ -79,11 +102,78 @@ function getScienceStudents() {
     return scienceRows.length > 0 ? scienceRows : rows;
 }
 
+function findScienceFacultyRow(rows = []) {
+    return Array.isArray(rows)
+        ? rows.find(row => String(row?.name || row?.faculty || '').includes('วิทยาศาสตร์')) || null
+        : null;
+}
+
+function getOfficialScienceStudentStats() {
+    const rec = getStudentReconciliationSnapshot();
+    const stats = getSharedDashboardDatasetSync('student_stats') || {};
+    const summary = getSharedDashboardDatasetSync('dashboard_summary') || {};
+    const science = stats.scienceFaculty || {};
+    const facultyRow = findScienceFacultyRow(summary.faculties);
+    return {
+        rec,
+        total: rec.officialTotal ?? (Number(science.total || facultyRow?.totalStudents || facultyRow?.total || 0) || null),
+        byLevel: Array.isArray(science.byLevel) ? science.byLevel : [],
+        byEnrollmentYear: Array.isArray(science.byEnrollmentYear) ? science.byEnrollmentYear : [],
+        byMajor: Array.isArray(science.byMajor) ? science.byMajor : [],
+        avgGPA: science.avgGPA ?? science.avgGpa ?? facultyRow?.avgGPA ?? facultyRow?.avgGpa ?? null,
+        graduationRate: facultyRow?.graduationRate ?? null,
+    };
+}
+
+function buildOfficialStudentAggregateAnswer(q) {
+    const official = getOfficialScienceStudentStats();
+    if (!official.total) return null;
+    const asksGpaOrRisk = /gpa|เกรด|พ้นสภาพ|รอพินิจ|เสี่ยง|ต่ำกว่า\s*2|ต่ำกว่า 2/.test(q);
+    if (asksGpaOrRisk) return buildStudentRowsUnavailableAnswer('GPA รายคนหรือกลุ่มเสี่ยง');
+
+    let text = `**จำนวนนักศึกษาคณะวิทยาศาสตร์**\n\n`;
+    text += `จากยอดรวมทางการของ MJU Dashboard คณะวิทยาศาสตร์มีนักศึกษารวม **${formatNumber(official.total)} คน**\n`;
+    if (official.avgGPA != null) text += `- GPA เฉลี่ยระดับคณะจาก Dashboard: **${formatNumber(official.avgGPA, 2)}**\n`;
+    if (official.graduationRate != null) text += `- อัตราสำเร็จการศึกษาจาก Dashboard: **${formatNumber(official.graduationRate, 1)}%**\n`;
+
+    if (/ระดับ|ปริญญา|ตรี|โท|เอก|แยก/.test(q) && official.byLevel.length > 0) {
+        text += `\n**แยกตามระดับการศึกษา**\n`;
+        text += official.byLevel
+            .map(row => `- ${row.level || row.label || row.name}: ${formatNumber(row.count ?? row.total ?? row.value)} คน`)
+            .join('\n');
+        text += '\n';
+    }
+
+    if (/ปีเข้า|รหัสปี|ปีการศึกษา|ย้อนหลัง|แยก/.test(q) && official.byEnrollmentYear.length > 0) {
+        text += `\n**แยกตามปีเข้า/รหัสปี**\n`;
+        text += official.byEnrollmentYear
+            .map(row => `- ${row.year}: ${formatNumber(row.count ?? row.total ?? row.value)} คน`)
+            .join('\n');
+        text += '\n';
+    }
+
+    if (/สาขา|major|หลักสูตร|แยก/.test(q)) {
+        if (official.byMajor.length > 0) {
+            text += `\n**แยกตามสาขา**\n`;
+            text += official.byMajor
+                .map(row => `- ${row.major || row.name}: ${formatNumber(row.total ?? row.count ?? row.value)} คน`)
+                .join('\n');
+            text += '\n';
+        } else {
+            text += `\nตอนนี้ยอดทางการที่ดึงได้ยังไม่มีรายชื่อ/จำนวนแยกสาขาที่เชื่อถือได้ครบจาก Reg จึงไม่ยืนยันรายชื่อหรือจำนวนรายสาขาจาก sample ครับ\n`;
+        }
+    }
+
+    text += `\n_แหล่งข้อมูล: MJU Dashboard (${official.rec.officialSourceLabel}); รายชื่อรายคนในระบบตอนนี้ = ${official.rec.studentSourceLabel} (${official.rec.studentRosterAccuracyLabel})_`;
+    return { text, chart: null };
+}
+
 function buildStudentRiskTrendAnswer(question) {
     const q = normalizeText(question);
     const isRiskQuestion = /กลุ่มเสี่ยง|เสี่ยง|พ้นสภาพ|รอพินิจ|gpa\s*<\s*2|gpa\s*ต่ำกว่า|ต่ำกว่า\s*2|เกรดต่ำ/.test(q);
     const isStudentQuestion = /นักศึกษา|นิสิต|student|gpa|เกรด/.test(q);
     if (!isRiskQuestion || !isStudentQuestion) return null;
+    if (!hasTrustedStudentRows()) return buildStudentRowsUnavailableAnswer('กลุ่มเสี่ยงและ GPA รายคน');
 
     const students = getScienceStudents();
     if (students.length === 0) return null;
@@ -181,6 +271,7 @@ function buildStudentMajorDeclineAnswer(question) {
     const asksMajor = /สาขา|major|หลักสูตร/.test(q);
     const asksStudent = /นักศึกษา|นิสิต|student/.test(q);
     if (!asksDecline || !asksMajor || !asksStudent) return null;
+    if (!hasTrustedStudentRows()) return buildStudentRowsUnavailableAnswer('สัญญาณลดลงรายสาขาจากรายชื่อจริง');
 
     const students = getScienceStudents();
     if (students.length === 0) return null;
@@ -345,6 +436,7 @@ function buildStudentSummaryAnswer(question) {
         /tcas|รับเข้า|รับสมัคร|ย้อนหลัง|ค้าง|ชำระ|ค่าเทอม|กิจกรรม|รายวิชา|course|รายชื่อ|ค้นหา|ใคร|รหัส\s*6|\b6\d{9}\b|สูงสุด|ต่ำสุด|top\s*\d*/i.test(q);
 
     if (!isStudentQuestion || !asksAggregate || shouldSkip) return null;
+    if (!hasTrustedStudentRows()) return buildOfficialStudentAggregateAnswer(q);
 
     const students = getScienceStudents();
     if (students.length === 0) return null;
