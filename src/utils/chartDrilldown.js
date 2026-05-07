@@ -12,6 +12,9 @@ export function resolveChartPoint(chartData, element = {}) {
     const color = Array.isArray(dataset.backgroundColor)
         ? dataset.backgroundColor[index]
         : (dataset.borderColor || dataset.backgroundColor);
+    const valueStatus = Array.isArray(dataset.valueStatus)
+        ? dataset.valueStatus[index]
+        : dataset.valueStatus;
 
     return {
         dataset,
@@ -20,6 +23,7 @@ export function resolveChartPoint(chartData, element = {}) {
         label,
         value,
         rawValue,
+        valueStatus,
         datasetLabel: dataset.label || '',
         color,
     };

@@ -18,6 +18,7 @@ import {
 import { buildAIAccessDeniedResult, canAIUseAnyInternalSection } from '../utils/aiAccessPolicy';
 import { isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
 import { getStudentReconciliationSnapshot } from './dataAccuracyService';
+import { getDatasetQualityText } from '../utils/smartChartData';
 
 const CHART_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
 
@@ -62,7 +63,7 @@ function percent(value, total, digits = 1) {
 
 function datasetSourceLine(datasetId, label) {
     const meta = getSharedDashboardDatasetMetaSync(datasetId);
-    const status = meta?.isLive ? 'live/realtime' : 'ข้อมูลที่เว็บใช้ตอนนี้';
+    const status = getDatasetQualityText(meta);
     const updated = meta?.updatedAt ? `, อัปเดต ${meta.updatedAt.toLocaleString('th-TH')}` : '';
     const source = meta?.sourceUrl ? ` — ${meta.sourceUrl}` : '';
     return `แหล่งข้อมูล: ${label} (${status}${updated})${source}`;

@@ -13,6 +13,12 @@ import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
+import {
+    buildSmartRows,
+    getDatasetQualityText,
+    percentOf,
+    summarizeSmartRows,
+} from '../utils/smartChartData';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
@@ -27,10 +33,19 @@ const tdStyle = { padding: '10px 14px', fontSize: '0.88rem', color: 'var(--text-
 export default function ResearchDashboardPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
-    const { data: researchData } = useDashboardDataset('research');
+    const { data: researchData, meta: researchMeta } = useDashboardDataset('research');
     if (!canAccess(user?.role, 'research_overview')) return <AccessDenied />;
 
-    const { overview, publicationTrend, byDepartment, fundingTrend, fundingSources, patents, communityImpact, benchmark } = researchData;
+    const safeResearchData = researchData || {};
+    const overview = safeResearchData.overview || safeResearchData.summary || {};
+    const publicationTrend = Array.isArray(safeResearchData.publicationTrend) ? safeResearchData.publicationTrend : [];
+    const byDepartment = Array.isArray(safeResearchData.byDepartment) ? safeResearchData.byDepartment : [];
+    const fundingTrend = Array.isArray(safeResearchData.fundingTrend) ? safeResearchData.fundingTrend : [];
+    const fundingSources = Array.isArray(safeResearchData.fundingSources) ? safeResearchData.fundingSources : [];
+    const patents = Array.isArray(safeResearchData.patents) ? safeResearchData.patents : [];
+    const communityImpact = Array.isArray(safeResearchData.communityImpact) ? safeResearchData.communityImpact : [];
+    const benchmark = Array.isArray(safeResearchData.benchmark) ? safeResearchData.benchmark : [];
+    const researchSourceNote = getDatasetQualityText(researchMeta);
 
     // Publication trend line chart
     const pubChartData = {
@@ -43,12 +58,42 @@ export default function ResearchDashboardPage() {
         ]
     };
 
-    // Research by department bar
+    const publicationRows = buildSmartRows(
+        byDepartment.map(row => ({
+            ...row,
+            label: String(row.dept || '').replace('ภาควิชา', '').trim() || row.dept,
+            value: row.publications,
+        })),
+        { meta: researchMeta }
+    );
+    const publicationSummary = summarizeSmartRows(publicationRows);
+    const chartablePublicationRows = publicationRows.filter(row => row.isChartable);
+    const notChartedPublicationRows = publicationRows.filter(row => !row.isChartable);
+    const patentDeptRows = buildSmartRows(
+        byDepartment.map(row => ({
+            ...row,
+            label: String(row.dept || '').replace('ภาควิชา', '').trim() || row.dept,
+            value: row.patents,
+        })),
+        { meta: researchMeta }
+    ).sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+    const patentPositiveRows = patentDeptRows.filter(row => row.isChartable);
+    const patentTotal = patentDeptRows.reduce((sum, row) => sum + Number(row.value || 0), 0);
+
+    // Research publications by department bar. Patents are shown separately because
+    // their scale is much smaller than publication counts.
     const deptChartData = {
-        labels: byDepartment.map(d => d.dept.replace('ภาควิชา', '')),
+        labels: chartablePublicationRows.map(d => d.label),
         datasets: [
-            { label: 'ผลงานตีพิมพ์', data: byDepartment.map(d => d.publications), backgroundColor: 'rgba(34, 197, 94, 0.7)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 6 },
-            { label: 'สิทธิบัตร', data: byDepartment.map(d => d.patents), backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 6 },
+            {
+                label: 'ผลงานตีพิมพ์',
+                data: chartablePublicationRows.map(d => d.value),
+                backgroundColor: chartablePublicationRows.map(row => row.isFallback ? 'rgba(148, 163, 184, 0.72)' : 'rgba(34, 197, 94, 0.76)'),
+                borderColor: chartablePublicationRows.map(row => row.isFallback ? '#94a3b8' : '#22c55e'),
+                borderWidth: 1,
+                borderRadius: 6,
+                valueStatus: chartablePublicationRows.map(row => row.valueStatus),
+            },
         ]
     };
 
@@ -141,12 +186,13 @@ export default function ResearchDashboardPage() {
     });
 
     const deptDrilldownOptions = withChartDrilldown(chartOptions, deptChartData, setDrillDetail, (point) => {
-        const row = byDepartment[point.index];
+        const row = chartablePublicationRows[point.index];
         return {
             title: `ผลงานวิจัย: ${point.label}`,
-            subtitle: point.datasetLabel,
+            subtitle: `${point.datasetLabel} · ${researchSourceNote}`,
             valueLabel: point.datasetLabel,
             value: point.value,
+            unit: 'เรื่อง',
             accentColor: point.color,
             rows: row ? [row] : [],
             columns: [
@@ -204,12 +250,12 @@ export default function ResearchDashboardPage() {
     });
 
     const scorecards = [
-        { label: 'ผลงานตีพิมพ์รวม', value: overview.totalPublications.toLocaleString(), icon: FileText, color: '#006838' },
-        { label: 'งบวิจัยรวม (ล้าน฿)', value: overview.totalFunding.toFixed(1), icon: DollarSign, color: '#2E86AB' },
-        { label: 'สิทธิบัตร', value: overview.totalPatents, icon: Award, color: '#C5A028' },
-        { label: 'Citations', value: overview.totalCitations.toLocaleString(), icon: BookOpen, color: '#A23B72' },
-        { label: 'h-Index', value: overview.hIndex, icon: TrendingUp, color: '#7B68EE' },
-        { label: 'โครงการดำเนินการ', value: overview.activeProjects, icon: Globe2, color: '#F18F01' },
+        { label: 'ผลงานตีพิมพ์รวม', value: Number(overview.totalPublications || 0).toLocaleString('th-TH'), icon: FileText, color: '#006838' },
+        { label: 'งบวิจัยรวม (ล้าน฿)', value: Number(overview.totalFunding || 0).toFixed(1), icon: DollarSign, color: '#2E86AB' },
+        { label: 'สิทธิบัตร', value: Number(overview.totalPatents ?? patentTotal ?? 0).toLocaleString('th-TH'), icon: Award, color: '#C5A028' },
+        { label: 'Citations', value: Number(overview.totalCitations || 0).toLocaleString('th-TH'), icon: BookOpen, color: '#A23B72' },
+        { label: 'h-Index', value: overview.hIndex ?? '-', icon: TrendingUp, color: '#7B68EE' },
+        { label: 'โครงการดำเนินการ', value: overview.activeProjects ?? '-', icon: Globe2, color: '#F18F01' },
     ];
 
     return (
@@ -265,9 +311,18 @@ export default function ResearchDashboardPage() {
             {/* Row 2: Department + Funding trend */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>ผลงานแยกตามภาควิชา</h3>
-                    <div style={{ height: 260 }}>
-                        <Bar data={deptChartData} options={deptDrilldownOptions} />
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 6 }}>ผลงานตีพิมพ์แยกตามภาควิชา</h3>
+                    <p className="smart-chart-subtitle">แยกสิทธิบัตรออกจากกราฟนี้ เพราะสเกลเล็กกว่าผลงานตีพิมพ์มาก</p>
+                    {publicationSummary.hasNoChartableData ? (
+                        <div className="smart-empty-state">รอข้อมูลจริง / sync หรืออัปโหลดข้อมูลก่อน</div>
+                    ) : (
+                        <div style={{ height: 260 }}>
+                            <Bar data={deptChartData} options={deptDrilldownOptions} />
+                        </div>
+                    )}
+                    <div className="smart-chart-note">
+                        {researchSourceNote}
+                        {notChartedPublicationRows.length > 0 && ` · ไม่แสดงในกราฟ ${notChartedPublicationRows.length} ภาควิชาที่เป็น 0/ไม่มีข้อมูล`}
                     </div>
                 </div>
                 <div style={cardStyle}>
@@ -290,6 +345,26 @@ export default function ResearchDashboardPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div style={cardStyle}>
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>สิทธิบัตรและนวัตกรรม</h3>
+                    <div className="smart-patent-summary">
+                        <div className="smart-patent-total">
+                            <span>สิทธิบัตรรวม</span>
+                            <strong>{Number(overview.totalPatents ?? patentTotal ?? 0).toLocaleString('th-TH')}</strong>
+                            <small>{researchSourceNote}</small>
+                        </div>
+                        <div className="smart-mini-bar-list">
+                            {patentPositiveRows.length === 0 ? (
+                                <div className="smart-empty-state compact">ยังไม่มีข้อมูลสิทธิบัตรแยกภาควิชา</div>
+                            ) : patentPositiveRows.slice(0, 5).map(row => (
+                                <div key={row.dept || row.label} className={`smart-mini-bar-row smart-status-${row.valueStatus}`}>
+                                    <span>{row.label}</span>
+                                    <div className="smart-mini-bar-track">
+                                        <div style={{ width: percentOf(row.value, Math.max(1, patentTotal)), background: row.isFallback ? '#94a3b8' : '#f59e0b' }} />
+                                    </div>
+                                    <strong>{Number(row.value || 0).toLocaleString('th-TH')}</strong>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                     <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>

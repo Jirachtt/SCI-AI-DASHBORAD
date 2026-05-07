@@ -13,13 +13,19 @@ import {
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
-import { Bar, Line, Doughnut, Pie } from 'react-chartjs-2';
+import { Bar, Line, Doughnut } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
     Title, Tooltip, Legend, ArcElement, Filler, BarElement
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { withChartDrilldown } from '../utils/chartDrilldown';
+import {
+    buildSmartRows,
+    getDatasetQualityText,
+    percentOf,
+    summarizeSmartRows,
+} from '../utils/smartChartData';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
 
@@ -54,6 +60,10 @@ function rowsByGpaRange(range, candidates = graduationCandidateList) {
     });
 }
 
+function normalizeGraduationStatus(value) {
+    return String(value || '').replace('คาดว่าจะสำเร็จ', 'คาดว่าสำเร็จ').trim();
+}
+
 export default function GraduationStatsPage() {
     const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
@@ -61,7 +71,7 @@ export default function GraduationStatsPage() {
     const [filterStatus, setFilterStatus] = useState('all');
     const [drillDetail, setDrillDetail] = useState(null);
     const hasGraduationAccess = canAccess(user?.role, 'graduation_stats');
-    const { data: liveGraduationData } = useDashboardDataset('graduation');
+    const { data: liveGraduationData, meta: graduationMeta } = useDashboardDataset('graduation');
 
     const graduationHistoryData = liveGraduationData?.graduationHistory || liveGraduationData?.history || graduationHistory;
     const stats = { ...currentGraduationStats, ...(liveGraduationData?.current || {}) };
@@ -76,7 +86,7 @@ export default function GraduationStatsPage() {
             s.name.includes(searchTerm) ||
             s.id.includes(searchTerm);
         const matchMajor = filterMajor === 'all' || s.major === filterMajor;
-        const matchStatus = filterStatus === 'all' || s.graduationStatus === filterStatus;
+        const matchStatus = filterStatus === 'all' || normalizeGraduationStatus(s.graduationStatus) === filterStatus;
         return matchSearch && matchMajor && matchStatus;
     }), [candidateRows, searchTerm, filterMajor, filterStatus]);
 
@@ -287,48 +297,31 @@ export default function GraduationStatsPage() {
         }
     };
 
-    // Status doughnut (current year)
-    const statusChartData = {
-        labels: ['คาดว่าสำเร็จ', 'รอพินิจ', 'ไม่ผ่านเกณฑ์'],
-        datasets: [{
-            data: [stats.expectedGraduates, stats.pending, stats.notPassed],
-            backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
-            borderWidth: 0,
-            cutout: '60%',
-        }]
-    };
-
-    const statusOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: { color: 'var(--text-muted)', padding: 12, font: { size: 11 }, usePointStyle: true }
-            },
-            tooltip: {
-                callbacks: {
-                    label: (ctx) => `${ctx.label}: ${ctx.parsed} คน (${((ctx.parsed / stats.totalCandidates) * 100).toFixed(1)}%)`
-                }
-            }
-        }
-    };
+    const statusRows = buildSmartRows([
+        { label: 'คาดว่าสำเร็จ', value: stats.expectedGraduates, color: '#22c55e', description: 'GPA ผ่านเกณฑ์และอยู่ชั้นปีที่มีสิทธิ์' },
+        { label: 'รอพินิจ', value: stats.pending, color: '#f59e0b', description: 'GPA 1.75-1.99 หรือมีสถานะรอพินิจ' },
+        { label: 'ไม่ผ่านเกณฑ์', value: stats.notPassed, color: '#ef4444', description: 'GPA ต่ำกว่า 1.75' },
+    ], { meta: { isLive: true, sourceType: 'calculated' } });
+    const statusSummary = summarizeSmartRows(statusRows);
+    const statusTotal = Number(stats.totalCandidates) || statusSummary.total || 0;
+    const graduationSourceNote = getDatasetQualityText(graduationMeta, { calculated: true });
 
     const uniqueMajors = [...new Set(candidateRows.map(s => s.major))].sort();
 
-    const statusDrilldownOptions = withChartDrilldown(statusOptions, statusChartData, setDrillDetail, (point) => {
-        const rows = candidateRows.filter(student => student.graduationStatus === point.label);
-        return {
-            title: `สถานะการสำเร็จ: ${point.label}`,
+    const openStatusDetail = (statusRow) => {
+        const rows = candidateRows.filter(student => normalizeGraduationStatus(student.graduationStatus) === statusRow.label);
+        setDrillDetail({
+            title: `สถานะการสำเร็จ: ${statusRow.label}`,
             subtitle: 'รายชื่อนักศึกษาปี 4 ที่อยู่ในกลุ่มนี้',
             valueLabel: 'จำนวน',
-            value: rows.length || point.value,
+            value: rows.length || statusRow.value || 0,
             unit: 'คน',
-            accentColor: point.color,
+            accentColor: statusRow.color,
             rows,
             columns: studentColumns,
-        };
-    });
+            note: 'สถานะนี้คำนวณจาก GPA และชั้นปีของนักศึกษาปัจจุบัน ไม่ใช่ผลอนุมัติจบจริงจาก Reg',
+        });
+    };
 
     const historyDrilldownOptions = withChartDrilldown(historyChartOptions, historyChartData, setDrillDetail, (point) => {
         const row = graduationHistoryData[point.index];
@@ -353,7 +346,7 @@ export default function GraduationStatsPage() {
     const majorDrilldownOptions = withChartDrilldown(majorChartOptions, majorChartData, setDrillDetail, (point) => {
         const major = graduationByMajorRows[point.index]?.major || point.label;
         const status = point.datasetLabel;
-        const rows = candidateRows.filter(student => student.major === major && student.graduationStatus === status);
+        const rows = candidateRows.filter(student => student.major === major && normalizeGraduationStatus(student.graduationStatus) === status);
         const allMajorRows = candidateRows.filter(student => student.major === major);
         return {
             title: `${major}: ${status}`,
@@ -468,19 +461,51 @@ export default function GraduationStatsPage() {
                 })}
             </div>
 
-            {/* Row 1: Status Doughnut + Graduation Trend */}
+            {/* Row 1: Smart status summary + Graduation Trend */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 18, marginBottom: 18 }}>
-                {/* Status Doughnut */}
+                {/* Smart Status Summary */}
                 <div style={cardStyle}>
                     <div style={headerStyle}>
                         <CheckCircle size={18} color="#22c55e" />
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>สถานะการสำเร็จ (ปัจจุบัน)</span>
                     </div>
-                    <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Doughnut data={statusChartData} options={statusDrilldownOptions} />
+                    <div className="smart-status-grid">
+                        {statusRows.map(row => (
+                            <button
+                                type="button"
+                                key={row.label}
+                                className={`smart-status-card smart-status-${row.valueStatus}`}
+                                onClick={() => openStatusDetail(row)}
+                                style={{ '--smart-accent': row.color }}
+                            >
+                                <span className="smart-status-label">{row.label}</span>
+                                <strong>{Number(row.value || 0).toLocaleString('th-TH')}</strong>
+                                <small>{percentOf(row.value, statusTotal)} · {row.description}</small>
+                            </button>
+                        ))}
                     </div>
-                    <div style={{ textAlign: 'center', marginTop: 8, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                        รวม {stats.totalCandidates} คน | คาดว่าสำเร็จ {((stats.expectedGraduates / stats.totalCandidates) * 100).toFixed(1)}%
+                    {statusSummary.hasNoChartableData ? (
+                        <div className="smart-empty-state">รอข้อมูลจริง / sync หรืออัปโหลดข้อมูลก่อน</div>
+                    ) : (
+                        <div className="smart-stacked-bar" aria-label="สัดส่วนสถานะการสำเร็จ">
+                            {statusRows.map(row => {
+                                const width = statusTotal ? (Number(row.value || 0) / statusTotal) * 100 : 0;
+                                if (width <= 0) return null;
+                                return (
+                                    <button
+                                        type="button"
+                                        key={row.label}
+                                        className="smart-stacked-segment"
+                                        style={{ width: `${Math.max(width, 1.2)}%`, background: row.color }}
+                                        onClick={() => openStatusDetail(row)}
+                                        aria-label={`${row.label} ${percentOf(row.value, statusTotal)}`}
+                                    />
+                                );
+                            })}
+                        </div>
+                    )}
+                    <div className="smart-chart-note">
+                        รวม {statusTotal.toLocaleString('th-TH')} คน · {graduationSourceNote}
                     </div>
                 </div>
 

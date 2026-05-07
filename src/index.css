@@ -12488,6 +12488,218 @@ button,
     0 0 0 5px rgba(0, 104, 56, 0.08);
 }
 
+/* Smart chart states: distinguishes actual zero, missing, and fallback values. */
+.smart-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.smart-status-card {
+  appearance: none;
+  width: 100%;
+  min-height: 104px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--smart-accent, #22c55e) 32%, var(--border-color));
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--smart-accent, #22c55e) 12%, transparent), transparent),
+    var(--bg-card);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.smart-status-card:hover,
+.smart-status-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--smart-accent, #22c55e) 62%, var(--border-color));
+  box-shadow: 0 18px 36px -28px color-mix(in srgb, var(--smart-accent, #22c55e) 70%, transparent);
+  outline: none;
+}
+
+.smart-status-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--smart-accent, #22c55e) 78%, var(--text-primary));
+}
+
+.smart-status-card strong {
+  display: block;
+  font-size: 1.65rem;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.smart-status-card small {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.smart-status-zero {
+  opacity: 0.72;
+}
+
+.smart-status-missing {
+  border-style: dashed;
+  opacity: 0.62;
+}
+
+.smart-status-fallback {
+  border-style: dashed;
+}
+
+.smart-stacked-bar {
+  display: flex;
+  width: 100%;
+  height: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+
+.smart-stacked-segment {
+  appearance: none;
+  min-width: 8px;
+  height: 100%;
+  border: 0;
+  cursor: pointer;
+  opacity: 0.94;
+  transition: opacity 0.16s ease, filter 0.16s ease;
+}
+
+.smart-stacked-segment:hover,
+.smart-stacked-segment:focus-visible {
+  opacity: 1;
+  filter: brightness(1.12);
+  outline: none;
+}
+
+.smart-chart-note,
+.smart-chart-subtitle {
+  margin-top: 10px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.smart-chart-subtitle {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.smart-empty-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border: 1px dashed color-mix(in srgb, var(--text-primary) 18%, transparent);
+  border-radius: 14px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-card) 80%, transparent);
+  text-align: center;
+  font-weight: 700;
+}
+
+.smart-empty-state.compact {
+  min-height: 64px;
+  padding: 12px;
+  font-size: 0.78rem;
+}
+
+.smart-patent-summary {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.42fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, #f59e0b 26%, var(--border-color));
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.12), transparent 58%),
+    color-mix(in srgb, var(--bg-card) 92%, transparent);
+}
+
+.smart-patent-total span,
+.smart-patent-total small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.smart-patent-total strong {
+  display: block;
+  margin: 5px 0;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.smart-mini-bar-list {
+  display: grid;
+  gap: 8px;
+}
+
+.smart-mini-bar-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(80px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+}
+
+.smart-mini-bar-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+}
+
+.smart-mini-bar-track > div {
+  height: 100%;
+  min-width: 6px;
+  border-radius: inherit;
+}
+
+.section-header [data-tooltip]::after,
+.filter-bar [data-tooltip]::after {
+  top: auto;
+  bottom: calc(100% + 9px);
+  transform: translate(-50%, 4px);
+}
+
+.section-header [data-tooltip]:hover::after,
+.section-header [data-tooltip]:focus-visible::after,
+.filter-bar [data-tooltip]:hover::after,
+.filter-bar [data-tooltip]:focus-visible::after {
+  transform: translate(-50%, 0);
+}
+
+@media (max-width: 900px) {
+  .smart-status-grid,
+  .smart-patent-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .smart-mini-bar-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .smart-mini-bar-track {
+    grid-column: 1 / -1;
+  }
+}
+
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
 

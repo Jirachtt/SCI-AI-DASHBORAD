@@ -35,6 +35,7 @@ import {
     isTrustedForExecutiveAdvice,
 } from '../utils/aiAdvicePolicy';
 import { coerceStructuredAIResponseMarkdown } from '../utils/aiChartResponse';
+import { getDatasetQualityForAI } from '../utils/smartChartData';
 
 const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
 if (!GEMINI_PROXY_ENDPOINT) {
@@ -753,6 +754,8 @@ function buildBaseInstruction() {
     const liveResearchData = getSharedDashboardDatasetSync('research') || researchData;
     const liveHrData = getSharedDashboardDatasetSync('hr') || hrData;
     const liveStrategicData = getSharedDashboardDatasetSync('strategic') || strategicData;
+    const graduationMeta = getSharedDashboardDatasetMetaSync('graduation');
+    const researchMeta = getSharedDashboardDatasetMetaSync('research');
     const scienceStudentStats = liveStudentStatsData.scienceFaculty || studentStatsData.scienceFaculty || {};
     const scienceByLevelRows = Array.isArray(scienceStudentStats.byLevel) ? scienceStudentStats.byLevel : [];
     const scienceByMajorRows = Array.isArray(scienceStudentStats.byMajor) && scienceStudentStats.byMajor.length > 0
@@ -831,6 +834,7 @@ Data Freshness: ข้อมูลในระบบอัปเดตล่า�
 Mandate:
 • MUST answer every question resolvable from the DATA below. Never refuse when data exists.
 • MUST NOT fabricate numbers. If data is genuinely absent → state: "ข้อมูลนี้ไม่มีในระบบปัจจุบัน แต่มีข้อมูลที่เกี่ยวข้อง ได้แก่..." then list available related data.
+• DATA QUALITY RULE: Treat missing/null/undefined as "ยังไม่มีข้อมูลจริง"; treat numeric 0 as "ศูนย์จริง" only when the source says actual/live; if source quality is fallback, say "ข้อมูลสำรอง/รอ sync" instead of presenting it as official.
 • MUST NOT substitute unrelated data (e.g. ถามบุคลากร → ห้ามตอบนิสิต, ถามงานวิจัย → ห้ามตอบงบประมาณ)
 • When google_search is available → search site:mju.ac.th for real-time info and cite sources.
 • **PREFER ACTION OVER ASKING.** When user says "สร้างกราฟ/แสดง/ดู X" → ALWAYS produce at least one chart from the best-matching data, even if the request is ambiguous. Do NOT respond with options/menus — generate the chart(s) directly.
@@ -928,6 +932,7 @@ ${buildStudentStatsContextForAI()}
 ${buildStudentStatsContextForAI().split('\n').find(line => line.startsWith('ตามปีเข้า/รหัสนักศึกษา:')) || 'ตามปีเข้า/รหัสนักศึกษา: ไม่มีข้อมูล'}
 
 ### TABLE: graduation_current (ปีการศึกษาปัจจุบัน ${graduationCurrent.semester || '-'})
+- dataQuality: ${getDatasetQualityForAI('graduation', 'สถิติสำเร็จการศึกษา', graduationMeta, { calculated: true })}; note=สถานะปัจจุบันเป็นการคำนวณจาก GPA และชั้นปี ไม่ใช่ผลอนุมัติจบจริงจาก Reg
 - ผู้มีสิทธิ์รับปริญญา(ปี4): ${graduationCurrent.totalCandidates ?? '-'}คน
 - คาดว่าสำเร็จ: ${graduationCurrent.expectedGraduates ?? '-'} | รอพินิจ: ${graduationCurrent.pending ?? '-'} | ไม่ผ่านเกณฑ์: ${graduationCurrent.notPassed ?? '-'}
 - GPA เฉลี่ยผู้มีสิทธิ์: ${graduationCurrent.avgGPA ?? '-'}
@@ -936,6 +941,7 @@ ${buildStudentStatsContextForAI().split('\n').find(line => line.startsWith('ต�
 - แยกสาขา: ${graduationMajors.map(m => `${m.major}(${m.total}คน,คาดสำเร็จ${m.rate}%,GPA${m.avgGPA})`).join(' | ')}
 
 ### TABLE: research (คณะวิทยาศาสตร์)
+- dataQuality: ${getDatasetQualityForAI('research', 'งานวิจัย', researchMeta)}; rule=ถ้า quality=fallback ให้บอกว่าเป็นข้อมูลสำรอง/รอ sync ไม่ใช่ข้อมูล official live
 - overview: publications=${researchOverview.totalPublications ?? '-'}, funding=${researchOverview.totalFunding ?? '-'}ล้านบาท, patents=${researchOverview.totalPatents ?? '-'}, citations=${researchOverview.totalCitations ?? '-'}, h-index=${researchOverview.hIndex ?? '-'}, activeProjects=${researchOverview.activeProjects ?? '-'}
 - publicationTrend: ${researchPublicationTrend.map(p => `${p.year}(${p.type || 'actual'}):scopus=${p.scopus},tci1=${p.tci1},total=${p.total}`).join(', ')}
 - byDepartment: ${researchDepartments.map(d => `${d.dept}(pub=${d.publications},fund=${d.funding}M,pat=${d.patents},cite=${d.citations})`).join(' | ')}
