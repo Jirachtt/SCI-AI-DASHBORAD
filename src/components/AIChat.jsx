@@ -21,6 +21,10 @@ function loadAIChatPageModule() {
 }
 
 const FALLBACK_QUICK_ACTIONS = [
+    { label: 'วิชาไหนยาก', query: 'วิชาไหนยากที่สุดในคณะวิทยาศาสตร์ จากข้อมูลเกรดที่เว็บมีอยู่ตอนนี้', icon: MessageCircle, requiredSections: ['course_analytics'] },
+    { label: 'เกียรตินิยม', query: 'เกียรตินิยมต้องทำยังไงสำหรับนักศึกษาคณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้', icon: MessageCircle, requiredSections: ['academic_rules'] },
+    { label: 'สมัคร TCAS', query: 'TCAS สมัครเรียนมหาวิทยาลัยแม่โจ้ต้องทำยังไง และดูประกาศล่าสุดจากที่ไหน', icon: MessageCircle },
+    { label: 'แม่โจ้อยู่ที่ไหน', query: 'มหาวิทยาลัยแม่โจ้อยู่ที่ไหน ติดต่อได้ทางไหน', icon: MessageCircle },
     { label: 'ถามข้อมูล ม.แม่โจ้', query: 'สรุปข้อมูลมหาวิทยาลัยแม่โจ้ที่ควรรู้', icon: MessageCircle },
     { label: 'สรุป Dashboard', query: 'สรุปภาพรวม Dashboard ที่ฉันมีสิทธิ์ดู', icon: MessageCircle, requiredSections: ['dashboard'] },
     { label: 'ค่าธรรมเนียม', query: 'สรุปข้อมูลค่าธรรมเนียมที่ฉันมีสิทธิ์ดู', icon: MessageCircle, requiredSections: ['tuition'] },

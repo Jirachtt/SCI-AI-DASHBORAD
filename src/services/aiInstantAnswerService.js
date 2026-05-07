@@ -19,6 +19,10 @@ import { buildAIAccessDeniedResult, canAIUseAnyInternalSection } from '../utils/
 import { isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
 import { getStudentReconciliationSnapshot } from './dataAccuracyService';
 import { getDatasetQualityText } from '../utils/smartChartData';
+import {
+    findMaejoStudentFaqAnswer,
+    formatMaejoFaqSources,
+} from '../data/maejoStudentFaqData';
 
 const CHART_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
 
@@ -95,6 +99,25 @@ function buildStudentRowsUnavailableAnswer(topic = 'รายชื่อหร�
         text: `ตอนนี้ยังยืนยัน${topic}จากข้อมูลจริงไม่ได้ครับ เพราะรายชื่อในระบบยังเป็น **sample/generated** ไม่ใช่รายชื่อจริงจาก Reg/คณะ\n\n${officialText}\n\nถ้าต้องการให้ AI ตอบรายชื่อรายคน, GPA รายคน, กลุ่มเสี่ยง GPA < 2.00 หรือกราฟที่ใช้ GPA จริง ให้ใช้ไฟล์ CSV/XLSX export จาก Reg/คณะ แล้วอัปโหลดเข้า Admin Data Upload ก่อน ระบบจะใช้ไฟล์นั้นแทน sample ทันที\n\n_แหล่งข้อมูล: ยอดรวมใช้ MJU Dashboard; รายชื่อรายคนในระบบตอนนี้ = ${rec.studentSourceLabel} (${rec.studentRosterAccuracyLabel}); ${rec.studentRowsSummary}_`,
         chart: null,
     };
+}
+
+function getCourseAnalyticsDataset() {
+    const liveCourseData = getSharedDashboardDatasetSync('course_analytics');
+    return liveCourseData && Array.isArray(liveCourseData.gradeDistributions)
+        ? liveCourseData
+        : courseAnalyticsData;
+}
+
+function courseAnalyticsSourceLine(data = getCourseAnalyticsDataset()) {
+    const meta = getSharedDashboardDatasetMetaSync('course_analytics');
+    const status = getDatasetQualityText(meta);
+    const updated = meta?.updatedAt ? `, อัปเดต ${meta.updatedAt.toLocaleString('th-TH')}` : '';
+    const source = meta?.sourceUrl ? ` — ${meta.sourceUrl}` : '';
+    const gradeStatus = data?.dataStatus?.gradeDistribution;
+    const caveat = meta?.isLive
+        ? 'ใช้ข้อมูลรายวิชา live/upload ที่ sync เข้าระบบ'
+        : `ใช้ข้อมูลที่เว็บมีอยู่ตอนนี้${gradeStatus ? ` (${gradeStatus})` : ''}; รอ Reg export/API เพื่อยืนยันเป็นทางการ`;
+    return `_แหล่งข้อมูล: Course & Grade Analytics (${status}${updated})${source}; ${caveat}_`;
 }
 
 function getScienceStudents() {
@@ -579,13 +602,229 @@ function chartForCourse(course) {
     };
 }
 
+function courseGradeStats(course = {}) {
+    const grades = course.grades || {};
+    const enrolled = Number(course.enrolled) || sum(Object.values(grades));
+    const count = (...keys) => keys.reduce((total, key) => total + Number(grades[key] || 0), 0);
+    const lowGradeCount = count('C', 'D', 'F', 'U', 'W');
+    const failCount = count('F', 'U');
+    return {
+        enrolled,
+        lowGradeCount,
+        failCount,
+        lowGradeRate: enrolled ? (lowGradeCount / enrolled) * 100 : 0,
+        failRate: enrolled ? (failCount / enrolled) * 100 : 0,
+    };
+}
+
+export function rankCourseDifficulty(courseAnalytics = getCourseAnalyticsDataset()) {
+    const courses = Array.isArray(courseAnalytics?.gradeDistributions)
+        ? courseAnalytics.gradeDistributions
+        : [];
+    return courses
+        .map(course => {
+            const stats = courseGradeStats(course);
+            const avgGpa = Number(course.avgGpa);
+            const gpaPenalty = Number.isFinite(avgGpa) ? Math.max(0, 4 - avgGpa) : 0;
+            const difficultyScore = (gpaPenalty * 25) + (stats.lowGradeRate * 0.55) + (stats.failRate * 0.9);
+            return {
+                code: course.code,
+                title: course.title,
+                semester: course.semester,
+                enrolled: stats.enrolled,
+                avgGpa: Number.isFinite(avgGpa) ? avgGpa : null,
+                lowGradeRate: stats.lowGradeRate,
+                failRate: stats.failRate,
+                difficultyScore,
+                grades: course.grades || {},
+            };
+        })
+        .sort((a, b) => {
+            const gpaA = a.avgGpa ?? 99;
+            const gpaB = b.avgGpa ?? 99;
+            if (Math.abs(gpaA - gpaB) > 0.05) return gpaA - gpaB;
+            return b.lowGradeRate - a.lowGradeRate || b.failRate - a.failRate;
+        })
+        .map((course, index) => ({ ...course, difficultyRank: index + 1 }));
+}
+
+function chartForCourseDifficulty(rows = [], mode = 'hard') {
+    const labels = rows.map(row => `${row.code || ''} ${row.title || ''}`.trim());
+    const data = mode === 'easy'
+        ? rows.map(row => Number(row.avgGpa || 0))
+        : rows.map(row => Number(row.lowGradeRate || 0));
+    return {
+        chartType: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: mode === 'easy' ? 'GPA เฉลี่ยรายวิชา' : 'สัดส่วน C/D/F/U/W (%)',
+                data,
+                backgroundColor: labels.map((_, index) => `${CHART_COLORS[index % CHART_COLORS.length]}cc`),
+                borderColor: labels.map((_, index) => CHART_COLORS[index % CHART_COLORS.length]),
+                borderWidth: 1,
+                borderRadius: 6,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { position: 'bottom' },
+                title: {
+                    display: true,
+                    text: mode === 'easy' ? 'รายวิชาที่เกรดเฉลี่ยสูงจากข้อมูลในระบบ' : 'รายวิชาที่ควรเฝ้าระวังจากเกรดต่ำ',
+                },
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: { display: true, text: mode === 'easy' ? 'GPA เฉลี่ย' : 'เปอร์เซ็นต์' },
+                },
+            },
+        },
+    };
+}
+
+function buildCoursePlanAnswer(courseAnalytics, question) {
+    const q = normalizeText(question);
+    const yearMatch = q.match(/ปี\s*([1-4])/);
+    const targetYear = yearMatch ? Number(yearMatch[1]) : 1;
+    const plan = (courseAnalytics.coursePlanByYear || []).find(item => Number(item.year) === targetYear);
+    if (!plan) return null;
+
+    const rows = (plan.semesters || []).flatMap(semester =>
+        (semester.courses || []).map(course => ({ ...course, semester: semester.semester }))
+    );
+    const courseRows = rows.map((course, index) => {
+        const tag = course.crossMajor ? 'ข้ามสาขาได้' : (course.major || 'เฉพาะสาขา');
+        return `${index + 1}. ${course.code} ${course.title} (${course.credits} หน่วยกิต, ${course.semester}) - ${tag}`;
+    }).join('\n');
+
+    return {
+        text:
+            `**รายวิชาที่นักศึกษาปี ${targetYear} ควรดูจากแผนเรียนในระบบ**\n\n` +
+            `${courseRows || 'ยังไม่มีรายการรายวิชาในระบบ'}\n\n` +
+            courseAnalyticsSourceLine(courseAnalytics),
+        chart: null,
+    };
+}
+
+function buildFeaturedCourseAnswer(courseAnalytics, question) {
+    const q = normalizeText(question);
+    if (!/น่าสนใจ|แนะนำ|เรียนอะไรดี|ต่อยอด|เด่น/.test(q)) return null;
+    const courses = Array.isArray(courseAnalytics.featuredCourses) ? courseAnalytics.featuredCourses : [];
+    if (!courses.length) return null;
+
+    const rows = courses
+        .slice()
+        .sort((a, b) => Number(b.interestScore || 0) - Number(a.interestScore || 0))
+        .slice(0, 6);
+    const textRows = rows.map((course, index) =>
+        `${index + 1}. ${course.code} ${course.title} - คะแนนความน่าสนใจ ${formatNumber(course.interestScore)}: ${course.reason || '-'}`
+    ).join('\n');
+
+    return {
+        text: `**รายวิชาน่าสนใจจากข้อมูลในระบบ**\n\n${textRows}\n\n${courseAnalyticsSourceLine(courseAnalytics)}`,
+        chart: isChartIntent(q) ? {
+            chartType: 'bar',
+            data: {
+                labels: rows.map(row => `${row.code} ${row.title}`),
+                datasets: [{
+                    label: 'คะแนนความน่าสนใจ',
+                    data: rows.map(row => Number(row.interestScore || 0)),
+                    backgroundColor: '#059669cc',
+                    borderColor: '#059669',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { position: 'bottom' },
+                    title: { display: true, text: 'รายวิชาน่าสนใจจาก Course Analytics' },
+                },
+                scales: { x: { beginAtZero: true, title: { display: true, text: 'คะแนน' } } },
+            },
+        } : null,
+    };
+}
+
+function buildCourseDifficultyAnswer(question) {
+    const q = normalizeText(question);
+    const isCourseQuestion = /รายวิชา|วิชา|course|เกรดรายวิชา|กระจายเกรด|grade|gpa|sci\d{3}|csc\d{3}|sta\d{3}|mat\d{3}|che\d{3}|phy\d{3}/i.test(q);
+    const planIntent = /ต้องลง|ลงอะไร|แผนเรียน|ปี\s*[1-4]/.test(q);
+    const asksDifficulty = /ยาก|ง่าย|เกรดดี|เกรดสูง|เสี่ยง\s*f|เสี่ยงตก|ติด\s*f|ไม่ผ่าน|ผ่านยาก|น่าสนใจ|แนะนำ|เรียนอะไรดี|ต้องลง|ลงอะไร|ปี\s*[1-4]/i.test(q);
+    if ((!isCourseQuestion && !planIntent) || !asksDifficulty) return null;
+
+    const courseAnalytics = getCourseAnalyticsDataset();
+    const planAnswer = /ต้องลง|ลงอะไร|แผนเรียน|ปี\s*[1-4]/.test(q)
+        ? buildCoursePlanAnswer(courseAnalytics, question)
+        : null;
+    if (planAnswer) return planAnswer;
+
+    const featuredAnswer = buildFeaturedCourseAnswer(courseAnalytics, question);
+    if (featuredAnswer) return featuredAnswer;
+
+    const ranked = rankCourseDifficulty(courseAnalytics);
+    if (!ranked.length) {
+        return {
+            text:
+                '**ยังไม่มีข้อมูล grade distribution รายวิชาในระบบที่ใช้จัดอันดับได้**\n\n' +
+                'ถ้าต้องการตอบเรื่องวิชาไหนยาก/ง่ายแบบยืนยัน ควรอัปโหลดไฟล์ Reg export หรือ sync course_analytics จาก API ก่อน\n\n' +
+                courseAnalyticsSourceLine(courseAnalytics),
+            chart: null,
+        };
+    }
+
+    const easyMode = /ง่าย|เกรดดี|เกรดสูง/.test(q) && !/ยาก|เสี่ยง|ตก|ไม่ผ่าน/.test(q);
+    const failMode = /เสี่ยง\s*f|เสี่ยงตก|ติด\s*f|ไม่ผ่าน|ผ่านยาก/.test(q);
+    const rows = easyMode
+        ? ranked.slice().sort((a, b) => (b.avgGpa ?? 0) - (a.avgGpa ?? 0) || a.lowGradeRate - b.lowGradeRate)
+        : failMode
+            ? ranked.slice().sort((a, b) => b.failRate - a.failRate || b.lowGradeRate - a.lowGradeRate)
+            : ranked;
+    const topRows = rows.slice(0, 5);
+    const title = easyMode
+        ? 'รายวิชาที่ดูง่าย/เกรดเฉลี่ยดีจากข้อมูลในระบบ'
+        : failMode
+            ? 'รายวิชาที่ควรเฝ้าระวังเรื่อง F/ไม่ผ่าน'
+            : 'รายวิชาที่ดูยากจากข้อมูลในระบบ';
+    const explanation = easyMode
+        ? 'จัดอันดับจาก GPA เฉลี่ยสูงและสัดส่วน C/D/F/U/W ต่ำ'
+        : failMode
+            ? 'จัดอันดับจากสัดส่วน F/U และเกรดต่ำ'
+            : 'จัดอันดับจาก GPA เฉลี่ยต่ำก่อน แล้วใช้สัดส่วน C/D/F/U/W เป็นตัวช่วยตัดสิน';
+
+    const textRows = topRows.map((course, index) =>
+        `${index + 1}. ${course.code} ${course.title}: GPA เฉลี่ย ${course.avgGpa == null ? '-' : formatNumber(course.avgGpa, 2)}, ` +
+        `C/D/F/U/W ${formatNumber(course.lowGradeRate, 1)}%, F/U ${formatNumber(course.failRate, 1)}%, ` +
+        `ผู้เรียน ${formatNumber(course.enrolled)} คน (${course.semester || '-'})`
+    ).join('\n');
+
+    let text = `**${title}**\n\n`;
+    text += `${explanation}\n\n${textRows}\n\n`;
+    text += 'หมายเหตุ: ความยากง่ายเป็น proxy จากข้อมูลเกรด ไม่ใช่การประกาศ official จากมหาวิทยาลัย ควรใช้ประกอบการวางแผนเรียน/ติวเสริมเท่านั้น\n\n';
+    text += courseAnalyticsSourceLine(courseAnalytics);
+
+    return {
+        text,
+        chart: isChartIntent(q) ? chartForCourseDifficulty(topRows, easyMode ? 'easy' : 'hard') : null,
+    };
+}
+
 function buildCourseGradeAnswer(question) {
     const q = normalizeText(question);
     const isCourseQuestion = /รายวิชา|วิชา|course|เกรดรายวิชา|กระจายเกรด|grade distribution|sci\d{3}|csc\d{3}|sta\d{3}|mat\d{3}|che\d{3}|phy\d{3}/i.test(q);
     if (!isCourseQuestion || !/เกรด|gpa|กระจาย|กราฟ|chart|รายวิชา|course/i.test(q)) return null;
 
     const requestedCode = q.match(/\b[a-z]{2,4}\d{3}\b/i)?.[0]?.toUpperCase();
-    const courses = courseAnalyticsData.gradeDistributions || [];
+    const courseAnalytics = getCourseAnalyticsDataset();
+    const courses = courseAnalytics.gradeDistributions || [];
     const course = requestedCode
         ? courses.find(item => item.code.toUpperCase() === requestedCode)
         : courses[0];
@@ -607,9 +846,25 @@ function buildCourseGradeAnswer(question) {
     text += `- จำนวนนักศึกษา: ${formatNumber(course.enrolled)} คน\n`;
     text += `- GPA เฉลี่ยรายวิชา: ${formatNumber(course.avgGpa, 2)}\n\n`;
     text += `${gradeRows}\n\n`;
-    text += `_แหล่งข้อมูล: ข้อมูลรายวิชา/grade distribution ที่เว็บมีอยู่ตอนนี้ (${courseAnalyticsData.dataStatus?.gradeDistribution || 'system data'})_`;
+    text += courseAnalyticsSourceLine(courseAnalytics);
 
     return { text, chart: chartForCourse(course) };
+}
+
+function buildMaejoStudentFaqAnswer(question) {
+    const match = findMaejoStudentFaqAnswer(question);
+    if (!match) return null;
+
+    const text =
+        `**${match.topic}**\n\n` +
+        `${match.answer}\n\n` +
+        `**แหล่งข้อมูลที่ใช้:**\n${formatMaejoFaqSources(match.sources || [])}`;
+
+    return {
+        text,
+        chart: null,
+        requiredSections: match.requiredSections || [],
+    };
 }
 
 function buildTcasAnswer(question) {
@@ -690,11 +945,13 @@ export function tryInstantAnswer(question, userContext = {}) {
     if (isExecutiveRecommendationIntent(question)) return null;
 
     const builders = [
+        { build: buildCourseDifficultyAnswer, sections: ['course_analytics'] },
         { build: buildCourseGradeAnswer, sections: ['course_analytics'] },
         { build: buildActivityAnswer, sections: ['student_life'] },
         { build: buildBudgetCautionAnswer, sections: ['budget_forecast', 'financial', 'faculty_budget'] },
         { build: buildStudentRiskTrendAnswer, sections: ['student_stats'] },
         { build: buildStudentMajorDeclineAnswer, sections: ['student_stats'] },
+        { build: buildMaejoStudentFaqAnswer, sections: [] },
         { build: buildTcasAnswer, sections: ['tcas_admissions'] },
         { build: buildStudentSummaryAnswer, sections: ['student_stats'] },
     ];
@@ -702,8 +959,9 @@ export function tryInstantAnswer(question, userContext = {}) {
     for (const { build, sections } of builders) {
         const result = build(question);
         if (!result) continue;
-        if (!canAIUseAnyInternalSection(userContext, sections)) {
-            return buildAIAccessDeniedResult(userContext, sections);
+        const effectiveSections = result.requiredSections || sections;
+        if (!canAIUseAnyInternalSection(userContext, effectiveSections)) {
+            return buildAIAccessDeniedResult(userContext, effectiveSections);
         }
         return result;
     }

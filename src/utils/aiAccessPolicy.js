@@ -19,6 +19,8 @@ const DOMAIN_SECTION_MAP = {
     strategic: ['strategic_overview'],
     student_life: ['student_life'],
     dashboard: ['dashboard'],
+    maejo_student_faq: [],
+    public_maejo: [],
 };
 
 export function resolveAIRole(roleOrUser) {

@@ -2340,6 +2340,11 @@ export function generateChartFromFile(parsed, fileName) {
 }
 
 export const MAIN_AI_QUICK_ACTIONS = [
+    { label: 'วิชาไหนยาก', query: 'วิชาไหนยากที่สุดในคณะวิทยาศาสตร์ จากข้อมูลเกรดที่เว็บมีอยู่ตอนนี้', icon: GraduationCap, group: 'analysis', requiredSections: ['course_analytics'] },
+    { label: 'วิชาเกรดดี', query: 'วิชาไหนเกรดเฉลี่ยดีหรือดูง่ายที่สุดจากข้อมูลรายวิชาในระบบ', icon: BarChart3, group: 'analysis', requiredSections: ['course_analytics'] },
+    { label: 'เกียรตินิยม', query: 'เกียรตินิยมต้องทำยังไงสำหรับนักศึกษาคณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้', icon: GraduationCap, group: 'student', requiredSections: ['academic_rules'] },
+    { label: 'สมัคร TCAS', query: 'TCAS สมัครเรียนมหาวิทยาลัยแม่โจ้ต้องทำยังไง และดูประกาศล่าสุดจากที่ไหน', icon: FileSpreadsheet, group: 'planning' },
+    { label: 'กิจกรรมเดือนนี้', query: 'กิจกรรมคณะวิทยาศาสตร์เดือนนี้มีอะไรบ้าง และชั่วโมงกิจกรรมเหลือเท่าไหร่', icon: Sparkles, group: 'student', requiredSections: ['student_life'] },
     { label: 'แผนรับ TCAS 5 ปี', query: 'สรุปแผนรับ TCAS คณะวิทยาศาสตร์ย้อนหลัง 5 ปี พร้อมแนวโน้มและรอบ 3 ปี 2569', icon: FileSpreadsheet, group: 'planning', requiredSections: ['tcas_admissions'] },
     { label: 'กราฟเกรดรายวิชา', query: 'สร้างกราฟการกระจายเกรดรายวิชา SCI331 และสรุป GPA เฉลี่ยรายวิชา', icon: BarChart3, group: 'analysis', requiredSections: ['course_analytics'] },
     { label: 'จำนวน+GPA ตามสาขา', query: 'สร้างกราฟจำนวนนักศึกษาและ GPA เฉลี่ย คณะวิทยาศาสตร์ แยกตามสาขา', icon: BarChart3, group: 'student', requiredSections: ['student_stats'] },
@@ -2375,6 +2380,12 @@ const DECISION_PROMPTS = [
 ];
 
 const SUGGESTED_PROMPTS = [
+    { label: 'วิชาไหนยาก', query: 'วิชาไหนยากที่สุดในคณะวิทยาศาสตร์ จากข้อมูลเกรดที่เว็บมีอยู่ตอนนี้', requiredSections: ['course_analytics'] },
+    { label: 'วิชาไหนเกรดดี', query: 'วิชาไหนเกรดเฉลี่ยดีหรือดูง่ายที่สุดจากข้อมูลรายวิชาในระบบ', requiredSections: ['course_analytics'] },
+    { label: 'เกียรตินิยมต้องทำยังไง', query: 'เกียรตินิยมต้องทำยังไงสำหรับนักศึกษาคณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้', requiredSections: ['academic_rules'] },
+    { label: 'TCAS สมัครยังไง', query: 'TCAS สมัครเรียนมหาวิทยาลัยแม่โจ้ต้องทำยังไง และดูประกาศล่าสุดจากที่ไหน' },
+    { label: 'กิจกรรมเดือนนี้', query: 'กิจกรรมคณะวิทยาศาสตร์เดือนนี้มีอะไรบ้าง และชั่วโมงกิจกรรมเหลือเท่าไหร่', requiredSections: ['student_life'] },
+    { label: 'แม่โจ้อยู่ที่ไหน', query: 'มหาวิทยาลัยแม่โจ้อยู่ที่ไหน ติดต่อได้ทางไหน' },
     { label: 'สร้างกราฟจำนวนนักศึกษาและเกรด', query: 'สร้างกราฟจำนวนนักศึกษาและเกรด', requiredSections: ['student_stats'] },
     { label: 'แม่โจ้มีกี่คณะ แต่ละคณะมีสาขาอะไร', query: 'แม่โจ้มีกี่คณะ แต่ละคณะมีสาขาอะไร' },
     { label: 'การรับสมัคร TCAS มีกี่รอบ', query: 'การรับสมัคร TCAS มีกี่รอบ', requiredSections: ['tcas_admissions'] },

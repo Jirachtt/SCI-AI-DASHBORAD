@@ -36,6 +36,10 @@ import {
 } from '../utils/aiAdvicePolicy';
 import { coerceStructuredAIResponseMarkdown } from '../utils/aiChartResponse';
 import { getDatasetQualityForAI } from '../utils/smartChartData';
+import {
+    getMaejoStudentFaqContext,
+    MAEJO_OFFICIAL_SOURCE_DOMAINS,
+} from '../data/maejoStudentFaqData';
 
 const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
 if (!GEMINI_PROXY_ENDPOINT) {
@@ -349,6 +353,7 @@ const CONTEXT_SOURCE_LABELS = {
     student_life: 'Student life dataset',
     dashboard: 'Dashboard summary dataset',
     sci_ai_dashboard_local_first: 'SCI AI Dashboard local-first context',
+    maejo_student_faq: 'Maejo student FAQ / official public knowledge',
     trusted_external_fallback: 'Trusted external public sources',
 };
 
@@ -543,9 +548,10 @@ function isGeneralMaejoQuery(msg) {
 function shouldUseWebSearch(msg) {
     const q = String(msg || '').toLowerCase();
     if (/\b6\d{9}\b/.test(q)) return false;
+    if (/กราฟ|chart|json_chart|plot|แผนภูมิ|แผนภาพ|course_analytics|วิชาไหนยาก|วิชาไหนง่าย|เกรดรายวิชา|กระจายเกรด|grade distribution/.test(q)) return false;
+    if (isDashboardDataQuery(q)) return false;
     if (isMaejoPublicFallbackQuery(q)) return true;
     if (isGeneralMaejoQuery(q)) return true;
-    if (isDashboardDataQuery(q)) return false;
 
     // Skip search for chart/data/forecast/student/research/strategic queries (use dashboard data instead)
     const skipKeywords = ['กราฟ', 'chart', 'json_chart', 'พยากรณ์', 'forecast', 'คาดการณ์',
@@ -1363,6 +1369,10 @@ function courseAnalyticsContext(options = {}) {
     return `รายวิชา เกรด และจุดเด่นสาขา (${live.sourceLabel}):\n${JSON.stringify(live.data)}`;
 }
 
+function maejoStudentFaqContext(userMessage) {
+    return getMaejoStudentFaqContext(userMessage, { limit: 5 });
+}
+
 function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) {
     const q = String(userMessage || '').toLowerCase();
     const role = resolveAIRole(userContext);
@@ -1370,6 +1380,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const adviceMode = isExecutiveRecommendationIntent(userMessage);
     const contextOptions = { adviceMode };
     const candidates = [
+        { id: 'maejo_student_faq', sections: [], keywords: /แม่โจ้|maejo|mju|สมัคร|tcas|ลงทะเบียน|ค่าเทอม|ค่าธรรมเนียม|เกียรตินิยม|กฎ|ระเบียบ|กิจกรรม|ชั่วโมง|รายวิชา|วิชา|ที่ตั้ง|ติดต่อ|เบอร์|โทร|คณะวิทย์|คณะวิทยาศาสตร์|เรียนอะไร|เรียนที่ไหน|หอพัก|ปฏิทิน|ประกาศ/i, text: () => maejoStudentFaqContext(userMessage) },
         { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี|tcas|admission|รับสมัคร|รับเข้า|รอบ/, text: () => studentAggregateContext(includeStudentRows, contextOptions) },
         { id: 'tcas', sections: ['tcas_admissions'], keywords: /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|รอบ\s*tcas|portfolio|quota|ผลกระทบ|ออกกี่คน|ค่าเทอมรวม/i, text: () => tcasContext(contextOptions) },
         { id: 'course_analytics', sections: ['course_analytics'], keywords: /รายวิชา|วิชา|course|เกรดรายวิชา|กระจายเกรด|แผนเรียน|ข้ามสาขา|จุดเด่นสาขา|เชี่ยวชาญ|expertise/i, text: () => courseAnalyticsContext(contextOptions) },
@@ -1424,7 +1435,10 @@ ${privateLookup ? '- คำถามนี้มีลักษณะข้อ�
 }
 
 function maejoTrustedFallbackContext() {
-    return `เมื่อต้องใช้ข้อมูลนอกเว็บเรา ให้เรียงความน่าเชื่อถือดังนี้:
+    return `Official Maejo/public source priority domains: ${MAEJO_OFFICIAL_SOURCE_DOMAINS.join(', ')}
+ถ้าใช้แหล่งอื่นที่ไม่ใช่โดเมนแม่โจ้ ให้บอกว่าเป็นแหล่งภายนอกประกอบเท่านั้น และห้ามใช้เว็บนอกเพื่อเลี่ยงสิทธิ์ข้อมูลภายในที่ role นี้เข้าไม่ถึง
+
+เมื่อต้องใช้ข้อมูลนอกเว็บเรา ให้เรียงความน่าเชื่อถือดังนี้:
 1. เว็บไซต์ทางการของมหาวิทยาลัยแม่โจ้และหน่วยงานภายใน เช่น mju.ac.th, admission.mju.ac.th, reg.mju.ac.th, education.mju.ac.th, science.mju.ac.th
 2. ประกาศ PDF/ข่าวทางการจากมหาวิทยาลัยหรือคณะ
 3. แหล่งรัฐหรือระบบ TCAS ที่เกี่ยวข้อง
@@ -1501,6 +1515,8 @@ TOKEN SAVING RULES:
 - ถ้าถามรายชื่อหรือสถานะค้างจ่ายค่าธรรมเนียมรายบุคคล ให้ใช้เฉพาะข้อมูลในระบบที่มีสิทธิ์เท่านั้น ห้ามเดารายชื่อและห้ามอ้างว่าเว็บสาธารณะมีข้อมูลรายบุคคล; ถ้าเว็บเรายังไม่มี field ชำระเงิน ให้บอกว่าไม่มีข้อมูลส่วนนี้ในระบบ พร้อมเสนอว่าต้องเชื่อมฐานทะเบียน/การเงิน แต่สามารถให้ข้อมูลประกาศ/กำหนดการชำระค่าธรรมเนียมจากแหล่งทางการได้
 - ถ้าเป็นข้อมูลที่อาจเปลี่ยนบ่อย ต้องบอกตามข้อมูลล่าสุดที่ค้นได้ และถ้าไม่พบหลักฐานให้บอกว่าไม่พบข้อมูลล่าสุดแทนการเดา
 - Source priority: ใช้ context ที่ระบุว่า realtime/live ก่อนเสมอ; ถ้ายังไม่มี realtime ให้ใช้ context ที่ระบุว่า "ข้อมูลที่เว็บใช้อยู่ตอนนี้" เพื่อคำนวณ/สร้างกราฟไปก่อน พร้อมบอกแหล่งข้อมูลให้ชัดเจน
+- สำหรับคำถามรายวิชา/วิชาไหนยาก/ง่าย ให้ใช้ course_analytics ที่ retrieve ได้ก่อน ถ้าเป็น fallback/seed ให้ตอบแบบ best-effort พร้อม caveat เรื่องรอ Reg export/API ห้ามตอบตัดบทว่าไม่มี API หาก context มี gradeDistribution อยู่แล้ว
+- Maejo student FAQ เป็น public knowledge ใช้ตอบคำถามง่ายๆ ของนักศึกษาได้ทุก role แต่ข้อมูลรายบุคคล/งบ/HR/ยุทธศาสตร์ภายในยังต้องเคารพสิทธิ์ role เดิม
 - ถ้า context มี snapshot ปัจจุบันแต่ไม่มี time-series ให้ตอบเป็นข้อสังเกตจาก snapshot, ระบุข้อจำกัด, และเสนอ next action เชิงปฏิบัติได้ ห้ามตอบแบบตัดบทว่าไม่สามารถวิเคราะห์ได้
 - ถ้าจะคำนวณ พยากรณ์ หรือสร้างกราฟ ต้องคำนวณจากตัวเลขใน RETRIEVED CONTEXTS เท่านั้น ห้ามเดาหรือเติมตัวเลขเอง
 - ใช้เฉพาะ context ที่เกี่ยวข้องจาก retrieval ด้านล่าง ไม่ต้องอ่านทุกหน้าเว็บ
