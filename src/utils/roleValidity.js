@@ -1,6 +1,8 @@
 export const ROLE_DURATION_YEARS = {
     dean: 4,
     chair: 4,
+    executive: 4,
+    instructor: 10,
     staff: 10,
     student: 6,
     general: 1,
@@ -9,6 +11,8 @@ export const ROLE_DURATION_YEARS = {
 export const ROLE_DURATION_LABELS = {
     dean: '4 ปี',
     chair: '4 ปี',
+    executive: '4 ปี',
+    instructor: '10 ปี',
     staff: '10 ปี',
     student: '6 ปี',
     general: '1 ปี',

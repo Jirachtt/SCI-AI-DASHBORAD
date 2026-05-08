@@ -29,6 +29,8 @@ const AuthContext = createContext(null);
 const ROLE_LABELS_BY_ROLE = {
     dean: 'คณบดี (Dean)',
     chair: 'ประธานหลักสูตร (Chair)',
+    executive: 'ผู้บริหารมหาวิทยาลัย (Executive)',
+    instructor: 'อาจารย์ (Instructor)',
     staff: 'เจ้าหน้าที่ (Staff)',
     general: 'ผู้ใช้ทั่วไป (General)',
     student: 'นักศึกษา (Student)',
@@ -43,6 +45,37 @@ const normalizeRoleLabel = (role, roleLabel, fallback = 'นักศึกษ�
         return ROLE_LABELS_BY_ROLE.dean;
     }
     return current;
+};
+
+const hasManualRoleOverride = (userData = {}, nextRole) => {
+    const currentRole = userData.role;
+    return Boolean(
+        currentRole &&
+        nextRole &&
+        currentRole !== nextRole &&
+        (userData.approvedBy || userData.roleManagedBy || userData.roleOverride || userData.canManageUsers || userData.systemAdmin)
+    );
+};
+
+const preserveManualRolePatch = (mjuPatch = {}, claims = {}) => {
+    const identityPatch = { ...mjuPatch };
+    const detectedRole = identityPatch.role;
+    const detectedRoleLabel = identityPatch.roleLabel;
+    [
+        'role',
+        'roleLabel',
+        'roleStartedAt',
+        'roleExpiresAt',
+        'roleDurationYears',
+        'roleManagedAt',
+        'status',
+    ].forEach(key => { delete identityPatch[key]; });
+    if (!claims.photoURL) delete identityPatch.avatar;
+    return {
+        ...identityPatch,
+        mjuDetectedRole: detectedRole,
+        mjuDetectedRoleLabel: detectedRoleLabel,
+    };
 };
 
 const hasMjuSsoClaims = (claims = {}) => Boolean(
@@ -68,7 +101,7 @@ const buildMjuUserPatchFromClaims = (claims = {}, currentUser, createdAt = new D
         avatar: claims.photoURL || (role === 'student' ? 'ST' : 'MJU'),
         photoURL: claims.photoURL || null,
         status: 'approved',
-        authProvider: 'mju_sso',
+        authProvider: claims.authProvider || 'mju_sso',
         mjuVerified: true,
         mjuId: claims.mjuId || claims.studentId || claims.studentID || claims.studentCode || claims.employeeId || claims.personID || claims.humanID || claims.username || null,
         studentId: claims.studentId || claims.studentID || claims.studentCode || null,
@@ -85,6 +118,26 @@ const firebaseUnavailable = () => ({
     error: 'ระบบ Firebase ยังไม่ได้ตั้งค่า Environment Variables บน Vercel กรุณาตั้งค่า VITE_FIREBASE_* ก่อนใช้ล็อกอิน/สมัครสมาชิก'
 });
 
+const buildAdminBypassUser = () => {
+    const validity = buildRoleValidityPatch('dean', new Date());
+    return {
+        uid: 'admin-bypass-' + Date.now(),
+        email: 'dean@mju.ac.th',
+        name: 'คณบดี (Admin)',
+        avatar: '👨‍💼',
+        role: 'dean',
+        assignedRole: 'dean',
+        roleLabel: 'คณบดี (Dean)',
+        assignedRoleLabel: 'คณบดี (Dean)',
+        status: 'approved',
+        authProvider: 'admin_code_fallback',
+        isAdminCodeSession: true,
+        isPrivilegedAdmin: true,
+        ...validity,
+        roleValidity: getRoleValidity({ role: 'dean', ...validity })
+    };
+};
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -97,18 +150,12 @@ export function AuthProvider({ children }) {
         const checkBypass = () => {
             const isBypass = localStorage.getItem('admin_bypass');
             if (isBypass === 'true') {
+                if (isFirebaseConfigured && auth) {
+                    localStorage.removeItem('admin_bypass');
+                    return false;
+                }
                 console.log("Restoring Admin Bypass session");
-                const validity = buildRoleValidityPatch('dean', new Date());
-                setUser({
-                    uid: 'admin-bypass-' + Date.now(),
-                    email: 'dean@mju.ac.th',
-                    name: 'คณบดี (Admin)',
-                    avatar: '👨‍💼',
-                    role: 'dean',
-                    roleLabel: 'คณบดี (Dean)',
-                    ...validity,
-                    roleValidity: getRoleValidity({ role: 'dean', ...validity })
-                });
+                setUser(buildAdminBypassUser());
                 setLoading(false);
                 return true;
             }
@@ -170,7 +217,10 @@ export function AuthProvider({ children }) {
                     if (userDoc.exists()) {
                         let userData = userDoc.data();
                         if (isMjuSsoLogin) {
-                            const mjuPatch = buildMjuUserPatchFromClaims(claims, currentUser, userData.createdAt || new Date().toISOString());
+                            const rawMjuPatch = buildMjuUserPatchFromClaims(claims, currentUser, userData.createdAt || new Date().toISOString());
+                            const mjuPatch = hasManualRoleOverride(userData, rawMjuPatch.role)
+                                ? preserveManualRolePatch(rawMjuPatch, claims)
+                                : rawMjuPatch;
                             await updateDoc(userDocRef, mjuPatch).catch((err) => {
                                 console.warn('[Auth] Failed to update MJU SSO role:', err?.message || err);
                             });
@@ -262,18 +312,31 @@ export function AuthProvider({ children }) {
     }, []);
 
     const loginWithAdminCode = async (code) => {
-        if (code === 'admin313') {
-            const validity = buildRoleValidityPatch('dean', new Date());
-            const adminUser = {
-                uid: 'admin-bypass-' + Date.now(),
-                email: 'dean@mju.ac.th',
-                name: 'คณบดี (Admin)',
-                avatar: '👨‍💼',
-                role: 'dean',
-                roleLabel: 'คณบดี (Dean)',
-                ...validity,
-                roleValidity: getRoleValidity({ role: 'dean', ...validity })
-            };
+        const trimmedCode = String(code || '').trim();
+        if (auth) {
+            try {
+                const response = await fetch('/api/admin-code-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: trimmedCode }),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data?.token) {
+                    localStorage.removeItem('admin_bypass');
+                    await signInWithCustomToken(auth, data.token);
+                    return { success: true };
+                }
+                if (response.status === 401) {
+                    return { success: false, error: 'รหัสผ่านไม่ถูกต้อง' };
+                }
+                console.warn('[Auth] Admin custom-token login unavailable:', data?.message || data?.error || response.status);
+            } catch (err) {
+                console.warn('[Auth] Admin custom-token login failed, using local fallback:', err?.message || err);
+            }
+        }
+
+        if (trimmedCode === 'admin313') {
+            const adminUser = buildAdminBypassUser();
             localStorage.setItem('admin_bypass', 'true');
             setUser(adminUser);
             return { success: true };

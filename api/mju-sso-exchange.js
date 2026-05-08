@@ -90,14 +90,41 @@ export function firstValue(data, keys) {
   return '';
 }
 
+function envList(name) {
+  return String(process.env[name] || '')
+    .split(',')
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function hasExecutiveSignal(text = '') {
+  return /executive|vice[_\s-]?president|president|rector|prorector|university[_\s-]?admin|รองอธิการ|อธิการบดี|ผู้บริหาร/i.test(text);
+}
+
+function hasInstructorSignal(text = '') {
+  return /teacher|lecturer|faculty|instructor|professor|อาจารย์|ผู้สอน|คณาจารย์/i.test(text);
+}
+
+function hasStaffSignal(text = '') {
+  return /staff|employee|officer|เจ้าหน้าที่|บุคลากร/i.test(text);
+}
+
 function normalizeRole(data = {}) {
   const raw = firstValue(data, ['role', 'mjuRole', 'mju_user_role', 'userType', 'mjuUserType', 'type']).toLowerCase();
   const studentId = firstValue(data, ['studentId', 'studentID', 'studentCode']);
   const staffId = firstValue(data, ['employeeId', 'personID', 'humanID']);
   const id = firstValue(data, ['mjuId', 'studentId', 'studentID', 'studentCode', 'employeeId', 'personID', 'humanID', 'username', 'userId', 'uid']);
+  const email = firstValue(data, ['email', 'mail', 'e_mail']).toLowerCase();
+  const executiveEmails = envList('MJU_EXECUTIVE_EMAILS');
+  const roleText = [
+    raw,
+    firstValue(data, ['position', 'positionName', 'jobTitle', 'title', 'userGroup', 'personType', 'personnelType', 'departmentRole']),
+  ].filter(Boolean).join(' ');
+  if (executiveEmails.includes(email) || hasExecutiveSignal(roleText)) return 'executive';
   if (['dean', 'คณบดี'].includes(raw)) return 'dean';
   if (['chair', 'program_chair', 'head', 'หัวหน้าหลักสูตร', 'ประธานหลักสูตร'].includes(raw)) return 'chair';
-  if (['staff', 'teacher', 'lecturer', 'faculty', 'employee', 'บุคลากร', 'อาจารย์', 'เจ้าหน้าที่'].includes(raw)) return 'staff';
+  if (hasInstructorSignal(roleText)) return 'instructor';
+  if (['staff', 'employee', 'บุคลากร', 'เจ้าหน้าที่'].includes(raw) || hasStaffSignal(roleText)) return 'staff';
   if (['student', 'นักศึกษา', 'นิสิต'].includes(raw)) return 'student';
   if (studentId) return 'student';
   if (staffId) return 'staff';

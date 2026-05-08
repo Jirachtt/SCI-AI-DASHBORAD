@@ -8,7 +8,7 @@ import {
     RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
     Database, ScrollText, ShieldCheck
 } from 'lucide-react';
-import { canAccess, getRoleBadgeColor, getRoleInfo, isPendingRole } from '../utils/accessControl';
+import { canManageUsers, getRoleBadgeColor, getRoleInfo, isPendingRole } from '../utils/accessControl';
 import {
     addRoleMonths,
     buildRoleValidityPatch,
@@ -25,17 +25,19 @@ import AdminAutoSyncPanel from '../components/AdminAutoSyncPanel';
 import AdminDataAccuracyPanel from '../components/AdminDataAccuracyPanel';
 import ExportPDFButton from '../components/ExportPDFButton';
 
-const MANAGEABLE_ROLES = ['dean', 'chair', 'staff', 'general', 'student'];
+const MANAGEABLE_ROLES = ['dean', 'executive', 'chair', 'instructor', 'staff', 'general', 'student'];
 const ROLE_LABELS = {
     dean: 'คณบดี (Dean)',
+    executive: 'ผู้บริหารมหาวิทยาลัย (Executive)',
     chair: 'ประธานหลักสูตร (Chair)',
+    instructor: 'อาจารย์ (Instructor)',
     staff: 'เจ้าหน้าที่ (Staff)',
     general: 'ผู้ใช้ทั่วไป (General)',
     student: 'นักศึกษา (Student)',
     pending_staff: 'รอการอนุมัติ (Staff)',
     pending_chair: 'รอการอนุมัติ (Chair)'
 };
-const AVATAR_BY_ROLE = { dean: 'D', chair: 'C', staff: 'S', general: 'U', student: 'U' };
+const AVATAR_BY_ROLE = { dean: 'D', executive: 'E', chair: 'C', instructor: 'I', staff: 'S', general: 'U', student: 'U' };
 const DEMO_USERS = [
     {
         uid: 'demo-pending-staff',
@@ -140,7 +142,7 @@ export default function AdminPanelPage() {
     const [toast, setToast] = useState(null); // { type, message }
     const [savingUid, setSavingUid] = useState(null);
 
-    const canViewPanel = canAccess(user?.role, 'admin_panel');
+    const canViewPanel = canManageUsers(user);
     const isAdminBypass = user?.uid?.startsWith('admin-bypass-');
 
     const showToast = useCallback((type, message) => {
@@ -201,6 +203,8 @@ export default function AdminPanelPage() {
     const stats = useMemo(() => ({
         total: users.length,
         pending: pendingUsers.length,
+        executive: users.filter(u => u.role === 'executive').length,
+        instructor: users.filter(u => u.role === 'instructor').length,
         staff: users.filter(u => u.role === 'staff').length,
         chair: users.filter(u => u.role === 'chair').length,
         expiring: users.filter(u => hasManageableRoleTerm(u) && getRoleValidity(u).status === 'expiring').length,
@@ -272,9 +276,10 @@ export default function AdminPanelPage() {
     const handleApprove = async (u) => {
         const requested = u.requestedRole || (u.role === 'pending_staff' ? 'staff' : 'chair');
         const info = getRoleInfo(requested);
+        const roleLabel = ROLE_LABELS[requested] || (info?.label ? `${info.label} (${requested.charAt(0).toUpperCase() + requested.slice(1)})` : requested);
         const patch = {
             role: requested,
-            roleLabel: info?.label ? `${info.label} (${requested.charAt(0).toUpperCase() + requested.slice(1)})` : ROLE_LABELS[requested],
+            roleLabel,
             avatar: AVATAR_BY_ROLE[requested] || 'U',
             status: 'approved',
             approvedBy: user?.uid || user?.email || 'admin',
@@ -409,6 +414,24 @@ export default function AdminPanelPage() {
                         <h2 className="admin-stat-value" style={{ color: stats.pending > 0 ? '#F59E0B' : undefined }}>
                             {stats.pending}
                         </h2>
+                    </div>
+                </div>
+                <div className="admin-stat-card">
+                    <div className="admin-stat-icon" style={{ background: 'rgba(124,58,237,0.15)', color: '#7C3AED' }}>
+                        <ShieldCheck size={22} />
+                    </div>
+                    <div>
+                        <p className="admin-stat-label">ผู้บริหาร (Executive)</p>
+                        <h2 className="admin-stat-value">{stats.executive}</h2>
+                    </div>
+                </div>
+                <div className="admin-stat-card">
+                    <div className="admin-stat-icon" style={{ background: 'rgba(14,116,144,0.15)', color: '#0E7490' }}>
+                        <IdCard size={22} />
+                    </div>
+                    <div>
+                        <p className="admin-stat-label">อาจารย์ (Instructor)</p>
+                        <h2 className="admin-stat-value">{stats.instructor}</h2>
                     </div>
                 </div>
                 <div className="admin-stat-card">
@@ -577,7 +600,9 @@ export default function AdminPanelPage() {
                             <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
                                 <option value="all">ทุกตำแหน่ง</option>
                                 <option value="dean">คณบดี (Dean)</option>
+                                <option value="executive">ผู้บริหารมหาวิทยาลัย (Executive)</option>
                                 <option value="chair">ประธานหลักสูตร (Chair)</option>
+                                <option value="instructor">อาจารย์ (Instructor)</option>
                                 <option value="staff">เจ้าหน้าที่ (Staff)</option>
                                 <option value="general">ผู้ใช้ทั่วไป (General)</option>
                                 <option value="student">นักศึกษา (Student)</option>

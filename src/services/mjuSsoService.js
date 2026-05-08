@@ -175,6 +175,18 @@ export function clearMjuSsoState() {
     sessionStorage.removeItem(SSO_RETURN_KEY);
 }
 
+function hasExecutiveSignal(text = '') {
+    return /executive|vice[_\s-]?president|president|rector|prorector|university[_\s-]?admin|รองอธิการ|อธิการบดี|ผู้บริหาร/i.test(text);
+}
+
+function hasInstructorSignal(text = '') {
+    return /teacher|lecturer|faculty|instructor|professor|อาจารย์|ผู้สอน|คณาจารย์/i.test(text);
+}
+
+function hasStaffSignal(text = '') {
+    return /staff|employee|officer|เจ้าหน้าที่|บุคลากร/i.test(text);
+}
+
 export function normalizeMjuRoleFromClaims(claims = {}) {
     const raw = String(
         claims.role ||
@@ -187,10 +199,28 @@ export function normalizeMjuRoleFromClaims(claims = {}) {
     const studentId = String(claims.studentId || claims.studentID || claims.studentCode || '');
     const staffId = String(claims.employeeId || claims.personID || claims.humanID || '');
     const mjuId = String(claims.mjuId || studentId || staffId || claims.username || '');
+    const email = String(claims.email || claims.mail || claims.e_mail || '').toLowerCase();
+    const executiveEmails = String(import.meta.env.VITE_MJU_EXECUTIVE_EMAILS || '')
+        .split(',')
+        .map(item => item.trim().toLowerCase())
+        .filter(Boolean);
+    const roleText = [
+        raw,
+        claims.position,
+        claims.positionName,
+        claims.jobTitle,
+        claims.title,
+        claims.userGroup,
+        claims.personType,
+        claims.personnelType,
+        claims.departmentRole,
+    ].filter(Boolean).join(' ');
 
+    if (executiveEmails.includes(email) || hasExecutiveSignal(roleText)) return 'executive';
     if (['dean', 'คณบดี'].includes(raw)) return 'dean';
     if (['chair', 'program_chair', 'head', 'หัวหน้าหลักสูตร', 'ประธานหลักสูตร'].includes(raw)) return 'chair';
-    if (['staff', 'teacher', 'lecturer', 'faculty', 'employee', 'บุคลากร', 'อาจารย์', 'เจ้าหน้าที่'].includes(raw)) return 'staff';
+    if (hasInstructorSignal(roleText)) return 'instructor';
+    if (['staff', 'employee', 'บุคลากร', 'เจ้าหน้าที่'].includes(raw) || hasStaffSignal(roleText)) return 'staff';
     if (['student', 'นิสิต', 'นักศึกษา'].includes(raw)) return 'student';
     if (studentId) return 'student';
     if (staffId) return 'staff';
@@ -202,7 +232,9 @@ export function roleLabelForMjuRole(role) {
     const labels = {
         dean: 'คณบดี (MJU SSO)',
         chair: 'ประธานหลักสูตร (MJU SSO)',
-        staff: 'บุคลากร/อาจารย์ (MJU SSO)',
+        executive: 'ผู้บริหารมหาวิทยาลัย (MJU SSO)',
+        instructor: 'อาจารย์ (MJU SSO)',
+        staff: 'เจ้าหน้าที่ (MJU SSO)',
         student: 'นักศึกษา (MJU SSO)',
         general: 'ผู้ใช้ทั่วไป (MJU SSO)',
     };

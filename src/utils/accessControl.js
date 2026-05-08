@@ -40,6 +40,38 @@ const ACCESS_LEVELS = {
             'academic_rules'
         ]
     },
+    executive: {
+        label: 'ผู้บริหารมหาวิทยาลัย',
+        level: 2,
+        dataRows: 750000,
+        color: '#7C3AED',
+        sections: [
+            'dashboard', 'tuition', 'tuition_detail',
+            'financial', 'financial_detail', 'financial_faculty', 'student_life',
+            'student_life_detail', 'faculty_budget', 'reports',
+            'budget_planning', 'graduation_check',
+            'student_stats', 'budget_forecast',
+            'tcas_admissions', 'course_analytics',
+            'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
+            'graduation_stats',
+            'alert_center',
+            'academic_rules'
+        ]
+    },
+    instructor: {
+        label: 'อาจารย์',
+        level: 3,
+        dataRows: 200000,
+        color: '#0E7490',
+        sections: [
+            'dashboard', 'student_life', 'student_life_detail',
+            'graduation_check', 'student_stats',
+            'tcas_admissions', 'course_analytics',
+            'research_overview', 'ai_chat',
+            'graduation_stats',
+            'academic_rules'
+        ]
+    },
     staff: {
         label: 'Staff',
         level: 3,
@@ -109,6 +141,16 @@ export function getRoleBadgeColor(role) {
 export function getDataRowLimit(role) {
     const info = ACCESS_LEVELS[role];
     return info ? info.dataRows : 100000;
+}
+
+export function canManageUsers(userOrRole) {
+    const role = typeof userOrRole === 'string' ? userOrRole : userOrRole?.role;
+    return Boolean(
+        role === 'dean' ||
+        userOrRole?.canManageUsers ||
+        userOrRole?.systemAdmin ||
+        userOrRole?.isPrivilegedAdmin
+    );
 }
 
 export function isPendingRole(role) {

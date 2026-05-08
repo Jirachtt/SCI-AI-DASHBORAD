@@ -1,6 +1,6 @@
 import { canAccess, getRoleInfo } from './accessControl';
 
-const UNRESTRICTED_AI_ROLES = new Set(['dean', 'chair']);
+const UNRESTRICTED_AI_ROLES = new Set(['dean']);
 
 const DOMAIN_SECTION_MAP = {
     students: ['student_stats', 'student_list'],

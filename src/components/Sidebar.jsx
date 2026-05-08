@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { canAccess, getRoleBadgeColor } from '../utils/accessControl';
+import { canAccess, canManageUsers, getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
 import { getAITokenBudgetSnapshot } from '../services/geminiService';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
@@ -115,6 +115,9 @@ export default function Sidebar({ isOpen, onClose }) {
     }, [settingsOpen]);
 
     const badgeColor = getRoleBadgeColor(user?.role);
+    const hasSectionAccess = (section) => section === 'admin_panel'
+        ? canManageUsers(user)
+        : canAccess(user?.role, section);
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -156,7 +159,8 @@ export default function Sidebar({ isOpen, onClose }) {
                 })()}
 
                 {menuGroups.map((group) => {
-                    const hasAnyAccess = group.items.some(item => canAccess(user?.role, item.section));
+                    const hasAnyAccess = group.items.some(item => hasSectionAccess(item.section));
+                    if (group.id === 'admin' && !hasAnyAccess) return null;
                     if (!hasAnyAccess && group.id !== 'home') {
                         // Still render label for visual structure; items will show lock icons
                     }
@@ -167,7 +171,7 @@ export default function Sidebar({ isOpen, onClose }) {
                             <div className="nav-section-items">
                                 {group.items.map(item => {
                                     const Icon = item.icon;
-                                    const hasAccess = canAccess(user?.role, item.section);
+                                    const hasAccess = hasSectionAccess(item.section);
                                     const warm = () => { if (hasAccess) prefetchRoute(item.path); };
                                     return (
                                         <NavLink

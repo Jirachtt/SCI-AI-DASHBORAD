@@ -2357,7 +2357,9 @@ export const MAIN_AI_QUICK_ACTIONS = [
 
 const ROLE_DISPLAY = {
     dean: 'คณบดี',
+    executive: 'ผู้บริหารมหาวิทยาลัย',
     chair: 'ประธานหลักสูตร',
+    instructor: 'อาจารย์',
     staff: 'เจ้าหน้าที่',
     student: 'นักศึกษา',
     general: 'ผู้ใช้ทั่วไป',
