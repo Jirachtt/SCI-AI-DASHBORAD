@@ -232,7 +232,7 @@ export function roleLabelForMjuRole(role) {
     const labels = {
         dean: 'คณบดี (MJU SSO)',
         chair: 'ประธานหลักสูตร (MJU SSO)',
-        executive: 'ผู้บริหารมหาวิทยาลัย (MJU SSO)',
+        executive: 'ผู้บริหาร (Executive)',
         instructor: 'อาจารย์ (MJU SSO)',
         staff: 'เจ้าหน้าที่ (MJU SSO)',
         student: 'นักศึกษา (MJU SSO)',

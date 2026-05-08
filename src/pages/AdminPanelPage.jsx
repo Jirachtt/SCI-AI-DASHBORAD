@@ -25,10 +25,10 @@ import AdminAutoSyncPanel from '../components/AdminAutoSyncPanel';
 import AdminDataAccuracyPanel from '../components/AdminDataAccuracyPanel';
 import ExportPDFButton from '../components/ExportPDFButton';
 
-const MANAGEABLE_ROLES = ['dean', 'executive', 'chair', 'instructor', 'staff', 'general', 'student'];
+const MANAGEABLE_ROLES = ['executive', 'dean', 'chair', 'instructor', 'staff', 'student', 'general'];
 const ROLE_LABELS = {
     dean: 'คณบดี (Dean)',
-    executive: 'ผู้บริหารมหาวิทยาลัย (Executive)',
+    executive: 'ผู้บริหาร (Executive)',
     chair: 'ประธานหลักสูตร (Chair)',
     instructor: 'อาจารย์ (Instructor)',
     staff: 'เจ้าหน้าที่ (Staff)',
@@ -599,13 +599,13 @@ export default function AdminPanelPage() {
                             <Filter size={16} />
                             <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
                                 <option value="all">ทุกตำแหน่ง</option>
+                                <option value="executive">ผู้บริหาร (Executive)</option>
                                 <option value="dean">คณบดี (Dean)</option>
-                                <option value="executive">ผู้บริหารมหาวิทยาลัย (Executive)</option>
                                 <option value="chair">ประธานหลักสูตร (Chair)</option>
                                 <option value="instructor">อาจารย์ (Instructor)</option>
                                 <option value="staff">เจ้าหน้าที่ (Staff)</option>
-                                <option value="general">ผู้ใช้ทั่วไป (General)</option>
                                 <option value="student">นักศึกษา (Student)</option>
+                                <option value="general">ผู้ใช้ทั่วไป (General)</option>
                                 <option value="pending_staff">รออนุมัติ: Staff</option>
                                 <option value="pending_chair">รออนุมัติ: Chair</option>
                             </select>

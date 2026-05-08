@@ -41,7 +41,7 @@ const ACCESS_LEVELS = {
         ]
     },
     executive: {
-        label: 'ผู้บริหารมหาวิทยาลัย',
+        label: 'ผู้บริหาร',
         level: 2,
         dataRows: 750000,
         color: '#7C3AED',

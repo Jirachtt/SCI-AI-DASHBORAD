@@ -29,7 +29,7 @@ const AuthContext = createContext(null);
 const ROLE_LABELS_BY_ROLE = {
     dean: 'คณบดี (Dean)',
     chair: 'ประธานหลักสูตร (Chair)',
-    executive: 'ผู้บริหารมหาวิทยาลัย (Executive)',
+    executive: 'ผู้บริหาร (Executive)',
     instructor: 'อาจารย์ (Instructor)',
     staff: 'เจ้าหน้าที่ (Staff)',
     general: 'ผู้ใช้ทั่วไป (General)',

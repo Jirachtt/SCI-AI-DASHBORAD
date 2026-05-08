@@ -2357,7 +2357,7 @@ export const MAIN_AI_QUICK_ACTIONS = [
 
 const ROLE_DISPLAY = {
     dean: 'คณบดี',
-    executive: 'ผู้บริหารมหาวิทยาลัย',
+    executive: 'ผู้บริหาร',
     chair: 'ประธานหลักสูตร',
     instructor: 'อาจารย์',
     staff: 'เจ้าหน้าที่',
@@ -2411,6 +2411,8 @@ export default function AIChatPage() {
     const [historyOpen, setHistoryOpen] = useState(false);
     const [sessions, setSessions] = useState([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
+    const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+    const [systemInfoOpen, setSystemInfoOpen] = useState(false);
     const sessionIdRef = useRef(null);
     const saveTimerRef = useRef(null);
     const lastSavedRef = useRef(null);
@@ -2446,6 +2448,12 @@ export default function AIChatPage() {
         .filter(group => group.actions.length > 0);
     const decisionPrompts = DECISION_PROMPTS.filter(prompt => canAIUseAction(user, prompt));
     const suggestedPrompts = SUGGESTED_PROMPTS.filter(prompt => canAIUseAction(user, prompt));
+    const featuredQuickActions = [
+        { label: 'วิเคราะห์นักศึกษา', query: 'วิเคราะห์ภาพรวมนักศึกษาคณะวิทยาศาสตร์จากข้อมูลล่าสุด', icon: GraduationCap, requiredSections: ['student_stats'] },
+        { label: 'สร้างกราฟ', query: 'สร้างกราฟจำนวนนักศึกษาและเกรด', icon: BarChart3, requiredSections: ['student_stats'] },
+        { label: 'พยากรณ์', query: 'พยากรณ์งบประมาณคณะวิทย์ ปี 70 71', icon: ChartLine, requiredSections: ['budget_forecast'] },
+        { label: 'ค้นหาข้อมูล', query: 'นักศึกษาที่มี GPA สูงสุด 10 คน', icon: Search, requiredSections: ['student_list'] },
+    ].filter(action => canAIUseAction(user, action));
     const [messages, setMessages] = useState([
         {
             role: 'bot',
@@ -2906,6 +2914,129 @@ export default function AIChatPage() {
         { icon: Maximize2, title: 'ขยาย/ซูมกราฟ', desc: 'คลิก "ขยาย" เพื่อดูกราฟเต็มจอพร้อมซูม', color: '#f43f5e', gradient: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)' },
     ];
 
+    const handleQuickMenuAction = (query) => {
+        setQuickMenuOpen(false);
+        handleQuickAction(query);
+    };
+
+    const renderChatInput = (variant = 'default') => {
+        const isMinimal = variant === 'minimal';
+        return (
+            <div className={`ai-chat-page-input-wrapper ${isMinimal ? 'minimal' : 'standard'}`}>
+                {uploadedFileData && (
+                    <div className="ai-chat-file-pill">
+                        <FileSpreadsheet size={14} />
+                        <span>ไฟล์ที่โหลด: {uploadedFileData.rowCount} แถว × {uploadedFileData.headers.length} คอลัมน์ — ถามคำถามเกี่ยวกับข้อมูลนี้ได้เลย</span>
+                        <button
+                            type="button"
+                            onClick={() => setUploadedFileData(null)}
+                            aria-label="ล้างไฟล์ที่อัปโหลด"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+                )}
+                <div className={`ai-chat-page-input-area ${isMinimal ? 'minimal' : ''}`}>
+                    <button
+                        className={`ai-chat-tool-btn ai-chat-tool-btn-upload ${uploadedFileData ? 'has-file' : ''}`}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={typing}
+                        aria-label="อัปโหลดไฟล์ CSV/Excel เพื่อวิเคราะห์"
+                        data-tooltip="อัปโหลดไฟล์"
+                    >
+                        <Paperclip size={18} />
+                    </button>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        accept=".csv,.tsv,.txt,.xlsx,.xls"
+                        style={{ display: 'none' }}
+                    />
+                    <input
+                        type="text"
+                        placeholder={isListening ? "กำลังฟัง..." : "ถามข้อมูลคณะ สร้างกราฟ หรือแนบไฟล์เพื่อวิเคราะห์..."}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        disabled={typing}
+                    />
+                    <div className="ai-chat-command-menu-wrap">
+                        <button
+                            type="button"
+                            className={`ai-chat-tool-btn ai-chat-command-menu-btn ${quickMenuOpen ? 'active' : ''}`}
+                            onClick={() => setQuickMenuOpen(value => !value)}
+                            disabled={typing}
+                            aria-expanded={quickMenuOpen}
+                            aria-label="เปิดคำสั่งลัด"
+                        >
+                            <Zap size={16} />
+                            <span>คำสั่งลัด</span>
+                        </button>
+                        {quickMenuOpen && (
+                            <div className="ai-chat-command-menu" role="menu">
+                                {quickActionGroups.map((group) => {
+                                    const GroupIcon = group.icon;
+                                    return (
+                                        <section key={group.id} className="ai-chat-command-menu-section">
+                                            <div className="ai-chat-command-menu-title">
+                                                <GroupIcon size={14} />
+                                                <span>{group.title}</span>
+                                            </div>
+                                            <div className="ai-chat-command-menu-list">
+                                                {group.actions.map((action) => {
+                                                    const ActionIcon = action.icon;
+                                                    return (
+                                                        <button
+                                                            key={action.label}
+                                                            type="button"
+                                                            onClick={() => handleQuickMenuAction(action.query)}
+                                                            role="menuitem"
+                                                        >
+                                                            <ActionIcon size={14} />
+                                                            <span>{action.label}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </section>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        className={`ai-chat-tool-btn ai-chat-system-info-btn ${systemInfoOpen ? 'active' : ''}`}
+                        onClick={() => setSystemInfoOpen(value => !value)}
+                        aria-expanded={systemInfoOpen}
+                        aria-label="ดูข้อมูลระบบที่ AI ใช้อยู่"
+                    >
+                        <Database size={16} />
+                        <span>ข้อมูลระบบ</span>
+                    </button>
+                    <button
+                        className={`ai-chat-tool-btn ai-chat-tool-btn-voice ${isListening ? 'listening' : ''}`}
+                        onClick={toggleListening}
+                        disabled={typing}
+                        aria-label="สั่งงานด้วยเสียง (ภาษาไทย)"
+                        data-tooltip="สั่งงานด้วยเสียง"
+                    >
+                        {isListening ? <Mic size={18} /> : <MicOff size={18} />}
+                    </button>
+                    <button className="ai-chat-page-send" onClick={handleSend} disabled={typing || !input.trim()} aria-label="ส่งคำถาม">
+                        <Send size={20} />
+                    </button>
+                </div>
+                {!isMinimal && (
+                    <div className="ai-chat-page-input-hint">
+                        กด Enter เพื่อส่ง • แนบไฟล์ CSV/TSV/Excel • สั่งด้วยเสียง • AI อาจตอบผิดพลาดได้
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     const hasStartedConversation = messages.some(msg => msg.role === 'user');
     const startsWithWelcomeMessage = messages[0]?.role === 'bot' && !messages[0]?.chart && messages[0]?.text?.includes(AI_ASSISTANT_NAME);
     const showCommandCenter = !hasStartedConversation;
@@ -2930,6 +3061,13 @@ export default function AIChatPage() {
                     </div>
                 </div>
                 <div className="ai-chat-page-header-actions">
+                    <button
+                        className="ai-chat-page-history-btn ai-chat-page-system-btn"
+                        onClick={() => setSystemInfoOpen(true)}
+                        aria-label="ดูข้อมูลระบบที่ AI ใช้อยู่"
+                    >
+                        <Database size={15} /> ข้อมูลระบบ
+                    </button>
                     {canPersist && (
                         <button
                             className="ai-chat-page-history-btn"
@@ -3017,6 +3155,39 @@ export default function AIChatPage() {
             <div className="ai-chat-page-body">
                 {/* Main Chat Area */}
                 <div className="ai-chat-page-main">
+                    {showCommandCenter && (
+                        <section className="ai-minimal-welcome" aria-label="เริ่มถาม Science Decision AI">
+                            <div className="ai-minimal-orb">
+                                <Sparkles size={24} />
+                            </div>
+                            <p className="ai-minimal-kicker">Science Decision AI</p>
+                            <h2>วันนี้อยากวิเคราะห์อะไรอยู่</h2>
+                            <p className="ai-minimal-subtitle">
+                                ถามข้อมูลคณะ สร้างกราฟ พยากรณ์ หรือแนบไฟล์ให้ AI ช่วยอ่านได้ทันที
+                            </p>
+                            <div className="ai-minimal-input-shell">
+                                {renderChatInput('minimal')}
+                            </div>
+                            <div className="ai-minimal-pills" aria-label="คำสั่งแนะนำ">
+                                {featuredQuickActions.map((action) => {
+                                    const ActionIcon = action.icon;
+                                    return (
+                                        <button
+                                            key={action.label}
+                                            type="button"
+                                            className="ai-minimal-pill"
+                                            onClick={() => handleQuickAction(action.query)}
+                                            disabled={typing}
+                                        >
+                                            <ActionIcon size={15} />
+                                            {action.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    )}
+
                     {showCommandCenter && (
                         <section className="ai-command-briefing" aria-label="AI dashboard briefing">
                             <div className="ai-command-briefing-copy">
@@ -3107,6 +3278,7 @@ export default function AIChatPage() {
                     </div>
 
                     {/* Input Area */}
+                    {!showCommandCenter && renderChatInput('default')}
                     <div className="ai-chat-page-input-wrapper">
                         {uploadedFileData && (
                             <div className="ai-chat-file-pill">
@@ -3223,6 +3395,114 @@ export default function AIChatPage() {
                     </div>
                 </div>
             </div>
+
+            {systemInfoOpen && (
+                <div className="ai-system-info-backdrop" onClick={() => setSystemInfoOpen(false)}>
+                    <aside className="ai-system-info-panel" onClick={(event) => event.stopPropagation()} aria-label="ข้อมูลระบบที่ AI ใช้อยู่">
+                        <div className="ai-system-info-head">
+                            <div>
+                                <span>ข้อมูลระบบ</span>
+                                <strong>บริบทที่ AI ใช้ตอบคำถาม</strong>
+                            </div>
+                            <button type="button" onClick={() => setSystemInfoOpen(false)} aria-label="ปิดข้อมูลระบบ">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="ai-system-info-section">
+                            <h4><Database size={15} /> Context ที่พร้อมใช้งาน</h4>
+                            <div className="ai-context-source-list compact">
+                                {contextSources.map((source) => (
+                                    <div key={source.label} className={`ai-context-source ${source.state}`}>
+                                        <div>
+                                            <span>{source.label}</span>
+                                            <strong>{source.value}</strong>
+                                        </div>
+                                        <small>{source.state === 'live' ? 'live' : source.state === 'idle' ? 'idle' : 'ready'}</small>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="ai-system-info-section">
+                            <h4><Gauge size={15} /> สถานะการอ่านข้อมูล</h4>
+                            <div className="ai-system-status-grid">
+                                {aiStatusCards.map((card) => {
+                                    const Icon = card.icon;
+                                    return (
+                                        <div key={card.label} className="ai-system-status-card" style={{ '--accent': card.color }}>
+                                            <Icon size={15} />
+                                            <span>{card.label}</span>
+                                            <strong>{card.value}</strong>
+                                            <small>{card.detail}</small>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {decisionPrompts.length > 0 && (
+                            <div className="ai-system-info-section">
+                                <h4><Zap size={15} /> คำถามเชิงตัดสินใจ</h4>
+                                <div className="ai-system-prompt-list">
+                                    {decisionPrompts.map((prompt) => (
+                                        <button
+                                            key={prompt.label}
+                                            type="button"
+                                            onClick={() => {
+                                                setSystemInfoOpen(false);
+                                                handleQuickAction(prompt.query);
+                                            }}
+                                            disabled={typing}
+                                        >
+                                            {prompt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="ai-system-info-section">
+                            <h4><Sparkles size={15} /> ความสามารถหลัก</h4>
+                            <div className="ai-system-feature-list">
+                                {featureCards.slice(0, 4).map((card) => {
+                                    const Icon = card.icon;
+                                    return (
+                                        <div key={card.title} className="ai-system-feature-item">
+                                            <span style={{ '--accent': card.color }}><Icon size={15} /></span>
+                                            <div>
+                                                <strong>{card.title}</strong>
+                                                <small>{card.desc}</small>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {suggestedPrompts.length > 0 && (
+                            <div className="ai-system-info-section">
+                                <h4><MessageCircle size={15} /> ตัวอย่างคำถาม</h4>
+                                <div className="ai-system-prompt-list">
+                                    {suggestedPrompts.slice(0, 6).map((prompt) => (
+                                        <button
+                                            key={prompt.label}
+                                            type="button"
+                                            onClick={() => {
+                                                setSystemInfoOpen(false);
+                                                handleQuickAction(prompt.query);
+                                            }}
+                                            disabled={typing}
+                                        >
+                                            {prompt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </aside>
+                </div>
+            )}
 
             {/* Expanded Chart Modal */}
             {expandedChart && (
