@@ -4,24 +4,22 @@ import { Chart as ChartJS } from 'chart.js';
 const ThemeContext = createContext();
 const THEME_STORAGE_KEY = 'mju-theme';
 const THEME_DEFAULT_VERSION_KEY = 'mju-theme-default-version';
-const DARK_DEFAULT_VERSION = '2026-05-dark-default';
+const LIGHT_DEFAULT_VERSION = '2026-05-light-default';
 
 function getInitialTheme() {
     try {
         const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
         const defaultVersion = localStorage.getItem(THEME_DEFAULT_VERSION_KEY);
 
-        if (defaultVersion !== DARK_DEFAULT_VERSION) {
-            localStorage.setItem(THEME_DEFAULT_VERSION_KEY, DARK_DEFAULT_VERSION);
-            if (!storedTheme || storedTheme === 'light') {
-                localStorage.setItem(THEME_STORAGE_KEY, 'dark');
-                return 'dark';
-            }
+        if (defaultVersion !== LIGHT_DEFAULT_VERSION) {
+            localStorage.setItem(THEME_DEFAULT_VERSION_KEY, LIGHT_DEFAULT_VERSION);
+            localStorage.setItem(THEME_STORAGE_KEY, 'light');
+            return 'light';
         }
 
-        return storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'dark';
+        return storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'light';
     } catch {
-        return 'dark';
+        return 'light';
     }
 }
 
