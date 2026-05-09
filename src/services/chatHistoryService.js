@@ -11,6 +11,7 @@
 import {
     collection, addDoc, updateDoc, doc, getDoc, getDocs,
     query, where, deleteDoc, serverTimestamp,
+    writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -87,4 +88,33 @@ export async function loadChatSession(sessionId) {
 export async function deleteChatSession(sessionId) {
     if (!sessionId) return;
     await deleteDoc(doc(db, COLLECTION, sessionId));
+}
+
+export async function deleteAllUserSessions(uid) {
+    if (!uid) return 0;
+    const q = query(collection(db, COLLECTION), where('uid', '==', uid));
+    const snap = await getDocs(q);
+    if (snap.empty) return 0;
+
+    let batch = writeBatch(db);
+    let batchCount = 0;
+    let deletedCount = 0;
+
+    for (const sessionDoc of snap.docs) {
+        batch.delete(sessionDoc.ref);
+        batchCount += 1;
+        deletedCount += 1;
+
+        if (batchCount >= 450) {
+            await batch.commit();
+            batch = writeBatch(db);
+            batchCount = 0;
+        }
+    }
+
+    if (batchCount > 0) {
+        await batch.commit();
+    }
+
+    return deletedCount;
 }

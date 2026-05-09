@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import {
     createChatSession, updateChatSession, listUserSessions,
-    loadChatSession, deleteChatSession,
+    loadChatSession, deleteChatSession, deleteAllUserSessions,
 } from '../services/chatHistoryService';
 import { Chart as ReactChart } from 'react-chartjs-2';
 import {
@@ -2411,6 +2411,7 @@ export default function AIChatPage() {
     const [historyOpen, setHistoryOpen] = useState(false);
     const [sessions, setSessions] = useState([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
+    const [deletingAllHistory, setDeletingAllHistory] = useState(false);
     const [quickMenuOpen, setQuickMenuOpen] = useState(false);
     const [systemInfoOpen, setSystemInfoOpen] = useState(false);
     const sessionIdRef = useRef(null);
@@ -2626,6 +2627,36 @@ export default function AIChatPage() {
             console.warn('[chatHistory] delete failed:', err?.message || err);
         }
     }, []);
+
+    const handleDeleteAllSessions = useCallback(async () => {
+        if (!canPersist || !user?.uid || deletingAllHistory || sessions.length === 0) return;
+        if (!confirm(`ลบประวัติการสนทนาทั้งหมด ${sessions.length} รายการถาวร?`)) return;
+
+        setDeletingAllHistory(true);
+        try {
+            await deleteAllUserSessions(user.uid);
+            if (saveTimerRef.current) {
+                clearTimeout(saveTimerRef.current);
+                saveTimerRef.current = null;
+            }
+            resetConversation();
+            _uploadedStudentRows = [];
+            setUploadedFileData(null);
+            sessionIdRef.current = null;
+            lastSavedRef.current = null;
+            setSessions([]);
+            setMessages([{
+                role: 'bot',
+                text: '**ลบประวัติการสนทนาทั้งหมดแล้ว**\n\nเริ่มถามคำถามใหม่ได้เลยครับ',
+                chart: null
+            }]);
+        } catch (err) {
+            console.warn('[chatHistory] delete all failed:', err?.message || err);
+            alert('ลบประวัติทั้งหมดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+        } finally {
+            setDeletingAllHistory(false);
+        }
+    }, [canPersist, deletingAllHistory, sessions.length, user?.uid]);
 
     // ── File Upload Handler ──
     const handleFileUpload = async (e) => {
@@ -3107,6 +3138,16 @@ export default function AIChatPage() {
                             >
                                 <MessageSquarePlus size={15} /> เริ่มแชทใหม่
                             </button>
+                            {sessions.length > 0 && (
+                                <button
+                                    className="chat-history-clear-all-btn"
+                                    onClick={handleDeleteAllSessions}
+                                    disabled={sessionsLoading || deletingAllHistory}
+                                >
+                                    <Trash2 size={15} />
+                                    {deletingAllHistory ? 'กำลังลบประวัติ...' : `ลบประวัติทั้งหมด (${sessions.length})`}
+                                </button>
+                            )}
 
                             {sessionsLoading ? (
                                 <div className="chat-history-empty">กำลังโหลด…</div>
