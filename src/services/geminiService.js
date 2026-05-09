@@ -11,7 +11,7 @@ import { researchData } from '../data/researchData';
 import { hrData } from '../data/hrData';
 import { strategicData } from '../data/strategicData';
 import { buildAcademicRulesContext } from '../data/academicRulesData';
-import { tcasPlanningData } from '../data/tcasAdmissionsData';
+import { getTcasSummary, tcasPlanningData } from '../data/tcasAdmissionsData';
 import { courseAnalyticsData } from '../data/courseAnalyticsData';
 import { getRoleInfo } from '../utils/accessControl';
 import {
@@ -31,6 +31,7 @@ import { buildDataAccuracyContextForAI, getStudentReconciliationSnapshot } from 
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 import {
     executiveAdviceDatasetStatus,
+    getExecutiveAdviceTrustLevel,
     isExecutiveRecommendationIntent,
     isTrustedForExecutiveAdvice,
 } from '../utils/aiAdvicePolicy';
@@ -40,6 +41,11 @@ import {
     getMaejoStudentFaqContext,
     MAEJO_OFFICIAL_SOURCE_DOMAINS,
 } from '../data/maejoStudentFaqData';
+import {
+    createAIOrchestrationPlan,
+    formatAIOrchestrationPlanForPrompt,
+} from './aiOrchestrator';
+import { formatAIContextBundleForPrompt } from './aiContextRegistry';
 
 const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
 const AI_USAGE_ENDPOINT = import.meta.env.VITE_AI_USAGE_ENDPOINT || '/api/ai-usage';
@@ -1275,27 +1281,34 @@ function domainAllowed(role, domain) {
 function liveDatasetContext(id, label, { adviceMode = false } = {}) {
     const meta = getSharedDashboardDatasetMetaSync(id);
     const currentData = getSharedDashboardDatasetSync(id);
-    if (adviceMode && !isTrustedForExecutiveAdvice(meta)) {
+    const trustLevel = getExecutiveAdviceTrustLevel(meta, { datasetId: id });
+    if (adviceMode && !isTrustedForExecutiveAdvice(meta, { datasetId: id })) {
         return {
             data: null,
             sourceLabel: null,
-            missing: executiveAdviceDatasetStatus(meta, `${label} (${id})`),
+            missing: executiveAdviceDatasetStatus(meta, `${label} (${id})`, { datasetId: id }),
             untrusted: true,
+            dataTrust: trustLevel,
         };
     }
     if (currentData) {
         const updated = meta.updatedAt ? `, updated=${meta.updatedAt.toLocaleString('th-TH')}` : '';
         const linked = meta.usesSharedDataHub ? `, linked students=${meta.linkedStudentRows || 0}` : '';
+        const referenceLabel = trustLevel === 'approved_reference'
+            ? `approved_reference: ข้อมูลอ้างอิงที่เว็บใช้ตอนนี้${updated}${linked}`
+            : `ข้อมูลที่เว็บใช้อยู่ตอนนี้${linked}`;
         return {
             data: currentData,
-            sourceLabel: meta.isLive ? `realtime${updated}${linked}` : `ข้อมูลที่เว็บใช้อยู่ตอนนี้${linked}`,
+            sourceLabel: meta.isLive ? `realtime${updated}${linked}` : referenceLabel,
             missing: null,
+            dataTrust: trustLevel,
         };
     }
 
     return {
         data: null,
         missing: `${label}: ยังไม่มีข้อมูลในระบบปัจจุบัน (status=${meta.sourceType || 'empty'})`,
+        dataTrust: trustLevel,
     };
 }
 
@@ -1443,10 +1456,47 @@ function studentLifeContext(options = {}) {
     return `กิจกรรมคณะวิทยาศาสตร์และชั่วโมงกิจกรรม (${live.sourceLabel}):\n${JSON.stringify(studentLifeData)}`;
 }
 
+function buildTcasApprovedReferenceContext(data = tcasPlanningData, sourceLabel = 'approved_reference: ข้อมูลในหน้า TCAS/ไฟล์อ้างอิงที่เว็บใช้ตอนนี้', dataTrust = 'approved_reference') {
+    const summary = getTcasSummary(data);
+    const roundPlan = Array.isArray(data.roundPlan2569) ? data.roundPlan2569 : [];
+    const round3Plan = Array.isArray(data.round3Plan2569) ? data.round3Plan2569 : [];
+    const intakeTarget = Array.isArray(data.intakeTarget2570) ? data.intakeTarget2570 : [];
+    const majorOutlook = Array.isArray(data.majorOutlook) ? data.majorOutlook : [];
+    const fiveYearTrend = Array.isArray(data.fiveYearTrend) ? data.fiveYearTrend : [];
+    const missingRounds = roundPlan
+        .filter(row => row.plan == null || row.enrolled == null || /waiting|missing|empty/i.test(String(row.sourceStatus || '')))
+        .map(row => row.round)
+        .filter(Boolean);
+    const missingItems = [
+        fiveYearTrend.length === 0 ? 'ข้อมูล TCAS/Reg ย้อนหลัง 5 ปีรายสาขา' : null,
+        missingRounds.length > 0 ? `ข้อมูลรายรอบที่ยังไม่ครบ: ${missingRounds.join(', ')}` : null,
+        'funnel สมัคร > ผ่านคัดเลือก > ยืนยันสิทธิ์ > รายงานตัว > คงอยู่หลังปี 1',
+    ].filter(Boolean);
+
+    return `แผนรับนักศึกษา TCAS คณะวิทยาศาสตร์ (${sourceLabel}; dataTrust=${dataTrust})
+คำสั่งใช้งานข้อมูล: ใช้ชุดนี้ตอบคำถาม TCAS/การรับสมัคร/แผนรับแบบ local-first ได้ทันที แม้ยังไม่ใช่ live API โดยให้ระบุว่าเป็นข้อมูลอ้างอิงจากเว็บ/ประกาศ/ไฟล์ในระบบ และห้ามตอบตัดบทว่าไม่มีข้อมูลเพียงเพราะยังรอ sync
+summary: รอบ 3 ปี 2569 รวม ${summary.officialRound3Plan || 0} คน; เป้ารับปี 2570 รวม ${summary.intakeTarget2570Total || 0} คน
+roundPlan2569: ${JSON.stringify(roundPlan)}
+round3Plan2569: ${JSON.stringify(round3Plan)}
+intakeTarget2570: ${JSON.stringify(intakeTarget)}
+majorOutlook: ${JSON.stringify(majorOutlook)}
+sources: ${JSON.stringify(data.sources || [])}
+planningAssumptions: ${JSON.stringify(data.planningAssumptions || {})}
+missingData: ${missingItems.join(' | ') || '-'}
+answer rule: ถ้าถาม "สาขาไหนควรเพิ่มหรือลดแผนรับ" ให้เปรียบเทียบแผนรอบ 3 ปี 2569, เป้าปี 2570, demandIndex/risk/nextAction เท่าที่มี แล้วจัดกลุ่ม เพิ่ม/คง/ลดหรือเฝ้าระวัง พร้อมเหตุผลและข้อจำกัดเรื่องข้อมูลสมัคร-ผ่าน-รายงานตัวที่ยังต้องเชื่อมเพิ่ม
+chart rule: ถ้าขอกราฟ TCAS ให้ใช้ intakeTarget2570 หรือ round3Plan2569 จาก context นี้ก่อน`;
+}
+
 function tcasContext(options = {}) {
     const live = liveDatasetContext('tcas_admissions', 'แผนรับนักศึกษา TCAS', options);
-    if (!live.data) return live.missing;
-    return `แผนรับนักศึกษา TCAS (${live.sourceLabel}):\n${JSON.stringify(live.data)}`;
+    if (live.data) {
+        return buildTcasApprovedReferenceContext(live.data, live.sourceLabel, live.dataTrust);
+    }
+    return buildTcasApprovedReferenceContext(
+        tcasPlanningData,
+        'approved_reference: ข้อมูลในหน้า TCAS/ประกาศทางการและไฟล์ประมาณการที่เว็บใช้ตอนนี้',
+        'approved_reference'
+    );
 }
 
 function courseAnalyticsContext(options = {}) {
@@ -1465,6 +1515,8 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const includeStudentRows = needsStudentDetail(userMessage) && canAIUseInternalSection(role, 'student_list');
     const adviceMode = isExecutiveRecommendationIntent(userMessage);
     const contextOptions = { adviceMode };
+    const isTcasPlanningQuery = /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|portfolio|quota/.test(q);
+    const isStudentRecordQuery = /gpa|เกรด|รายชื่อ|รหัส|student\s*id|ชั้นปี|พ้นสภาพ|รอพินิจ|คงอยู่|ลาออก|หายไป|จำนวนนักศึกษาปัจจุบัน/.test(q);
     const candidates = [
         { id: 'maejo_student_faq', sections: [], keywords: /แม่โจ้|maejo|mju|สมัคร|tcas|ลงทะเบียน|ค่าเทอม|ค่าธรรมเนียม|เกียรตินิยม|กฎ|ระเบียบ|กิจกรรม|ชั่วโมง|รายวิชา|วิชา|ที่ตั้ง|ติดต่อ|เบอร์|โทร|คณะวิทย์|คณะวิทยาศาสตร์|เรียนอะไร|เรียนที่ไหน|หอพัก|ปฏิทิน|ประกาศ/i, text: () => maejoStudentFaqContext(userMessage) },
         { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี|tcas|admission|รับสมัคร|รับเข้า|รอบ/, text: () => studentAggregateContext(includeStudentRows, contextOptions) },
@@ -1482,6 +1534,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
 
     const scored = candidates
         .filter(c => domainAllowed(role, c.id) || canAIUseAnyInternalSection(role, c.sections))
+        .filter(c => !(c.id === 'students' && isTcasPlanningQuery && !isStudentRecordQuery))
         .map(c => ({ ...c, score: c.keywords.test(q) ? 10 : 0 }))
         .filter(c => c.score > 0);
 
@@ -1516,7 +1569,7 @@ function maejoLocalFirstContext(userMessage, localContexts = []) {
 - ถ้าข้อมูลนอกเว็บเป็นข้อมูลสาธารณะ ให้ใช้เฉพาะแหล่งทางการ/น่าเชื่อถือ และแยกให้ชัดว่าอะไรคือข้อมูลในเว็บเรา อะไรคือข้อมูล fallback ภายนอก
 - สาขาคณะวิทยาศาสตร์ที่เว็บเรารู้จัก: ${SCIENCE_MAJORS.join(', ')}
 - ข้อมูลทั่วไปที่รู้ในเว็บ: มหาวิทยาลัยแม่โจ้ (Maejo University/MJU/มจ.), วิทยาเขตหลักเชียงใหม่ พร้อมวิทยาเขตแพร่และชุมพร, ใช้แหล่งทางการของมหาวิทยาลัยเป็นหลักเมื่อต้องตรวจข้อมูลล่าสุด
-${adviceMode ? '- โหมดคำแนะนำเชิงบริหาร: ห้ามใช้ตัวเลขหรือสรุปจาก fallback/mock/demo/reference เป็นฐานคำแนะนำ ถ้า context บอกว่าข้อมูลจริงยังไม่พร้อม ให้บอกข้อจำกัดและรายการข้อมูลที่ต้อง sync/อัปโหลดก่อน ไม่แต่งตัวเลขแทน' : ''}
+${adviceMode ? '- โหมดคำแนะนำเชิงบริหาร: ใช้ live_official ได้เต็ม และใช้ approved_reference เช่นข้อมูล TCAS จากประกาศทางการ/ไฟล์ในระบบเพื่อคำแนะนำเชิงทิศทางได้พร้อม caveat; ห้ามใช้ mock/demo/sample/generated เป็นฐานคำแนะนำ ถ้า context บอกว่าข้อมูลไม่พร้อมจริงให้บอกข้อจำกัดและรายการข้อมูลที่ต้อง sync/อัปโหลดก่อน' : ''}
 ${privateLookup ? '- คำถามนี้มีลักษณะข้อมูลรายบุคคล/การเงินของนักศึกษา: ห้ามเดารายชื่อหรือสถานะชำระเงิน ถ้าไม่มี field สถานะชำระในระบบ ให้บอกชัดว่าเว็บเรายังไม่มีข้อมูลส่วนนี้ และให้ค้นเว็บได้เฉพาะกำหนดการ/ประกาศ/ระเบียบค่าธรรมเนียมแบบสาธารณะเท่านั้น' : ''}`;
 }
 
@@ -1543,6 +1596,7 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
     const role = resolveAIRole(userContext);
     const roleInfo = getRoleInfo(role);
     const memory = getAIUserMemory(userContext);
+    const orchestrationPlan = createAIOrchestrationPlan(userMessage, userContext);
     const useMaejoWebMode = shouldUseWebSearch(userMessage);
     const localContexts = retrieveRelevantContexts(userMessage, userContext, settings);
     const dataAccuracyContext = buildDataAccuracyContextForAI();
@@ -1569,7 +1623,8 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
 - โครงคำตอบหลัก: สรุปสถานการณ์ → ความหมายต่อคณะ → ข้อเสนอแนะเชิงบริหาร → KPI/ตัวชี้วัดติดตาม → ข้อมูลที่ควรเชื่อมเพิ่ม
 - ข้อเสนอแนะหลักต้องเป็นการตัดสินใจ/แผนที่ทำได้จากข้อมูลปัจจุบัน เช่น แผนรับเข้า, retention, งบ, KPI, เจ้าของงาน, รอบติดตาม
 - ห้ามให้คำแนะนำหลักเป็นแค่ "ไปดึงข้อมูลเพิ่ม" หรือ "ต้องหาข้อมูลก่อน"; ถ้าข้อมูลยังขาด ให้ย้ายไปท้ายคำตอบในหัวข้อ "ข้อมูลที่ควรเชื่อมเพิ่มเพื่อยืนยัน"
-- ห้ามใช้ fallback/mock/demo/reference เป็นฐานคำแนะนำเชิงบริหาร ถ้า context บอกว่าข้อมูลจริงยังไม่พร้อม ให้ตอบว่า "ยังให้ข้อเสนอเชิงบริหารจากสถานการณ์จริงไม่ได้" และระบุ dataset ที่ต้อง sync/อัปโหลดก่อน
+- ใช้ข้อมูลระดับ live_official เป็นหลัก; ถ้า context ระบุ dataTrust=approved_reference เช่น TCAS จากประกาศทางการ/ไฟล์ในระบบ ให้ตอบ best-effort เชิงทิศทางพร้อมบอกข้อจำกัด ไม่ปฏิเสธทันที
+- ห้ามใช้ mock/demo/sample/generated เป็นฐานคำแนะนำเชิงบริหาร ถ้า context บอกว่าข้อมูลจริงยังไม่พร้อม ให้ตอบว่า "ยังให้ข้อเสนอเชิงบริหารจากสถานการณ์จริงไม่ได้" และระบุ dataset ที่ต้อง sync/อัปโหลดก่อน
 - ถ้าข้อมูลเป็น snapshot ให้บอกข้อจำกัดสั้นๆ แต่ยังต้องสรุปสัญญาณและแผนบริหารจาก snapshot โดยไม่แต่งตัวเลขใหม่
 `
         : '';
@@ -1591,6 +1646,10 @@ ${getSharedDashboardFreshnessContext()}
 
 DATA ACCURACY / SOURCE STATUS:
 ${dataAccuracyContext}
+
+AI ORCHESTRATION / CONTEXT REGISTRY:
+${formatAIOrchestrationPlanForPrompt(orchestrationPlan)}
+${formatAIContextBundleForPrompt(orchestrationPlan.contextBundle)}
 
 ${executiveRecommendationInstruction}
 
@@ -1639,8 +1698,15 @@ async function _sendMessageImpl(userMessage, options = {}) {
     const settings = saveAIModelSettings({ ...getAIModelSettings(), ...(options.aiSettings || {}) });
     settings.theme = options.theme || settings.theme || (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : 'light') || 'light';
     const originalQuestion = extractUserQuestionFromPrompt(userMessage);
-    const intent = classifyQueryIntent(originalQuestion);
-    const executiveRecommendationMode = isExecutiveRecommendationIntent(originalQuestion);
+    const orchestrationPlan = createAIOrchestrationPlan(originalQuestion, options.user || {}, {
+        uploadedFileData: options.uploadedFileData,
+    });
+    const intent = orchestrationPlan.intent === 'chart'
+        ? 'chart_analysis'
+        : orchestrationPlan.intent === 'executive_advice'
+            ? 'analysis'
+            : classifyQueryIntent(originalQuestion);
+    const executiveRecommendationMode = orchestrationPlan.adviceMode || isExecutiveRecommendationIntent(originalQuestion);
     updateAIUserMemory(options.user || {}, originalQuestion);
 
     // Detect chart/graph request keywords and append reminder
@@ -1659,7 +1725,10 @@ async function _sendMessageImpl(userMessage, options = {}) {
 6. ต้องแนบ \`\`\`json_chart\`\`\` block เสมอถ้ามีข้อมูล]`;
     }
 
-    const useSearch = settings.allowWebSearch && shouldUseWebSearch(originalQuestion);
+    const useSearch = settings.allowWebSearch && (
+        shouldUseWebSearch(originalQuestion)
+        || (orchestrationPlan.shouldUseWebFallback && orchestrationPlan.contextBundle.contexts.length === 0)
+    );
     const wantsStructuredOutput = isChartRequest && !useSearch && settings.structuredOutput !== false;
     if (wantsStructuredOutput) {
         finalMessage += `\n\n[System: Return a JSON object that matches the configured responseJsonSchema. Put user-facing Thai prose in "answer". Put chart config JSON as a string in "chartJson" only when a chart is needed. Fill "sources" with the retrieved dataset labels used and "actions" with 1-3 useful next actions.]`;
@@ -1672,7 +1741,8 @@ async function _sendMessageImpl(userMessage, options = {}) {
         settings,
         useSearch,
     });
-    const cachedResponse = (options.disableCache || executiveRecommendationMode) ? null : readAIResponseCache(responseCacheKey, useSearch);
+    const disableCacheForPlan = options.disableCache || executiveRecommendationMode || orchestrationPlan.shouldDisableCache;
+    const cachedResponse = disableCacheForPlan ? null : readAIResponseCache(responseCacheKey, useSearch);
     if (cachedResponse) {
         conversationHistory.push({
             role: 'user',
@@ -1833,7 +1903,9 @@ async function _sendMessageImpl(userMessage, options = {}) {
             }
 
             if (!executiveRecommendationMode) {
-                writeAIResponseCache(responseCacheKey, aiText, useSearch);
+                if (!disableCacheForPlan) {
+                    writeAIResponseCache(responseCacheKey, aiText, useSearch);
+                }
             }
             return aiText;
 

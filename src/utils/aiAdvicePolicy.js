@@ -1,24 +1,52 @@
 const EXECUTIVE_RECOMMENDATION_PATTERN =
     /ควร|วางแผน|แนะนำ|ทำอะไรต่อ|ผู้บริหาร|คณบดี|ตัดสินใจ|เชิงบริหาร|แนวทาง|รับมือ|แก้ไข|ระวัง/i;
 
-const UNTRUSTED_SOURCE_PATTERN = /fallback|mock|static|demo|sample|reference/i;
+const BLOCKED_SOURCE_PATTERN = /mock|demo|sample|generated/i;
+const REFERENCE_SOURCE_PATTERN = /fallback|static|reference/i;
 const TRUSTED_SOURCE_PATTERN = /official|api|mju|firestore|sync|dashboard|file|upload|csv|excel|xlsx|manual|linked_realtime/i;
+const APPROVED_REFERENCE_DATASETS = new Set(['tcas_admissions']);
 
 export function isExecutiveRecommendationIntent(question) {
     return EXECUTIVE_RECOMMENDATION_PATTERN.test(String(question || '').toLowerCase());
 }
 
-export function isTrustedForExecutiveAdvice(meta = {}) {
-    if (!meta?.isLive) return false;
+export function isApprovedReferenceForExecutiveAdvice(meta = {}, options = {}) {
+    const datasetId = String(options.datasetId || meta.id || '').trim();
     const sourceType = String(meta.sourceType || meta.lastWriteSource || '').trim();
-    if (UNTRUSTED_SOURCE_PATTERN.test(sourceType)) return false;
-    return TRUSTED_SOURCE_PATTERN.test(sourceType);
+    if (!APPROVED_REFERENCE_DATASETS.has(datasetId)) return false;
+    if (BLOCKED_SOURCE_PATTERN.test(sourceType)) return false;
+    return true;
 }
 
-export function executiveAdviceDatasetStatus(meta = {}, label = 'ข้อมูล') {
+export function getExecutiveAdviceTrustLevel(meta = {}, options = {}) {
+    const sourceType = String(meta.sourceType || meta.lastWriteSource || '').trim();
+    if (BLOCKED_SOURCE_PATTERN.test(sourceType)) return 'untrusted_demo';
+
+    if (meta?.isLive && TRUSTED_SOURCE_PATTERN.test(sourceType)) {
+        return 'live_official';
+    }
+
+    if (isApprovedReferenceForExecutiveAdvice(meta, options)) {
+        return 'approved_reference';
+    }
+
+    if (REFERENCE_SOURCE_PATTERN.test(sourceType)) return 'untrusted_demo';
+    return TRUSTED_SOURCE_PATTERN.test(sourceType) ? 'approved_reference' : 'untrusted_demo';
+}
+
+export function isTrustedForExecutiveAdvice(meta = {}, options = {}) {
+    const level = getExecutiveAdviceTrustLevel(meta, options);
+    return level === 'live_official' || level === 'approved_reference';
+}
+
+export function executiveAdviceDatasetStatus(meta = {}, label = 'ข้อมูล', options = {}) {
     const sourceType = meta?.sourceType || 'fallback';
     const updated = meta?.updatedAt
         ? `, อัปเดต ${meta.updatedAt.toLocaleString('th-TH')}`
         : '';
+    const trustLevel = getExecutiveAdviceTrustLevel(meta, options);
+    if (trustLevel === 'approved_reference') {
+        return `${label}: ใช้เป็นข้อมูลอ้างอิงสำหรับคำแนะนำเชิงทิศทางได้ (status=${sourceType}${updated}) แต่ต้องระบุข้อจำกัดว่ารอข้อมูล live/API เพื่อยืนยัน`;
+    }
     return `${label}: ยังไม่พร้อมสำหรับคำแนะนำเชิงบริหารจากสถานการณ์จริง (status=${sourceType}${updated}) ต้อง sync/อัปโหลดข้อมูลจริงก่อน`;
 }

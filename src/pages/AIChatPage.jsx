@@ -28,6 +28,7 @@ import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastS
 import { exportChartAsCSVReport } from '../utils/exportUtils';
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 import { tryInstantAnswer } from '../services/aiInstantAnswerService';
+import { createPlannedChartAnswer } from '../services/aiChartPlanner';
 import {
     buildAIAccessDeniedResult,
     canAIUseAction,
@@ -873,6 +874,9 @@ function searchStudents(query) {
 export function tryLocalResponse(question, userContext = {}) {
     const q = question.toLowerCase();
     if (isExecutiveRecommendationIntent(question)) return null;
+
+    const chartPlanResult = createPlannedChartAnswer(question, userContext);
+    if (chartPlanResult) return chartPlanResult;
 
     const instantResult = tryInstantAnswer(question, userContext);
     if (instantResult) return instantResult;

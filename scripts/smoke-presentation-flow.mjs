@@ -22,6 +22,9 @@ const autoSyncPanel = read('src/components/AdminAutoSyncPanel.jsx');
 const uploadPanel = read('src/components/AdminDataUpload.jsx');
 const adminPanel = read('src/pages/AdminPanelPage.jsx');
 const geminiService = read('src/services/geminiService.js');
+const aiOrchestrator = read('src/services/aiOrchestrator.js');
+const aiContextRegistry = read('src/services/aiContextRegistry.js');
+const aiChartPlanner = read('src/services/aiChartPlanner.js');
 const tcasData = read('src/data/tcasAdmissionsData.js');
 const rules = read('firestore.rules');
 const packageJson = JSON.parse(read('package.json'));
@@ -85,6 +88,42 @@ expect(
   'TCAS page has official public data markers',
   /official_public/.test(tcasData) && /round3Plan2569/.test(tcasData) && /tcasSources/.test(tcasData),
   'TCAS section is traceable to official/reference admissions data.'
+);
+
+expect(
+  'AI orchestrator classifies presentation-critical intents',
+  /classifyAIQuestionIntent/.test(aiOrchestrator)
+    && /executive_advice/.test(aiOrchestrator)
+    && /maejo_public/.test(aiOrchestrator)
+    && /blocked_sensitive/.test(aiOrchestrator),
+  'AI should route public Maejo, chart, advice, uploaded file, and sensitive questions through one central plan.'
+);
+
+expect(
+  'AI context registry describes data trust and chartable fields',
+  /AI_DATASET_REGISTRY/.test(aiContextRegistry)
+    && /trustLevel/.test(aiContextRegistry)
+    && /chartableFields/.test(aiContextRegistry)
+    && /formatAIContextBundleForPrompt/.test(aiContextRegistry),
+  'AI needs a single source summary for local-first answers and graph planning.'
+);
+
+expect(
+  'Deterministic chart planner covers key presentation graph requests',
+  /createPlannedChartAnswer/.test(aiChartPlanner)
+    && /buildTcasChartAnswer/.test(aiChartPlanner)
+    && /buildCourseChartAnswer/.test(aiChartPlanner)
+    && /buildBudgetStudentCompareAnswer/.test(aiChartPlanner)
+    && /buildStudentGraduationCompareAnswer/.test(aiChartPlanner),
+  'Common graph requests should not rely on raw model-generated JSON.'
+);
+
+expect(
+  'Gemini prompt receives orchestration and context-registry guidance',
+  /createAIOrchestrationPlan/.test(geminiService)
+    && /AI ORCHESTRATION \/ CONTEXT REGISTRY/.test(geminiService)
+    && /formatAIContextBundleForPrompt/.test(geminiService),
+  'Model responses should follow the same local-first and role-aware planning layer.'
 );
 
 expect(
