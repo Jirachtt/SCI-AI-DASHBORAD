@@ -38,6 +38,7 @@ export default function Layout() {
     useEffect(() => {
         if (prevPath.current !== location.pathname) {
             prevPath.current = location.pathname;
+            setSidebarOpen(false);
             let exitRaf = null;
             const enterRaf = requestAnimationFrame(() => {
                 setIsTransitioning(true);
@@ -51,6 +52,21 @@ export default function Layout() {
             };
         }
     }, [location.pathname]);
+
+    useEffect(() => {
+        if (!sidebarOpen) return undefined;
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') setSidebarOpen(false);
+        };
+
+        document.body.classList.add('sidebar-mobile-open');
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.body.classList.remove('sidebar-mobile-open');
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [sidebarOpen]);
 
     return (
         <div className="app-layout">
