@@ -1167,6 +1167,16 @@ export async function exportPageAsCSV(title = 'page-export') {
     downloadCSVBundle(title, rows, chartSheets);
 }
 
+export async function exportCSVReportWorkbook(title = 'page-export', sheets = {}) {
+    const chartSheets = await collectChartSheets();
+    await exportWorkbook(`${title}_csv_report`, sheets || {}, chartSheets);
+}
+
+export async function exportPageAsCSVReport(title = 'page-export') {
+    const { sheets } = extractPageExportData();
+    await exportCSVReportWorkbook(title, sheets);
+}
+
 export async function exportPageAsExcel(title = 'page-export') {
     const { sheets } = extractPageExportData();
     const chartSheets = await collectChartSheets();
@@ -1179,6 +1189,16 @@ export async function exportChartAsCSV(title, chart) {
         name: title || 'Chart',
         imageDataUrl,
     }] : []);
+}
+
+export async function exportChartAsCSVReport(title, chart) {
+    const chartTitle = title || 'Chart';
+    const imageDataUrl = await renderChartImageDataUrl(chart);
+    await exportWorkbook(`${chartTitle}_csv_report`, {}, [{
+        name: chartTitle,
+        rows: chartToRows(chart, chartTitle),
+        imageDataUrl,
+    }]);
 }
 
 export async function exportChartAsExcel(title, chart) {

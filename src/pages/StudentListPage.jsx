@@ -106,22 +106,28 @@ export default function StudentListPage() {
         ][y - 1]
     }));
 
-    /* ── Export CSV ── */
-    const exportCSV = () => {
-        const BOM = '\uFEFF';
-        const header = 'รหัสนักศึกษา,คำนำหน้า,ชื่อ-นามสกุล,สาขาวิชา,ระดับ,ชั้นปี,เกรดเฉลี่ย,สถานะ';
-        const rows = filtered.map(s =>
-            `${s.id},${s.prefix || ''},${s.name},${s.major},${s.level || 'ปริญญาตรี'},${s.year},${s.gpa.toFixed(2)},${s.status}`
-        );
-        const csv = BOM + [header, ...rows].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `student_list_${new Date().toISOString().slice(0, 10)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
+    const getCSVReportSheets = () => ({
+        Summary: [
+            { metric: 'total_students', value: students.length },
+            { metric: 'filtered_students', value: filtered.length },
+            { metric: 'search', value: searchTerm || '-' },
+            { metric: 'year_filter', value: yearFilter || 'all' },
+            { metric: 'major_filter', value: majorFilter || 'all' },
+            { metric: 'source', value: dataSourceText },
+            { metric: 'exported_at', value: new Date().toISOString() },
+        ],
+        'Student Rows': filtered.map((s, idx) => ({
+            row: idx + 1,
+            id: s.id || '',
+            prefix: s.prefix || '',
+            name: s.name || '',
+            major: s.major || '',
+            level: s.level || 'ปริญญาตรี',
+            year: s.year ?? '',
+            gpa: typeof s.gpa === 'number' ? s.gpa.toFixed(2) : (s.gpa ?? ''),
+            status: s.status || '',
+        })),
+    });
 
     /* ── Add Student ── */
     const handleAdd = async () => {
@@ -202,7 +208,7 @@ export default function StudentListPage() {
                     <p>{dataSourceText} • ทั้งหมด <strong style={{ color: 'var(--text-primary)' }}>{students.length}</strong> คน</p>
                 </div>
                 <div className="section-header-actions">
-                    <ExportPDFButton title="รายชื่อนักศึกษา" label="PDF" onCSVExport={exportCSV} />
+                    <ExportPDFButton title="รายชื่อนักศึกษา" label="PDF" getCSVReportSheets={getCSVReportSheets} />
                     {canManage && (
                         <button onClick={() => { setStudentSaveMessage(''); setShowModal(true); }} style={{
                             display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',

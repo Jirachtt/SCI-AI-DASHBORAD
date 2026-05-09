@@ -14058,3 +14058,46 @@ input {
     border-radius: 0 !important;
   }
 }
+
+/* CSV report is the primary export path because it includes workbook data and chart images. */
+.export-actions .export-csv-primary {
+  order: 0;
+  min-width: 78px;
+  background: linear-gradient(135deg, #007a3d 0%, #00a651 100%) !important;
+  border: 1px solid rgba(0, 166, 81, 0.42) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px -20px rgba(0, 166, 81, 0.88) !important;
+}
+
+.export-actions .export-csv-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #008a46 0%, #08b963 100%) !important;
+  box-shadow: 0 18px 32px -22px rgba(0, 166, 81, 0.95) !important;
+}
+
+.export-actions .export-csv-primary:disabled {
+  opacity: 0.72;
+  cursor: wait;
+  transform: none;
+}
+
+.export-actions .export-pdf-secondary {
+  order: 1;
+  min-width: 78px;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.export-actions .export-pdf-secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(0, 166, 81, 0.32) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 12px 24px -22px rgba(15, 23, 42, 0.28) !important;
+}
+
+[data-theme="light"] .export-actions .export-pdf-secondary {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #334155 !important;
+}

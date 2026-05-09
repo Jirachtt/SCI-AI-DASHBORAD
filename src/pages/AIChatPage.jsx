@@ -25,7 +25,7 @@ import { SCIENCE_MAJORS } from '../data/studentListData';
 import { ensureStudentList, getStudentListSync, getStudentRosterTrustStatus, isLiveData, onStudentDataChange } from '../services/studentDataService';
 import { appendStudentAnswerSourceNote, buildDataAccuracyContextForAI, getStudentReconciliationSnapshot } from '../services/dataAccuracyService';
 import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
-import { exportChartAsCSV } from '../utils/exportUtils';
+import { exportChartAsCSVReport } from '../utils/exportUtils';
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 import { tryInstantAnswer } from '../services/aiInstantAnswerService';
 import {
@@ -956,7 +956,10 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
     const studentRosterTrust = getStudentRosterTrustStatus();
     const studentReconcile = getStudentReconciliationSnapshot();
     const qLower = String(question || '').toLowerCase();
-    const isStudentQ = /นักศึกษา|นิสิต|gpa|เกรด|สาขา|ชั้นปี|รายชื่อ|จำนวนนักศึกษา|student/.test(qLower);
+    const isTcasPlanningQ = /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|portfolio|quota/.test(qLower);
+    const isStudentRecordQ = /gpa|เกรด|ชั้นปี|รายชื่อ|จำนวนนักศึกษาปัจจุบัน|student\s*id|พ้นสภาพ|รอพินิจ|คงอยู่|ลาออก|หายไป/.test(qLower);
+    const isStudentQ = /นักศึกษา|นิสิต|gpa|เกรด|สาขา|ชั้นปี|รายชื่อ|จำนวนนักศึกษา|student/.test(qLower)
+        && !(isTcasPlanningQ && !isStudentRecordQ);
     const canUseStudentStats = canAIUseInternalSection(userContext, 'student_stats');
     const canUseStudentRows = canAIUseInternalSection(userContext, 'student_list') && hasTrustedStudentRowsForChat();
     const dashboardSummary = dashboardMergeSummary || {
@@ -967,7 +970,7 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
     const dataAccuracyContext = buildDataAccuracyContextForAI();
     let context = dataAccuracyContext ? `[DATA ACCURACY / SOURCE STATUS]\n${dataAccuracyContext}\n\n` : '';
     if (adviceMode) {
-        context += '[EXECUTIVE ADVICE DATA POLICY]\nคำถามนี้เป็นคำถามเชิงคำแนะนำ/วางแผน ต้องใช้เฉพาะข้อมูลจริงหรือไฟล์ที่ผู้ใช้อัปโหลดในแชทเท่านั้น ห้ามใช้ mock/fallback/demo/reference เป็นฐานคำแนะนำเชิงบริหาร ถ้าข้อมูลจริงไม่พร้อมให้แจ้ง dataset ที่ต้อง sync/อัปโหลดก่อน\n\n';
+        context += '[EXECUTIVE ADVICE DATA POLICY]\nคำถามนี้เป็นคำถามเชิงคำแนะนำ/วางแผน ให้ใช้ข้อมูลในเว็บก่อนเสมอ โดย live_official ใช้ได้เต็ม และ approved_reference เช่น TCAS จากประกาศทางการ/ไฟล์ในระบบใช้ตอบเชิงทิศทางได้พร้อมบอกข้อจำกัด ห้ามใช้ mock/demo/sample/generated เป็นฐานคำแนะนำเชิงบริหาร ถ้าข้อมูลไม่พร้อมจริงให้แจ้ง dataset ที่ต้อง sync/อัปโหลดก่อน\n\n';
     }
     if (isStudentQ && !canUseStudentStats) {
         context += '[ACCESS LIMITED]\nRole นี้ไม่มีสิทธิ์อ่านข้อมูลนักศึกษาภายในจากระบบ ห้ามแนบ/เดารายชื่อนักศึกษา GPA หรือสถิติภายใน ให้ตอบเฉพาะข้อมูลสาธารณะหรือแจ้งว่าต้องใช้สิทธิ์สูงกว่า\n\n';
@@ -2272,8 +2275,8 @@ export function ChatMessage({ msg, onExpand }) {
                             </button>
                             <button
                                 className="ai-page-chart-btn"
-                                onClick={() => exportChartAsCSV('ai-chart', { ...chartData, chartType })}
-                                aria-label="Export chart data as CSV"
+                                onClick={() => exportChartAsCSVReport('ai-chart', { ...chartData, chartType })}
+                                aria-label="Export chart as CSV Report Excel"
                             >
                                 <TableProperties size={13} /> CSV
                             </button>
@@ -3654,8 +3657,8 @@ export function ExpandedChartModal({ chart, onClose }) {
                         </button>
                         <button
                             className="ai-page-chart-modal-reset"
-                            onClick={() => exportChartAsCSV('ai-chart-expanded', expandedChart)}
-                            aria-label="Export chart data as CSV"
+                            onClick={() => exportChartAsCSVReport('ai-chart-expanded', expandedChart)}
+                            aria-label="Export chart as CSV Report Excel"
                         >
                             <TableProperties size={15} /> CSV
                         </button>
