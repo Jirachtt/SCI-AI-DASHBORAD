@@ -42,6 +42,7 @@ import {
 } from '../data/maejoStudentFaqData';
 
 const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
+const AI_USAGE_ENDPOINT = import.meta.env.VITE_AI_USAGE_ENDPOINT || '/api/ai-usage';
 if (!GEMINI_PROXY_ENDPOINT) {
     console.warn('[Gemini] ⚠️ VITE_GEMINI_API_KEY is not set.');
 }
@@ -74,6 +75,7 @@ const AI_TOKEN_BUDGET = Math.max(
     1,
     Number(import.meta.env.VITE_AI_TOKEN_BUDGET || import.meta.env.VITE_AI_MONTHLY_TOKEN_LIMIT || DEFAULT_AI_TOKEN_BUDGET)
 );
+let aiUsageSnapshotCache = null;
 
 const DEFAULT_AI_SETTINGS = {
     modelMode: 'auto',
@@ -195,18 +197,99 @@ export function getAITokenStats() {
     });
 }
 
-export function getAITokenBudgetSnapshot() {
-    const stats = getAITokenStats();
-    const usedTokens = Number(stats.estimatedInputTokens || 0) + Number(stats.estimatedOutputTokens || 0);
-    const remainingTokens = Math.max(0, AI_TOKEN_BUDGET - usedTokens);
+function normalizeAIUsageSnapshot(value = {}) {
+    const budgetTokens = Math.max(1, Number(value.budgetTokens || value.limits?.dailyTokenBudget || AI_TOKEN_BUDGET));
+    const usedTokens = Math.max(0, Number(value.usedTokens || 0));
+    const remainingTokens = Math.max(0, Number(value.remainingTokens ?? (budgetTokens - usedTokens)));
+    return {
+        budgetTokens,
+        usedTokens,
+        inFlightInputTokens: Math.max(0, Number(value.inFlightInputTokens || 0)),
+        remainingTokens,
+        remainingPercent: Math.max(0, Math.min(100, Number(value.remainingPercent ?? Math.round((remainingTokens / budgetTokens) * 100)))),
+        requests: Number(value.requests || 0),
+        completedRequests: Number(value.completedRequests || 0),
+        failedRequests: Number(value.failedRequests || 0),
+        remainingRequests: Number(value.remainingRequests || 0),
+        resetAt: value.resetAt || null,
+        resetLabel: value.resetLabel || '00:00 น.',
+        source: value.source || 'server',
+        status: value.status || 'ready',
+        isServerBacked: value.serverBacked !== false,
+        updatedAt: value.updatedAt || null,
+        lastRequest: value.lastRequest || null,
+    };
+}
+
+function syncingAIUsageSnapshot(status = 'syncing') {
     return {
         budgetTokens: AI_TOKEN_BUDGET,
-        usedTokens,
-        remainingTokens,
-        remainingPercent: Math.round((remainingTokens / AI_TOKEN_BUDGET) * 100),
-        requests: Number(stats.requests || 0),
-        lastRequest: stats.lastRequest || null,
+        usedTokens: 0,
+        inFlightInputTokens: 0,
+        remainingTokens: 0,
+        remainingPercent: 0,
+        requests: 0,
+        completedRequests: 0,
+        failedRequests: 0,
+        remainingRequests: 0,
+        resetAt: null,
+        resetLabel: '00:00 น.',
+        source: 'server',
+        status,
+        isServerBacked: false,
+        updatedAt: null,
+        lastRequest: null,
     };
+}
+
+function setAIUsageSnapshot(snapshot) {
+    aiUsageSnapshotCache = normalizeAIUsageSnapshot(snapshot);
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sci-ai-usage-updated', { detail: aiUsageSnapshotCache }));
+    }
+    return aiUsageSnapshotCache;
+}
+
+export function getAITokenBudgetSnapshot() {
+    return aiUsageSnapshotCache || syncingAIUsageSnapshot('loading');
+}
+
+export async function refreshAITokenBudgetSnapshot() {
+    const response = await fetch(AI_USAGE_ENDPOINT, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+    });
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        throw new Error('AI usage endpoint did not return JSON.');
+    }
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(body?.message || body?.error || `AI usage snapshot failed with HTTP ${response.status}`);
+    }
+    return setAIUsageSnapshot(body);
+}
+
+function updateAITokenBudgetFromHeaders(headers) {
+    if (!headers?.get) return null;
+    const budget = Number(headers.get('X-AI-Token-Budget') || 0);
+    const remaining = Number(headers.get('X-AI-Token-Remaining') || 0);
+    if (!budget) return null;
+    const used = Number(headers.get('X-AI-Token-Used') || Math.max(0, budget - remaining));
+    return setAIUsageSnapshot({
+        budgetTokens: budget,
+        usedTokens: used,
+        remainingTokens: remaining,
+        remainingPercent: Number(headers.get('X-AI-Token-Remaining-Percent') || Math.round((remaining / budget) * 100)),
+        requests: Number(headers.get('X-AI-Requests-Used') || 0),
+        remainingRequests: Number(headers.get('X-AI-Requests-Remaining') || 0),
+        resetAt: headers.get('X-AI-Usage-Reset-At') || null,
+        resetLabel: '00:00 น.',
+        source: headers.get('X-AI-Usage-Source') || 'server',
+        serverBacked: true,
+        updatedAt: new Date().toISOString(),
+    });
 }
 
 export function resetAITokenStats() {
@@ -672,7 +755,16 @@ async function postGeminiModel(model, requestBody, options = {}) {
     return fetchSmart(GEMINI_PROXY_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, requestBody, stream: options.stream === true }),
+        body: JSON.stringify({
+            model,
+            requestBody,
+            stream: options.stream === true,
+            usageUser: options.user ? {
+                uid: options.user.uid || '',
+                role: options.user.role || '',
+                email: options.user.email || '',
+            } : undefined,
+        }),
     });
 }
 
@@ -1663,7 +1755,8 @@ async function _sendMessageImpl(userMessage, options = {}) {
 
             console.log(`[Gemini] Trying model: ${model}...`);
             if (wantsStreaming) options.onChunk?.('', { reset: true, model });
-            const response = await postGeminiModel(model, requestBody, { stream: wantsStreaming });
+            const response = await postGeminiModel(model, requestBody, { stream: wantsStreaming, user: options.user });
+            updateAITokenBudgetFromHeaders(response.headers);
 
             if (response.status === 429) {
                 const quotaError = await response.clone().json().catch(() => ({}));
@@ -1728,6 +1821,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 outputText: aiText,
                 contextCount: retrievedContextCount,
             });
+            refreshAITokenBudgetSnapshot().catch(() => {});
 
             conversationHistory.push({
                 role: 'model',
@@ -1792,7 +1886,8 @@ export async function getDashboardInsights() {
             const response = await postGeminiModel(model, {
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
                 generationConfig: { temperature: 0.2, maxOutputTokens: 1024 }
-            });
+            }, { user: { role: 'dean', uid: 'dashboard-insights' } });
+            updateAITokenBudgetFromHeaders(response.headers);
 
             if (response.status === 429) {
                 const quotaError = await response.clone().json().catch(() => ({}));
@@ -1803,6 +1898,7 @@ export async function getDashboardInsights() {
             if (!response.ok) continue;
 
             const data = await response.json();
+            refreshAITokenBudgetSnapshot().catch(() => {});
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
             const match = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\[[\s\S]*?\]/);

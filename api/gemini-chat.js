@@ -1,6 +1,13 @@
 /* global process */
 
 import { Buffer } from 'node:buffer';
+import {
+  AI_USAGE_LIMITS,
+  completeAIUsage,
+  isProductionUsageRequired,
+  reserveAIUsage,
+  usageHeaders,
+} from './_ai-usage-store.js';
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 35000);
@@ -25,24 +32,13 @@ const MODEL_DEFAULTS = {
   'gemini-2.0-flash': { rpm: 15, tpm: 1_000_000, rpd: 200 },
 };
 
-const LIMITS = {
-  globalRpm: readPositiveInt('AI_GLOBAL_RPM_LIMIT', 45),
-  globalTpm: readPositiveInt('AI_GLOBAL_TPM_LIMIT', 750_000),
-  globalRpd: readPositiveInt('AI_GLOBAL_RPD_LIMIT', 500),
-  dailyTokenBudget: readPositiveInt('AI_DAILY_TOKEN_BUDGET', 1_000_000),
-  clientRpm: readPositiveInt('AI_CLIENT_RPM_LIMIT', 6),
-};
+const LIMITS = AI_USAGE_LIMITS;
 
 const usageState = globalThis.__SCI_AI_GEMINI_USAGE__ || {
   minuteEvents: [],
   dayEvents: [],
 };
 globalThis.__SCI_AI_GEMINI_USAGE__ = usageState;
-
-function readPositiveInt(key, fallback) {
-  const value = Number(process.env[key]);
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
-}
 
 function sendJson(res, status, body, headers = {}) {
   res.statusCode = status;
@@ -111,6 +107,27 @@ function responseOutputTokens(body) {
     ?.map(part => part?.text || '')
     .join('\n') || '';
   return estimateTokens(text);
+}
+
+function providerTokenUsage(body, fallbackInputTokens = 0) {
+  const meta = body?.usageMetadata || {};
+  const total = Number(meta.totalTokenCount || 0);
+  const output = Number(meta.candidatesTokenCount || meta.outputTokenCount || 0);
+  if (Number.isFinite(total) && total > 0) {
+    return {
+      providerMeasured: true,
+      totalTokens: Math.floor(total),
+      outputTokens: Number.isFinite(output) && output > 0
+        ? Math.floor(output)
+        : Math.max(0, Math.floor(total) - Number(fallbackInputTokens || 0)),
+    };
+  }
+  const fallbackOutput = responseOutputTokens(body);
+  return {
+    providerMeasured: false,
+    totalTokens: Number(fallbackInputTokens || 0) + fallbackOutput,
+    outputTokens: fallbackOutput,
+  };
 }
 
 function cleanup(now = Date.now()) {
@@ -229,7 +246,7 @@ function recordStart({ req, model, inputTokens }) {
   return event;
 }
 
-function headersFor(model) {
+function headersFor(model, usageSnapshot = null) {
   const current = snapshot(model);
   const remainingPercent = Math.round((current.remaining.globalRpm / current.limits.globalRpm) * 100);
   const tokenPercent = Math.round((current.remaining.dailyTokenBudget / current.limits.dailyTokenBudget) * 100);
@@ -241,6 +258,7 @@ function headersFor(model) {
     'X-AI-Token-Budget': current.limits.dailyTokenBudget,
     'X-AI-Token-Remaining': current.remaining.dailyTokenBudget,
     'X-AI-Token-Remaining-Percent': tokenPercent,
+    ...(usageSnapshot ? usageHeaders(usageSnapshot) : {}),
   };
 }
 
@@ -312,30 +330,70 @@ export default async function handler(req, res) {
   }
 
   const inputTokens = requestInputTokens(requestBody);
-  const limited = rejectIfLimited({ req, model, inputTokens });
-  if (limited) {
+  let reservation = null;
+  let memoryEvent = null;
+  try {
+    reservation = await reserveAIUsage({
+      req,
+      model,
+      inputTokens,
+      limits: LIMITS,
+      modelDefaults: MODEL_DEFAULTS,
+      usagePayload: payload?.usageUser || {},
+    });
+  } catch (error) {
+    if (isProductionUsageRequired()) {
+      sendJson(res, error.statusCode || 503, {
+        error: error.code || 'AI_USAGE_UNAVAILABLE',
+        message: error.message || 'AI usage tracking is unavailable.',
+      });
+      return;
+    }
+  }
+
+  if (reservation?.limited) {
     sendJson(res, 429, {
       error: 'AI_RATE_LIMITED',
       message: 'AI usage is temporarily limited to protect the shared project quota.',
       global: true,
-      reason: limited.reason,
-      retryAfterSeconds: limited.retryAfterSeconds,
-      quota: limited.snapshot,
+      reason: reservation.reason,
+      retryAfterSeconds: reservation.retryAfterSeconds,
+      quota: reservation.snapshot,
     }, {
-      'Retry-After': limited.retryAfterSeconds,
-      ...headersFor(model),
+      'Retry-After': reservation.retryAfterSeconds,
+      ...headersFor(model, reservation.snapshot),
     });
     return;
   }
 
-  const event = recordStart({ req, model, inputTokens });
+  if (!reservation) {
+    const limited = rejectIfLimited({ req, model, inputTokens });
+    if (limited) {
+      sendJson(res, 429, {
+        error: 'AI_RATE_LIMITED',
+        message: 'AI usage is temporarily limited to protect the shared project quota.',
+        global: true,
+        reason: limited.reason,
+        retryAfterSeconds: limited.retryAfterSeconds,
+        quota: limited.snapshot,
+      }, {
+        'Retry-After': limited.retryAfterSeconds,
+        ...headersFor(model),
+      });
+      return;
+    }
+    memoryEvent = recordStart({ req, model, inputTokens });
+  }
 
   try {
     const response = await fetchGemini({ model, requestBody, key, stream: wantsStream });
 
     if (wantsStream && response.ok && response.body) {
       res.statusCode = response.status;
-      for (const [header, value] of Object.entries(streamHeadersFor(model))) {
+      for (const [header, value] of Object.entries({
+        ...streamHeadersFor(model),
+        ...(reservation?.snapshot ? usageHeaders(reservation.snapshot) : {}),
+      })) {
         if (value !== undefined && value !== null) res.setHeader(header, String(value));
       }
 
@@ -345,22 +403,56 @@ export default async function handler(req, res) {
         rawStream += buffer.toString('utf8');
         res.write(buffer);
       }
-      event.outputTokens = estimateTokens(rawStream);
+      const outputTokens = estimateTokens(rawStream);
+      if (memoryEvent) memoryEvent.outputTokens = outputTokens;
+      if (reservation) {
+        completeAIUsage({
+          reservation,
+          ok: true,
+          totalTokens: inputTokens + outputTokens,
+          outputTokens,
+          providerMeasured: false,
+        }).catch(err => console.warn('[AI usage] stream completion failed:', err?.message || err));
+      }
       res.end();
       return;
     }
 
     const body = await response.json().catch(() => ({}));
-    event.outputTokens = response.ok ? responseOutputTokens(body) : 0;
+    const tokenUsage = response.ok
+      ? providerTokenUsage(body, inputTokens)
+      : { providerMeasured: false, totalTokens: 0, outputTokens: 0 };
+    if (memoryEvent) memoryEvent.outputTokens = tokenUsage.outputTokens;
+    const completedSnapshot = reservation
+      ? await completeAIUsage({
+        reservation,
+        ok: response.ok,
+        totalTokens: tokenUsage.totalTokens,
+        outputTokens: tokenUsage.outputTokens,
+        providerMeasured: tokenUsage.providerMeasured,
+      }).catch(err => {
+        console.warn('[AI usage] completion failed:', err?.message || err);
+        return reservation.snapshot;
+      })
+      : null;
 
-    sendJson(res, response.status, body, headersFor(model));
+    sendJson(res, response.status, body, headersFor(model, completedSnapshot || reservation?.snapshot));
   } catch (err) {
+    if (reservation) {
+      completeAIUsage({
+        reservation,
+        ok: false,
+        totalTokens: 0,
+        outputTokens: 0,
+        providerMeasured: false,
+      }).catch(usageErr => console.warn('[AI usage] failure completion failed:', usageErr?.message || usageErr));
+    }
     const message = err?.name === 'AbortError'
       ? 'Gemini request timed out.'
       : 'Gemini request failed.';
     sendJson(res, err?.name === 'AbortError' ? 504 : 502, {
       error: err?.name === 'AbortError' ? 'GEMINI_TIMEOUT' : 'GEMINI_PROXY_FAILED',
       message,
-    }, headersFor(model));
+    }, headersFor(model, reservation?.snapshot));
   }
 }

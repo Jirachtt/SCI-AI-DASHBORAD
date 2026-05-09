@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { canAccess, canManageUsers, getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
-import { getAITokenBudgetSnapshot } from '../services/geminiService';
+import { getAITokenBudgetSnapshot, refreshAITokenBudgetSnapshot } from '../services/geminiService';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
 import {
     Home, CreditCard, DollarSign, LogOut, Lock, FileText,
@@ -99,10 +99,20 @@ export default function Sidebar({ isOpen, onClose }) {
 
     useEffect(() => {
         if (!settingsOpen) return undefined;
-        const refresh = () => setTokenBudget(getAITokenBudgetSnapshot());
+        const refresh = () => {
+            setTokenBudget(getAITokenBudgetSnapshot());
+            refreshAITokenBudgetSnapshot()
+                .then(setTokenBudget)
+                .catch(() => setTokenBudget(getAITokenBudgetSnapshot()));
+        };
+        const handleUsageUpdate = (event) => setTokenBudget(event.detail || getAITokenBudgetSnapshot());
         refresh();
-        const interval = setInterval(refresh, 5000);
-        return () => clearInterval(interval);
+        window.addEventListener('sci-ai-usage-updated', handleUsageUpdate);
+        const interval = setInterval(refresh, 15000);
+        return () => {
+            window.removeEventListener('sci-ai-usage-updated', handleUsageUpdate);
+            clearInterval(interval);
+        };
     }, [settingsOpen]);
 
     useEffect(() => {
@@ -118,6 +128,12 @@ export default function Sidebar({ isOpen, onClose }) {
     const hasSectionAccess = (section) => section === 'admin_panel'
         ? canManageUsers(user)
         : canAccess(user?.role, section);
+    const tokenSyncing = !tokenBudget.isServerBacked && tokenBudget.status !== 'ready';
+    const tokenRemainingLabel = tokenSyncing ? 'กำลังซิงก์' : tokenBudget.remainingTokens.toLocaleString();
+    const tokenUsedLabel = tokenSyncing ? 'รอข้อมูลจาก server' : `ใช้ไป ${tokenBudget.usedTokens.toLocaleString()} tokens`;
+    const tokenRequestLabel = `รีเซ็ต ${tokenBudget.resetLabel || '00:00 น.'}`;
+    const tokenPercentLabel = tokenSyncing ? 'sync' : `${tokenBudget.remainingPercent}%`;
+    const tokenBarWidth = tokenSyncing ? 0 : tokenBudget.remainingPercent;
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -288,7 +304,7 @@ export default function Sidebar({ isOpen, onClose }) {
                         </div>
 
                         <div className="settings-popover-section">
-                            <div className="settings-token-card" aria-label={`AI token คงเหลือ ${tokenBudget.remainingPercent}%`}>
+                            <div className="settings-token-card" aria-label={`AI token คงเหลือ ${tokenPercentLabel}`}>
                                 <div className="settings-token-head">
                                     <span className="settings-menu-icon"><Activity size={15} /></span>
                                     <span className="settings-menu-main">
@@ -297,15 +313,15 @@ export default function Sidebar({ isOpen, onClose }) {
                                     </span>
                                 </div>
                                 <div className="settings-token-value-row">
-                                    <strong>{tokenBudget.remainingTokens.toLocaleString()}</strong>
-                                    <span>{tokenBudget.remainingPercent}%</span>
+                                    <strong>{tokenRemainingLabel}</strong>
+                                    <span>{tokenPercentLabel}</span>
                                 </div>
                                 <div className="settings-rate-bar settings-token-bar" aria-hidden="true">
-                                    <span style={{ width: `${tokenBudget.remainingPercent}%` }} />
+                                    <span style={{ width: `${tokenBarWidth}%` }} />
                                 </div>
                                 <div className="settings-token-meta">
-                                    <span>ใช้ไป {tokenBudget.usedTokens.toLocaleString()} tokens</span>
-                                    <span>{tokenBudget.requests.toLocaleString()} คำถาม</span>
+                                    <span>{tokenUsedLabel}</span>
+                                    <span>{tokenRequestLabel}</span>
                                 </div>
                             </div>
                             <button type="button" className="settings-logout-row" onClick={handleLogout}>
