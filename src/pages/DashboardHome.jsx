@@ -448,7 +448,7 @@ export default function DashboardHome() {
                                     background: 'var(--bg-secondary)', padding: '3px 10px',
                                     borderRadius: 6, border: '1px solid var(--border-color)',
                                 }}>
-                                    Powered by Gemini
+                                    AI-Generated Insights
                                 </span>
                             </div>
 

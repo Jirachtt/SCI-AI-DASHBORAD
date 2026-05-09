@@ -2458,7 +2458,7 @@ export default function AIChatPage() {
     const [messages, setMessages] = useState([
         {
             role: 'bot',
-            text: `สวัสดีครับ ผม **${AI_ASSISTANT_NAME}** (Powered by Gemini)\n\nผู้ช่วยของ **${APP_NAME_TH}** พร้อมช่วยตอบคำถามและวิเคราะห์ข้อมูลของคณะวิทยาศาสตร์ครับ\n\n**ฟีเจอร์ทั้งหมด:**\n• ถาม-ตอบทุกเรื่องแม่โจ้ (ประวัติ, คณะ, หลักสูตร, รับสมัคร, สถานที่, วิจัย)\n• สร้างกราฟจำนวนนักศึกษา, เกรด, งบประมาณ และพยากรณ์\n• ค้นหานักศึกษาตามรหัส, ชื่อ, สาขา, GPA\n• สั่งงานด้วยเสียง\n• **อัปโหลดไฟล์ CSV / Excel (.xlsx)** เพื่อวิเคราะห์และสร้างกราฟ\n\nเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ`,
+            text: `สวัสดีครับ ผม **${AI_ASSISTANT_NAME}**\n\nผู้ช่วยของ **${APP_NAME_TH}** พร้อมช่วยตอบคำถามและวิเคราะห์ข้อมูลของคณะวิทยาศาสตร์ครับ\n\n**ฟีเจอร์ทั้งหมด:**\n• ถาม-ตอบทุกเรื่องแม่โจ้ (ประวัติ, คณะ, หลักสูตร, รับสมัคร, สถานที่, วิจัย)\n• สร้างกราฟจำนวนนักศึกษา, เกรด, งบประมาณ และพยากรณ์\n• ค้นหานักศึกษาตามรหัส, ชื่อ, สาขา, GPA\n• สั่งงานด้วยเสียง\n• **อัปโหลดไฟล์ CSV / Excel (.xlsx)** เพื่อวิเคราะห์และสร้างกราฟ\n\nเลือก Quick Action ด้านล่าง หรือพิมพ์คำถามได้เลยครับ`,
             chart: null
         }
     ]);
@@ -3083,7 +3083,7 @@ export default function AIChatPage() {
                     </div>
                     <div>
                         <h1>{AI_ASSISTANT_NAME}</h1>
-                        <p>Powered by Gemini — {APP_NAME_TH} / {APP_NAME_EN}</p>
+                        <p>{APP_NAME_TH} / {APP_NAME_EN}</p>
                         <div className="ai-chat-page-header-meta">
                             <span><Database size={12} /> {liveSourceLabel}</span>
                             <span><ShieldCheck size={12} /> {roleLabel}</span>

@@ -384,7 +384,7 @@ function groundingSourceLines(candidate) {
     return [...new Set(sources)].slice(0, 8);
 }
 
-function appendAnswerMetadata(text, { data, localContexts, model, useSearch }) {
+function appendAnswerMetadata(text, { data, localContexts }) {
     const candidate = data?.candidates?.[0];
     const groundedSources = groundingSourceLines(candidate);
     const localSources = localContextSourceLines(localContexts);
@@ -393,12 +393,6 @@ function appendAnswerMetadata(text, { data, localContexts, model, useSearch }) {
 
     if (sourceLines.length && !output.includes('แหล่งข้อมูล')) {
         output += `\n\n**แหล่งข้อมูลที่ใช้:**\n${sourceLines.join('\n')}`;
-    }
-
-    const engine = MODEL_INFO[model]?.label || model;
-    const groundingNote = useSearch && groundedSources.length ? ' + Google Search grounding' : '';
-    if (engine && !output.includes('AI engine:')) {
-        output += `\n\n_AI engine: ${engine}${groundingNote}_`;
     }
 
     return output.trim();
