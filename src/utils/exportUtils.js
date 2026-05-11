@@ -38,7 +38,6 @@ import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 
 const SHEET_NAME_LIMIT = 31;
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-const ZIP_MIME = 'application/zip';
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
     let c = n;
@@ -1158,18 +1157,44 @@ export function extractPageExportData(root = document, { includeChartRows = true
     return { sheets };
 }
 
+function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
+    const dataSheets = sheets && typeof sheets === 'object' ? sheets : {};
+    const sheetEntries = Object.entries(dataSheets);
+    const dataRowCount = sheetEntries.reduce((sum, [, rows]) => sum + normalizeRows(rows).length, 0);
+    const embeddedImageCount = (chartSheets || []).filter(chart => chart?.imageDataUrl).length;
+
+    let infoSheetName = 'Report Info';
+    let index = 2;
+    while (Object.prototype.hasOwnProperty.call(dataSheets, infoSheetName)) {
+        infoSheetName = `Report Info ${index}`;
+        index += 1;
+    }
+
+    return {
+        [infoSheetName]: [
+            { item: 'Export button', value: 'CSV' },
+            { item: 'Actual file type', value: 'Excel workbook (.xlsx)' },
+            { item: 'Report title', value: title || 'page-export' },
+            { item: 'Data sheets', value: sheetEntries.length },
+            { item: 'Data rows', value: dataRowCount },
+            { item: 'Embedded chart images', value: embeddedImageCount },
+            {
+                item: 'Note',
+                value: 'CSV files cannot embed images, so this export keeps data and chart images together in one workbook file.',
+            },
+        ],
+        ...dataSheets,
+    };
+}
+
 export async function exportPageAsCSV(title = 'page-export') {
-    const { sheets } = extractPageExportData(document, { includeChartRows: false });
-    const rows = Object.entries(sheets).flatMap(([sheet, sheetRows]) =>
-        sheetRows.map(row => ({ sheet, ...row }))
-    );
-    const chartSheets = await collectChartSheets();
-    downloadCSVBundle(title, rows, chartSheets);
+    const { sheets } = extractPageExportData(document);
+    await exportCSVReportWorkbook(title, sheets);
 }
 
 export async function exportCSVReportWorkbook(title = 'page-export', sheets = {}) {
     const chartSheets = await collectChartSheets();
-    await exportWorkbook(`${title}_csv_report`, sheets || {}, chartSheets);
+    await exportWorkbook(`${title}_csv_report`, singleFileReportSheets(title, sheets, chartSheets), chartSheets);
 }
 
 export async function exportPageAsCSVReport(title = 'page-export') {
@@ -1184,11 +1209,7 @@ export async function exportPageAsExcel(title = 'page-export') {
 }
 
 export async function exportChartAsCSV(title, chart) {
-    const imageDataUrl = await renderChartImageDataUrl(chart);
-    downloadCSVBundle(title || 'chart', chartToRows(chart, title), imageDataUrl ? [{
-        name: title || 'Chart',
-        imageDataUrl,
-    }] : []);
+    await exportChartAsCSVReport(title, chart);
 }
 
 export async function exportChartAsCSVReport(title, chart) {
@@ -1208,26 +1229,6 @@ export async function exportChartAsExcel(title, chart) {
         rows: chartToRows(chart, title || 'Chart'),
         imageDataUrl,
     }]);
-}
-
-function downloadCSVBundle(title, rows, chartSheets = []) {
-    const safeTitle = safeFileName(title || 'page-export');
-    const csv = `\uFEFF${rowsToCsv(rows) || 'note\nNo tabular data found on this page.'}`;
-    const chartImages = (chartSheets || []).filter(chart => chart?.imageDataUrl);
-
-    if (chartImages.length === 0) {
-        downloadBlob(`${safeTitle}.csv`, 'text/csv;charset=utf-8', csv);
-        return;
-    }
-
-    const entries = [
-        { name: `${safeTitle}.csv`, content: csv },
-        ...chartImages.map((chart, idx) => ({
-            name: `charts/${String(idx + 1).padStart(2, '0')}_${safeFileName(chart.name || `chart_${idx + 1}`)}.png`,
-            content: dataUrlToBytes(chart.imageDataUrl),
-        })),
-    ];
-    triggerBlobDownload(`${safeTitle}_csv_charts.zip`, createZip(entries, ZIP_MIME));
 }
 
 async function renderChartImageDataUrl(chart) {
