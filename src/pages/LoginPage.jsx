@@ -85,12 +85,43 @@ export default function LoginPage() {
                     <span className="theme-toggle-thumb" />
                 </span>
             </button>
-            <div className="login-container">
+            <div className="login-container login-shell">
+                <section className="login-hero-panel" aria-label="ภาพรวมระบบ">
+                    <div className="login-brand-lockup">
+                        <div className="login-brand-badge">MJU</div>
+                        <div>
+                            <span className="login-kicker">SCIENCE DECISION SUPPORT</span>
+                            <h1>{APP_NAME_TH}</h1>
+                            <p>{APP_NAME_EN}</p>
+                        </div>
+                    </div>
+
+                    <div className="login-hero-copy">
+                        <h2>แดชบอร์ดอัจฉริยะคณะวิทยาศาสตร์</h2>
+                        <p>พื้นที่รวมข้อมูลสำหรับผู้บริหาร บุคลากร และนักศึกษา ในรูปแบบที่อ่านง่ายและพร้อมใช้งานทันที</p>
+                    </div>
+
+                    <div className="login-hero-metrics" aria-label="สถานะระบบ">
+                        <div>
+                            <strong>Live</strong>
+                            <span>ข้อมูลเชื่อมต่อ</span>
+                        </div>
+                        <div>
+                            <strong>AI</strong>
+                            <span>ผู้ช่วยวิเคราะห์</span>
+                        </div>
+                        <div>
+                            <strong>TCAS</strong>
+                            <span>แผนรับนักศึกษา</span>
+                        </div>
+                    </div>
+                </section>
+
                 <div className="login-card">
                     <div className="login-logo">
                         <div className="mju-badge">MJU</div>
-                        <h1>{APP_NAME_TH}</h1>
-                        <p>{APP_NAME_EN}</p>
+                        <h1>เข้าสู่ระบบ</h1>
+                        <p>เลือกวิธีเข้าสู่ระบบที่ต้องการเพื่อไปยังแดชบอร์ด</p>
                     </div>
 
                     {error && <div className="login-error">{error}</div>}
@@ -133,6 +164,7 @@ export default function LoginPage() {
                         <span>หรือเข้าสู่ระบบด้วย</span>
                     </div>
 
+                    <div className="login-sso-grid">
                     <button
                         type="button"
                         className="google-login-btn"
@@ -171,16 +203,17 @@ export default function LoginPage() {
                         </div>
                     </button>
 
+                    </div>
+
                     <div className="login-footer">
                         ยังไม่มีบัญชี? <Link to="/signup" className="link-text">สมัครสมาชิก</Link>
                     </div>
 
-                    <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                    <div className="login-admin-access">
                         <button
                             type="button"
-                            className="text-btn"
+                            className="text-btn login-admin-btn"
                             onClick={() => setShowAdminModal(true)}
-                            style={{ color: '#6b7280', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto' }}
                         >
                             <ShieldCheck size={16} />
                             เข้าสู่ระบบคณบดี
