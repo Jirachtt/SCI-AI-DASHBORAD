@@ -71,7 +71,6 @@ export default function ExportPDFButton({
                     className="export-action-btn export-action-btn-csv export-csv-primary no-print"
                     disabled={exportingCSV}
                     aria-label="Export ข้อมูลและกราฟในหน้านี้เป็น CSV Report Excel"
-                    data-tooltip="Export CSV Report (.xlsx)"
                 >
                     <TableProperties size={15} /> {exportingCSV ? 'CSV...' : 'CSV'}
                 </button>
@@ -82,7 +81,6 @@ export default function ExportPDFButton({
                 className="export-action-btn export-action-btn-pdf export-pdf-secondary no-print"
                 disabled={printing}
                 aria-label="บันทึกหน้านี้เป็น PDF"
-                data-tooltip="บันทึก PDF"
             >
                 <Icon size={15} /> {printing ? 'PDF...' : label}
             </button>

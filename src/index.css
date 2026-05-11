@@ -14390,6 +14390,12 @@ input {
   transform: none !important;
 }
 
+.export-actions [data-tooltip]::before,
+.export-actions [data-tooltip]::after {
+  display: none !important;
+  content: none !important;
+}
+
 [data-theme="light"] .export-actions .export-action-btn-pdf {
   background: #ffffff !important;
   border-color: rgba(100, 116, 139, 0.22) !important;
