@@ -683,11 +683,16 @@ function cellXml(value, ref) {
     return `<c r="${ref}" t="inlineStr"><is><t>${xmlEscape(value)}</t></is></c>`;
 }
 
-function worksheetXml({ rows = [], title = '', dataStartRow = 1, drawingRelId = '' }) {
+function worksheetXml({ rows = [], title = '', dataStartRow = 1, drawingRelId = '', drawingBounds = null }) {
     const grid = rowsToGrid(rows);
     const rowXml = [];
     let maxCol = Math.max(1, grid[0]?.length || 1);
     let maxRow = Math.max(1, dataStartRow + Math.max(0, grid.length - 1));
+
+    if (drawingBounds) {
+        maxCol = Math.max(maxCol, drawingBounds.maxCol || 1);
+        maxRow = Math.max(maxRow, drawingBounds.maxRow || 1);
+    }
 
     if (title) {
         rowXml.push(`<row r="1">${cellXml(title, 'A1')}</row>`);
@@ -789,26 +794,36 @@ function docPropsAppXml(sheetCount) {
 </Properties>`;
 }
 
-function drawingXml(imageName) {
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<xdr:twoCellAnchor editAs="oneCell">
-<xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
-<xdr:to><xdr:col>10</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>22</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+function drawingXml(images = []) {
+    const anchors = images.map((image, idx) => {
+        const fromCol = Math.max(0, Math.round(image.fromCol ?? 0));
+        const toCol = Math.max(fromCol + 1, Math.round(image.toCol ?? 10));
+        const fromRow = Math.max(0, Math.round(image.fromRow ?? (1 + idx * 24)));
+        const toRow = Math.max(fromRow + 1, Math.round(image.toRow ?? (22 + idx * 24)));
+        const imageName = image.name || `Chart ${idx + 1}`;
+
+        return `<xdr:twoCellAnchor editAs="oneCell">
+<xdr:from><xdr:col>${fromCol}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${fromRow}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
+<xdr:to><xdr:col>${toCol}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${toRow}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
 <xdr:pic>
-<xdr:nvPicPr><xdr:cNvPr id="1" name="${xmlEscape(imageName)}"/><xdr:cNvPicPr/></xdr:nvPicPr>
-<xdr:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>
+<xdr:nvPicPr><xdr:cNvPr id="${idx + 1}" name="${xmlEscape(imageName)}"/><xdr:cNvPicPr/></xdr:nvPicPr>
+<xdr:blipFill><a:blip r:embed="rId${idx + 1}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>
 <xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>
 </xdr:pic>
 <xdr:clientData/>
-</xdr:twoCellAnchor>
+</xdr:twoCellAnchor>`;
+    }).join('');
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+${anchors}
 </xdr:wsDr>`;
 }
 
-function drawingRelsXml(imageIndex) {
+function drawingRelsXml(images = [], firstImageIndex = 1) {
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${imageIndex}.png"/>
+${images.map((_, idx) => `<Relationship Id="rId${idx + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${firstImageIndex + idx}.png"/>`).join('')}
 </Relationships>`;
 }
 
@@ -912,28 +927,85 @@ function dataUrlToBytes(dataUrl) {
     return out;
 }
 
+function numberOr(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+}
+
+function normalizeSheetImages(source, fallbackName = 'Chart') {
+    const rawImages = Array.isArray(source?.images)
+        ? source.images
+        : (source?.imageDataUrl ? [source] : []);
+
+    return rawImages
+        .filter(image => image?.imageDataUrl)
+        .map((image, idx) => ({
+            name: image.name || source?.name || `${fallbackName} ${idx + 1}`,
+            imageDataUrl: image.imageDataUrl,
+            fromCol: numberOr(image.fromCol, 0),
+            toCol: numberOr(image.toCol, 10),
+            fromRow: numberOr(image.fromRow, 1 + idx * 24),
+            toRow: numberOr(image.toRow, 22 + idx * 24),
+        }));
+}
+
+function normalizeSheetInput(value, name) {
+    const isConfiguredSheet = value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        ('rows' in value || 'images' in value || 'imageDataUrl' in value || 'dataStartRow' in value);
+
+    if (isConfiguredSheet) {
+        return {
+            rows: normalizeRows(value.rows),
+            images: normalizeSheetImages(value, name),
+            dataStartRow: numberOr(value.dataStartRow, 1),
+            title: value.title || '',
+        };
+    }
+
+    return {
+        rows: normalizeRows(value),
+        images: [],
+        dataStartRow: 1,
+        title: '',
+    };
+}
+
+function imageDrawingBounds(images = []) {
+    if (!images.length) return null;
+    return {
+        maxCol: Math.max(...images.map(image => numberOr(image.toCol, 10))) + 1,
+        maxRow: Math.max(...images.map(image => numberOr(image.toRow, 22))) + 1,
+    };
+}
+
 async function downloadXlsx(fileName, sheets, chartSheets = []) {
     const usedNames = new Set();
     const sheetDefs = [];
 
-    chartSheets.forEach((chart, idx) => {
-        if (!chart?.imageDataUrl && normalizeRows(chart?.rows).length === 0) return;
+    Object.entries(sheets || {}).forEach(([name, sheetValue]) => {
+        const sheetInput = normalizeSheetInput(sheetValue, name);
+        if (sheetInput.rows.length === 0 && sheetInput.images.length === 0) return;
         sheetDefs.push({
-            name: uniqueSheetName(chart.name || `Chart ${idx + 1}`, usedNames, `Chart ${idx + 1}`),
-            rows: normalizeRows(chart.rows).length > 0 ? chart.rows : [{ note: 'Chart image captured from the dashboard page.' }],
-            imageDataUrl: chart.imageDataUrl || '',
-            dataStartRow: chart.imageDataUrl ? 25 : 1,
+            name: uniqueSheetName(name, usedNames),
+            rows: sheetInput.rows,
+            images: sheetInput.images,
+            dataStartRow: sheetInput.dataStartRow,
+            title: sheetInput.title,
         });
     });
 
-    Object.entries(sheets || {}).forEach(([name, rows]) => {
-        const normalized = normalizeRows(rows);
-        if (normalized.length === 0) return;
+    chartSheets.forEach((chart, idx) => {
+        const rows = normalizeRows(chart?.rows);
+        const images = normalizeSheetImages(chart, `Chart ${idx + 1}`);
+        if (images.length === 0 && rows.length === 0) return;
         sheetDefs.push({
-            name: uniqueSheetName(name, usedNames),
-            rows: normalized,
-            imageDataUrl: '',
-            dataStartRow: 1,
+            name: uniqueSheetName(chart.name || `Chart ${idx + 1}`, usedNames, `Chart ${idx + 1}`),
+            rows: rows.length > 0 ? rows : [{ note: 'Chart image captured from the dashboard page.' }],
+            images,
+            dataStartRow: images.length ? 25 : 1,
+            title: images.length ? (chart.name || `Chart ${idx + 1}`) : '',
         });
     });
 
@@ -941,13 +1013,14 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
         sheetDefs.push({
             name: 'Export',
             rows: [{ note: 'No exportable data found on this page.' }],
-            imageDataUrl: '',
+            images: [],
             dataStartRow: 1,
+            title: '',
         });
     }
 
     const entries = [
-        { name: '[Content_Types].xml', content: contentTypesXml(sheetDefs, sheetDefs.filter(sheet => sheet.imageDataUrl).length) },
+        { name: '[Content_Types].xml', content: contentTypesXml(sheetDefs, sheetDefs.filter(sheet => sheet.images.length).length) },
         { name: '_rels/.rels', content: rootRelsXml() },
         { name: 'docProps/core.xml', content: docPropsCoreXml() },
         { name: 'docProps/app.xml', content: docPropsAppXml(sheetDefs.length) },
@@ -956,34 +1029,41 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
     ];
 
     let drawingIndex = 0;
+    let imageIndex = 0;
     sheetDefs.forEach((sheet, sheetIdx) => {
-        const hasImage = Boolean(sheet.imageDataUrl);
-        if (hasImage) drawingIndex += 1;
+        const images = sheet.images || [];
+        const hasImages = images.length > 0;
+        if (hasImages) drawingIndex += 1;
         entries.push({
             name: `xl/worksheets/sheet${sheetIdx + 1}.xml`,
             content: worksheetXml({
                 rows: sheet.rows,
-                title: hasImage ? sheet.name : '',
+                title: sheet.title,
                 dataStartRow: sheet.dataStartRow,
-                drawingRelId: hasImage ? 'rId1' : '',
+                drawingRelId: hasImages ? 'rId1' : '',
+                drawingBounds: imageDrawingBounds(images),
             }),
         });
-        if (hasImage) {
+        if (hasImages) {
+            const firstImageIndex = imageIndex + 1;
             entries.push({
                 name: `xl/worksheets/_rels/sheet${sheetIdx + 1}.xml.rels`,
                 content: sheetRelsXml(drawingIndex),
             });
             entries.push({
                 name: `xl/drawings/drawing${drawingIndex}.xml`,
-                content: drawingXml(sheet.name),
+                content: drawingXml(images),
             });
             entries.push({
                 name: `xl/drawings/_rels/drawing${drawingIndex}.xml.rels`,
-                content: drawingRelsXml(drawingIndex),
+                content: drawingRelsXml(images, firstImageIndex),
             });
-            entries.push({
-                name: `xl/media/image${drawingIndex}.png`,
-                content: dataUrlToBytes(sheet.imageDataUrl),
+            images.forEach(image => {
+                imageIndex += 1;
+                entries.push({
+                    name: `xl/media/image${imageIndex}.png`,
+                    content: dataUrlToBytes(image.imageDataUrl),
+                });
             });
         }
     });
@@ -1088,14 +1168,25 @@ async function svgToDataUrl(svg) {
 }
 
 async function collectChartSheets(root = document) {
+    if (typeof requestAnimationFrame === 'function') {
+        await new Promise(resolve => requestAnimationFrame(() => resolve()));
+    }
+
     const chartSheets = [];
     const seen = new Set();
-    const canvases = Array.from(root.querySelectorAll('canvas')).filter(isVisibleElement);
+    const instanceCanvases = Object.values(ChartJS.instances || {})
+        .map(chart => chart?.canvas)
+        .filter(Boolean);
+    const canvases = Array.from(new Set([
+        ...Array.from(root.querySelectorAll('canvas')),
+        ...instanceCanvases,
+    ])).filter(isVisibleElement);
 
     canvases.forEach((canvas, idx) => {
         if (seen.has(canvas)) return;
         seen.add(canvas);
         const chart = ChartJS.getChart(canvas);
+        chart?.update?.('none');
         const title = nearestReadableTitle(canvas, `Chart ${idx + 1}`);
         const rows = chart ? chartToRows(chart, title) : [];
         try {
@@ -1148,7 +1239,7 @@ export function extractPageExportData(root = document, { includeChartRows = true
         const canvases = Array.from(root.querySelectorAll('canvas'));
         canvases.forEach((canvas, idx) => {
             const chart = ChartJS.getChart(canvas);
-            const title = chart?.options?.plugins?.title?.text || `Chart ${idx + 1}`;
+            const title = nearestReadableTitle(canvas, `Chart ${idx + 1}`);
             const rows = chartToRows(chart, String(title));
             addSheet(sheets, `Chart ${idx + 1}`, rows);
         });
@@ -1162,27 +1253,60 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
     const sheetEntries = Object.entries(dataSheets);
     const dataRowCount = sheetEntries.reduce((sum, [, rows]) => sum + normalizeRows(rows).length, 0);
     const embeddedImageCount = (chartSheets || []).filter(chart => chart?.imageDataUrl).length;
+    const visibleSummaryRows = normalizeRows(dataSheets['Visible Summary']).slice(0, 30);
+    const chartListRows = (chartSheets || []).map((chart, idx) => ({
+        section: 'Charts on this page',
+        item: idx + 1,
+        value: chart?.name || `Chart ${idx + 1}`,
+    }));
 
-    let infoSheetName = 'Report Info';
+    let infoSheetName = 'Full Page Report';
     let index = 2;
     while (Object.prototype.hasOwnProperty.call(dataSheets, infoSheetName)) {
-        infoSheetName = `Report Info ${index}`;
+        infoSheetName = `Full Page Report ${index}`;
         index += 1;
     }
 
+    const overviewRows = [
+        { section: 'Report', item: 'Export button', value: 'CSV' },
+        { section: 'Report', item: 'Actual file type', value: 'Excel workbook (.xlsx)' },
+        { section: 'Report', item: 'Report title', value: title || 'page-export' },
+        { section: 'Report', item: 'Data sheets', value: sheetEntries.length },
+        { section: 'Report', item: 'Data rows', value: dataRowCount },
+        { section: 'Report', item: 'Embedded chart images', value: embeddedImageCount },
+        {
+            section: 'Report',
+            item: 'Note',
+            value: 'CSV files cannot embed images, so this export keeps page data and all captured chart images together in one workbook file.',
+        },
+        ...visibleSummaryRows.map((row, idx) => ({
+            section: 'Visible summary',
+            item: row.label || `Card ${row.card || idx + 1}`,
+            value: row.value ?? '',
+        })),
+        ...chartListRows,
+    ];
+    const firstImageRow = overviewRows.length + 3;
+    const overviewImages = (chartSheets || [])
+        .filter(chart => chart?.imageDataUrl)
+        .map((chart, idx) => {
+            const fromRow = firstImageRow + idx * 24;
+            return {
+                name: chart.name || `Chart ${idx + 1}`,
+                imageDataUrl: chart.imageDataUrl,
+                fromCol: 0,
+                toCol: 11,
+                fromRow,
+                toRow: fromRow + 21,
+            };
+        });
+
     return {
-        [infoSheetName]: [
-            { item: 'Export button', value: 'CSV' },
-            { item: 'Actual file type', value: 'Excel workbook (.xlsx)' },
-            { item: 'Report title', value: title || 'page-export' },
-            { item: 'Data sheets', value: sheetEntries.length },
-            { item: 'Data rows', value: dataRowCount },
-            { item: 'Embedded chart images', value: embeddedImageCount },
-            {
-                item: 'Note',
-                value: 'CSV files cannot embed images, so this export keeps data and chart images together in one workbook file.',
-            },
-        ],
+        [infoSheetName]: {
+            rows: overviewRows,
+            images: overviewImages,
+            dataStartRow: 1,
+        },
         ...dataSheets,
     };
 }
