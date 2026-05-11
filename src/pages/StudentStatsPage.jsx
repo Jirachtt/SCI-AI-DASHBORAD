@@ -734,7 +734,7 @@ export default function StudentStatsPage() {
                             const isSci = fac.name === 'คณะวิทยาศาสตร์';
                             return (
                                 <tr key={i} style={isSci ? { background: 'rgba(0, 104, 56, 0.15)', borderLeft: '3px solid #00a651' } : {}}>
-                                    <td style={{ fontWeight: isSci ? 700 : 500, color: isSci ? '#00a651' : undefined }}>{isSci ? '⭐ ' : ''}{fac.name}</td>
+                                    <td style={{ fontWeight: isSci ? 700 : 500, color: isSci ? '#00a651' : undefined }}>{fac.name}</td>
                                     {(appliedLevel === 'all' || appliedLevel === 'bachelor') && <td style={{ color: 'var(--mju-green-light)' }}>{fac.bachelor.toLocaleString()}</td>}
                                     {(appliedLevel === 'all' || appliedLevel === 'master') && <td style={{ color: '#2E86AB' }}>{fac.master}</td>}
                                     {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <td style={{ color: '#A23B72' }}>{fac.doctoral}</td>}
@@ -859,21 +859,21 @@ export default function StudentStatsPage() {
                     <div className="chart-card animate-in">
                         <div className="chart-card-header">
                             <div>
-                                <div className="chart-card-title">👫 สัดส่วนเพศนักศึกษา</div>
+                                <div className="chart-card-title">สัดส่วนเพศนักศึกษา</div>
                                 <div className="chart-card-subtitle">คณะวิทยาศาสตร์ — ข้อมูลจาก MJU Dashboard</div>
                             </div>
                         </div>
-                        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 16 }}>
                             <div className="chart-container" style={{ height: 200 }}>
                                 <Doughnut data={genderData} options={genderDrilldownOptions} />
                             </div>
-                            <div style={{ display: 'flex', gap: 24, justifyContent: 'center', width: '100%' }}>
-                                <div style={{ textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: 24, justifyContent: 'flex-start', width: '100%' }}>
+                                <div style={{ textAlign: 'left' }}>
                                     <div style={{ fontSize: 28, fontWeight: 800, color: '#2E86AB' }}>{scienceFaculty.byGender.male}</div>
                                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>ชาย ({scienceFaculty.byGender.malePercent}%)</div>
                                 </div>
                                 <div style={{ width: 1, background: 'var(--border-color)' }} />
-                                <div style={{ textAlign: 'center' }}>
+                                <div style={{ textAlign: 'left' }}>
                                     <div style={{ fontSize: 28, fontWeight: 800, color: '#E91E63' }}>{scienceFaculty.byGender.female}</div>
                                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>หญิง ({scienceFaculty.byGender.femalePercent}%)</div>
                                 </div>
@@ -885,13 +885,13 @@ export default function StudentStatsPage() {
                     <div className="chart-card animate-in">
                         <div className="chart-card-header">
                             <div>
-                                <div className="chart-card-title">👨‍🏫 อัตราส่วน นศ. ต่ออาจารย์</div>
+                                <div className="chart-card-title">อัตราส่วน นศ. ต่ออาจารย์</div>
                                 <div className="chart-card-subtitle">เปรียบเทียบกับเกณฑ์ สกอ. และมหาวิทยาลัยอื่น</div>
                             </div>
                         </div>
                         <div style={{ padding: '0 20px 20px' }}>
                             <div style={{
-                                textAlign: 'center', padding: '16px', marginBottom: 16,
+                                textAlign: 'left', padding: '16px', marginBottom: 16,
                                 background: 'linear-gradient(135deg, rgba(0,104,56,0.15), rgba(0,166,81,0.08))',
                                 border: '1px solid rgba(0,166,81,0.3)', borderRadius: 12
                             }}>
@@ -910,7 +910,7 @@ export default function StudentStatsPage() {
                 <div className="chart-card animate-in" style={{ marginTop: 20 }}>
                     <div className="chart-card-header">
                         <div>
-                            <div className="chart-card-title">🎓 จำนวนนักศึกษาใหม่ (Intake) คณะวิทยาศาสตร์</div>
+                            <div className="chart-card-title">จำนวนนักศึกษาใหม่ (Intake) คณะวิทยาศาสตร์</div>
                             <div className="chart-card-subtitle">ย้อนหลัง 5 ปี — อ้างอิงจาก MJU Dashboard</div>
                         </div>
                     </div>

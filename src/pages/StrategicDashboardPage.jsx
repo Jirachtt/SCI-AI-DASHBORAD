@@ -514,7 +514,7 @@ export default function StrategicDashboardPage() {
             {/* Row 2: Radar + KPI Details */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>📊 ประสิทธิภาพ 5 ด้าน — เปรียบเทียบเป้าหมาย</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>ประสิทธิภาพ 5 ด้าน — เปรียบเทียบเป้าหมาย</h3>
                     <div style={{ height: 320 }}>
                         <Bar data={perfBarData} options={perfDrilldownOptions} />
                     </div>

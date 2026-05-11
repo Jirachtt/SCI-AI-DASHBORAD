@@ -706,11 +706,11 @@ export default function HRDashboardPage() {
                                     border: `1px solid ${ed.color}2f`,
                                     borderRadius: 14,
                                     padding: '16px 12px',
-                                    textAlign: 'center',
+                                    textAlign: 'left',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
+                                    alignItems: 'flex-start',
+                                    justifyContent: 'flex-start',
                                 }}
                             >
                                 <div style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>{ed.shortLabel}</div>

@@ -14101,3 +14101,205 @@ input {
   background: rgba(255, 255, 255, 0.92) !important;
   color: #334155 !important;
 }
+
+/* Dashboard consistency pass: keep every page using the same edge alignment and type scale. */
+:root {
+  --type-page-title: 1.36rem;
+  --type-section-title: 1.08rem;
+  --type-card-title: 0.98rem;
+  --type-body: 0.92rem;
+  --type-body-sm: 0.84rem;
+  --type-caption: 0.76rem;
+  --type-micro: 0.72rem;
+  --type-stat: 1.58rem;
+  --type-stat-compact: 1.36rem;
+}
+
+.dashboard-typography,
+.dashboard-typography * {
+  letter-spacing: 0;
+}
+
+.dashboard-typography,
+.dashboard-typography :where(
+  .section-header,
+  .chart-card,
+  .data-table-container,
+  .filter-bar,
+  .stat-card,
+  .topic-card,
+  .tcas-source-banner,
+  .course-source-banner,
+  .tcas-kpi-card,
+  .course-kpi-card,
+  .science-activity-hero,
+  .science-activity-kpi-card,
+  .graduation-status-card,
+  .admin-panel,
+  .admin-stat-card,
+  .admin-data-status-card,
+  .smart-status-card,
+  .ai-system-status-card
+) {
+  text-align: left;
+}
+
+.dashboard-typography .page-transition {
+  max-width: none;
+  margin-inline: 0;
+}
+
+.dashboard-typography .page-transition > * {
+  width: 100%;
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+.dashboard-typography :where(.section-header, .chart-card-header, .data-table-header) {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.dashboard-typography :where(.chart-card-header, .data-table-header) {
+  gap: 12px;
+}
+
+.dashboard-typography :where(
+  .section-header > div:not(.section-header-icon):not(.section-header-actions),
+  .chart-card-header > div,
+  .data-table-header > :first-child
+) {
+  min-width: 0;
+}
+
+.dashboard-typography :where(.section-header h1, .section-header h2, h2[style*="font-size"]) {
+  font-size: var(--type-page-title) !important;
+  line-height: 1.32 !important;
+  font-weight: 800;
+}
+
+.dashboard-typography :where(.chart-card-title, .data-table-title, .topic-card h3, h3[style*="font-size"]) {
+  font-size: var(--type-card-title) !important;
+  line-height: 1.38 !important;
+  font-weight: 800;
+}
+
+.dashboard-typography :where(
+  .section-header p,
+  .chart-card-subtitle,
+  .stat-card-label,
+  .topic-card p,
+  .topic-card-footer,
+  .filter-bar label,
+  .filter-bar input,
+  .filter-bar select,
+  .data-table td,
+  table td,
+  p[style*="font-size"]
+) {
+  font-size: var(--type-body-sm) !important;
+  line-height: 1.55 !important;
+}
+
+.dashboard-typography :where(
+  .data-table th,
+  table th,
+  .status-badge,
+  small,
+  [style*="font-size: 0.7rem"],
+  [style*="font-size: 0.72rem"],
+  [style*="font-size: 0.75rem"],
+  [style*="font-size: 0.76rem"],
+  [style*="font-size: 0.78rem"],
+  [style*="font-size: 12px"],
+  [style*="font-size: 13px"]
+) {
+  font-size: var(--type-caption) !important;
+  line-height: 1.45 !important;
+}
+
+.dashboard-typography :where(
+  .stat-card-value,
+  .admin-stat-value,
+  .tcas-kpi-card strong,
+  .course-kpi-card strong,
+  .science-activity-kpi-card strong,
+  .graduation-status-value,
+  .smart-status-card strong,
+  [style*="font-size: 1.5rem"],
+  [style*="font-size: 1.55rem"],
+  [style*="font-size: 1.7rem"],
+  [style*="font-size: 1.8rem"],
+  [style*="font-size: 28px"],
+  [style*="font-size: 36px"]
+) {
+  font-size: var(--type-stat) !important;
+  line-height: 1.08 !important;
+}
+
+.dashboard-typography :where(.stat-card-trend, .status-badge, .tcas-source-links a, .tcas-source-links span) {
+  white-space: normal;
+}
+
+.dashboard-typography :where(.data-table th, .data-table td, table th, table td) {
+  text-align: left !important;
+  vertical-align: top;
+}
+
+.dashboard-typography :where(
+  .chart-card,
+  .stat-card,
+  .topic-card,
+  .data-table-container,
+  .tcas-kpi-card,
+  .course-kpi-card,
+  .science-activity-kpi-card,
+  .graduation-status-card,
+  .admin-stat-card,
+  .admin-data-status-card,
+  .smart-status-card,
+  .dashboard-content
+) [style*="text-align: center"] {
+  text-align: left !important;
+}
+
+.dashboard-typography :where(.data-table, table) [style*="justify-content: center"] {
+  justify-content: flex-start !important;
+}
+
+.dashboard-typography :where(
+  .tcas-kpi-card,
+  .course-kpi-card,
+  .science-activity-kpi-card,
+  .graduation-status-card,
+  .smart-status-card,
+  .admin-stat-card,
+  .admin-data-status-card
+) {
+  justify-items: start;
+  align-items: flex-start;
+}
+
+.dashboard-typography :where(
+  .section-header-icon,
+  .stat-card-icon,
+  .science-activity-kpi-icon,
+  .tcas-kpi-card div,
+  .course-kpi-card div,
+  .admin-data-status-icon
+) {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .dashboard-typography :where(.section-header, .chart-card-header, .data-table-header) {
+    align-items: flex-start;
+  }
+
+  .dashboard-typography :where(.section-header-actions, .export-actions) {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+}
