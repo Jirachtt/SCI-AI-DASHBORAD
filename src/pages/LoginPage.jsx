@@ -115,6 +115,44 @@ export default function LoginPage() {
                             <span>แผนรับนักศึกษา</span>
                         </div>
                     </div>
+
+                    <div className="login-preview-screen" aria-hidden="true">
+                        <div className="login-preview-toolbar">
+                            <span>SCI AI Dashboard</span>
+                            <span>Live Data</span>
+                        </div>
+                        <div className="login-preview-board">
+                            <div className="login-preview-sidebar">
+                                <span />
+                                <span />
+                                <span />
+                                <span />
+                            </div>
+                            <div className="login-preview-content">
+                                <div className="login-preview-title">
+                                    <span />
+                                    <span />
+                                </div>
+                                <div className="login-preview-cards">
+                                    <span />
+                                    <span />
+                                    <span />
+                                </div>
+                                <div className="login-preview-chart">
+                                    <i />
+                                    <i />
+                                    <i />
+                                    <i />
+                                    <i />
+                                </div>
+                                <div className="login-preview-row">
+                                    <span />
+                                    <span />
+                                    <span />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <div className="login-card">
