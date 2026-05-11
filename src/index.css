@@ -15954,3 +15954,321 @@ body,
     animation: none !important;
   }
 }
+
+/* Login polish: readable SSO buttons + realistic dashboard animation */
+.login-container.login-shell .login-logo {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.login-container.login-shell .login-logo .mju-badge {
+  margin-inline: auto;
+}
+
+.login-container.login-shell .login-logo p {
+  max-width: 380px;
+}
+
+@media (min-width: 1100px) {
+  .login-sso-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.login-sso-grid {
+  grid-template-columns: 1fr !important;
+}
+
+.login-sso-grid .google-login-btn,
+.login-sso-grid .mju-login-btn {
+  width: 100%;
+}
+
+.login-sso-grid .google-btn-inner,
+.login-sso-grid .mju-login-btn-inner {
+  min-height: 56px;
+  justify-content: center;
+  padding-inline: 20px;
+}
+
+.login-sso-grid .google-btn-text,
+.login-sso-grid .mju-login-btn-text {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.google-btn-text,
+.mju-login-btn-text {
+  font-size: 0;
+}
+
+.google-btn-text::after {
+  content: 'เข้าสู่ระบบด้วย Google';
+  font-size: 0.95rem;
+}
+
+.mju-login-btn-text::after {
+  content: 'เข้าสู่ระบบด้วย MJU Account';
+  font-size: 0.95rem;
+}
+
+.login-preview-dashboard {
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.login-preview-dashboard .login-preview-sidebar {
+  gap: 8px;
+  padding: 10px;
+}
+
+.login-preview-dashboard .login-preview-sidebar strong {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #008f54, #22c55e);
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.login-preview-dashboard .login-preview-sidebar span {
+  height: auto;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.11);
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.login-preview-dashboard .login-preview-sidebar span.active {
+  background: linear-gradient(135deg, #008f54, #22c55e);
+  color: #fff;
+  animation: loginPreviewPulse 2.8s ease-in-out infinite;
+}
+
+.login-preview-dashboard .login-preview-content {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.login-preview-topline {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.login-preview-topline strong,
+.login-preview-table strong,
+.login-preview-chart-head strong {
+  display: block;
+  color: rgba(248, 250, 252, 0.94);
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.login-preview-topline span,
+.login-preview-chart-head span {
+  color: rgba(203, 213, 225, 0.70);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.login-preview-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.login-preview-actions span {
+  height: 28px;
+  min-width: 42px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(0, 166, 81, 0.18);
+  color: #8df6c4;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.login-preview-dashboard .login-preview-cards {
+  gap: 8px;
+}
+
+.login-preview-dashboard .login-preview-cards > div {
+  min-height: 68px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 15px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at 80% 0%, rgba(34, 197, 94, 0.20), transparent 42%),
+    rgba(15, 23, 42, 0.70);
+}
+
+.login-preview-dashboard .login-preview-cards strong {
+  color: #f8fafc;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.login-preview-dashboard .login-preview-cards span {
+  color: rgba(203, 213, 225, 0.74);
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.login-preview-dashboard .login-preview-cards > div:nth-child(2) {
+  animation: loginPreviewPulse 3.2s ease-in-out 0.35s infinite;
+}
+
+.login-preview-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(118px, 0.65fr);
+  gap: 10px;
+  min-height: 0;
+}
+
+.login-preview-dashboard .login-preview-chart {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+}
+
+.login-preview-chart-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.login-preview-bars {
+  display: flex;
+  align-items: end;
+  gap: 9px;
+  min-height: 148px;
+  padding-top: 10px;
+}
+
+.login-preview-bars i {
+  flex: 1;
+  border-radius: 999px 999px 7px 7px;
+  background: linear-gradient(180deg, #38bdf8, #22c55e);
+  min-height: 38%;
+  transform-origin: bottom;
+  animation: loginPreviewBars 3.8s ease-in-out infinite;
+}
+
+.login-preview-bars i:nth-child(2) { min-height: 66%; animation-delay: 0.15s; }
+.login-preview-bars i:nth-child(3) { min-height: 48%; animation-delay: 0.3s; }
+.login-preview-bars i:nth-child(4) { min-height: 84%; animation-delay: 0.45s; }
+.login-preview-bars i:nth-child(5) { min-height: 58%; animation-delay: 0.6s; }
+
+.login-preview-table {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 18px;
+  background: rgba(2, 6, 23, 0.42);
+}
+
+.login-preview-table span {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 9px;
+  border-radius: 9px;
+  background: rgba(148, 163, 184, 0.10);
+  color: rgba(226, 232, 240, 0.80);
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.login-preview-table b {
+  color: #8df6c4;
+}
+
+.login-preview-dashboard .login-preview-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.login-preview-dashboard .login-preview-row span {
+  height: auto;
+  min-height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0 8px;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.58rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+[data-theme="light"] .login-preview-topline,
+[data-theme="light"] .login-preview-dashboard .login-preview-cards > div,
+[data-theme="light"] .login-preview-table {
+  background: rgba(255, 255, 255, 0.76);
+  border-color: rgba(15, 23, 42, 0.10);
+}
+
+[data-theme="light"] .login-preview-topline strong,
+[data-theme="light"] .login-preview-table strong,
+[data-theme="light"] .login-preview-chart-head strong,
+[data-theme="light"] .login-preview-dashboard .login-preview-cards strong {
+  color: #0f172a;
+}
+
+[data-theme="light"] .login-preview-topline span,
+[data-theme="light"] .login-preview-chart-head span,
+[data-theme="light"] .login-preview-dashboard .login-preview-cards span,
+[data-theme="light"] .login-preview-dashboard .login-preview-row span,
+[data-theme="light"] .login-preview-table span,
+[data-theme="light"] .login-preview-dashboard .login-preview-sidebar span {
+  color: #475569;
+}
+
+[data-theme="light"] .login-preview-table b {
+  color: #007a48;
+}
+
+@media (max-width: 1180px) {
+  .login-preview-main {
+    grid-template-columns: 1fr;
+  }
+
+  .login-preview-table {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .login-preview-table strong {
+    grid-column: 1 / -1;
+  }
+}

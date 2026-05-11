@@ -121,34 +121,68 @@ export default function LoginPage() {
                             <span>SCI AI Dashboard</span>
                             <span>Live Data</span>
                         </div>
-                        <div className="login-preview-board">
+                        <div className="login-preview-board login-preview-dashboard">
                             <div className="login-preview-sidebar">
-                                <span />
-                                <span />
-                                <span />
-                                <span />
+                                <strong>SCI</strong>
+                                <span className="active">ภาพรวม</span>
+                                <span>นักศึกษา</span>
+                                <span>TCAS</span>
+                                <span>สำเร็จการศึกษา</span>
                             </div>
                             <div className="login-preview-content">
-                                <div className="login-preview-title">
-                                    <span />
-                                    <span />
+                                <div className="login-preview-topline">
+                                    <div>
+                                        <strong>สวัสดี, คณบดี (Admin)</strong>
+                                        <span>Decision Support Dashboard</span>
+                                    </div>
+                                    <div className="login-preview-actions">
+                                        <span>CSV</span>
+                                        <span>PDF</span>
+                                    </div>
                                 </div>
+
                                 <div className="login-preview-cards">
-                                    <span />
-                                    <span />
-                                    <span />
+                                    <div>
+                                        <strong>16,506</strong>
+                                        <span>นักศึกษาทั้งหมด</span>
+                                    </div>
+                                    <div>
+                                        <strong>847</strong>
+                                        <span>รายวิชาเปิดสอน</span>
+                                    </div>
+                                    <div>
+                                        <strong>89.5%</strong>
+                                        <span>อัตราสำเร็จ</span>
+                                    </div>
                                 </div>
-                                <div className="login-preview-chart">
-                                    <i />
-                                    <i />
-                                    <i />
-                                    <i />
-                                    <i />
+
+                                <div className="login-preview-main">
+                                    <div className="login-preview-chart">
+                                        <div className="login-preview-chart-head">
+                                            <strong>ภาพรวมสถิติ</strong>
+                                            <span>ปี 2569</span>
+                                        </div>
+                                        <div className="login-preview-bars">
+                                            <i />
+                                            <i />
+                                            <i />
+                                            <i />
+                                            <i />
+                                        </div>
+                                    </div>
+
+                                    <div className="login-preview-table">
+                                        <strong>ข้อมูลล่าสุด</strong>
+                                        <span><b>Y1</b> 410 คน</span>
+                                        <span><b>Y2</b> 415 คน</span>
+                                        <span><b>GPA</b> 3.12</span>
+                                    </div>
                                 </div>
+
                                 <div className="login-preview-row">
-                                    <span />
-                                    <span />
-                                    <span />
+                                    <span>รายชื่อนักศึกษา</span>
+                                    <span>ตรวจสอบการจบ</span>
+                                    <span>แผนรับ TCAS</span>
                                 </div>
                             </div>
                         </div>
