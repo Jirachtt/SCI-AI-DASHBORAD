@@ -683,10 +683,18 @@ function cellXml(value, ref) {
     return `<c r="${ref}" t="inlineStr"><is><t>${xmlEscape(value)}</t></is></c>`;
 }
 
-function worksheetXml({ rows = [], title = '', dataStartRow = 1, drawingRelId = '', drawingBounds = null }) {
+function worksheetXml({
+    rows = [],
+    title = '',
+    dataStartRow = 1,
+    drawingRelId = '',
+    drawingBounds = null,
+    colWidths = null,
+    rowHeights = null,
+}) {
     const grid = rowsToGrid(rows);
     const rowXml = [];
-    let maxCol = Math.max(1, grid[0]?.length || 1);
+    let maxCol = Math.max(1, grid[0]?.length || 1, colWidths?.length || 0);
     let maxRow = Math.max(1, dataStartRow + Math.max(0, grid.length - 1));
 
     if (drawingBounds) {
@@ -703,10 +711,14 @@ function worksheetXml({ rows = [], title = '', dataStartRow = 1, drawingRelId = 
     } else {
         grid.forEach((cells, rowIdx) => {
             const rowNumber = dataStartRow + rowIdx;
+            const rowHeight = rowHeights?.[rowNumber] ?? rowHeights?.[String(rowNumber)];
+            const rowAttributes = rowHeight
+                ? ` r="${rowNumber}" ht="${rowHeight}" customHeight="1"`
+                : ` r="${rowNumber}"`;
             maxCol = Math.max(maxCol, cells.length);
             maxRow = Math.max(maxRow, rowNumber);
             rowXml.push(
-                `<row r="${rowNumber}">${cells.map((value, colIdx) => {
+                `<row${rowAttributes}>${cells.map((value, colIdx) => {
                     const ref = `${columnName(colIdx)}${rowNumber}`;
                     return cellXml(value, ref);
                 }).join('')}</row>`
@@ -715,9 +727,10 @@ function worksheetXml({ rows = [], title = '', dataStartRow = 1, drawingRelId = 
     }
 
     const dimension = `A1:${columnName(maxCol - 1)}${maxRow}`;
-    const cols = Array.from({ length: Math.min(14, Math.max(1, maxCol)) }, (_, idx) =>
-        `<col min="${idx + 1}" max="${idx + 1}" width="${idx === 0 ? 24 : 18}" customWidth="1"/>`
-    ).join('');
+    const cols = Array.from({ length: Math.min(30, Math.max(1, maxCol)) }, (_, idx) => {
+        const width = colWidths?.[idx] ?? (idx === 0 ? 24 : 18);
+        return `<col min="${idx + 1}" max="${idx + 1}" width="${width}" customWidth="1"/>`;
+    }).join('');
 
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
@@ -806,7 +819,7 @@ function drawingXml(images = []) {
 <xdr:from><xdr:col>${fromCol}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${fromRow}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
 <xdr:to><xdr:col>${toCol}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${toRow}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
 <xdr:pic>
-<xdr:nvPicPr><xdr:cNvPr id="${idx + 1}" name="${xmlEscape(imageName)}"/><xdr:cNvPicPr/></xdr:nvPicPr>
+<xdr:nvPicPr><xdr:cNvPr id="${idx + 1}" name="${xmlEscape(imageName)}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>
 <xdr:blipFill><a:blip r:embed="rId${idx + 1}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>
 <xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>
 </xdr:pic>
@@ -943,9 +956,9 @@ function normalizeSheetImages(source, fallbackName = 'Chart') {
             name: image.name || source?.name || `${fallbackName} ${idx + 1}`,
             imageDataUrl: image.imageDataUrl,
             fromCol: numberOr(image.fromCol, 0),
-            toCol: numberOr(image.toCol, 10),
-            fromRow: numberOr(image.fromRow, 1 + idx * 24),
-            toRow: numberOr(image.toRow, 22 + idx * 24),
+            toCol: numberOr(image.toCol, 9),
+            fromRow: numberOr(image.fromRow, 1 + idx * 18),
+            toRow: numberOr(image.toRow, 17 + idx * 18),
         }));
 }
 
@@ -961,6 +974,8 @@ function normalizeSheetInput(value, name) {
             images: normalizeSheetImages(value, name),
             dataStartRow: numberOr(value.dataStartRow, 1),
             title: value.title || '',
+            colWidths: Array.isArray(value.colWidths) ? value.colWidths : null,
+            rowHeights: value.rowHeights || null,
         };
     }
 
@@ -969,6 +984,8 @@ function normalizeSheetInput(value, name) {
         images: [],
         dataStartRow: 1,
         title: '',
+        colWidths: null,
+        rowHeights: null,
     };
 }
 
@@ -993,6 +1010,8 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
             images: sheetInput.images,
             dataStartRow: sheetInput.dataStartRow,
             title: sheetInput.title,
+            colWidths: sheetInput.colWidths,
+            rowHeights: sheetInput.rowHeights,
         });
     });
 
@@ -1004,8 +1023,10 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
             name: uniqueSheetName(chart.name || `Chart ${idx + 1}`, usedNames, `Chart ${idx + 1}`),
             rows: rows.length > 0 ? rows : [{ note: 'Chart image captured from the dashboard page.' }],
             images,
-            dataStartRow: images.length ? 25 : 1,
+            dataStartRow: images.length ? 20 : 1,
             title: images.length ? (chart.name || `Chart ${idx + 1}`) : '',
+            colWidths: null,
+            rowHeights: null,
         });
     });
 
@@ -1016,6 +1037,8 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
             images: [],
             dataStartRow: 1,
             title: '',
+            colWidths: null,
+            rowHeights: null,
         });
     }
 
@@ -1042,6 +1065,8 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
                 dataStartRow: sheet.dataStartRow,
                 drawingRelId: hasImages ? 'rId1' : '',
                 drawingBounds: imageDrawingBounds(images),
+                colWidths: sheet.colWidths,
+                rowHeights: sheet.rowHeights,
             }),
         });
         if (hasImages) {
@@ -1254,11 +1279,7 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
     const dataRowCount = sheetEntries.reduce((sum, [, rows]) => sum + normalizeRows(rows).length, 0);
     const embeddedImageCount = (chartSheets || []).filter(chart => chart?.imageDataUrl).length;
     const visibleSummaryRows = normalizeRows(dataSheets['Visible Summary']).slice(0, 30);
-    const chartListRows = (chartSheets || []).map((chart, idx) => ({
-        section: 'Charts on this page',
-        item: idx + 1,
-        value: chart?.name || `Chart ${idx + 1}`,
-    }));
+    const chartImages = (chartSheets || []).filter(chart => chart?.imageDataUrl);
 
     let infoSheetName = 'Full Page Report';
     let index = 2;
@@ -1268,44 +1289,79 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
     }
 
     const overviewRows = [
-        { section: 'Report', item: 'Export button', value: 'CSV' },
-        { section: 'Report', item: 'Actual file type', value: 'Excel workbook (.xlsx)' },
         { section: 'Report', item: 'Report title', value: title || 'page-export' },
+        { section: 'Report', item: 'File type', value: 'Single Excel workbook (.xlsx)' },
         { section: 'Report', item: 'Data sheets', value: sheetEntries.length },
         { section: 'Report', item: 'Data rows', value: dataRowCount },
-        { section: 'Report', item: 'Embedded chart images', value: embeddedImageCount },
-        {
-            section: 'Report',
-            item: 'Note',
-            value: 'CSV files cannot embed images, so this export keeps page data and all captured chart images together in one workbook file.',
-        },
+        { section: 'Report', item: 'Chart previews', value: embeddedImageCount },
+        { section: 'Report', item: 'Use', value: 'This sheet is a compact preview. Detail sheets follow for sorting and analysis.' },
+        { section: '', item: '', value: '' },
         ...visibleSummaryRows.map((row, idx) => ({
             section: 'Visible summary',
             item: row.label || `Card ${row.card || idx + 1}`,
             value: row.value ?? '',
         })),
-        ...chartListRows,
     ];
-    const firstImageRow = overviewRows.length + 3;
-    const overviewImages = (chartSheets || [])
-        .filter(chart => chart?.imageDataUrl)
-        .map((chart, idx) => {
-            const fromRow = firstImageRow + idx * 24;
-            return {
-                name: chart.name || `Chart ${idx + 1}`,
-                imageDataUrl: chart.imageDataUrl,
-                fromCol: 0,
-                toCol: 11,
-                fromRow,
-                toRow: fromRow + 21,
-            };
+
+    const overviewImages = [];
+    const overviewRowHeights = {};
+    const chartRowSpan = 16;
+    const chartColLeft = { fromCol: 0, toCol: 6 };
+    const chartColRight = { fromCol: 7, toCol: 13 };
+    const blankRow = () => ({ section: '', item: '', value: '' });
+
+    if (chartImages.length > 0) {
+        overviewRows.push(
+            { section: '', item: '', value: '' },
+            { section: 'Chart previews', item: 'Layout', value: '2 columns, compact size for reuse' }
+        );
+    }
+
+    for (let idx = 0; idx < chartImages.length; idx += 2) {
+        const left = chartImages[idx];
+        const right = chartImages[idx + 1];
+        const leftName = left?.name || `Chart ${idx + 1}`;
+        const rightName = right ? (right.name || `Chart ${idx + 2}`) : '';
+
+        overviewRows.push(blankRow());
+        overviewRows.push({
+            section: 'Chart previews',
+            item: `${idx + 1}. ${leftName}`,
+            value: right ? `${idx + 2}. ${rightName}` : '',
         });
+
+        const fromRow = overviewRows.length + 1;
+        overviewImages.push({
+            name: leftName,
+            imageDataUrl: left.imageDataUrl,
+            ...chartColLeft,
+            fromRow,
+            toRow: fromRow + chartRowSpan,
+        });
+        if (right) {
+            overviewImages.push({
+                name: rightName,
+                imageDataUrl: right.imageDataUrl,
+                ...chartColRight,
+                fromRow,
+                toRow: fromRow + chartRowSpan,
+            });
+        }
+
+        for (let row = 0; row < chartRowSpan; row += 1) {
+            const worksheetRow = overviewRows.length + 2;
+            overviewRows.push(blankRow());
+            overviewRowHeights[worksheetRow] = 16;
+        }
+    }
 
     return {
         [infoSheetName]: {
             rows: overviewRows,
             images: overviewImages,
             dataStartRow: 1,
+            colWidths: [14, 24, 28, 11, 11, 11, 3, 14, 24, 28, 11, 11, 11],
+            rowHeights: overviewRowHeights,
         },
         ...dataSheets,
     };
