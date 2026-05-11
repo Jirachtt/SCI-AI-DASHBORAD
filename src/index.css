@@ -14604,3 +14604,590 @@ input {
     justify-self: start;
   }
 }
+
+/* ==================== EXECUTIVE FUTURISTIC CINEMATIC UPGRADE ==================== */
+:root {
+  --bg-primary: #050816;
+  --bg-secondary: #0a1020;
+  --bg-card: rgba(15, 23, 42, 0.88);
+  --bg-card-hover: rgba(20, 31, 54, 0.94);
+  --bg-glass: rgba(8, 13, 28, 0.70);
+  --bg-sidebar: #06101a;
+
+  --text-primary: #ffffff;
+  --text-secondary: #f7fbff;
+  --text-muted: #e7edf7;
+  --text-subtle: #d8e2f0;
+
+  --app-canvas: #050816;
+  --surface-card: rgba(15, 23, 42, 0.82);
+  --surface-panel: linear-gradient(135deg, rgba(12, 27, 43, 0.92), rgba(10, 14, 31, 0.90));
+  --surface-panel-soft: rgba(255, 255, 255, 0.060);
+  --surface-border: rgba(176, 196, 222, 0.15);
+  --surface-border-strong: rgba(120, 166, 255, 0.28);
+  --surface-highlight: rgba(120, 166, 255, 0.10);
+  --focus-ring: rgba(65, 230, 164, 0.42);
+  --shadow-card: 0 26px 72px -48px rgba(0, 0, 0, 0.95), 0 1px 0 rgba(255, 255, 255, 0.055) inset;
+  --shadow-card-hover: 0 34px 90px -54px rgba(0, 0, 0, 1), 0 0 0 1px rgba(120, 166, 255, 0.18);
+  --shadow-sidebar: 18px 0 58px -42px rgba(0, 0, 0, 0.96);
+  --topbar-surface: rgba(6, 10, 22, 0.82);
+  --sidebar-surface: linear-gradient(180deg, rgba(6, 16, 26, 0.98), rgba(8, 12, 27, 0.97));
+  --nav-active-surface: linear-gradient(135deg, #007a48 0%, #00a651 64%, #41e6a4 100%);
+  --cinematic-line: rgba(120, 166, 255, 0.18);
+  --cinematic-green: rgba(65, 230, 164, 0.16);
+  --cinematic-violet: rgba(183, 156, 255, 0.13);
+  --motion-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+  --radius-shell: 22px;
+  --radius-control: 14px;
+}
+
+[data-theme="light"] {
+  --bg-primary: #f7f8fb;
+  --bg-secondary: #eef1f6;
+  --bg-card: rgba(255, 255, 255, 0.92);
+  --bg-card-hover: #ffffff;
+  --bg-glass: rgba(255, 255, 255, 0.78);
+  --bg-sidebar: #fbfcfe;
+
+  --text-primary: #07111f;
+  --text-secondary: #243447;
+  --text-muted: #475569;
+  --text-subtle: #64748b;
+
+  --app-canvas: #f3f5f8;
+  --surface-card: rgba(255, 255, 255, 0.92);
+  --surface-panel: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(246, 248, 252, 0.94));
+  --surface-panel-soft: rgba(15, 23, 42, 0.038);
+  --surface-border: rgba(15, 23, 42, 0.10);
+  --surface-border-strong: rgba(0, 104, 56, 0.18);
+  --surface-highlight: rgba(0, 104, 56, 0.052);
+  --focus-ring: rgba(0, 104, 56, 0.22);
+  --shadow-card: 0 18px 50px -40px rgba(15, 23, 42, 0.32), 0 1px 0 rgba(255, 255, 255, 0.95) inset;
+  --shadow-card-hover: 0 28px 66px -46px rgba(15, 23, 42, 0.40), 0 0 0 1px rgba(0, 104, 56, 0.10);
+  --shadow-sidebar: 18px 0 46px -42px rgba(15, 23, 42, 0.24);
+  --topbar-surface: rgba(255, 255, 255, 0.86);
+  --sidebar-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.97));
+  --cinematic-line: rgba(15, 23, 42, 0.075);
+  --cinematic-green: rgba(0, 104, 56, 0.060);
+  --cinematic-violet: rgba(67, 56, 202, 0.040);
+}
+
+html,
+body,
+#root {
+  background: var(--app-canvas);
+}
+
+.app-layout,
+[data-theme="light"] .app-layout {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(135deg, transparent 0 18%, var(--cinematic-violet) 18% 19%, transparent 19% 100%),
+    linear-gradient(112deg, transparent 0 36%, var(--cinematic-line) 36% 36.5%, transparent 36.5% 100%),
+    linear-gradient(180deg, color-mix(in srgb, var(--app-canvas) 78%, #0f172a), var(--app-canvas));
+}
+
+[data-theme="light"] .app-layout {
+  background:
+    linear-gradient(135deg, transparent 0 22%, rgba(15, 23, 42, 0.030) 22% 22.35%, transparent 22.35% 100%),
+    linear-gradient(112deg, transparent 0 38%, rgba(0, 104, 56, 0.040) 38% 38.35%, transparent 38.35% 100%),
+    linear-gradient(180deg, #fbfcfe, var(--app-canvas));
+}
+
+.app-layout::before {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--text-primary) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--text-primary) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to right, color-mix(in srgb, var(--mju-green-light) 13%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--mju-green-light) 10%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px, 28px 28px, 168px 168px, 168px 168px;
+  background-position: 0 0, 0 0, -1px -1px, -1px -1px;
+  opacity: 0.76;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.84), rgba(0, 0, 0, 0.68) 58%, transparent 100%);
+}
+
+[data-theme="light"] .app-layout::before {
+  opacity: 0.38;
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.040) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.034) 1px, transparent 1px),
+    linear-gradient(to right, rgba(15, 23, 42, 0.026) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.024) 1px, transparent 1px);
+}
+
+.app-layout::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(118deg, transparent 0 12%, rgba(120, 166, 255, 0.080) 12.3%, transparent 29%),
+    linear-gradient(72deg, transparent 0 58%, rgba(65, 230, 164, 0.070) 58.3%, transparent 76%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.030), transparent 30%);
+  opacity: 0.78;
+  mix-blend-mode: screen;
+}
+
+[data-theme="light"] .app-layout::after {
+  background:
+    linear-gradient(118deg, transparent 0 18%, rgba(15, 23, 42, 0.030) 18.3%, transparent 34%),
+    linear-gradient(72deg, transparent 0 64%, rgba(0, 104, 56, 0.035) 64.3%, transparent 80%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.70), transparent 38%);
+  mix-blend-mode: normal;
+  opacity: 0.74;
+}
+
+.main-content,
+.sidebar {
+  position: relative;
+  z-index: 1;
+}
+
+.main-content {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-highlight) 56%, transparent), transparent 340px);
+}
+
+[data-theme="light"] .main-content,
+[data-theme="light"] .page-content {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.54), transparent 320px);
+}
+
+.main-header,
+[data-theme="light"] .main-header {
+  background: var(--topbar-surface);
+  border-bottom: 1px solid var(--surface-border);
+  box-shadow: 0 18px 54px -46px rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(26px) saturate(1.35);
+  -webkit-backdrop-filter: blur(26px) saturate(1.35);
+}
+
+[data-theme="light"] .main-header {
+  box-shadow: 0 18px 48px -42px rgba(15, 23, 42, 0.22);
+}
+
+.header-title h1,
+.section-header h1,
+.section-header h2,
+.ai-chat-page-header-left h1,
+.dashboard-welcome h2,
+.ai-minimal-welcome h2,
+.dashboard-typography :where(h1, h2, h3) {
+  background: none !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--text-primary) !important;
+  text-shadow: none !important;
+}
+
+[data-theme="light"] .header-title h1,
+[data-theme="light"] .section-header h1,
+[data-theme="light"] .section-header h2,
+[data-theme="light"] .ai-chat-page-header-left h1,
+[data-theme="light"] .dashboard-welcome h2,
+[data-theme="light"] .ai-minimal-welcome h2,
+[data-theme="light"] .dashboard-typography :where(h1, h2, h3) {
+  color: #07111f !important;
+}
+
+.header-title p,
+.section-header p,
+.chart-card-subtitle,
+.stat-card-label,
+.topic-card-subtitle,
+.topic-card p,
+.data-table td,
+.filter-bar label,
+.ai-chat-page-header-left p,
+.ai-minimal-subtitle {
+  color: var(--text-muted) !important;
+}
+
+.sidebar,
+[data-theme="light"] .sidebar {
+  background: var(--sidebar-surface);
+  border-right: 1px solid var(--surface-border);
+  box-shadow: var(--shadow-sidebar);
+  backdrop-filter: blur(30px) saturate(1.28);
+  -webkit-backdrop-filter: blur(30px) saturate(1.28);
+}
+
+.sidebar::before {
+  background:
+    linear-gradient(125deg, rgba(120, 166, 255, 0.10), transparent 42%),
+    linear-gradient(180deg, rgba(65, 230, 164, 0.08), transparent 34%);
+}
+
+[data-theme="light"] .sidebar::before {
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.82), transparent 44%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.024), transparent 38%);
+}
+
+.sidebar-header,
+.sidebar-footer {
+  border-color: var(--surface-border);
+}
+
+.sidebar-logo,
+.section-header-icon,
+.stat-card-icon,
+.topic-card-icon,
+.ai-chat-page-header-icon,
+.ai-minimal-orb,
+.ai-command-status-icon,
+.ai-chat-page-feature-icon {
+  box-shadow:
+    0 18px 34px -22px rgba(0, 0, 0, 0.60),
+    0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+}
+
+.nav-featured {
+  box-shadow:
+    0 24px 48px -26px rgba(0, 166, 81, 0.92),
+    0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+}
+
+.nav-item,
+.sidebar-settings-button,
+.filter-btn,
+.chart-type-btn,
+.ai-page-chart-btn,
+.admin-refresh-btn,
+.filter-apply-btn,
+.back-button {
+  transition:
+    transform 180ms var(--motion-cinematic),
+    box-shadow 180ms var(--motion-cinematic),
+    border-color 180ms var(--motion-cinematic),
+    background 180ms var(--motion-cinematic),
+    color 180ms var(--motion-cinematic);
+}
+
+.nav-item:hover,
+.sidebar-settings-button:hover,
+.filter-btn:hover,
+.chart-type-btn:hover,
+.ai-page-chart-btn:hover,
+.admin-refresh-btn:hover,
+.filter-apply-btn:hover,
+.back-button:hover {
+  transform: translateY(-1px);
+}
+
+.nav-item.active,
+[data-theme="light"] .nav-item.active,
+.sidebar-settings-button.active {
+  background: var(--nav-active-surface) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 18px 36px -22px rgba(0, 166, 81, 0.86),
+    0 0 0 1px rgba(255, 255, 255, 0.20) inset;
+}
+
+.section-header,
+.stat-card,
+.chart-card,
+.topic-card,
+.data-table-container,
+.filter-bar,
+.modal-content,
+.admin-modal,
+.admin-stat-card,
+.admin-pending-card,
+.admin-users-table-wrapper,
+.admin-data-status-card,
+.auto-sync-card,
+.ai-page-chart-container,
+.ai-chat-page-sidebar,
+.ai-command-briefing,
+.ai-chat-page-quick-actions,
+.ai-chat-page-quick-group,
+.ai-context-source,
+.ai-chat-page-feature-card,
+.ai-chat-page-tips,
+.ai-system-info-panel,
+.chat-history-drawer,
+.settings-popover {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-card) 96%, #ffffff), var(--surface-card)) !important;
+  border: 1px solid var(--surface-border) !important;
+  box-shadow: var(--shadow-card) !important;
+  backdrop-filter: blur(22px) saturate(1.18);
+  -webkit-backdrop-filter: blur(22px) saturate(1.18);
+}
+
+[data-theme="light"] :where(.section-header, .stat-card, .chart-card, .topic-card, .data-table-container, .filter-bar, .modal-content, .admin-modal, .admin-stat-card, .admin-pending-card, .admin-users-table-wrapper, .admin-data-status-card, .auto-sync-card, .ai-page-chart-container, .ai-chat-page-sidebar, .ai-command-briefing, .ai-chat-page-quick-actions, .ai-chat-page-quick-group, .ai-context-source, .ai-chat-page-feature-card, .ai-chat-page-tips, .ai-system-info-panel, .chat-history-drawer, .settings-popover) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 252, 255, 0.92)) !important;
+}
+
+.section-header {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+.section-header::before {
+  height: 2px !important;
+  background:
+    linear-gradient(90deg, transparent, rgba(65, 230, 164, 0.76), rgba(120, 166, 255, 0.52), transparent) !important;
+  opacity: 0.66 !important;
+}
+
+[data-theme="light"] .section-header::before {
+  background:
+    linear-gradient(90deg, transparent, rgba(0, 104, 56, 0.34), rgba(15, 23, 42, 0.13), transparent) !important;
+  opacity: 0.62 !important;
+}
+
+.stat-card,
+.chart-card,
+.topic-card,
+.ai-page-chart-container {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.stat-card::before,
+.chart-card::before,
+.topic-card::before,
+.ai-page-chart-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(118deg, rgba(255, 255, 255, 0.075), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 38%);
+  opacity: 0.52;
+  transition: opacity 220ms var(--motion-cinematic), transform 220ms var(--motion-cinematic);
+}
+
+[data-theme="light"] .stat-card::before,
+[data-theme="light"] .chart-card::before,
+[data-theme="light"] .topic-card::before,
+[data-theme="light"] .ai-page-chart-container::before {
+  background:
+    linear-gradient(118deg, rgba(255, 255, 255, 0.88), transparent 38%),
+    linear-gradient(180deg, rgba(0, 104, 56, 0.032), transparent 42%);
+  opacity: 0.74;
+}
+
+.stat-card:hover,
+.chart-card:hover,
+.topic-card:hover,
+.data-table-container:hover,
+.ai-page-chart-container:hover,
+.ai-chat-page-feature-card:hover,
+.ai-minimal-pill:hover:not(:disabled) {
+  transform: translateY(-4px) scale(1.006);
+  border-color: var(--surface-border-strong) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
+.stat-card:hover::before,
+.chart-card:hover::before,
+.topic-card:hover::before,
+.ai-page-chart-container:hover::before {
+  opacity: 0.92;
+  transform: translateX(2%);
+}
+
+.chart-card canvas,
+.ai-page-chart-wrapper canvas,
+.recharts-wrapper {
+  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.12));
+}
+
+[data-theme="dark"] .chart-card canvas,
+[data-theme="dark"] .ai-page-chart-wrapper canvas,
+[data-theme="dark"] .recharts-wrapper {
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.30));
+}
+
+.chart-card,
+.ai-page-chart-container {
+  animation: cinematicCardIn 520ms var(--motion-cinematic) both;
+}
+
+.stats-grid > *,
+.topic-cards-grid > *,
+.ai-chat-page-quick-group,
+.ai-command-status-card,
+.ai-minimal-pill {
+  animation: cinematicCardIn 520ms var(--motion-cinematic) both;
+}
+
+.stats-grid > *:nth-child(2),
+.topic-cards-grid > *:nth-child(2),
+.ai-minimal-pill:nth-child(2) { animation-delay: 45ms; }
+.stats-grid > *:nth-child(3),
+.topic-cards-grid > *:nth-child(3),
+.ai-minimal-pill:nth-child(3) { animation-delay: 90ms; }
+.stats-grid > *:nth-child(4),
+.topic-cards-grid > *:nth-child(4),
+.ai-minimal-pill:nth-child(4) { animation-delay: 135ms; }
+.topic-cards-grid > *:nth-child(5) { animation-delay: 180ms; }
+
+@keyframes cinematicCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.982);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.data-table th,
+.admin-users-table thead th,
+.chart-drilldown-table thead th {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-panel-soft) 76%, transparent), transparent) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--surface-border) !important;
+}
+
+.data-table td,
+.admin-users-table td,
+.chart-drilldown-table td {
+  border-color: var(--surface-border) !important;
+}
+
+.data-table tr:hover td,
+.admin-users-table tbody tr:hover td,
+.chart-drilldown-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--surface-highlight) 70%, transparent) !important;
+}
+
+.filter-bar select,
+.filter-bar input,
+.filter-search,
+.ai-chat-page-input-area,
+.ai-chat-input-area,
+.admin-search-wrapper,
+.admin-filter-wrapper,
+.admin-role-select,
+.admin-role-time-actions input[type="date"] {
+  background: color-mix(in srgb, var(--bg-card) 82%, transparent) !important;
+  border-color: var(--surface-border) !important;
+  color: var(--text-primary) !important;
+}
+
+.ai-chat-page,
+[data-theme="light"] .ai-chat-page {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--app-canvas) 84%, transparent), transparent 420px) !important;
+}
+
+.ai-minimal-welcome {
+  min-height: min(720px, calc(100dvh - 176px));
+}
+
+.ai-minimal-orb {
+  background:
+    linear-gradient(135deg, rgba(0, 166, 81, 0.92), rgba(65, 230, 164, 0.86)) !important;
+}
+
+.ai-chat-page-input-area.minimal,
+.ai-chat-page-input-area:focus-within {
+  box-shadow:
+    0 24px 60px -38px rgba(0, 166, 81, 0.58),
+    0 0 0 1px color-mix(in srgb, var(--mju-green-light) 26%, transparent) inset !important;
+}
+
+.ai-minimal-pill,
+.ai-chat-page-quick-btn,
+.ai-command-status-card {
+  border-radius: 16px;
+}
+
+.ai-minimal-pill:hover:not(:disabled),
+.ai-chat-page-quick-btn:hover {
+  transform: translateY(-3px);
+}
+
+.modal-content,
+.chart-drilldown-modal,
+.ai-page-chart-modal,
+.ai-system-info-panel,
+.chat-history-drawer {
+  border-radius: 24px !important;
+  box-shadow:
+    0 34px 98px -52px rgba(0, 0, 0, 0.92),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
+}
+
+[data-theme="light"] .modal-content,
+[data-theme="light"] .chart-drilldown-modal,
+[data-theme="light"] .ai-page-chart-modal,
+[data-theme="light"] .ai-system-info-panel,
+[data-theme="light"] .chat-history-drawer {
+  box-shadow:
+    0 34px 96px -58px rgba(15, 23, 42, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.90) inset !important;
+}
+
+.export-actions .export-csv-primary,
+.filter-apply-btn {
+  box-shadow:
+    0 18px 34px -22px rgba(0, 166, 81, 0.88),
+    0 0 0 1px rgba(255, 255, 255, 0.18) inset !important;
+}
+
+.export-actions .export-pdf-secondary,
+.admin-refresh-btn {
+  background: color-mix(in srgb, var(--bg-card) 84%, transparent) !important;
+}
+
+[data-theme="light"] .export-actions .export-pdf-secondary,
+[data-theme="light"] .admin-refresh-btn {
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-card,
+  .ai-page-chart-container,
+  .stats-grid > *,
+  .topic-cards-grid > *,
+  .ai-chat-page-quick-group,
+  .ai-command-status-card,
+  .ai-minimal-pill {
+    animation: none !important;
+  }
+
+  .stat-card:hover,
+  .chart-card:hover,
+  .topic-card:hover,
+  .data-table-container:hover,
+  .ai-page-chart-container:hover,
+  .ai-chat-page-feature-card:hover,
+  .ai-minimal-pill:hover:not(:disabled) {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-layout::after {
+    opacity: 0.42;
+  }
+
+  .section-header,
+  .stat-card,
+  .chart-card,
+  .topic-card,
+  .data-table-container,
+  .filter-bar,
+  .ai-page-chart-container {
+    border-radius: 18px;
+  }
+}

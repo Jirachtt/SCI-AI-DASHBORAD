@@ -3,17 +3,17 @@ const MIN_CHART_FONT_SIZE = 12;
 const DEFAULT_CHART_FONT_SIZE = 13;
 
 export const LIGHT_CHART_PALETTE = [
-    '#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2',
-    '#be123c', '#0f766e', '#4f46e5', '#ca8a04', '#475569', '#16a34a',
+    '#0f62fe', '#00875a', '#c2410c', '#7c3aed', '#be123c', '#0891b2',
+    '#b45309', '#4338ca', '#0f766e', '#9333ea', '#334155', '#16a34a',
 ];
 
 export const DARK_CHART_PALETTE = [
-    '#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#fb7185', '#22d3ee',
-    '#f97316', '#e879f9', '#2dd4bf', '#f43f5e', '#cbd5e1', '#86efac',
+    '#78a6ff', '#41e6a4', '#ffd166', '#b79cff', '#ff7aa2', '#48e5ff',
+    '#ff9f43', '#f0a6ff', '#5eead4', '#ff5d6c', '#e2e8f0', '#a7f3d0',
 ];
 
-const LIGHT_CHART_SURFACE = '#fffefa';
-const DARK_CHART_SURFACE = '#111827';
+const LIGHT_CHART_SURFACE = '#ffffff';
+const DARK_CHART_SURFACE = '#0f172a';
 
 function withDashboardFont(font = {}, fallbackWeight) {
     const next = { family: DASHBOARD_FONT_FAMILY };
@@ -43,14 +43,14 @@ export function getCurrentChartTheme(theme = activeThemeName()) {
         theme: isLight ? 'light' : 'dark',
         palette: getChartPalette(theme),
         surface: isLight ? LIGHT_CHART_SURFACE : DARK_CHART_SURFACE,
-        text: isLight ? '#0f172a' : '#ffffff',
+        text: isLight ? '#07111f' : '#ffffff',
         muted: isLight ? '#334155' : '#f8fafc',
-        grid: isLight ? 'rgba(15, 23, 42, 0.075)' : 'rgba(226, 232, 240, 0.13)',
-        axis: isLight ? 'rgba(15, 23, 42, 0.16)' : 'rgba(226, 232, 240, 0.20)',
-        tooltipBg: isLight ? 'rgba(255, 254, 250, 0.98)' : 'rgba(13, 20, 33, 0.97)',
-        tooltipTitle: isLight ? '#0f172a' : '#ffffff',
-        tooltipBody: isLight ? '#334155' : '#f8fafc',
-        tooltipBorder: isLight ? 'rgba(5, 150, 105, 0.24)' : 'rgba(52, 211, 153, 0.32)',
+        grid: isLight ? 'rgba(15, 23, 42, 0.07)' : 'rgba(226, 232, 240, 0.115)',
+        axis: isLight ? 'rgba(15, 23, 42, 0.15)' : 'rgba(226, 232, 240, 0.22)',
+        tooltipBg: isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(8, 13, 28, 0.96)',
+        tooltipTitle: isLight ? '#07111f' : '#ffffff',
+        tooltipBody: isLight ? '#243447' : '#f8fafc',
+        tooltipBorder: isLight ? 'rgba(0, 104, 56, 0.20)' : 'rgba(120, 166, 255, 0.35)',
     };
 }
 
@@ -130,6 +130,21 @@ function rgbaFromColor(value, fallbackHex, alpha = 1) {
     const rgb = parseColor(value) || parseHexColor(fallbackHex);
     if (!rgb) return value || fallbackHex;
     return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
+function chartLinearGradient(context, fallbackHex, topAlpha, bottomAlpha, horizontal = false) {
+    const chart = context?.chart;
+    const area = chart?.chartArea;
+    const ctx = chart?.ctx;
+    if (!ctx || !area) return rgbaFromHex(fallbackHex, topAlpha);
+
+    const gradient = horizontal
+        ? ctx.createLinearGradient(area.left, 0, area.right, 0)
+        : ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    gradient.addColorStop(0, rgbaFromHex(fallbackHex, topAlpha));
+    gradient.addColorStop(0.58, rgbaFromHex(fallbackHex, Math.max(bottomAlpha + 0.10, topAlpha * 0.58)));
+    gradient.addColorStop(1, rgbaFromHex(fallbackHex, bottomAlpha));
+    return gradient;
 }
 
 function isNearBlackColor(value) {
@@ -213,6 +228,11 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
             dataset.hoverBorderColor = adaptColorValue(dataset.borderColor, fallback, themeConfig, 1, Array.isArray(dataset.borderColor) ? dataset.borderColor.length : 0, 2.8);
             if (dataset.borderWidth == null) dataset.borderWidth = themeConfig.theme === 'dark' ? 1.2 : 1;
             if (type === 'bar') {
+                if (!Array.isArray(dataset.backgroundColor)) {
+                    const horizontal = chart?.config?.options?.indexAxis === 'y';
+                    dataset.backgroundColor = (context) => chartLinearGradient(context, fallback, themeConfig.theme === 'dark' ? 0.92 : 0.88, themeConfig.theme === 'dark' ? 0.56 : 0.52, horizontal);
+                    dataset.hoverBackgroundColor = (context) => chartLinearGradient(context, fallback, 1, themeConfig.theme === 'dark' ? 0.68 : 0.62, horizontal);
+                }
                 if (dataset.borderRadius == null) dataset.borderRadius = 8;
                 if (dataset.borderSkipped == null) dataset.borderSkipped = false;
                 if (dataset.maxBarThickness == null) dataset.maxBarThickness = 54;
@@ -229,6 +249,9 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
         }
 
         if (isLine || isPointChart) {
+            if (isLine && dataset.fill && !Array.isArray(dataset.backgroundColor)) {
+                dataset.backgroundColor = (context) => chartLinearGradient(context, fallback, themeConfig.theme === 'dark' ? 0.30 : 0.22, 0.02);
+            }
             dataset.pointBackgroundColor = adaptColorValue(originalPointBackground || originalBorder, fallback, themeConfig, 1, 0, 2.8);
             dataset.pointHoverBackgroundColor = adaptColorValue(dataset.pointBackgroundColor, fallback, themeConfig, 1, 0, 2.8);
             dataset.pointBorderColor = themeConfig.surface;
@@ -245,10 +268,10 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
 }
 
 const PREMIUM_CHART_MOTION = {
-    initialDuration: 860,
-    updateDuration: 420,
-    sliceDuration: 900,
-    maxInitialDelay: 380,
+    initialDuration: 1060,
+    updateDuration: 520,
+    sliceDuration: 1120,
+    maxInitialDelay: 460,
     maxUpdateDelay: 120,
     easing: 'easeOutQuart',
 };
@@ -288,8 +311,8 @@ function chartElementDelay(context, chart, isSliceChart, isInitialMotion) {
     const maxDelay = isInitialMotion ? PREMIUM_CHART_MOTION.maxInitialDelay : PREMIUM_CHART_MOTION.maxUpdateDelay;
     const dataCount = Math.max(chartDataCount(chart), 1);
     const datasetCount = Math.max(chartDatasetCount(chart), 1);
-    const perDataDelay = isSliceChart ? 30 : Math.max(10, Math.min(26, 320 / dataCount));
-    const perDatasetDelay = isSliceChart ? 16 : Math.max(20, Math.min(58, 140 / datasetCount));
+    const perDataDelay = isSliceChart ? 36 : Math.max(12, Math.min(32, 390 / dataCount));
+    const perDatasetDelay = isSliceChart ? 18 : Math.max(24, Math.min(66, 160 / datasetCount));
 
     return Math.min(datasetIndex * perDatasetDelay + dataIndex * perDataDelay, maxDelay);
 }
@@ -478,13 +501,13 @@ export const themeAdaptorPlugin = {
             tooltip.bodyColor = themeConfig.tooltipBody;
             tooltip.borderColor = themeConfig.tooltipBorder;
             tooltip.borderWidth = 1;
-            if (!tooltip.cornerRadius) tooltip.cornerRadius = 10;
-            if (!tooltip.padding) tooltip.padding = 13;
+            if (!tooltip.cornerRadius) tooltip.cornerRadius = 14;
+            if (!tooltip.padding) tooltip.padding = 14;
             tooltip.titleFont = withDashboardFont(tooltip.titleFont, '700');
             tooltip.bodyFont = withDashboardFont(tooltip.bodyFont, '600');
             if (tooltip.displayColors == null) tooltip.displayColors = true;
-            if (tooltip.boxPadding == null) tooltip.boxPadding = 6;
-            tooltip.caretPadding = tooltip.caretPadding ?? 10;
+            if (tooltip.boxPadding == null) tooltip.boxPadding = 7;
+            tooltip.caretPadding = tooltip.caretPadding ?? 12;
             tooltip.titleMarginBottom = tooltip.titleMarginBottom ?? 8;
             tooltip.bodySpacing = tooltip.bodySpacing ?? 5;
             tooltip.usePointStyle = tooltip.usePointStyle ?? true;
