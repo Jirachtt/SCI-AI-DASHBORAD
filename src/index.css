@@ -15191,3 +15191,109 @@ body,
     border-radius: 18px;
   }
 }
+
+/* Final left-aligned dashboard layout pass. Keep every in-app page anchored to the
+   left edge of the content area instead of drifting to centered page shells. */
+.dashboard-typography,
+.dashboard-typography .page-transition {
+  text-align: left !important;
+}
+
+.dashboard-typography .page-transition {
+  width: 100%;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.dashboard-typography .page-transition > *,
+.dashboard-typography :where(
+  .dashboard-content,
+  .science-activity-page,
+  .graduation-check-page,
+  .tcas-page,
+  .course-page,
+  .academic-rules-page,
+  .graduation-stats-page,
+  .admin-panel,
+  .ai-chat-page
+) {
+  width: 100%;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.dashboard-typography :where(
+  .section-header,
+  .admin-panel-header,
+  .ai-chat-page-header,
+  .chart-card-header,
+  .data-table-header,
+  .filter-bar
+) {
+  justify-content: flex-start !important;
+  justify-items: start !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+}
+
+.dashboard-typography .section-header {
+  grid-template-columns: 48px minmax(0, 1fr) !important;
+  justify-content: start !important;
+  align-content: start !important;
+}
+
+.dashboard-typography .section-header-icon {
+  justify-self: start !important;
+  align-self: start !important;
+}
+
+.dashboard-typography .section-header > div:not(.section-header-icon):not(.section-header-actions) {
+  justify-self: start !important;
+}
+
+.dashboard-typography .section-header-actions,
+.dashboard-typography .admin-panel-actions,
+.dashboard-typography .ai-chat-page-header-actions {
+  grid-column: 2 !important;
+  justify-self: start !important;
+  align-self: start !important;
+  width: 100%;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  justify-content: flex-start !important;
+  flex-wrap: wrap;
+}
+
+.dashboard-typography :where(.export-actions, .ai-chat-page-header-actions) {
+  justify-content: flex-start !important;
+}
+
+.dashboard-typography :where(
+  .ai-minimal-welcome,
+  .ai-chat-page-input-area,
+  .ai-chat-page-input-area.minimal,
+  .ai-chat-page-input-wrapper.minimal .ai-chat-file-pill,
+  .ai-minimal-subtitle
+) {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  text-align: left !important;
+}
+
+.dashboard-typography .ai-minimal-welcome {
+  align-items: flex-start !important;
+}
+
+@media (max-width: 520px) {
+  .dashboard-typography .section-header {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-typography .section-header-icon,
+  .dashboard-typography .section-header > div:not(.section-header-icon):not(.section-header-actions),
+  .dashboard-typography .section-header-actions {
+    grid-column: 1 !important;
+  }
+}
