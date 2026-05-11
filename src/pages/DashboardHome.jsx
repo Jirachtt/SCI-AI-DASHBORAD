@@ -224,7 +224,10 @@ export default function DashboardHome() {
     return (
         <div>
             {/* Welcome Section */}
-            <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+            <div className="section-header dashboard-home-header">
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
+                    <Sparkles size={22} color="#fff" />
+                </div>
                 <div>
                     <h2 style={{
                         fontSize: '1.7rem', fontWeight: 800, marginBottom: 8, letterSpacing: 0,
@@ -242,26 +245,15 @@ export default function DashboardHome() {
                 </div>
 
                 {/* Action buttons */}
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <ExportPDFButton title={`ภาพรวม ${APP_NAME_TH}`} label="PDF" />
-                <button
-                    onClick={() => setShowForecast(!showForecast)}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        background: showForecast
-                            ? 'linear-gradient(135deg, #006838, #00a651)'
-                            : 'var(--bg-card)',
-                        border: showForecast ? 'none' : '1px solid var(--border-color)',
-                        color: showForecast ? '#fff' : 'var(--text-secondary)',
-                        padding: '10px 22px', borderRadius: 12, cursor: 'pointer',
-                        fontSize: '1rem', fontWeight: 600,
-                        boxShadow: showForecast ? '0 6px 20px rgba(0,104,56,0.35)' : 'none',
-                        transition: 'all 0.3s ease',
-                    }}
-                >
-                    <LineChart size={18} />
-                    Predictive Analytics
-                </button>
+                <div className="section-header-actions">
+                    <ExportPDFButton title={`ภาพรวม ${APP_NAME_TH}`} label="PDF" />
+                    <button
+                        className={`dashboard-header-action dashboard-header-action-analytics ${showForecast ? 'active' : ''}`}
+                        onClick={() => setShowForecast(!showForecast)}
+                    >
+                        <LineChart size={15} />
+                        Predictive Analytics
+                    </button>
                 </div>
             </div>
 

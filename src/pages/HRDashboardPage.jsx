@@ -585,7 +585,7 @@ export default function HRDashboardPage() {
                     <h1>บุคลากรและโครงสร้างองค์กร</h1>
                     <p>HR & Faculty Profile — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
+                <div className="section-header-actions">
                     <ExportPDFButton title="บุคลากรและโครงสร้างองค์กร" />
                 </div>
             </div>

@@ -35,7 +35,7 @@ export default function AcademicRulesPage() {
                     <h2>กฎระเบียบและเกียรตินิยม</h2>
                     <p>{academicRulesScope.faculty} · อ้างอิงข้อบังคับมหาวิทยาลัยแม่โจ้ฉบับทางการ</p>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
+                <div className="section-header-actions">
                     <ExportPDFButton title="กฎระเบียบและเกียรตินิยม" />
                 </div>
             </div>

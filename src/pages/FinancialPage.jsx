@@ -89,7 +89,7 @@ export default function FinancialPage() {
                     <h2>การเงินและงานทะเบียน</h2>
                     <p>Financial & Administrative</p>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
+                <div className="section-header-actions">
                     <ExportPDFButton title="การเงินและงานทะเบียน" />
                 </div>
             </div>

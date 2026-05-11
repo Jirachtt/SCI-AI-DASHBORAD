@@ -144,10 +144,10 @@ export default function AlertCenterPage() {
                         {' '}• ข้อมูลนักศึกษา {studentCount.toLocaleString('th-TH')} คน
                     </p>
                 </div>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                <div className="section-header-actions">
                     <ExportPDFButton title="ศูนย์แจ้งเตือน (Alert Center)" />
                     <button
-                        className="admin-refresh-btn"
+                        className="dashboard-header-action admin-refresh-btn"
                         onClick={() => {
                             setLoading(true);
                             ensureSharedDashboardData(ALERT_DATASET_IDS)
@@ -163,7 +163,7 @@ export default function AlertCenterPage() {
                         aria-label="คำนวณใหม่"
                         data-tooltip="คำนวณใหม่"
                     >
-                        <RefreshCw size={14} /> รีเฟรช
+                        <RefreshCw size={15} /> รีเฟรช
                     </button>
                 </div>
             </div>

@@ -379,16 +379,16 @@ export default function AdminPanelPage() {
                         <p>อนุมัติคำขอและบริหารสิทธิ์ระดับต่างๆ ของระบบ</p>
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className="section-header-actions admin-panel-actions">
                     <ExportPDFButton title="admin_users_roles" />
                     <button
-                        className="admin-refresh-btn"
+                        className="dashboard-header-action admin-refresh-btn"
                         onClick={loadUsers}
                         disabled={loading}
                         aria-label="โหลดข้อมูลใหม่"
                         data-tooltip="โหลดข้อมูลใหม่"
                     >
-                        <RefreshCw size={16} className={loading ? 'spin-animation' : ''} />
+                        <RefreshCw size={15} className={loading ? 'spin-animation' : ''} />
                         รีเฟรช
                     </button>
                 </div>

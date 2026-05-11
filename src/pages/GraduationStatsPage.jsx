@@ -413,7 +413,7 @@ export default function GraduationStatsPage() {
     });
 
     return (
-        <div style={{ padding: '24px 28px', maxWidth: 1400, margin: '0 auto' }}>
+        <div className="graduation-stats-page">
             <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             {/* Header */}
             <div className="section-header">
@@ -424,7 +424,7 @@ export default function GraduationStatsPage() {
                     <h1>สถิติการสำเร็จการศึกษา</h1>
                     <p>คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้ | ปีการศึกษา {stats.academicYear}</p>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
+                <div className="section-header-actions">
                     <ExportPDFButton title="สถิติการสำเร็จการศึกษา" />
                 </div>
             </div>

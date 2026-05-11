@@ -269,7 +269,7 @@ export default function ResearchDashboardPage() {
                     <h1>การวิจัยและนวัตกรรม</h1>
                     <p>Research & Innovation — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
+                <div className="section-header-actions">
                     <ExportPDFButton title="การวิจัยและนวัตกรรม" />
                 </div>
             </div>

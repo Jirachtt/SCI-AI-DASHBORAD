@@ -182,7 +182,7 @@ export default function TuitionPage() {
                     <h2>ค่าธรรมเนียมการศึกษา</h2>
                     <p>{isOfficialTuition ? 'Tuition Fees — ข้อมูลจากไฟล์คำนวณประมาณการปี 2570' : 'Tuition Fees — ระบบเหมาจ่าย (Flat Rate)'}</p>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
+                <div className="section-header-actions">
                     <ExportPDFButton title="ค่าธรรมเนียมการศึกษา" />
                 </div>
             </div>

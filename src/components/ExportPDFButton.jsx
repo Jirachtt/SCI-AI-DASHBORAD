@@ -68,24 +68,23 @@ export default function ExportPDFButton({
                 <button
                     type="button"
                     onClick={handleCSVReport}
-                    className="filter-apply-btn export-csv-primary no-print"
+                    className="export-action-btn export-action-btn-csv export-csv-primary no-print"
                     disabled={exportingCSV}
                     aria-label="Export ข้อมูลและกราฟในหน้านี้เป็น CSV Report Excel"
                     data-tooltip="Export CSV Report (.xlsx)"
                 >
-                    <TableProperties size={14} /> {exportingCSV ? 'กำลังสร้าง...' : 'CSV'}
+                    <TableProperties size={15} /> {exportingCSV ? 'CSV...' : 'CSV'}
                 </button>
             )}
             <button
                 type="button"
                 onClick={handleClick}
-                className="admin-refresh-btn export-pdf-secondary no-print"
+                className="export-action-btn export-action-btn-pdf export-pdf-secondary no-print"
                 disabled={printing}
                 aria-label="บันทึกหน้านี้เป็น PDF"
                 data-tooltip="บันทึก PDF"
-                style={{ gap: 6 }}
             >
-                <Icon size={14} /> {printing ? 'กำลังเตรียม...' : label}
+                <Icon size={15} /> {printing ? 'PDF...' : label}
             </button>
         </div>
     );

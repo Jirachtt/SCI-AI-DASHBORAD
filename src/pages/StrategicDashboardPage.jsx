@@ -268,7 +268,7 @@ export default function StrategicDashboardPage() {
                     <h1>ยุทธศาสตร์และการดำเนินงาน</h1>
                     <p>Strategic & OKR Monitoring — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
+                <div className="section-header-actions">
                     <ExportPDFButton title="ยุทธศาสตร์และการดำเนินงาน" />
                 </div>
             </div>

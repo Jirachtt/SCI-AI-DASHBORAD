@@ -627,7 +627,7 @@ export default function StudentStatsPage() {
                     <h2>สถิตินิสิตปัจจุบัน</h2>
                     <p>Current Student Statistics — อ้างอิง มหาวิทยาลัยแม่โจ้</p>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
+                <div className="section-header-actions">
                     <ExportPDFButton title="สถิตินิสิตปัจจุบัน" />
                 </div>
             </div>
