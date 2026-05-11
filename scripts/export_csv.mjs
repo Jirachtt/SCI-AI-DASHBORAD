@@ -7,5 +7,5 @@ const rows = scienceStudentList.map(s =>
 );
 // UTF-8 BOM helps Excel detect Thai correctly
 const csv = '﻿' + header + '\n' + rows.join('\n') + '\n';
-fs.writeFileSync('students_1451.csv', csv);
-console.log('written', scienceStudentList.length, 'rows to students_1451.csv');
+fs.writeFileSync('students_sample.csv', csv);
+console.log('written', scienceStudentList.length, 'sample rows to students_sample.csv');

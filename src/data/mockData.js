@@ -134,8 +134,8 @@ export const studentLifeData = {
 };
 
 export const dashboardSummary = {
-    // อ้างอิงตัวเลขจริง: dashboard.mju.ac.th/student.aspx (ข้อมูลปัจจุบัน 2568)
-    totalStudents: 16839,
+    // อ้างอิงตัวเลขจริง: dashboard.mju.ac.th/student (ตรวจสอบ 11 พ.ค. 2569)
+    totalStudents: 16506,
     totalCourses: 847,
     avgGPA: 3.12,
     graduationRate: 89.5,
@@ -143,35 +143,36 @@ export const dashboardSummary = {
     academicYear: '2568',
     // ข้อมูลประสิทธิภาพแยกตามคณะ — totalStudents = ตัวเลขจริงจาก dashboard.mju.ac.th
     faculties: [
-        { name: 'คณะบริหารธุรกิจ', totalStudents: 3707, totalCourses: 210, avgGPA: 2.95, graduationRate: 85.4 },
-        { name: 'คณะผลิตกรรมการเกษตร', totalStudents: 2126, totalCourses: 185, avgGPA: 3.02, graduationRate: 86.8 },
-        { name: 'คณะวิทยาศาสตร์', totalStudents: 1451, totalCourses: 156, avgGPA: 3.18, graduationRate: 91.2 },
-        { name: 'คณะสารสนเทศและการสื่อสาร', totalStudents: 1233, totalCourses: 72, avgGPA: 3.10, graduationRate: 89.5 },
-        { name: 'วิทยาลัยบริหารศาสตร์', totalStudents: 1016, totalCourses: 95, avgGPA: 3.08, graduationRate: 87.2 },
-        { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ฯ', totalStudents: 955, totalCourses: 110, avgGPA: 3.00, graduationRate: 84.5 },
-        { name: 'คณะศิลปศาสตร์', totalStudents: 918, totalCourses: 88, avgGPA: 3.35, graduationRate: 94.1 },
-        { name: 'คณะเศรษฐศาสตร์', totalStudents: 839, totalCourses: 82, avgGPA: 3.15, graduationRate: 88.7 },
-        { name: 'คณะพัฒนาการท่องเที่ยว', totalStudents: 836, totalCourses: 68, avgGPA: 3.22, graduationRate: 90.3 },
-        { name: 'คณะสัตวศาสตร์และเทคโนโลยี', totalStudents: 831, totalCourses: 78, avgGPA: 3.05, graduationRate: 87.0 },
-        { name: 'วิทยาลัยพลังงานทดแทน', totalStudents: 803, totalCourses: 74, avgGPA: 2.98, graduationRate: 85.2 },
-        { name: 'คณะวิศวกรรมและอุตสาหกรรมเกษตร', totalStudents: 658, totalCourses: 125, avgGPA: 2.88, graduationRate: 82.5 },
-        { name: 'คณะสถาปัตยกรรมศาสตร์ฯ', totalStudents: 429, totalCourses: 65, avgGPA: 3.05, graduationRate: 88.0 },
+        { name: 'คณะบริหารธุรกิจ', totalStudents: 3704, totalCourses: 210, avgGPA: 2.95, graduationRate: 85.4 },
+        { name: 'คณะผลิตกรรมการเกษตร', totalStudents: 2057, totalCourses: 185, avgGPA: 3.02, graduationRate: 86.8 },
+        { name: 'คณะวิทยาศาสตร์', totalStudents: 1399, totalCourses: 156, avgGPA: 3.18, graduationRate: 91.2 },
+        { name: 'คณะสารสนเทศและการสื่อสาร', totalStudents: 1229, totalCourses: 72, avgGPA: 3.10, graduationRate: 89.5 },
+        { name: 'วิทยาลัยบริหารศาสตร์', totalStudents: 1015, totalCourses: 95, avgGPA: 3.08, graduationRate: 87.2 },
+        { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ฯ', totalStudents: 932, totalCourses: 110, avgGPA: 3.00, graduationRate: 84.5 },
+        { name: 'คณะศิลปศาสตร์', totalStudents: 916, totalCourses: 88, avgGPA: 3.35, graduationRate: 94.1 },
+        { name: 'คณะเศรษฐศาสตร์', totalStudents: 838, totalCourses: 82, avgGPA: 3.15, graduationRate: 88.7 },
+        { name: 'คณะพัฒนาการท่องเที่ยว', totalStudents: 808, totalCourses: 68, avgGPA: 3.22, graduationRate: 90.3 },
+        { name: 'คณะสัตวศาสตร์และเทคโนโลยี', totalStudents: 703, totalCourses: 78, avgGPA: 3.05, graduationRate: 87.0 },
+        { name: 'วิทยาลัยพลังงานทดแทน', totalStudents: 801, totalCourses: 74, avgGPA: 2.98, graduationRate: 85.2 },
+        { name: 'คณะวิศวกรรมและอุตสาหกรรมเกษตร', totalStudents: 642, totalCourses: 125, avgGPA: 2.88, graduationRate: 82.5 },
+        { name: 'คณะสถาปัตยกรรมศาสตร์ฯ', totalStudents: 428, totalCourses: 65, avgGPA: 3.05, graduationRate: 88.0 },
         { name: 'คณะเทคโนโลยีการประมงฯ', totalStudents: 414, totalCourses: 58, avgGPA: 3.12, graduationRate: 88.5 },
-        { name: 'มหาวิทยาลัยแม่โจ้-ชุมพร', totalStudents: 241, totalCourses: 48, avgGPA: 2.92, graduationRate: 83.0 },
+        { name: 'มหาวิทยาลัยแม่โจ้-ชุมพร', totalStudents: 238, totalCourses: 48, avgGPA: 2.92, graduationRate: 83.0 },
         { name: 'คณะพยาบาลศาสตร์', totalStudents: 131, totalCourses: 45, avgGPA: 3.42, graduationRate: 96.5 },
         { name: 'คณะสัตวแพทยศาสตร์', totalStudents: 96, totalCourses: 52, avgGPA: 3.28, graduationRate: 92.0 },
-        { name: 'วิทยาลัยนานาชาติ', totalStudents: 82, totalCourses: 38, avgGPA: 3.20, graduationRate: 90.0 }
+        { name: 'วิทยาลัยนานาชาติ', totalStudents: 82, totalCourses: 38, avgGPA: 3.20, graduationRate: 90.0 },
+        { name: 'โครงการ', totalStudents: 73, totalCourses: 0, avgGPA: null, graduationRate: null }
     ]
 };
 
 // ==================== ข้อมูลสถิตินิสิตปัจจุบัน ====================
-// อ้างอิง: dashboard.mju.ac.th/student.aspx (ข้อมูลนักศึกษาคงอยู่ปัจจุบัน 2568)
-// รวมทั้งสิ้น 16,839 คน — ปริญญาตรี 16,110 / โท 434 / เอก 222 / ประกาศนียบัตร 73
+// อ้างอิง: dashboard.mju.ac.th/student (ข้อมูลนักศึกษาคงอยู่ปัจจุบัน ตรวจสอบ 11 พ.ค. 2569)
+// รวมทั้งสิ้น 16,506 คน — ปริญญาตรี 15,777 / โท 434 / เอก 222 / ประกาศนียบัตร 73
 export const studentStatsData = {
     current: {
-        total: 16839,
+        total: 16506,
         byLevel: [
-            { level: 'ปริญญาตรี', count: 16110, color: '#006838', icon: 'BSc' },
+            { level: 'ปริญญาตรี', count: 15777, color: '#006838', icon: 'BSc' },
             { level: 'ปริญญาโท', count: 434, color: '#2E86AB', icon: 'MSc' },
             { level: 'ปริญญาเอก', count: 222, color: '#A23B72', icon: 'PhD' },
             { level: 'ประกาศนียบัตร', count: 73, color: '#C5A028', icon: 'Cert' }
@@ -180,30 +181,31 @@ export const studentStatsData = {
     // ตัวเลขรวมต่อคณะ = ของจริงจาก dashboard.mju.ac.th
     // bachelor = total - master - doctoral (รักษาสัดส่วนระดับเดิมเนื่องจากเว็บไม่ split ตามคณะ)
     byFaculty: [
-        { name: 'คณะบริหารธุรกิจ', bachelor: 3643, master: 56, doctoral: 8 },
-        { name: 'คณะผลิตกรรมการเกษตร', bachelor: 1932, master: 98, doctoral: 96 },
-        { name: 'คณะวิทยาศาสตร์', bachelor: 1429, master: 17, doctoral: 5 },
-        { name: 'คณะสารสนเทศและการสื่อสาร', bachelor: 1233, master: 0, doctoral: 0 },
-        { name: 'วิทยาลัยบริหารศาสตร์', bachelor: 932, master: 63, doctoral: 21 },
-        { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ฯ', bachelor: 892, master: 63, doctoral: 0 },
-        { name: 'คณะศิลปศาสตร์', bachelor: 918, master: 0, doctoral: 0 },
-        { name: 'คณะเศรษฐศาสตร์', bachelor: 815, master: 9, doctoral: 15 },
-        { name: 'คณะพัฒนาการท่องเที่ยว', bachelor: 816, master: 8, doctoral: 12 },
-        { name: 'คณะสัตวศาสตร์และเทคโนโลยี', bachelor: 809, master: 21, doctoral: 1 },
-        { name: 'วิทยาลัยพลังงานทดแทน', bachelor: 734, master: 54, doctoral: 15 },
-        { name: 'คณะวิศวกรรมและอุตสาหกรรมเกษตร', bachelor: 641, master: 13, doctoral: 4 },
-        { name: 'คณะสถาปัตยกรรมศาสตร์ฯ', bachelor: 410, master: 9, doctoral: 10 },
+        { name: 'คณะบริหารธุรกิจ', certificate: 0, bachelor: 3640, master: 56, doctoral: 8 },
+        { name: 'คณะผลิตกรรมการเกษตร', certificate: 0, bachelor: 1878, master: 92, doctoral: 87 },
+        { name: 'คณะวิทยาศาสตร์', certificate: 0, bachelor: 1377, master: 17, doctoral: 5 },
+        { name: 'คณะสารสนเทศและการสื่อสาร', certificate: 0, bachelor: 1229, master: 0, doctoral: 0 },
+        { name: 'วิทยาลัยบริหารศาสตร์', certificate: 0, bachelor: 942, master: 59, doctoral: 14 },
+        { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ฯ', certificate: 0, bachelor: 872, master: 60, doctoral: 0 },
+        { name: 'คณะศิลปศาสตร์', certificate: 0, bachelor: 916, master: 0, doctoral: 0 },
+        { name: 'คณะเศรษฐศาสตร์', certificate: 0, bachelor: 812, master: 9, doctoral: 17 },
+        { name: 'คณะพัฒนาการท่องเที่ยว', certificate: 0, bachelor: 788, master: 8, doctoral: 12 },
+        { name: 'คณะสัตวศาสตร์และเทคโนโลยี', certificate: 0, bachelor: 682, master: 20, doctoral: 1 },
+        { name: 'วิทยาลัยพลังงานทดแทน', certificate: 0, bachelor: 735, master: 53, doctoral: 13 },
+        { name: 'คณะวิศวกรรมและอุตสาหกรรมเกษตร', certificate: 0, bachelor: 629, master: 9, doctoral: 4 },
+        { name: 'คณะสถาปัตยกรรมศาสตร์ฯ', certificate: 0, bachelor: 409, master: 9, doctoral: 10 },
         { name: 'คณะเทคโนโลยีการประมงฯ', bachelor: 403, master: 7, doctoral: 4 },
-        { name: 'มหาวิทยาลัยแม่โจ้-ชุมพร', bachelor: 241, master: 0, doctoral: 0 },
-        { name: 'คณะพยาบาลศาสตร์', bachelor: 131, master: 0, doctoral: 0 },
-        { name: 'คณะสัตวแพทยศาสตร์', bachelor: 96, master: 0, doctoral: 0 },
-        { name: 'วิทยาลัยนานาชาติ', bachelor: 0, master: 50, doctoral: 32 }
+        { name: 'มหาวิทยาลัยแม่โจ้-ชุมพร', certificate: 0, bachelor: 238, master: 0, doctoral: 0 },
+        { name: 'คณะพยาบาลศาสตร์', certificate: 0, bachelor: 131, master: 0, doctoral: 0 },
+        { name: 'คณะสัตวแพทยศาสตร์', certificate: 0, bachelor: 96, master: 0, doctoral: 0 },
+        { name: 'วิทยาลัยนานาชาติ', certificate: 0, bachelor: 0, master: 35, doctoral: 47 },
+        { name: 'โครงการ', certificate: 73, bachelor: 0, master: 0, doctoral: 0 }
     ],
     // วิทยาเขต — ของจริงจาก dashboard.mju.ac.th
     byCampus: [
-        { campus: 'เชียงใหม่ (หลัก)', count: 15642 },
-        { campus: 'แพร่', count: 955 },
-        { campus: 'ชุมพร', count: 241 }
+        { campus: 'เชียงใหม่ (หลัก)', count: 15336 },
+        { campus: 'แพร่', count: 932 },
+        { campus: 'ชุมพร', count: 238 }
     ],
     // สัญชาตินักศึกษา — ของจริงจาก dashboard.mju.ac.th
     byNationality: [
@@ -212,17 +214,24 @@ export const studentStatsData = {
     ],
     // ขนาดรับเข้าตามรหัสปี — ของจริงล่าสุดจาก dashboard.mju.ac.th
     byEnrollmentYear: [
-        { year: '2568', count: 5335, type: 'actual' },
-        { year: '2567', count: 5218, type: 'actual' },
-        { year: '2566', count: 4291, type: 'actual' }
+        { year: '2569', count: 3, type: 'actual' },
+        { year: '2568', count: 5329, type: 'actual' },
+        { year: '2567', count: 5196, type: 'actual' },
+        { year: '2566', count: 4290, type: 'actual' },
+        { year: '2565', count: 1249, type: 'actual' },
+        { year: '2564', count: 307, type: 'actual' },
+        { year: '2563', count: 76, type: 'actual' },
+        { year: '2562', count: 41, type: 'actual' },
+        { year: '2561', count: 11, type: 'actual' },
+        { year: '2560', count: 4, type: 'actual' }
     ],
-    // แนวโน้มจำนวนนิสิตทั้งมหาวิทยาลัย (ปรับตามฐานจริง 2568 = 16,839)
+    // แนวโน้มจำนวนนิสิตทั้งมหาวิทยาลัย (ปรับตามฐานจริงล่าสุด = 16,506)
     trend: [
         { year: '2564', total: 12850, bachelor: 12320, master: 320, doctoral: 210, type: 'actual' },
         { year: '2565', total: 13975, bachelor: 13420, master: 340, doctoral: 215, type: 'actual' },
         { year: '2566', total: 15225, bachelor: 14620, master: 385, doctoral: 220, type: 'actual' },
         { year: '2567', total: 16100, bachelor: 15440, master: 415, doctoral: 220, type: 'actual' },
-        { year: '2568', total: 16839, bachelor: 16110, master: 434, doctoral: 222, type: 'actual' },
+        { year: '2568', total: 16506, bachelor: 15777, master: 434, doctoral: 222, type: 'actual' },
         { year: '2569', total: 17500, bachelor: 16740, master: 455, doctoral: 230, type: 'forecast' }
     ],
     // ==================== ข้อมูลเฉพาะคณะวิทยาศาสตร์ ====================
@@ -230,31 +239,31 @@ export const studentStatsData = {
     // อ้างอิง: dashboard.mju.ac.th/person?dep=20300-20300-20300
     scienceFaculty: {
         name: 'คณะวิทยาศาสตร์',
-        total: 1451,
+        total: 1399,
         byLevel: [
-            { level: 'ปริญญาตรี', count: 1429, color: '#006838', icon: 'BSc' },
+            { level: 'ปริญญาตรี', count: 1377, color: '#006838', icon: 'BSc' },
             { level: 'ปริญญาโท', count: 17, color: '#2E86AB', icon: 'MSc' },
             { level: 'ปริญญาเอก', count: 5, color: '#A23B72', icon: 'PhD' },
             { level: 'ประกาศนียบัตร', count: 0, color: '#C5A028', icon: 'Cert' }
         ],
-        // จำนวนนิสิตแยกตามรหัสปีเข้า — รวม 1,451 (ปรับสัดส่วนจาก dashboard ของจริงล่าสุด)
+        // จำนวนนิสิตแยกตามรหัสปีเข้า — สเกลให้รวม 1,399 ตามยอด MJU Dashboard ล่าสุด
         byEnrollmentYear: [
             { year: '2563', count: 7 },
-            { year: '2564', count: 37 },
-            { year: '2565', count: 281 },
-            { year: '2566', count: 320 },
-            { year: '2567', count: 409 },
-            { year: '2568', count: 397 }
+            { year: '2564', count: 36 },
+            { year: '2565', count: 271 },
+            { year: '2566', count: 308 },
+            { year: '2567', count: 394 },
+            { year: '2568', count: 383 }
         ],
-        // สัดส่วนสัญชาติ — สเกลให้รวม 1,451
+        // สัดส่วนสัญชาติ — สเกลให้รวม 1,399
         byNationality: [
-            { nationality: 'ไทย', count: 1429 },
-            { nationality: 'สัญชาติอื่นๆ', count: 22 }
+            { nationality: 'ไทย', count: 1378 },
+            { nationality: 'สัญชาติอื่นๆ', count: 21 }
         ],
-        // เพศนักศึกษา — สเกลให้รวม 1,451
+        // เพศนักศึกษา — สเกลให้รวม 1,399
         byGender: {
-            male: 566,
-            female: 885,
+            male: 546,
+            female: 853,
             malePercent: 39.0,
             femalePercent: 61.0,
         },
@@ -266,13 +275,13 @@ export const studentStatsData = {
             { year: '2567', total: 409, bachelor: 406, master: 3, doctoral: 0, channels: { quota: 162, directAdmit: 127, tcas: 100, other: 20 } },
             { year: '2568', total: 397, bachelor: 394, master: 2, doctoral: 1, channels: { quota: 159, directAdmit: 122, tcas: 97, other: 18 } },
         ],
-        // อัตราส่วน นศ./อาจารย์ (อ้างอิงนักศึกษาจริง 1,451 / บุคลากรสายวิชาการ 104)
+        // อัตราส่วน นศ./อาจารย์ (อ้างอิงนักศึกษาจริง 1,399 / บุคลากรสายวิชาการ 104)
         studentFacultyRatio: {
-            students: 1451,
+            students: 1399,
             academicStaff: 104,
-            ratio: 14.0, // 1451 / 104
+            ratio: 13.5, // 1399 / 104
             comparison: [
-                { name: 'คณะวิทยาศาสตร์ มจ.', ratio: 14.0, color: '#006838' },
+                { name: 'คณะวิทยาศาสตร์ มจ.', ratio: 13.5, color: '#006838' },
                 { name: 'เกณฑ์ สกอ. (วิทย์)', ratio: 20.0, color: '#C5A028' },
                 { name: 'เฉลี่ยมหาวิทยาลัย', ratio: 18.5, color: '#2E86AB' },
                 { name: 'จุฬาฯ (วิทย์)', ratio: 12.0, color: '#7B68EE' },

@@ -1223,7 +1223,7 @@ function buildStudentData() {
     const sourceLabel = isLiveData()
         ? 'realtime จาก Firestore/การอัปโหลดล่าสุด'
         : 'ข้อมูลที่เว็บใช้อยู่ตอนนี้';
-    // Compact JSON keeps tokens low even at ~1,451 rows.
+    // Compact JSON keeps tokens low even when a full roster is uploaded.
     return `\n\n## รายชื่อนักศึกษา (${sourceLabel}; id=รหัส,n=ชื่อ,m=สาขา,y=ปี,g=GPA,s=สถานะ):\n` +
         JSON.stringify(list.map(s => ({
             id: s.id, n: s.name, m: s.major, y: s.year, g: s.gpa, s: s.status

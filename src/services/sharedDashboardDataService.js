@@ -646,11 +646,17 @@ function computeWeightedOverallGpa({
     return round((otherGpaSum + (Number(nextScienceAvg) * nextScienceTotal)) / nextTotal, 2);
 }
 
+// Kept available for future admin-only derived views, but aggregate dashboard
+// totals must stay locked to official MJU Dashboard numbers.
+const DISABLED_ROSTER_AGGREGATE_PATCHERS = {
+    student_stats: patchStudentStats,
+    dashboard_summary: patchDashboardSummary,
+};
+
 function getLinkedDataset(id) {
     const base = getDashboardDatasetSync(id);
+    if (id === 'student_stats' || id === 'dashboard_summary') return base;
     if (!canUseStudentRowsAsRealRoster()) return base;
-    if (id === 'student_stats') return patchStudentStats(base);
-    if (id === 'dashboard_summary') return patchDashboardSummary(base);
     if (id === 'graduation') return patchGraduationData(base);
     return base;
 }
@@ -674,6 +680,18 @@ export function getSharedDashboardDatasetMetaSync(id) {
 
     const payload = getSharedDashboardDatasetSync(id);
     const rosterTrust = getStudentRosterTrustStatus();
+    if (id === 'student_stats' || id === 'dashboard_summary') {
+        const studentRows = getStudentListSync();
+        return {
+            ...meta,
+            rowCount: getPayloadRowCount(payload),
+            usesSharedDataHub: false,
+            linkedStudentRows: Array.isArray(studentRows) ? studentRows.length : 0,
+            studentRosterMode: rosterTrust.mode,
+            studentRosterWarning: rosterTrust.warning,
+            officialAggregateLocked: true,
+        };
+    }
     if (!rosterTrust.canAnswerIndividual) {
         return {
             ...meta,

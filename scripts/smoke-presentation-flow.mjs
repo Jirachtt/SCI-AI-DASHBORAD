@@ -26,6 +26,8 @@ const aiOrchestrator = read('src/services/aiOrchestrator.js');
 const aiContextRegistry = read('src/services/aiContextRegistry.js');
 const aiChartPlanner = read('src/services/aiChartPlanner.js');
 const tcasData = read('src/data/tcasAdmissionsData.js');
+const mockData = read('src/data/mockData.js');
+const officialStudentSnapshot = read('src/data/mjuOfficialStudentSnapshot.js');
 const rules = read('firestore.rules');
 const packageJson = JSON.parse(read('package.json'));
 
@@ -141,6 +143,16 @@ expect(
     && /match \/datasets\/\{datasetId\}/.test(rules)
     && /allow write: if callerCanManageDashboardData\(\)/.test(rules),
   'Shared dashboard data must be writable only by approved operational roles.'
+);
+
+expect(
+  'Student totals are locked to current MJU Dashboard aggregate',
+  /OFFICIAL_SCIENCE_STUDENT_TOTAL\s*=\s*1399/.test(officialStudentSnapshot)
+    && /OFFICIAL_STUDENT_TOTAL\s*=\s*16506/.test(officialStudentSnapshot)
+    && /totalStudents:\s*16506/.test(mockData)
+    && /total:\s*1399/.test(mockData)
+    && /totalStudents:\s*1399/.test(mockData),
+  'Aggregate student totals must use MJU Dashboard official values, not roster row counts.'
 );
 
 expect(

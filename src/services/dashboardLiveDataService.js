@@ -21,6 +21,7 @@ import { researchData } from '../data/researchData';
 import { strategicData } from '../data/strategicData';
 import { tcasPlanningData } from '../data/tcasAdmissionsData';
 import { courseAnalyticsData } from '../data/courseAnalyticsData';
+import { applyOfficialStudentSnapshot } from '../data/mjuOfficialStudentSnapshot';
 
 const SYNC_ENDPOINT = import.meta.env.VITE_MJU_SYNC_ENDPOINT || '/api/mju-dashboard-sync';
 const AUTO_SYNC_ENABLED = String(import.meta.env.VITE_MJU_AUTO_SYNC || '').toLowerCase() === 'true';
@@ -143,6 +144,10 @@ const FALLBACK_DATA = {
     strategic: strategicData,
 };
 
+function fallbackDataset(id) {
+    return applyOfficialStudentSnapshot(id, FALLBACK_DATA[id]);
+}
+
 const REQUIRED_SHAPES = {
     dashboard_summary: payload => Array.isArray(payload?.faculties),
     student_stats: payload => payload?.current && Array.isArray(payload?.byFaculty),
@@ -201,7 +206,7 @@ function deepMergeObject(fallback, payload) {
 }
 
 function mergePayloadWithFallback(id, payload) {
-    const fallback = FALLBACK_DATA[id];
+    const fallback = fallbackDataset(id);
     if (!payload || Array.isArray(payload) || typeof payload !== 'object') return payload;
     if (!fallback || Array.isArray(fallback) || typeof fallback !== 'object') return payload;
 
@@ -215,7 +220,7 @@ function mergePayloadWithFallback(id, payload) {
             return { ...(matchedFallback || {}), ...faculty };
         });
     }
-    return merged;
+    return applyOfficialStudentSnapshot(id, merged);
 }
 
 function normalizeDocPayload(data) {
@@ -248,7 +253,7 @@ function getRowCount(payload) {
 }
 
 function applyDatasetSnapshot(id, snap) {
-    const fallback = FALLBACK_DATA[id];
+    const fallback = fallbackDataset(id);
     if (!snap?.exists?.()) {
         _cache.set(id, fallback);
         _liveCache.delete(id);
@@ -345,7 +350,7 @@ function startDatasetListener(id) {
 }
 
 export function getDashboardDatasetSync(id) {
-    return _cache.get(id) || FALLBACK_DATA[id] || null;
+    return _cache.get(id) || fallbackDataset(id) || null;
 }
 
 export function isDashboardDatasetLiveSync(id) {
@@ -362,7 +367,7 @@ export function getDashboardDatasetMetaSync(id) {
         label: datasetConfig(id)?.label || id,
         sourceType: 'fallback',
         sourceUrl: datasetConfig(id)?.source || null,
-        rowCount: getRowCount(FALLBACK_DATA[id]),
+        rowCount: getRowCount(fallbackDataset(id)),
         isLive: false,
     };
 }
