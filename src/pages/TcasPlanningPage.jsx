@@ -52,6 +52,15 @@ function sourceLabel(status) {
     return 'รอข้อมูลจริง';
 }
 
+function compactSourceLabel(source) {
+    const label = source?.label || '';
+    if (label.includes('TCAS Science')) return 'TCAS MJU';
+    if (label.includes('Admissions MJU')) return 'ประกาศรอบ 3';
+    if (label.includes('คำนวณประมาณการ')) return 'ประมาณการ 2570';
+    if (label.includes('Admissions/Reg')) return 'Admissions/Reg';
+    return label;
+}
+
 export default function TcasPlanningPage() {
     const { user } = useAuth();
     const { data: liveTcasData } = useDashboardDataset('tcas_admissions');
@@ -187,17 +196,17 @@ export default function TcasPlanningPage() {
             <section className="tcas-source-banner">
                 <div>
                     <span><FileSpreadsheet size={15} /> สถานะข้อมูล</span>
-                    <strong>รอบ 3 ปี 2569 ใช้ประกาศทางการ และเป้าหมายปี 2570 ใช้ตัวเลขจากไฟล์คำนวณประมาณการปี 70</strong>
-                    <p>{data.planningAssumptions.note}</p>
+                    <strong>ข้อมูลหลัก: รอบ 3/2569 และเป้ารับ 2570</strong>
+                    <p>รอบ 3 จากประกาศรับสมัคร; เป้ารับ 2570 จากไฟล์ประมาณการ. สถิติย้อนหลังรอ Admissions/Reg.</p>
                 </div>
                 <div className="tcas-source-links">
                     {data.sources.map(source => (
                         source.url ? (
-                            <a key={source.label} href={source.url} target="_blank" rel="noreferrer">
-                                {source.label}
+                            <a key={source.label} href={source.url} target="_blank" rel="noreferrer" title={source.label}>
+                                {compactSourceLabel(source)}
                             </a>
                         ) : (
-                            <span key={source.label}>{source.label}</span>
+                            <span key={source.label} title={source.label}>{compactSourceLabel(source)}</span>
                         )
                     ))}
                 </div>
