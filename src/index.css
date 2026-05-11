@@ -15670,7 +15670,15 @@ body,
 
 .login-container.login-shell .login-card {
   order: 1;
-  align-self: center;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.login-container.login-shell .login-card,
+.login-hero-panel {
+  min-height: 724px;
 }
 
 .login-hero-panel {
@@ -15706,8 +15714,8 @@ body,
 
 .login-preview-screen {
   width: 100%;
-  flex: 1;
-  min-height: clamp(380px, 38vw, 530px);
+  flex: 0 0 clamp(430px, 34vw, 500px);
+  min-height: 0;
   margin-top: 0;
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.24);
@@ -15994,6 +16002,8 @@ body,
 
 .login-sso-grid .google-btn-text,
 .login-sso-grid .mju-login-btn-text {
+  color: var(--text-primary);
+  font-weight: 650;
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
@@ -16008,16 +16018,18 @@ body,
 .google-btn-text::after {
   content: 'เข้าสู่ระบบด้วย Google';
   font-size: 0.95rem;
+  font-weight: 650;
 }
 
 .mju-login-btn-text::after {
   content: 'เข้าสู่ระบบด้วย MJU Account';
   font-size: 0.95rem;
+  font-weight: 650;
 }
 
 .login-preview-dashboard {
-  grid-template-columns: 112px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 10px;
 }
 
 .login-preview-dashboard .login-preview-sidebar {
@@ -16047,7 +16059,7 @@ body,
   border-radius: 10px;
   background: rgba(148, 163, 184, 0.11);
   color: rgba(226, 232, 240, 0.72);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 800;
   line-height: 1.15;
 }
@@ -16059,7 +16071,7 @@ body,
 }
 
 .login-preview-dashboard .login-preview-content {
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -16113,7 +16125,7 @@ body,
 }
 
 .login-preview-dashboard .login-preview-cards > div {
-  min-height: 68px;
+  min-height: 62px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -16128,13 +16140,20 @@ body,
 
 .login-preview-dashboard .login-preview-cards strong {
   color: #f8fafc;
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1;
 }
 
 .login-preview-dashboard .login-preview-cards span {
+  min-height: 0;
+  height: auto;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: rgba(203, 213, 225, 0.74);
-  font-size: 0.58rem;
+  font-size: 0.54rem;
   font-weight: 800;
 }
 
@@ -16143,18 +16162,18 @@ body,
 }
 
 .login-preview-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(118px, 0.65fr);
-  gap: 10px;
+  display: block;
   min-height: 0;
 }
 
 .login-preview-dashboard .login-preview-chart {
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
-  padding: 12px;
+  height: 100%;
+  min-height: 248px;
+  padding: 12px 14px;
 }
 
 .login-preview-chart-head {
@@ -16167,27 +16186,30 @@ body,
 .login-preview-bars {
   display: flex;
   align-items: end;
-  gap: 9px;
-  min-height: 148px;
+  gap: 13px;
+  height: clamp(158px, 14vw, 190px);
+  min-height: 158px;
   padding-top: 10px;
 }
 
 .login-preview-bars i {
   flex: 1;
-  border-radius: 999px 999px 7px 7px;
+  border-radius: 999px 999px 8px 8px;
   background: linear-gradient(180deg, #38bdf8, #22c55e);
-  min-height: 38%;
+  height: 42%;
+  min-height: 72px;
   transform-origin: bottom;
   animation: loginPreviewBars 3.8s ease-in-out infinite;
+  box-shadow: 0 12px 28px -18px rgba(14, 165, 233, 0.74);
 }
 
-.login-preview-bars i:nth-child(2) { min-height: 66%; animation-delay: 0.15s; }
-.login-preview-bars i:nth-child(3) { min-height: 48%; animation-delay: 0.3s; }
-.login-preview-bars i:nth-child(4) { min-height: 84%; animation-delay: 0.45s; }
-.login-preview-bars i:nth-child(5) { min-height: 58%; animation-delay: 0.6s; }
+.login-preview-bars i:nth-child(2) { height: 68%; animation-delay: 0.15s; }
+.login-preview-bars i:nth-child(3) { height: 50%; animation-delay: 0.3s; }
+.login-preview-bars i:nth-child(4) { height: 88%; animation-delay: 0.45s; }
+.login-preview-bars i:nth-child(5) { height: 62%; animation-delay: 0.6s; }
 
 .login-preview-table {
-  display: grid;
+  display: none;
   align-content: start;
   gap: 8px;
   padding: 12px;
@@ -16215,7 +16237,7 @@ body,
 }
 
 .login-preview-dashboard .login-preview-row {
-  display: grid;
+  display: none;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
@@ -16261,7 +16283,7 @@ body,
 
 @media (max-width: 1180px) {
   .login-preview-main {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
   .login-preview-table {
