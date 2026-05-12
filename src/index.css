@@ -4155,6 +4155,18 @@ html {
   line-height: 1;
 }
 
+.settings-token-value-row.compact {
+  align-items: center;
+}
+
+.settings-token-value-row.compact strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.86rem;
+  line-height: 1.2;
+}
+
 .settings-token-value-row span {
   flex: 0 0 auto;
   border-radius: 999px;

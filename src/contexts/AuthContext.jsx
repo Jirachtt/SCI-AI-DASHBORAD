@@ -41,7 +41,7 @@ const ROLE_LABELS_BY_ROLE = {
 const normalizeRoleLabel = (role, roleLabel, fallback = 'นักศึกษา (Student)') => {
     const current = String(roleLabel || fallback);
     if (!roleLabel && ROLE_LABELS_BY_ROLE[role]) return ROLE_LABELS_BY_ROLE[role];
-    if (role === 'dean' && (current.includes('ผจก') || current.includes('ผู้บริหาร'))) {
+    if (role === 'dean' && /ผจก|ผู้จัดการ\s*คณะ|ผู้จัดการคณะ|ผู้บริหาร|dean/i.test(current)) {
         return ROLE_LABELS_BY_ROLE.dean;
     }
     return current;

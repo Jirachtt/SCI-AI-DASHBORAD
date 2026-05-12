@@ -8,6 +8,8 @@ export const ROLE_DURATION_YEARS = {
     general: 1,
 };
 
+export const TERM_REQUIRED_ROLES = ['executive', 'dean', 'chair', 'instructor', 'staff', 'student'];
+
 export const ROLE_DURATION_LABELS = {
     dean: '4 ปี',
     chair: '4 ปี',
@@ -134,6 +136,18 @@ export function getDefaultRoleDurationYears(role) {
 
 export function getRoleDurationLabel(role) {
     return ROLE_DURATION_LABELS[role] || ROLE_DURATION_LABELS.general;
+}
+
+export function getRoleTermCoverage(requiredRoles = TERM_REQUIRED_ROLES) {
+    const missingRoles = requiredRoles.filter(role =>
+        !Number(ROLE_DURATION_YEARS[role]) || !ROLE_DURATION_LABELS[role]
+    );
+    return {
+        requiredRoles,
+        missingRoles,
+        ready: missingRoles.length === 0,
+        count: requiredRoles.length,
+    };
 }
 
 export function formatRoleRemainingText(validity = {}) {

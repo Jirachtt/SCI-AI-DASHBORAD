@@ -17,6 +17,7 @@ const DOMAIN_SECTION_MAP = {
     research: ['research_overview'],
     hr: ['hr_overview'],
     strategic: ['strategic_overview'],
+    alerts: ['alert_center'],
     student_life: ['student_life'],
     dashboard: ['dashboard'],
     maejo_student_faq: [],

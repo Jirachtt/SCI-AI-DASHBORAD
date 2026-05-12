@@ -111,6 +111,14 @@ export const AI_DATASET_REGISTRY = [
         keywords: /ยุทธศาสตร์|กลยุทธ์|okr|kpi|เป้าหมาย|ตัวชี้วัด|คำรับรอง/i,
         chartableFields: ['kpis', 'okr', 'targets', 'history'],
     },
+    {
+        id: 'alerts',
+        label: 'Alert Center และเงื่อนไขความเสี่ยง',
+        domain: 'alerts',
+        sections: ['alert_center'],
+        keywords: /alert|แจ้งเตือน|เตือน|เสี่ยง|วิกฤต|เฝ้าระวัง|threshold|เงื่อนไข/i,
+        chartableFields: ['severityCounts', 'domainCounts', 'topAlerts'],
+    },
 ];
 
 const PUBLIC_CONTEXTS = new Set(['maejo_public', 'maejo_student_faq']);

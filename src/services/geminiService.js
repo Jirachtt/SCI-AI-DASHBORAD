@@ -46,6 +46,7 @@ import {
     formatAIOrchestrationPlanForPrompt,
 } from './aiOrchestrator';
 import { formatAIContextBundleForPrompt } from './aiContextRegistry';
+import { getAllAlerts } from '../utils/alerts';
 
 const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
 const AI_USAGE_ENDPOINT = import.meta.env.VITE_AI_USAGE_ENDPOINT || '/api/ai-usage';
@@ -62,6 +63,22 @@ const MODELS = [
     'gemini-flash-latest',      // alias fallback — supports google_search
     'gemini-2.0-flash-lite',    // older high-RPM fallback
     'gemini-2.0-flash',         // older search-capable fallback
+];
+
+const LOW_TO_HIGH_MODEL_ORDER = [
+    'gemini-2.5-flash-lite',
+    'gemini-flash-lite-latest',
+    'gemini-2.0-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
+    'gemini-2.0-flash',
+];
+
+const LOW_TO_HIGH_SEARCH_MODEL_ORDER = [
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
+    'gemini-2.0-flash',
 ];
 
 // Models that support Google Search grounding for real-time web data
@@ -112,6 +129,15 @@ const MODEL_INFO = {
     'gemini-2.0-flash': { tier: 'standard', label: 'Gemini 2.0 Flash', bestFor: 'วิเคราะห์/สร้างกราฟ/Google Search' },
     'gemini-2.5-flash': { tier: 'standard', label: 'Gemini 2.5 Flash', bestFor: 'วิเคราะห์ซับซ้อน' },
     'gemini-flash-latest': { tier: 'standard', label: 'Gemini Flash Latest', bestFor: 'fallback วิเคราะห์' },
+};
+
+const MODEL_TIER_RANK = {
+    'gemini-2.5-flash-lite': 1,
+    'gemini-flash-lite-latest': 1,
+    'gemini-2.0-flash-lite': 1,
+    'gemini-2.5-flash': 2,
+    'gemini-flash-latest': 2,
+    'gemini-2.0-flash': 2,
 };
 
 const MODEL_RATE_LIMITS = {
@@ -375,7 +401,7 @@ function recordTokenStats({ model, intent, inputText, outputText, contextCount }
     modelStats.estimatedOutputTokens += outputTokens;
     byModel[model] = modelStats;
 
-    writeStorage(AI_TOKEN_STATS_KEY, {
+    const nextStats = {
         requests: (stats.requests || 0) + 1,
         estimatedInputTokens: (stats.estimatedInputTokens || 0) + inputTokens,
         estimatedOutputTokens: (stats.estimatedOutputTokens || 0) + outputTokens,
@@ -388,7 +414,31 @@ function recordTokenStats({ model, intent, inputText, outputText, contextCount }
             estimatedOutputTokens: outputTokens,
             at: new Date().toISOString(),
         },
-    });
+    };
+
+    writeStorage(AI_TOKEN_STATS_KEY, nextStats);
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sci-ai-token-stats-updated', { detail: nextStats }));
+    }
+}
+
+export function getAIModelRuntimeStatus() {
+    const settings = getAIModelSettings();
+    const stats = getAITokenStats();
+    const lastModel = stats.lastRequest?.model || (settings.modelMode !== 'auto' ? settings.modelMode : LOW_TO_HIGH_MODEL_ORDER[0]);
+    const catalog = getAIModelCatalog();
+    return {
+        mode: settings.modelMode || 'auto',
+        contextMode: settings.contextMode || DEFAULT_AI_SETTINGS.contextMode,
+        lastModel,
+        lastModelLabel: MODEL_INFO[lastModel]?.label || lastModel,
+        lastIntent: stats.lastRequest?.intent || '-',
+        lastContextCount: Number(stats.lastRequest?.contextCount || 0),
+        lastRequestAt: stats.lastRequest?.at || null,
+        escalationOrder: modelOrderForIntent('general', settings),
+        catalog,
+        totalRequests: Number(stats.requests || 0),
+    };
 }
 
 function partText(part) {
@@ -439,6 +489,7 @@ const CONTEXT_SOURCE_LABELS = {
     research: 'Research dataset',
     hr: 'HR dataset',
     strategic: 'Strategic OKR dataset',
+    alerts: 'Alert Center threshold/filter context',
     student_life: 'Student life dataset',
     dashboard: 'Dashboard summary dataset',
     sci_ai_dashboard_local_first: 'SCI AI Dashboard local-first context',
@@ -1259,12 +1310,35 @@ function modelOrderForIntent(intent, settings) {
         return [settings.modelMode, ...MODELS.filter(model => model !== settings.modelMode)];
     }
     if (intent === 'web_lookup') {
-        return uniqueModels(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash', ...MODELS]);
+        return uniqueModels([...LOW_TO_HIGH_SEARCH_MODEL_ORDER, ...LOW_TO_HIGH_MODEL_ORDER]);
     }
-    if (intent === 'chart_analysis' || intent === 'analysis') {
-        return uniqueModels(['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.0-flash', 'gemini-flash-lite-latest', 'gemini-2.0-flash-lite']);
-    }
-    return MODELS;
+    return uniqueModels(LOW_TO_HIGH_MODEL_ORDER);
+}
+
+function hasHigherTierRemaining(model, candidateModels = []) {
+    const currentRank = MODEL_TIER_RANK[model] || 1;
+    const currentIndex = candidateModels.indexOf(model);
+    return candidateModels
+        .slice(Math.max(0, currentIndex + 1))
+        .some(candidate => (MODEL_TIER_RANK[candidate] || 1) > currentRank);
+}
+
+function shouldEscalateAnswerQuality(text, model, candidateModels = [], { blockedReason = '' } = {}) {
+    const answer = String(text || '').trim();
+    if (!answer || !hasHigherTierRemaining(model, candidateModels)) return false;
+    if (blockedReason || /ไม่มีสิทธิ์|สิทธิ์ของ role|permission|access denied/i.test(answer)) return false;
+    if (/```json_chart|chartJson|แหล่งข้อมูลที่ใช้/i.test(answer) && answer.length > 450) return false;
+
+    const weakPatterns = [
+        /ไม่พบข้อมูล(?:ที่เกี่ยวข้อง|ในระบบ|ในบริบท|ใน context)?/i,
+        /ไม่มีข้อมูล(?:เพียงพอ|ในระบบ|ในบริบท|ที่เกี่ยวข้อง)?/i,
+        /ไม่สามารถ(?:ตอบ|วิเคราะห์|สร้างกราฟ|ให้คำตอบ)/i,
+        /ตอบไม่ได้|ยังตอบไม่ได้|ไม่ทราบ|ไม่แน่ใจ/i,
+        /กรุณา(?:ระบุ|ให้ข้อมูล|อัปโหลด|เพิ่มข้อมูล)/i,
+        /I (?:do not|don't) have enough information/i,
+    ];
+
+    return weakPatterns.some(pattern => pattern.test(answer));
 }
 
 function domainAllowed(role, domain) {
@@ -1484,6 +1558,35 @@ function strategicContext(options = {}) {
     return `ยุทธศาสตร์และ OKR (${live.sourceLabel}):\n${JSON.stringify(strategicData)}`;
 }
 
+function alertCenterContext() {
+    const alerts = getAllAlerts();
+    const severityCounts = alerts.reduce((acc, alert) => {
+        const key = alert.severity || 'info';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+    }, {});
+    const domainCounts = alerts.reduce((acc, alert) => {
+        const key = alert.domain || 'ไม่ระบุ';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+    }, {});
+    const topAlerts = alerts.slice(0, 12).map(alert => ({
+        severity: alert.severity,
+        domain: alert.domain,
+        title: alert.title,
+        metric: alert.metric,
+        value: alert.value,
+        target: alert.target,
+        source: alert.sourceLabel || alert.source,
+        suggestedAction: alert.suggestedAction,
+    }));
+    return `Alert Center filtered conditions:
+- ใช้ alert rules/thresholds ของระบบก่อนตอบคำถามเกี่ยวกับความเสี่ยง
+- severityCounts=${JSON.stringify(severityCounts)}
+- domainCounts=${JSON.stringify(domainCounts)}
+- topAlerts=${JSON.stringify(topAlerts)}`;
+}
+
 function academicRulesContext() {
     return buildAcademicRulesContext();
 }
@@ -1575,6 +1678,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
         { id: 'research', sections: ['research_overview'], keywords: /วิจัย|research|scopus|citation|สิทธิบัตร|ทุน/, text: () => researchContext(contextOptions) },
         { id: 'hr', sections: ['hr_overview'], keywords: /บุคลากร|อาจารย์|staff|hr|เกษียณ|ตำแหน่ง/, text: () => hrContext(contextOptions) },
         { id: 'strategic', sections: ['strategic_overview'], keywords: /ยุทธศาสตร์|okr|kpi|เป้าหมาย|ตัวชี้วัด/, text: () => strategicContext(contextOptions) },
+        { id: 'alerts', sections: ['alert_center'], keywords: /alert|แจ้งเตือน|เตือน|เสี่ยง|วิกฤต|เฝ้าระวัง|threshold|เงื่อนไข/, text: alertCenterContext },
         { id: 'student_life', sections: ['student_life'], keywords: /กิจกรรม|พฤติกรรม|student life|ชั่วโมงกิจกรรม|ชั่วโมงคณะ|รับน้อง|ไหว้ครู|เดือนนี้|เดือนหน้า/, text: () => studentLifeContext(contextOptions) },
     ];
 
@@ -1921,6 +2025,12 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 continue;
             }
             const normalizedAiText = wantsStructuredOutput ? coerceStructuredAIResponse(rawAiText) : rawAiText;
+            if (shouldEscalateAnswerQuality(normalizedAiText, model, candidateModels, { blockedReason: orchestrationPlan.blockedReason })) {
+                console.warn(`[Gemini] ${model} answer looked insufficient; escalating to a higher-tier model...`);
+                lastError = new Error(`${model}: Insufficient answer quality`);
+                if (wantsStreaming) options.onChunk?.('', { reset: true, model, escalated: true });
+                continue;
+            }
             const aiText = appendAnswerMetadata(normalizedAiText, {
                 data,
                 localContexts: requestLocalContexts,

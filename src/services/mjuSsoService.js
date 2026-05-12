@@ -179,6 +179,10 @@ function hasExecutiveSignal(text = '') {
     return /executive|vice[_\s-]?president|president|rector|prorector|university[_\s-]?admin|รองอธิการ|อธิการบดี|ผู้บริหาร/i.test(text);
 }
 
+function hasDeanSignal(text = '') {
+    return /dean|คณบดี|ผจก\.?\s*คณะ|ผู้จัดการ\s*คณะ|ผู้จัดการคณะ/i.test(text);
+}
+
 function hasInstructorSignal(text = '') {
     return /teacher|lecturer|faculty|instructor|professor|อาจารย์|ผู้สอน|คณาจารย์/i.test(text);
 }
@@ -216,8 +220,8 @@ export function normalizeMjuRoleFromClaims(claims = {}) {
         claims.departmentRole,
     ].filter(Boolean).join(' ');
 
+    if (['dean', 'คณบดี', 'ผจก.คณะ', 'ผู้จัดการคณะ'].includes(raw) || hasDeanSignal(roleText)) return 'dean';
     if (executiveEmails.includes(email) || hasExecutiveSignal(roleText)) return 'executive';
-    if (['dean', 'คณบดี'].includes(raw)) return 'dean';
     if (['chair', 'program_chair', 'head', 'หัวหน้าหลักสูตร', 'ประธานหลักสูตร'].includes(raw)) return 'chair';
     if (hasInstructorSignal(roleText)) return 'instructor';
     if (['staff', 'employee', 'บุคลากร', 'เจ้าหน้าที่'].includes(raw) || hasStaffSignal(roleText)) return 'staff';

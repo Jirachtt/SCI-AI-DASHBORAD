@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { canAccess, canManageUsers, getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
-import { getAITokenBudgetSnapshot, refreshAITokenBudgetSnapshot } from '../services/geminiService';
+import { getAIModelRuntimeStatus, getAITokenBudgetSnapshot, refreshAITokenBudgetSnapshot } from '../services/geminiService';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
 import {
     Home, CreditCard, DollarSign, LogOut, Lock, FileText,
@@ -90,6 +90,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const navigate = useNavigate();
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [tokenBudget, setTokenBudget] = useState(() => getAITokenBudgetSnapshot());
+    const [modelRuntime, setModelRuntime] = useState(() => getAIModelRuntimeStatus());
 
     const handleLogout = async () => {
         setSettingsOpen(false);
@@ -101,16 +102,20 @@ export default function Sidebar({ isOpen, onClose }) {
         if (!settingsOpen) return undefined;
         const refresh = () => {
             setTokenBudget(getAITokenBudgetSnapshot());
+            setModelRuntime(getAIModelRuntimeStatus());
             refreshAITokenBudgetSnapshot()
                 .then(setTokenBudget)
                 .catch(() => setTokenBudget(getAITokenBudgetSnapshot()));
         };
         const handleUsageUpdate = (event) => setTokenBudget(event.detail || getAITokenBudgetSnapshot());
+        const handleTokenStatsUpdate = () => setModelRuntime(getAIModelRuntimeStatus());
         refresh();
         window.addEventListener('sci-ai-usage-updated', handleUsageUpdate);
+        window.addEventListener('sci-ai-token-stats-updated', handleTokenStatsUpdate);
         const interval = setInterval(refresh, 15000);
         return () => {
             window.removeEventListener('sci-ai-usage-updated', handleUsageUpdate);
+            window.removeEventListener('sci-ai-token-stats-updated', handleTokenStatsUpdate);
             clearInterval(interval);
         };
     }, [settingsOpen]);
@@ -134,6 +139,8 @@ export default function Sidebar({ isOpen, onClose }) {
     const tokenRequestLabel = `รีเซ็ต ${tokenBudget.resetLabel || '00:00 น.'}`;
     const tokenPercentLabel = tokenSyncing ? 'sync' : `${tokenBudget.remainingPercent}%`;
     const tokenBarWidth = tokenSyncing ? 0 : tokenBudget.remainingPercent;
+    const modelModeLabel = modelRuntime.mode === 'auto' ? 'Auto escalation' : 'Manual';
+    const modelLastLabel = modelRuntime.lastModelLabel || modelRuntime.lastModel || '-';
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -322,6 +329,23 @@ export default function Sidebar({ isOpen, onClose }) {
                                 <div className="settings-token-meta">
                                     <span>{tokenUsedLabel}</span>
                                     <span>{tokenRequestLabel}</span>
+                                </div>
+                            </div>
+                            <div className="settings-token-card settings-model-card" aria-label={`AI model ล่าสุด ${modelLastLabel}`}>
+                                <div className="settings-token-head">
+                                    <span className="settings-menu-icon"><Bot size={15} /></span>
+                                    <span className="settings-menu-main">
+                                        <span>AI model / RAG</span>
+                                        <small>{modelModeLabel} · {modelRuntime.contextMode}</small>
+                                    </span>
+                                </div>
+                                <div className="settings-token-value-row compact">
+                                    <strong>{modelLastLabel}</strong>
+                                    <span>{modelRuntime.totalRequests.toLocaleString('th-TH')} req</span>
+                                </div>
+                                <div className="settings-token-meta">
+                                    <span>contexts ล่าสุด {modelRuntime.lastContextCount.toLocaleString('th-TH')}</span>
+                                    <span>{modelRuntime.lastIntent}</span>
                                 </div>
                             </div>
                             <button type="button" className="settings-logout-row" onClick={handleLogout}>

@@ -18,8 +18,12 @@ import zoomPlugin from 'chartjs-plugin-zoom';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import {
     sendMessageToGemini, resetConversation, getWaitSeconds,
+    getAIModelRuntimeStatus,
     getAIModelSettings,
+    getAITokenBudgetSnapshot,
+    refreshAITokenBudgetSnapshot,
 } from '../services/geminiService';
+import { getRoleTermCoverage } from '../utils/roleValidity';
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import { ensureStudentList, getStudentListSync, getStudentRosterTrustStatus, isLiveData, onStudentDataChange } from '../services/studentDataService';
@@ -2330,9 +2334,9 @@ export function ChatMessage({ msg, onExpand }) {
                             <button
                                 className="ai-page-chart-btn"
                                 onClick={() => exportChartAsCSVReport('ai-chart', { ...chartData, chartType })}
-                                aria-label="Export chart as CSV Report Excel"
+                                aria-label="Export chart as CSV plus graph image report"
                             >
-                                <TableProperties size={13} /> CSV
+                                <TableProperties size={13} /> CSV+Graph
                             </button>
                         </div>
                         <div className="ai-page-chart-wrapper" style={{ height: wrapperHeight }}>
@@ -2471,6 +2475,8 @@ export default function AIChatPage() {
     const [deletingAllHistory, setDeletingAllHistory] = useState(false);
     const [quickMenuOpen, setQuickMenuOpen] = useState(false);
     const [systemInfoOpen, setSystemInfoOpen] = useState(false);
+    const [aiRuntimeStatus, setAiRuntimeStatus] = useState(() => getAIModelRuntimeStatus());
+    const [tokenBudget, setTokenBudget] = useState(() => getAITokenBudgetSnapshot());
     const sessionIdRef = useRef(null);
     const saveTimerRef = useRef(null);
     const lastSavedRef = useRef(null);
@@ -2486,17 +2492,39 @@ export default function AIChatPage() {
     const uploadedFileLabel = uploadedFileData
         ? `${uploadedFileData.rowCount.toLocaleString('th-TH')} แถว`
         : 'ยังไม่มีไฟล์แนบ';
+    const tokenBudgetReady = tokenBudget.isServerBacked || tokenBudget.status === 'ready';
+    const tokenBudgetLabel = tokenBudgetReady
+        ? `${tokenBudget.remainingPercent}%`
+        : 'sync';
+    const roleTermCoverage = getRoleTermCoverage();
+    const roleTermReadinessValue = roleTermCoverage.ready
+        ? `${roleTermCoverage.count} roles`
+        : `missing ${roleTermCoverage.missingRoles.join(', ')}`;
     const aiStatusCards = [
         { icon: Database, label: 'ข้อมูลนักศึกษา', value: allStudentsForStatus.length.toLocaleString('th-TH'), detail: liveSourceLabel, color: '#0f766e' },
         { icon: Layers3, label: 'ชุดข้อมูล Dashboard', value: dashboardDatasetCount.toLocaleString('th-TH'), detail: 'อ่านเฉพาะเรื่องที่ถาม', color: '#2563eb' },
         { icon: ShieldCheck, label: 'สิทธิ์คำตอบ', value: roleLabel, detail: 'อิงตาม role ในระบบ', color: '#7c3aed' },
         { icon: FileSpreadsheet, label: 'ไฟล์วิเคราะห์', value: uploadedFileLabel, detail: uploadedFileData ? 'พร้อมนำไปรวมบริบท' : 'CSV / Excel', color: '#b45309' },
+        { icon: Bot, label: 'Model ล่าสุด', value: aiRuntimeStatus.lastModelLabel, detail: aiRuntimeStatus.mode === 'auto' ? 'ต่ำไปสูงอัตโนมัติ' : 'manual override', color: '#4f46e5' },
+        { icon: Gauge, label: 'Token คงเหลือ', value: tokenBudgetLabel, detail: tokenBudgetReady ? `${tokenBudget.remainingTokens.toLocaleString('th-TH')} tokens` : 'กำลังซิงก์ server', color: '#0891b2' },
     ];
     const contextSources = [
         { label: 'Student records', value: `${allStudentsForStatus.length.toLocaleString('th-TH')} คน`, state: isLiveData() ? 'live' : 'ready' },
         { label: 'Dashboard datasets', value: `${dashboardDatasetCount.toLocaleString('th-TH')} ชุด`, state: 'ready' },
         { label: 'Forecast engine', value: 'Linear + AI', state: 'ready' },
         { label: 'Uploaded file', value: uploadedFileData ? uploadedFileLabel : 'ไม่มี', state: uploadedFileData ? 'ready' : 'idle' },
+        { label: 'RAG mode', value: aiRuntimeStatus.contextMode, state: 'ready' },
+        { label: 'Theme-aware charts', value: theme === 'dark' ? 'Dark palette' : 'Light palette', state: 'ready' },
+        { label: 'CSV + graph export', value: 'Workbook + images', state: 'ready' },
+    ];
+    const systemReadiness = [
+        { label: 'Role term Start/End', value: roleTermReadinessValue, state: roleTermCoverage.ready ? 'ready' : 'warn' },
+        { label: 'Alert filters', value: 'severity/domain/source/search', state: 'ready' },
+        { label: 'Model escalation', value: 'ต่ำไปสูง + quality check', state: 'ready' },
+        { label: 'Token + model', value: aiRuntimeStatus.lastModelLabel, state: 'ready' },
+        { label: 'RAG', value: aiRuntimeStatus.contextMode, state: 'ready' },
+        { label: 'Theme charts', value: theme === 'dark' ? 'dark mode' : 'light mode', state: 'ready' },
+        { label: 'Export CSV+graph', value: 'Excel report + chart image', state: 'ready' },
     ];
     const quickActionGroups = QUICK_ACTION_GROUPS
         .map(group => ({
@@ -2534,6 +2562,23 @@ export default function AIChatPage() {
     useEffect(() => {
         ensureStudentList();
         return onStudentDataChange(() => setStudentDataVersion(v => v + 1));
+    }, []);
+
+    useEffect(() => {
+        const refreshRuntime = () => {
+            setAiRuntimeStatus(getAIModelRuntimeStatus());
+            setTokenBudget(getAITokenBudgetSnapshot());
+        };
+        refreshRuntime();
+        refreshAITokenBudgetSnapshot()
+            .then(setTokenBudget)
+            .catch(() => setTokenBudget(getAITokenBudgetSnapshot()));
+        window.addEventListener('sci-ai-token-stats-updated', refreshRuntime);
+        window.addEventListener('sci-ai-usage-updated', refreshRuntime);
+        return () => {
+            window.removeEventListener('sci-ai-token-stats-updated', refreshRuntime);
+            window.removeEventListener('sci-ai-usage-updated', refreshRuntime);
+        };
     }, []);
 
     // ── Speech Recognition Setup ──
@@ -3539,6 +3584,21 @@ export default function AIChatPage() {
                             </div>
                         </div>
 
+                        <div className="ai-system-info-section">
+                            <h4><ShieldCheck size={15} /> Capability readiness</h4>
+                            <div className="ai-context-source-list compact">
+                                {systemReadiness.map((item) => (
+                                    <div key={item.label} className={`ai-context-source ${item.state}`}>
+                                        <div>
+                                            <span>{item.label}</span>
+                                            <strong>{item.value}</strong>
+                                        </div>
+                                        <small>ready</small>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                         {decisionPrompts.length > 0 && (
                             <div className="ai-system-info-section">
                                 <h4><Zap size={15} /> คำถามเชิงตัดสินใจ</h4>
@@ -3712,9 +3772,9 @@ export function ExpandedChartModal({ chart, onClose }) {
                         <button
                             className="ai-page-chart-modal-reset"
                             onClick={() => exportChartAsCSVReport('ai-chart-expanded', expandedChart)}
-                            aria-label="Export chart as CSV Report Excel"
+                            aria-label="Export chart as CSV plus graph image report"
                         >
-                            <TableProperties size={15} /> CSV
+                            <TableProperties size={15} /> CSV+Graph
                         </button>
                         <button className="ai-page-chart-modal-close" onClick={onClose} aria-label="ปิดกราฟขยาย" data-tooltip="ปิด">
                             <X size={22} />
