@@ -2261,6 +2261,12 @@ function deepCloneChart(chart) {
     }
 }
 
+function readableChartExportTitle(chart, fallback = 'AI chart') {
+    const title = chart?.options?.plugins?.title?.text;
+    if (Array.isArray(title)) return title.filter(Boolean).join(' ') || fallback;
+    return String(title || chart?.title || fallback).trim() || fallback;
+}
+
 // ==================== Chat Message Component ====================
 export function ChatMessage({ msg, onExpand }) {
     // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
@@ -2317,6 +2323,7 @@ export function ChatMessage({ msg, onExpand }) {
     };
 
     const chartData = chartOptionsForRender(renderedChart, chartType);
+    const chartExportTitle = readableChartExportTitle(chartData);
 
     // Deep clone chart for expand to prevent zoom state mutation
     const handleExpand = () => {
@@ -2357,10 +2364,11 @@ export function ChatMessage({ msg, onExpand }) {
                             </button>
                             <button
                                 className="ai-page-chart-btn"
-                                onClick={() => exportChartAsCSVReport('ai-chart', { ...chartData, chartType })}
-                                aria-label="Export chart as CSV plus graph image report"
+                                onClick={() => exportChartAsCSVReport(chartExportTitle, { ...chartData, chartType })}
+                                aria-label="Export chart CSV data and graph image as one Excel workbook"
+                                data-tooltip="Export CSV + รูปกราฟ"
                             >
-                                <TableProperties size={13} /> CSV+Graph
+                                <TableProperties size={13} /> CSV
                             </button>
                         </div>
                         <div className="ai-page-chart-wrapper" style={{ height: wrapperHeight }}>
@@ -3754,6 +3762,7 @@ export function ExpandedChartModal({ chart, onClose }) {
 
     // Enhanced options for expanded view — larger fonts, better grid
     const expandedChart = chartOptionsForRender(renderedChart, chartType, true);
+    const expandedChartExportTitle = readableChartExportTitle(expandedChart, 'AI chart expanded');
     const expandedOptions = expandedChart ? {
         ...expandedChart.options,
         animation: { duration: 600, easing: 'easeOutQuart' },
@@ -3795,10 +3804,11 @@ export function ExpandedChartModal({ chart, onClose }) {
                         </button>
                         <button
                             className="ai-page-chart-modal-reset"
-                            onClick={() => exportChartAsCSVReport('ai-chart-expanded', expandedChart)}
-                            aria-label="Export chart as CSV plus graph image report"
+                            onClick={() => exportChartAsCSVReport(expandedChartExportTitle, expandedChart)}
+                            aria-label="Export chart CSV data and graph image as one Excel workbook"
+                            data-tooltip="Export CSV + รูปกราฟ"
                         >
-                            <TableProperties size={15} /> CSV+Graph
+                            <TableProperties size={15} /> CSV
                         </button>
                         <button className="ai-page-chart-modal-close" onClick={onClose} aria-label="ปิดกราฟขยาย" data-tooltip="ปิด">
                             <X size={22} />

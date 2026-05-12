@@ -70,9 +70,10 @@ export default function ExportPDFButton({
                     onClick={handleCSVReport}
                     className="export-action-btn export-action-btn-csv export-csv-primary no-print"
                     disabled={exportingCSV}
-                    aria-label="Export CSV data and graph images as one Excel workbook"
+                    aria-label="Export page CSV data and graph images as one Excel workbook"
+                    title="Export ข้อมูล CSV ของหน้านี้พร้อมรูปกราฟในไฟล์ Excel เดียว"
                 >
-                    <TableProperties size={15} /> {exportingCSV ? 'CSV+Graph...' : 'CSV+Graph'}
+                    <TableProperties size={15} /> {exportingCSV ? 'CSV...' : 'CSV'}
                 </button>
             )}
             <button

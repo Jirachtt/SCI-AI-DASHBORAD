@@ -139,6 +139,13 @@ export function chartToRows(chart, chartName = 'Chart') {
         const data = Array.isArray(dataset.data) ? dataset.data : [];
         data.forEach((point, idx) => {
             if (point && typeof point === 'object' && !Array.isArray(point)) {
+                const extraFields = Object.fromEntries(
+                    Object.entries(point)
+                        .filter(([key, value]) =>
+                            !['x', 'y', 'r', 'value', 'label', 'major', 'faculty'].includes(key) &&
+                            (value == null || ['string', 'number', 'boolean'].includes(typeof value))
+                        )
+                );
                 pointRows.push({
                     chart: chartName,
                     dataset: label,
@@ -146,7 +153,11 @@ export function chartToRows(chart, chartName = 'Chart') {
                     x: point.x ?? '',
                     y: point.y ?? '',
                     r: point.r ?? '',
+                    major: point.major ?? '',
+                    faculty: point.faculty ?? '',
+                    count: point.count ?? '',
                     value: point.value ?? '',
+                    ...extraFields,
                 });
             } else {
                 pointRows.push({
@@ -940,9 +951,48 @@ function dataUrlToBytes(dataUrl) {
     return out;
 }
 
+function imageSizeFromDataUrl(dataUrl) {
+    const bytes = dataUrlToBytes(dataUrl);
+    if (
+        bytes.length >= 24 &&
+        bytes[0] === 0x89 &&
+        bytes[1] === 0x50 &&
+        bytes[2] === 0x4E &&
+        bytes[3] === 0x47
+    ) {
+        const readU32 = offset =>
+            ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
+        return { width: readU32(16), height: readU32(20) };
+    }
+    return { width: 960, height: 540 };
+}
+
 function numberOr(value, fallback) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
+}
+
+function fitImageToCellBox(image, { maxCols = 11, maxRows = 18, minRows = 10 } = {}) {
+    const { width, height } = imageSizeFromDataUrl(image.imageDataUrl);
+    const aspect = width > 0 && height > 0 ? width / height : 16 / 9;
+    const fromCol = numberOr(image.fromCol, 0);
+    const fromRow = numberOr(image.fromRow, 1);
+    const toCol = numberOr(image.toCol, fromCol + maxCols);
+    const columnSpan = Math.max(1, toCol - fromCol);
+
+    // Approximate Excel geometry: default column width 18 ~= 126 px,
+    // row height 18 pt ~= 24 px. Fit height from width so images keep shape.
+    const boxWidthPx = columnSpan * 126;
+    const desiredHeightPx = boxWidthPx / aspect;
+    const rowCount = Math.max(minRows, Math.min(maxRows, Math.round(desiredHeightPx / 24)));
+
+    return {
+        ...image,
+        fromCol,
+        toCol,
+        fromRow,
+        toRow: fromRow + rowCount,
+    };
 }
 
 function normalizeSheetImages(source, fallbackName = 'Chart') {
@@ -952,14 +1002,23 @@ function normalizeSheetImages(source, fallbackName = 'Chart') {
 
     return rawImages
         .filter(image => image?.imageDataUrl)
-        .map((image, idx) => ({
-            name: image.name || source?.name || `${fallbackName} ${idx + 1}`,
-            imageDataUrl: image.imageDataUrl,
-            fromCol: numberOr(image.fromCol, 0),
-            toCol: numberOr(image.toCol, 9),
-            fromRow: numberOr(image.fromRow, 1 + idx * 18),
-            toRow: numberOr(image.toRow, 17 + idx * 18),
-        }));
+        .map((image, idx) => {
+            const fitted = fitImageToCellBox({
+                name: image.name || source?.name || `${fallbackName} ${idx + 1}`,
+                imageDataUrl: image.imageDataUrl,
+                fromCol: image.fromCol,
+                toCol: image.toCol,
+                fromRow: image.fromRow ?? (1 + idx * 20),
+                toRow: image.toRow,
+            });
+            return {
+                ...fitted,
+                fromCol: numberOr(fitted.fromCol, 0),
+                toCol: numberOr(fitted.toCol, 9),
+                fromRow: numberOr(fitted.fromRow, 1 + idx * 18),
+                toRow: numberOr(fitted.toRow, 17 + idx * 18),
+            };
+        });
 }
 
 function normalizeSheetInput(value, name) {
@@ -1019,11 +1078,14 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
         const rows = normalizeRows(chart?.rows);
         const images = normalizeSheetImages(chart, `Chart ${idx + 1}`);
         if (images.length === 0 && rows.length === 0) return;
+        const lastImageRow = images.length
+            ? Math.max(...images.map(image => numberOr(image.toRow, 18)))
+            : 0;
         sheetDefs.push({
             name: uniqueSheetName(chart.name || `Chart ${idx + 1}`, usedNames, `Chart ${idx + 1}`),
             rows: rows.length > 0 ? rows : [{ note: 'Chart image captured from the dashboard page.' }],
             images,
-            dataStartRow: images.length ? 20 : 1,
+            dataStartRow: images.length ? Math.max(22, lastImageRow + 3) : 1,
             title: images.length ? (chart.name || `Chart ${idx + 1}`) : '',
             colWidths: null,
             rowHeights: null,
@@ -1134,7 +1196,7 @@ function nearestReadableTitle(element, fallback) {
 
     const container = element.closest('.chart-card, .stat-card, .dashboard-card, .card, section, article, [data-export-title]');
     const title = container?.getAttribute?.('data-export-title') ||
-        container?.querySelector?.('h1,h2,h3,h4,.chart-title,.card-title')?.innerText;
+        container?.querySelector?.('h1,h2,h3,h4,.chart-card-title,.chart-title,.card-title')?.innerText;
     return title?.trim?.() || fallback;
 }
 
@@ -1305,65 +1367,74 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
 
     const overviewImages = [];
     const overviewRowHeights = {};
-    const chartRowSpan = 16;
-    const chartColLeft = { fromCol: 0, toCol: 6 };
-    const chartColRight = { fromCol: 7, toCol: 13 };
     const blankRow = () => ({ section: '', item: '', value: '' });
 
     if (chartImages.length > 0) {
         overviewRows.push(
             { section: '', item: '', value: '' },
-            { section: 'Chart previews', item: 'Layout', value: '2 columns, compact size for reuse' }
+            { section: 'Chart previews', item: 'Layout', value: 'One chart per block with title and aspect ratio preserved' }
         );
     }
 
-    for (let idx = 0; idx < chartImages.length; idx += 2) {
-        const left = chartImages[idx];
-        const right = chartImages[idx + 1];
-        const leftName = left?.name || `Chart ${idx + 1}`;
-        const rightName = right ? (right.name || `Chart ${idx + 2}`) : '';
+    for (let idx = 0; idx < chartImages.length; idx += 1) {
+        const chart = chartImages[idx];
+        const chartName = chart?.name || `Chart ${idx + 1}`;
 
         overviewRows.push(blankRow());
         overviewRows.push({
             section: 'Chart previews',
-            item: `${idx + 1}. ${leftName}`,
-            value: right ? `${idx + 2}. ${rightName}` : '',
+            item: `${idx + 1}.`,
+            value: chartName,
         });
+        overviewRowHeights[overviewRows.length] = 24;
 
         const fromRow = overviewRows.length + 1;
-        overviewImages.push({
-            name: leftName,
-            imageDataUrl: left.imageDataUrl,
-            ...chartColLeft,
+        const fittedImage = fitImageToCellBox({
+            name: chartName,
+            imageDataUrl: chart.imageDataUrl,
+            fromCol: 0,
+            toCol: 12,
             fromRow,
-            toRow: fromRow + chartRowSpan,
-        });
-        if (right) {
-            overviewImages.push({
-                name: rightName,
-                imageDataUrl: right.imageDataUrl,
-                ...chartColRight,
-                fromRow,
-                toRow: fromRow + chartRowSpan,
-            });
-        }
+        }, { maxCols: 12, maxRows: 24, minRows: 12 });
+        overviewImages.push(fittedImage);
 
+        const chartRowSpan = Math.max(1, fittedImage.toRow - fittedImage.fromRow);
         for (let row = 0; row < chartRowSpan; row += 1) {
             const worksheetRow = overviewRows.length + 2;
             overviewRows.push(blankRow());
-            overviewRowHeights[worksheetRow] = 16;
+            overviewRowHeights[worksheetRow] = 18;
         }
     }
+
+    const chartDetailSheets = Object.fromEntries(chartImages.map((chart, idx) => {
+        const chartName = chart?.name || `Chart ${idx + 1}`;
+        const images = normalizeSheetImages({
+            name: chartName,
+            imageDataUrl: chart.imageDataUrl,
+        }, `Chart ${idx + 1}`);
+        const lastImageRow = images.length
+            ? Math.max(...images.map(image => numberOr(image.toRow, 18)))
+            : 0;
+        return [`Graph ${idx + 1}`, {
+            rows: normalizeRows(chart.rows).length > 0
+                ? chart.rows
+                : [{ note: 'Chart image captured from the dashboard page.' }],
+            images,
+            dataStartRow: Math.max(22, lastImageRow + 3),
+            title: chartName,
+        }];
+    }));
 
     return {
         [infoSheetName]: {
             rows: overviewRows,
             images: overviewImages,
             dataStartRow: 1,
-            colWidths: [14, 24, 28, 11, 11, 11, 3, 14, 24, 28, 11, 11, 11],
+            colWidths: [16, 18, 54, 18, 18, 18, 18, 18, 18, 18, 18, 18],
             rowHeights: overviewRowHeights,
         },
         ...dataSheets,
+        ...chartDetailSheets,
     };
 }
 
@@ -1374,7 +1445,7 @@ export async function exportPageAsCSV(title = 'page-export') {
 
 export async function exportCSVReportWorkbook(title = 'page-export', sheets = {}) {
     const chartSheets = await collectChartSheets();
-    await exportWorkbook(`${title}_csv_report`, singleFileReportSheets(title, sheets, chartSheets), chartSheets);
+    await exportWorkbook(`${title}_csv_report`, singleFileReportSheets(title, sheets, chartSheets));
 }
 
 export async function exportPageAsCSVReport(title = 'page-export') {
