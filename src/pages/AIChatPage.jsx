@@ -3043,7 +3043,7 @@ export default function AIChatPage() {
                     />
                     <input
                         type="text"
-                        placeholder={isListening ? "กำลังฟัง..." : "ถามข้อมูลคณะ สร้างกราฟ หรือแนบไฟล์เพื่อวิเคราะห์..."}
+                        placeholder={isListening ? "กำลังฟัง..." : "ถามข้อมูลคณะ สร้างกราฟ แนบไฟล์วิเคราะห์"}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}

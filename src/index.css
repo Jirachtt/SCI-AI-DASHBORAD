@@ -12452,6 +12452,8 @@ button,
 .ai-chat-page-input-area input {
   font-size: 0.96rem;
   font-weight: 700;
+  flex: 1 1 360px;
+  min-width: 0;
   padding: 11px 6px;
 }
 
@@ -12927,7 +12929,7 @@ button,
 
 .ai-chat-page-input-area.minimal {
   min-height: 64px;
-  max-width: 780px;
+  max-width: 840px;
   margin: 0 auto;
   padding: 9px;
   border-radius: 999px;
@@ -12953,6 +12955,18 @@ button,
 
 .ai-chat-page-input-area.minimal .ai-chat-tool-btn {
   border-radius: 999px;
+}
+
+.ai-chat-page-input-area.minimal .ai-chat-command-menu-btn,
+.ai-chat-page-input-area.minimal .ai-chat-system-info-btn {
+  width: 44px;
+  padding: 0;
+  justify-content: center;
+}
+
+.ai-chat-page-input-area.minimal .ai-chat-command-menu-btn span,
+.ai-chat-page-input-area.minimal .ai-chat-system-info-btn span {
+  display: none;
 }
 
 .ai-chat-command-menu-wrap {
@@ -13314,6 +13328,20 @@ button,
   .ai-system-info-panel {
     width: 100%;
     border-radius: 20px;
+  }
+}
+
+@media (max-width: 1040px) {
+  .ai-chat-page-input-area .ai-chat-command-menu-btn,
+  .ai-chat-page-input-area .ai-chat-system-info-btn {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .ai-chat-page-input-area .ai-chat-command-menu-btn span,
+  .ai-chat-page-input-area .ai-chat-system-info-btn span {
+    display: none;
   }
 }
 
