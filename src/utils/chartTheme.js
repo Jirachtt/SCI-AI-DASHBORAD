@@ -3,13 +3,13 @@ const MIN_CHART_FONT_SIZE = 12;
 const DEFAULT_CHART_FONT_SIZE = 13;
 
 export const LIGHT_CHART_PALETTE = [
-    '#0f62fe', '#00875a', '#c2410c', '#7c3aed', '#be123c', '#0891b2',
-    '#b45309', '#4338ca', '#0f766e', '#9333ea', '#334155', '#16a34a',
+    '#1457d9', '#007a48', '#d97706', '#6d28d9', '#be123c', '#0284c7',
+    '#0f766e', '#c2410c', '#4338ca', '#a21caf', '#334155', '#16a34a',
 ];
 
 export const DARK_CHART_PALETTE = [
-    '#78a6ff', '#41e6a4', '#ffd166', '#b79cff', '#ff7aa2', '#48e5ff',
-    '#ff9f43', '#f0a6ff', '#5eead4', '#ff5d6c', '#e2e8f0', '#a7f3d0',
+    '#7fb3ff', '#5eead4', '#facc15', '#c4b5fd', '#fb7185', '#38bdf8',
+    '#34d399', '#fb923c', '#a78bfa', '#f472b6', '#e2e8f0', '#86efac',
 ];
 
 const LIGHT_CHART_SURFACE = '#ffffff';
@@ -45,9 +45,9 @@ export function getCurrentChartTheme(theme = activeThemeName()) {
         surface: isLight ? LIGHT_CHART_SURFACE : DARK_CHART_SURFACE,
         text: isLight ? '#07111f' : '#ffffff',
         muted: isLight ? '#334155' : '#f8fafc',
-        grid: isLight ? 'rgba(15, 23, 42, 0.07)' : 'rgba(226, 232, 240, 0.115)',
-        axis: isLight ? 'rgba(15, 23, 42, 0.15)' : 'rgba(226, 232, 240, 0.22)',
-        tooltipBg: isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(8, 13, 28, 0.96)',
+        grid: isLight ? 'rgba(15, 23, 42, 0.055)' : 'rgba(226, 232, 240, 0.105)',
+        axis: isLight ? 'rgba(15, 23, 42, 0.16)' : 'rgba(226, 232, 240, 0.24)',
+        tooltipBg: isLight ? 'rgba(255, 255, 255, 0.985)' : 'rgba(7, 12, 25, 0.97)',
         tooltipTitle: isLight ? '#07111f' : '#ffffff',
         tooltipBody: isLight ? '#243447' : '#f8fafc',
         tooltipBorder: isLight ? 'rgba(0, 104, 56, 0.20)' : 'rgba(120, 166, 255, 0.35)',
@@ -190,6 +190,109 @@ function baseChartType(chart) {
     return chart?.config?.type || chart?.type || 'bar';
 }
 
+function isStackedBarChart(chart) {
+    const chartType = baseChartType(chart);
+    const datasets = Array.isArray(chart?.data?.datasets) ? chart.data.datasets : [];
+    const hasBarDataset = chartType === 'bar' || datasets.some(dataset => (dataset?.type || chartType) === 'bar');
+    if (!hasBarDataset) return false;
+
+    const scales = chart?.config?.options?.scales || chart?.options?.scales || {};
+    const hasStackedScale = Object.values(scales).some(scale => scale?.stacked === true);
+    const hasDatasetStack = datasets.some(dataset => dataset?.stack != null);
+    return hasStackedScale || hasDatasetStack;
+}
+
+function numericBarValue(dataset, dataIndex, indexAxis = 'x') {
+    const raw = Array.isArray(dataset?.data) ? dataset.data[dataIndex] : null;
+    if (typeof raw === 'number') return raw;
+    if (Array.isArray(raw)) {
+        const start = Number(raw[0]);
+        const end = Number(raw[1]);
+        if (Number.isFinite(start) && Number.isFinite(end)) return end - start;
+        return Number.isFinite(end) ? end : 0;
+    }
+    if (raw && typeof raw === 'object') {
+        const value = indexAxis === 'y' ? raw.x : raw.y;
+        const fallback = indexAxis === 'y' ? raw.y : raw.x;
+        const numeric = Number(value ?? fallback);
+        return Number.isFinite(numeric) ? numeric : 0;
+    }
+    const numeric = Number(raw);
+    return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function datasetStackKey(dataset) {
+    return dataset?.stack ?? '__mju_default_stack__';
+}
+
+function datasetIsVisible(chart, datasetIndex) {
+    if (typeof chart?.isDatasetVisible === 'function') return chart.isDatasetVisible(datasetIndex);
+    return !chart?.getDatasetMeta?.(datasetIndex)?.hidden;
+}
+
+function visibleStackIndexes(context) {
+    const chart = context?.chart;
+    const datasets = Array.isArray(chart?.data?.datasets) ? chart.data.datasets : [];
+    const datasetIndex = Number(context?.datasetIndex);
+    const currentDataset = datasets[datasetIndex];
+    if (!currentDataset) return [];
+
+    const chartType = baseChartType(chart);
+    const indexAxis = chart?.config?.options?.indexAxis === 'y' ? 'y' : 'x';
+    const currentValue = numericBarValue(currentDataset, context?.dataIndex, indexAxis);
+    if (!currentValue) return [];
+
+    const currentSign = currentValue < 0 ? -1 : 1;
+    const currentStack = datasetStackKey(currentDataset);
+
+    return datasets
+        .map((dataset, index) => ({ dataset, index }))
+        .filter(({ dataset, index }) => {
+            const type = dataset?.type || chartType;
+            if (type !== 'bar') return false;
+            if (datasetStackKey(dataset) !== currentStack) return false;
+            if (!datasetIsVisible(chart, index)) return false;
+            const value = numericBarValue(dataset, context?.dataIndex, indexAxis);
+            if (!value) return false;
+            return (value < 0 ? -1 : 1) === currentSign;
+        })
+        .map(({ index }) => index);
+}
+
+function stackedBarBorderRadius(context) {
+    const indexes = visibleStackIndexes(context);
+    const datasetIndex = Number(context?.datasetIndex);
+    if (!indexes.includes(datasetIndex)) return 0;
+
+    const radius = 8;
+    const first = indexes[0];
+    const last = indexes[indexes.length - 1];
+    if (first === last) return radius;
+
+    const chart = context?.chart;
+    const indexAxis = chart?.config?.options?.indexAxis === 'y' ? 'y' : 'x';
+    const value = numericBarValue(chart?.data?.datasets?.[datasetIndex], context?.dataIndex, indexAxis);
+    const isNegative = value < 0;
+    const isFirst = datasetIndex === first;
+    const isLast = datasetIndex === last;
+
+    if (indexAxis === 'y') {
+        return {
+            topLeft: isNegative ? (isLast ? radius : 0) : (isFirst ? radius : 0),
+            bottomLeft: isNegative ? (isLast ? radius : 0) : (isFirst ? radius : 0),
+            topRight: isNegative ? (isFirst ? radius : 0) : (isLast ? radius : 0),
+            bottomRight: isNegative ? (isFirst ? radius : 0) : (isLast ? radius : 0),
+        };
+    }
+
+    return {
+        topLeft: isNegative ? (isFirst ? radius : 0) : (isLast ? radius : 0),
+        topRight: isNegative ? (isFirst ? radius : 0) : (isLast ? radius : 0),
+        bottomLeft: isNegative ? (isLast ? radius : 0) : (isFirst ? radius : 0),
+        bottomRight: isNegative ? (isLast ? radius : 0) : (isFirst ? radius : 0),
+    };
+}
+
 function mutableChartOptions(chart) {
     if (!chart.config.options || typeof chart.config.options !== 'object') {
         chart.config.options = {};
@@ -205,6 +308,7 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
     const chartType = baseChartType(chart);
     const labelCount = Array.isArray(chart?.data?.labels) ? chart.data.labels.length : 0;
     const sliceTypes = new Set(['pie', 'doughnut', 'polarArea']);
+    const stackedBar = isStackedBarChart(chart);
 
     datasets.forEach((dataset, datasetIndex) => {
         const fallback = themeConfig.palette[datasetIndex % themeConfig.palette.length];
@@ -228,7 +332,13 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
             dataset.hoverBorderColor = adaptColorValue(dataset.borderColor, fallback, themeConfig, 1, Array.isArray(dataset.borderColor) ? dataset.borderColor.length : 0, 2.8);
             if (dataset.borderWidth == null) dataset.borderWidth = themeConfig.theme === 'dark' ? 1.2 : 1;
             if (type === 'bar') {
-                if (!Array.isArray(dataset.backgroundColor)) {
+                if (stackedBar) {
+                    dataset.borderWidth = 0;
+                    dataset.hoverBorderWidth = 0;
+                    dataset.borderColor = 'transparent';
+                    dataset.hoverBorderColor = 'transparent';
+                    dataset.borderRadius = stackedBarBorderRadius;
+                } else if (!Array.isArray(dataset.backgroundColor)) {
                     const horizontal = chart?.config?.options?.indexAxis === 'y';
                     dataset.backgroundColor = (context) => chartLinearGradient(context, fallback, themeConfig.theme === 'dark' ? 0.92 : 0.88, themeConfig.theme === 'dark' ? 0.56 : 0.52, horizontal);
                     dataset.hoverBackgroundColor = (context) => chartLinearGradient(context, fallback, 1, themeConfig.theme === 'dark' ? 0.68 : 0.62, horizontal);
@@ -268,11 +378,11 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
 }
 
 const PREMIUM_CHART_MOTION = {
-    initialDuration: 1060,
-    updateDuration: 520,
-    sliceDuration: 1120,
-    maxInitialDelay: 460,
-    maxUpdateDelay: 120,
+    initialDuration: 820,
+    updateDuration: 280,
+    sliceDuration: 880,
+    maxInitialDelay: 260,
+    maxUpdateDelay: 70,
     easing: 'easeOutQuart',
 };
 
