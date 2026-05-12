@@ -296,9 +296,10 @@ export default function AIChat() {
         setMessages(prev => [...prev, { role: 'user', text: `อัปโหลดไฟล์: **${fileName}**` }]);
         setTyping(true);
         try {
-            const parsed = (ext === 'xlsx' || ext === 'xls')
+            const parsedBase = (ext === 'xlsx' || ext === 'xls')
                 ? await parseXLSXContent(await file.arrayBuffer())
                 : parseCSVContent(await file.text());
+            const parsed = parsedBase ? { ...parsedBase, fileName } : null;
 
             if (!parsed || parsed.rows.length === 0) {
                 setMessages(prev => [...prev, {
@@ -318,7 +319,16 @@ export default function AIChat() {
             let summary = `**วิเคราะห์ไฟล์: ${fileName}**\n\n`;
             summary += `**ข้อมูล:** ${parsed.rowCount} แถว x ${parsed.headers.length} คอลัมน์\n`;
             summary += `**คอลัมน์:** ${parsed.headers.join(', ')}\n`;
-            summary += `**คอลัมน์ตัวเลข:** ${parsed.numericCols.join(', ') || 'ไม่พบ'}\n\n`;
+            summary += `**คอลัมน์ตัวเลข:** ${parsed.numericCols.join(', ') || 'ไม่พบ'}\n`;
+            summary += `**Schema:** ${parsed.schemaSummary || '-'}\n`;
+            summary += `**Missing values:** ${parsed.missingValues?.total ?? 0} ช่องว่าง\n`;
+            if (parsed.qualityWarnings?.length) {
+                summary += `**Data quality:** ${parsed.qualityWarnings.join(' | ')}\n`;
+            }
+            if (parsed.suggestedQuestions?.length) {
+                summary += `**คำถามแนะนำจากไฟล์:**\n${parsed.suggestedQuestions.map(item => `• ${item}`).join('\n')}\n`;
+            }
+            summary += '\n';
             if (uploadedStudents.length > 0) {
                 summary += `**ตรวจพบข้อมูลนักศึกษา ${uploadedStudents.length} คน** - รวมกับข้อมูลระบบแล้ว\n`;
                 summary += `**รวมทั้งหมดตอนนี้:** ${tools.getAllStudents().length} คน\n\n`;
@@ -335,9 +345,11 @@ export default function AIChat() {
 
             setMessages(prev => [...prev, { role: 'bot', text: summary, chart }]);
 
-            const dataPreview = parsed.rows.slice(0, 15).map(row => Object.values(row).join(', ')).join('\n');
             try {
-                const aiText = await sendAI(`ผู้ใช้อัปโหลดไฟล์ "${fileName}" มีข้อมูล ${parsed.rowCount} แถว คอลัมน์: ${parsed.headers.join(', ')}\n\nตัวอย่างข้อมูล:\n${dataPreview}\n\nช่วยวิเคราะห์และสรุปข้อมูลนี้แบบกระชับ`, { disableCache: true });
+                const fileContext = tools.formatUploadedFileContextForAI
+                    ? tools.formatUploadedFileContextForAI(parsed)
+                    : `fileName=${fileName}\nrows=${parsed.rowCount}\ncolumns=${parsed.headers.join(', ')}\nnumericColumns=${parsed.numericCols.join(', ')}`;
+                const aiText = await sendAI(`ผู้ใช้อัปโหลดไฟล์ "${fileName}" และต้องการวิเคราะห์แบบ decision intelligence\n\n${fileContext}\n\nช่วยวิเคราะห์และสรุปข้อมูลนี้แบบกระชับ โดยอิงจาก schema/aggregate ของไฟล์เท่านั้น`, { disableCache: true });
                 const parsedAI = tools.parseAIResponse(aiText, `วิเคราะห์ไฟล์ ${fileName}`);
                 setMessages(prev => [...prev, {
                     role: 'bot',

@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "smoke:presentation": "node scripts/smoke-presentation-flow.mjs"
+    "smoke:presentation": "node scripts/smoke-presentation-flow.mjs",
+    "eval:executive": "node scripts/validate-ai-executive-eval-set.mjs"
   },
   "dependencies": {
     "chart.js": "^4.5.1",

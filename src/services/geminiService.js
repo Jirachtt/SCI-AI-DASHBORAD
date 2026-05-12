@@ -538,6 +538,60 @@ function appendAnswerMetadata(text, { data, localContexts }) {
     return output.trim();
 }
 
+function normalizeNumberToken(value) {
+    return String(value || '').replace(/,/g, '').replace(/%/g, '').trim();
+}
+
+function extractNumberTokens(text) {
+    const cleaned = String(text || '')
+        .replace(/https?:\/\/\S+/g, ' ')
+        .replace(/```[\s\S]*?```/g, match => match.replace(/[A-Za-z_{}"[\]:,]/g, ' '));
+    const matches = cleaned.match(/\b\d{2,}(?:,\d{3})*(?:\.\d+)?%?\b/g) || [];
+    return [...new Set(matches.map(normalizeNumberToken).filter(Boolean))];
+}
+
+function appendNumericEvidenceGuardrail(text, { evidenceText, question, useSearch }) {
+    if (useSearch) return String(text || '').trim();
+    const output = String(text || '').trim();
+    const answerNumbers = extractNumberTokens(output);
+    if (!answerNumbers.length) return output;
+
+    const evidenceNumbers = new Set(extractNumberTokens(`${question || ''}\n${evidenceText || ''}`));
+    const unsupported = answerNumbers
+        .filter(value => !evidenceNumbers.has(value))
+        .filter(value => !/^20\d{2}$/.test(value))
+        .filter(value => !/^25\d{2}$/.test(value))
+        .slice(0, 6);
+
+    if (!unsupported.length) return output;
+    if (/ข้อควรระวัง:.*ตัวเลข/.test(output)) return output;
+    return `${output}\n\n> ข้อควรระวัง: มีตัวเลขบางส่วน (${unsupported.join(', ')}) ที่ไม่พบตรงใน context ที่ส่งให้ AI รอบนี้ จึงควรตรวจสอบจากแหล่งข้อมูลก่อนนำไปใช้ตัดสินใจ`;
+}
+
+function emitAIDebugMetadata(meta, callback) {
+    const safeMeta = {
+        ...meta,
+        at: new Date().toISOString(),
+    };
+    try {
+        console.info('[SCI AI] decision metadata', safeMeta);
+    } catch {
+        // no-op
+    }
+    try {
+        callback?.(safeMeta);
+    } catch (error) {
+        console.warn('[SCI AI] metadata callback failed:', error?.message || error);
+    }
+    try {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('sci-ai-debug-metadata', { detail: safeMeta }));
+        }
+    } catch {
+        // no-op
+    }
+}
+
 function normalizeCacheText(value) {
     return String(value || '')
         .replace(/\s+/g, ' ')
@@ -976,11 +1030,20 @@ function buildBaseInstruction() {
 ═══════════════════════════════════════════
  SECTION 1 — ROLE & ACCESS
 ═══════════════════════════════════════════
-Access: Super Admin over all internal databases of the Faculty of Science.
+Access: Role-aware decision intelligence only. Use the current role policy and retrieved context registry; never assume super-admin access.
 Purpose: Statistical analysis & Data Visualization (charts/graphs) for strategic planning.
 Language: ตอบภาษาไทย กระชับ ใช้ emoji ยกเว้นผู้ใช้ถามเป็นภาษาอังกฤษ
 Data Freshness: ข้อมูลในระบบอัปเดตล่าสุด ณ ${dataTimestamp}
 Mandate:
+• University-grade decision intelligence behavior:
+  - Product quality bar: behave like an enterprise AI data assistant in the spirit of Microsoft Copilot, Tableau Pulse, ThoughtSpot, Retool AI, and Linear-style product UX: grounded, concise, explainable, action-oriented, low-friction, and visually/chart aware.
+  - Adapt that quality bar to a Thai university setting: use Maejo/Faculty of Science language such as คณะ, สาขาวิชา, TCAS, ปีการศึกษา, ภาคเรียน, เกียรตินิยม, คณบดี, ประธานหลักสูตร, อาจารย์, เจ้าหน้าที่.
+  - Do not sound like a generic chatbot or a marketing assistant; sound like a trusted university decision analyst.
+  - For decision questions, answer in this order: short executive summary -> evidence from data -> risks/limitations -> recommendations -> sources used.
+  - Separate facts from analytical recommendations. Do not present recommendations as facts.
+  - If the question does not match any dataset, answer as general Maejo/public knowledge and clearly say no internal dataset was used.
+  - If data is insufficient, ask one targeted follow-up question or state the missing dataset instead of guessing.
+  - Never cite a dataset name unless it appears in the retrieved context list for this request.
 • MUST answer every question resolvable from the DATA below. Never refuse when data exists.
 • MUST NOT fabricate numbers. If data is genuinely absent → state: "ข้อมูลนี้ไม่มีในระบบปัจจุบัน แต่มีข้อมูลที่เกี่ยวข้อง ได้แก่..." then list available related data.
 • DATA QUALITY RULE: Treat missing/null/undefined as "ยังไม่มีข้อมูลจริง"; treat numeric 0 as "ศูนย์จริง" only when the source says actual/live; if source quality is fallback, say "ข้อมูลสำรอง/รอ sync" instead of presenting it as official.
@@ -1845,6 +1908,7 @@ export function sendMessageToGemini(userMessage, options = {}) {
 }
 
 async function _sendMessageImpl(userMessage, options = {}) {
+    const requestStartedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const settings = saveAIModelSettings({ ...getAIModelSettings(), ...(options.aiSettings || {}) });
     settings.theme = options.theme || settings.theme || (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : 'light') || 'light';
     const originalQuestion = extractUserQuestionFromPrompt(userMessage);
@@ -1884,6 +1948,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
         finalMessage += `\n\n[System: Return a JSON object that matches the configured responseJsonSchema. Put user-facing Thai prose in "answer". Put chart config JSON as a string in "chartJson" only when a chart is needed. Fill "sources" with the retrieved dataset labels used and "actions" with 1-3 useful next actions.]`;
     }
     const requestLocalContexts = retrieveRelevantContexts(originalQuestion, options.user || {}, settings);
+    const selectedDatasets = requestLocalContexts.map(context => context.id).filter(Boolean);
     const responseCacheKey = buildAIResponseCacheKey({
         finalMessage,
         originalQuestion,
@@ -1906,6 +1971,19 @@ async function _sendMessageImpl(userMessage, options = {}) {
             conversationHistory = conversationHistory.slice(-16);
         }
         options.onChunk?.(cachedResponse, { cached: true });
+        emitAIDebugMetadata({
+            cached: true,
+            intent,
+            role: orchestrationPlan.role,
+            selectedDatasets,
+            deniedDatasets: orchestrationPlan.deniedDatasets || [],
+            sourceCount: selectedDatasets.length,
+            tokenEstimate: estimateTokens(finalMessage),
+            latencyMs: Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - requestStartedAt),
+            modelName: 'cache',
+            useSearch,
+            chartRequest: isChartRequest,
+        }, options.onMetadata);
         return cachedResponse;
     }
 
@@ -2031,15 +2109,37 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 if (wantsStreaming) options.onChunk?.('', { reset: true, model, escalated: true });
                 continue;
             }
-            const aiText = appendAnswerMetadata(normalizedAiText, {
+            let aiText = appendAnswerMetadata(normalizedAiText, {
                 data,
                 localContexts: requestLocalContexts,
                 model,
                 useSearch,
             });
+            aiText = appendNumericEvidenceGuardrail(aiText, {
+                evidenceText: `${systemText}\n${requestLocalContexts.map(context => context.text).join('\n')}`,
+                question: originalQuestion,
+                useSearch,
+            });
 
             console.log(`[Gemini] ✅ ${model} OK`);
             onModelSuccess(model);
+            const latencyMs = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - requestStartedAt);
+            const providerUsage = data?.usageMetadata || {};
+            emitAIDebugMetadata({
+                cached: false,
+                intent,
+                role: orchestrationPlan.role,
+                selectedDatasets,
+                deniedDatasets: orchestrationPlan.deniedDatasets || [],
+                sourceCount: selectedDatasets.length,
+                tokenEstimate: estimateTokens(`${systemText}\n${finalMessage}`),
+                providerTokens: providerUsage.totalTokenCount || null,
+                latencyMs,
+                modelName: model,
+                useSearch,
+                chartRequest: isChartRequest,
+                structuredOutput: wantsStructuredOutput,
+            }, options.onMetadata);
             recordTokenStats({
                 model,
                 intent,

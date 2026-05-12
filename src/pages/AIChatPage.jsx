@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, TableProperties, Database, ShieldCheck, Clock3, Gauge, Layers3, GraduationCap } from 'lucide-react';
+import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, TableProperties, Database, ShieldCheck, Clock3, Gauge, Layers3, GraduationCap, Copy, CornerDownRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import {
@@ -991,6 +991,49 @@ export function tryLocalResponse(question, userContext = {}) {
     return null; // Let AI handle everything else
 }
 
+export function formatUploadedFileContextForAI(uploadedFileData) {
+    if (!uploadedFileData) return '';
+    const profiles = (uploadedFileData.columnProfiles || []).slice(0, 16);
+    const profileLines = profiles.map(col => {
+        const stats = col.numericStats
+            ? ` min=${col.numericStats.min}, max=${col.numericStats.max}, avg=${col.numericStats.avg}, sum=${col.numericStats.sum}`
+            : '';
+        return `- ${col.name}: type=${col.type}, missing=${col.missingCount} (${col.missingPercent}%), unique=${col.uniqueCount}${stats}`;
+    }).join('\n');
+    const aggregateLines = Object.entries(uploadedFileData.aggregates || {})
+        .slice(0, 10)
+        .map(([name, stats]) => `- ${name}: count=${stats.count}, min=${stats.min}, max=${stats.max}, avg=${stats.avg}, sum=${stats.sum}`)
+        .join('\n');
+    const warnings = (uploadedFileData.qualityWarnings || []).map(item => `- ${item}`).join('\n') || '- none';
+    const suggestions = (uploadedFileData.suggestedQuestions || []).map(item => `- ${item}`).join('\n') || '- สรุป insight สำคัญจากไฟล์นี้';
+    const preview = (uploadedFileData.rows || [])
+        .slice(0, 5)
+        .map(row => (uploadedFileData.headers || []).map(header => `${header}=${row[header]}`).join(' | '))
+        .join('\n');
+
+    return [
+        '[Uploaded file context]',
+        `fileName=${uploadedFileData.fileName || 'uploaded file'}`,
+        `schema=${uploadedFileData.schemaSummary || `${uploadedFileData.rowCount || 0} rows, ${(uploadedFileData.headers || []).length} columns`}`,
+        `headers=${(uploadedFileData.headers || []).join(', ')}`,
+        `numericColumns=${(uploadedFileData.numericCols || []).join(', ') || '-'}`,
+        `labelColumn=${uploadedFileData.labelCol || '-'}`,
+        `missingTotal=${uploadedFileData.missingValues?.total ?? 0}`,
+        `truncated=${uploadedFileData.truncated ? 'yes' : 'no'}`,
+        'columnProfiles:',
+        profileLines || '- none',
+        'numericAggregates:',
+        aggregateLines || '- none',
+        'qualityWarnings:',
+        warnings,
+        'suggestedQuestions:',
+        suggestions,
+        'previewRows:',
+        preview || '- none',
+        'Instruction: use schema/profile/aggregates first. Use preview rows only as examples. If the file is too small or missing key columns, say the limitation instead of guessing.',
+    ].join('\n');
+}
+
 // ==================== Parse AI Generated Chart ====================
 export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMergeSummary = null, userContext = {}) {
     const adviceMode = isExecutiveRecommendationIntent(question);
@@ -1095,11 +1138,10 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
     }
 
     if (uploadedFileData) {
-        const filePreview = uploadedFileData.rows.slice(0, 10).map(r => Object.values(r).join(', ')).join('\n');
         const dashRows = Array.isArray(dashboardSummary?.rows) ? dashboardSummary.rows : [];
         const dashHeaders = Array.isArray(dashboardSummary?.headers) ? dashboardSummary.headers : [];
         const dashPreview = dashRows.map(r => Object.values(r).join(', ')).join('\n');
-        context += `[บริบท: ผู้ใช้มีข้อมูลไฟล์ที่อัปโหลด คอลัมน์: ${uploadedFileData.headers.join(', ')} จำนวน ${uploadedFileData.rowCount} แถว ตัวอย่าง:\n${filePreview}`;
+        context += `${formatUploadedFileContextForAI(uploadedFileData)}\n`;
         if (dashRows.length > 0 && !adviceMode) {
             context += `\n\nข้อมูล Dashboard สำหรับเปรียบเทียบ (${dashHeaders.join(', ')}):\n${dashPreview}`;
         } else if (dashRows.length > 0 && adviceMode) {
@@ -2268,7 +2310,7 @@ function readableChartExportTitle(chart, fallback = 'AI chart') {
 }
 
 // ==================== Chat Message Component ====================
-export function ChatMessage({ msg, onExpand }) {
+export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
     // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
     const initialUiType = getInitialUiChartType(msg.chart);
     const [chartType, setChartType] = useState(initialUiType);
@@ -2330,12 +2372,31 @@ export function ChatMessage({ msg, onExpand }) {
         const cloned = deepCloneChart(chartData);
         if (cloned) onExpand(cloned);
     };
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard?.writeText(String(msg.text || ''));
+        } catch {
+            // Clipboard can be unavailable in some embedded browsers; keep the UI non-blocking.
+        }
+    };
 
     return (
         <div className="ai-page-msg ai-page-msg-bot">
             <div className="ai-page-msg-avatar"><Sparkles size={18} style={{ color: '#00e676' }} /></div>
             <div className="ai-page-msg-content">
                 <div className="ai-page-msg-bubble bot">{formatText(msg.text)}</div>
+                <div className="ai-answer-action-row">
+                    <button className="ai-answer-action-btn" type="button" onClick={handleCopy}>
+                        <Copy size={13} /> คัดลอกคำตอบ
+                    </button>
+                    <button
+                        className="ai-answer-action-btn"
+                        type="button"
+                        onClick={() => onAskFollowUp?.(String(msg.text || '').slice(0, 220))}
+                    >
+                        <CornerDownRight size={13} /> ถามต่อจากคำตอบนี้
+                    </button>
+                </div>
 
                 {chartData && (
                     <div className="ai-page-chart-container">
@@ -2509,6 +2570,7 @@ export default function AIChatPage() {
     const [systemInfoOpen, setSystemInfoOpen] = useState(false);
     const [aiRuntimeStatus, setAiRuntimeStatus] = useState(() => getAIModelRuntimeStatus());
     const [tokenBudget, setTokenBudget] = useState(() => getAITokenBudgetSnapshot());
+    const [lastAIMetadata, setLastAIMetadata] = useState(null);
     const sessionIdRef = useRef(null);
     const saveTimerRef = useRef(null);
     const lastSavedRef = useRef(null);
@@ -2532,10 +2594,17 @@ export default function AIChatPage() {
     const roleTermReadinessValue = roleTermCoverage.ready
         ? `${roleTermCoverage.count} roles`
         : `missing ${roleTermCoverage.missingRoles.join(', ')}`;
+    const selectedDatasetLabel = lastAIMetadata?.selectedDatasets?.length
+        ? lastAIMetadata.selectedDatasets.slice(0, 3).join(', ')
+        : 'Auto';
+    const selectedDatasetDetail = lastAIMetadata
+        ? `${lastAIMetadata.sourceCount || 0} context • ${lastAIMetadata.latencyMs || 0}ms`
+        : 'รอคำถามล่าสุด';
     const aiStatusCards = [
         { icon: Database, label: 'ข้อมูลนักศึกษา', value: allStudentsForStatus.length.toLocaleString('th-TH'), detail: liveSourceLabel, color: '#0f766e' },
         { icon: Layers3, label: 'ชุดข้อมูล Dashboard', value: dashboardDatasetCount.toLocaleString('th-TH'), detail: 'อ่านเฉพาะเรื่องที่ถาม', color: '#2563eb' },
         { icon: ShieldCheck, label: 'สิทธิ์คำตอบ', value: roleLabel, detail: 'อิงตาม role ในระบบ', color: '#7c3aed' },
+        { icon: Gauge, label: 'AI Context', value: selectedDatasetLabel, detail: selectedDatasetDetail, color: '#0891b2' },
         { icon: FileSpreadsheet, label: 'ไฟล์วิเคราะห์', value: uploadedFileLabel, detail: uploadedFileData ? 'พร้อมนำไปรวมบริบท' : 'CSV / Excel', color: '#b45309' },
         { icon: Bot, label: 'Model ล่าสุด', value: aiRuntimeStatus.lastModelLabel, detail: aiRuntimeStatus.mode === 'auto' ? 'ต่ำไปสูงอัตโนมัติ' : 'manual override', color: '#4f46e5' },
         { icon: Gauge, label: 'Token คงเหลือ', value: tokenBudgetLabel, detail: tokenBudgetReady ? `${tokenBudget.remainingTokens.toLocaleString('th-TH')} tokens` : 'กำลังซิงก์ server', color: '#0891b2' },
@@ -2548,6 +2617,7 @@ export default function AIChatPage() {
         { label: 'RAG mode', value: aiRuntimeStatus.contextMode, state: 'ready' },
         { label: 'Theme-aware charts', value: theme === 'dark' ? 'Dark palette' : 'Light palette', state: 'ready' },
         { label: 'CSV + graph export', value: 'Workbook + images', state: 'ready' },
+        { label: 'AI selected context', value: selectedDatasetLabel, state: lastAIMetadata ? 'ready' : 'idle' },
     ];
     const systemReadiness = [
         { label: 'Role term Start/End', value: roleTermReadinessValue, state: roleTermCoverage.ready ? 'ready' : 'warn' },
@@ -2584,7 +2654,18 @@ export default function AIChatPage() {
     const [thinkingStepIndex, setThinkingStepIndex] = useState(0);
     const messagesEnd = useRef(null);
     const sendAI = useCallback(async (prompt, onChunk, sendOptions = {}) => {
-        return sendMessageToGemini(prompt, { user, theme, aiSettings: getAIModelSettings(), onChunk, ...sendOptions });
+        const { onMetadata, ...restOptions } = sendOptions;
+        return sendMessageToGemini(prompt, {
+            user,
+            theme,
+            aiSettings: getAIModelSettings(),
+            onChunk,
+            ...restOptions,
+            onMetadata: (meta) => {
+                setLastAIMetadata(meta);
+                onMetadata?.(meta);
+            },
+        });
     }, [user, theme]);
 
     // ── Ensure the live student dataset is loaded before the user can chat ──
@@ -2814,9 +2895,10 @@ export default function AIChatPage() {
         setTyping(true);
 
         try {
-            const parsed = (ext === 'xlsx' || ext === 'xls')
+            const parsedBase = (ext === 'xlsx' || ext === 'xls')
                 ? await parseXLSXContent(await file.arrayBuffer())
                 : parseCSVContent(await file.text());
+            const parsed = parsedBase ? { ...parsedBase, fileName } : null;
 
             if (!parsed || parsed.rows.length === 0) {
                 setMessages(prev => [...prev, {
@@ -2841,7 +2923,16 @@ export default function AIChatPage() {
             let summaryText = `**วิเคราะห์ไฟล์: ${fileName}**\n\n`;
             summaryText += `**ข้อมูล:** ${parsed.rowCount} แถว × ${parsed.headers.length} คอลัมน์\n`;
             summaryText += `**คอลัมน์:** ${parsed.headers.join(', ')}\n`;
-            summaryText += `**คอลัมน์ตัวเลข:** ${parsed.numericCols.join(', ') || 'ไม่พบ'}\n\n`;
+            summaryText += `**คอลัมน์ตัวเลข:** ${parsed.numericCols.join(', ') || 'ไม่พบ'}\n`;
+            summaryText += `**Schema:** ${parsed.schemaSummary || '-'}\n`;
+            summaryText += `**Missing values:** ${parsed.missingValues?.total ?? 0} ช่องว่าง\n`;
+            if (parsed.qualityWarnings?.length) {
+                summaryText += `**Data quality:** ${parsed.qualityWarnings.join(' | ')}\n`;
+            }
+            if (parsed.suggestedQuestions?.length) {
+                summaryText += `**คำถามแนะนำจากไฟล์:**\n${parsed.suggestedQuestions.map(item => `• ${item}`).join('\n')}\n`;
+            }
+            summaryText += '\n';
 
             // Notify about student data merge
             if (uploadedStudents.length > 0) {
@@ -2874,8 +2965,7 @@ export default function AIChatPage() {
             setMessages(prev => [...prev, { role: 'bot', text: summaryText, chart }]);
 
             // Also send to Gemini for AI analysis
-            const dataPreview = parsed.rows.slice(0, 15).map(r => Object.values(r).join(', ')).join('\n');
-            const aiPrompt = `ผู้ใช้อัปโหลดไฟล์ "${fileName}" มีข้อมูล ${parsed.rowCount} แถว คอลัมน์: ${parsed.headers.join(', ')}\n\nตัวอย่างข้อมูล:\n${dataPreview}\n\nช่วยวิเคราะห์และสรุปข้อมูลนี้ให้หน่อย จุดที่น่าสนใจ แนวโน้ม และข้อเสนอแนะ`;
+            const aiPrompt = `ผู้ใช้อัปโหลดไฟล์ "${fileName}" และต้องการวิเคราะห์แบบ decision intelligence\n\n${formatUploadedFileContextForAI(parsed)}\n\nช่วยสรุป insight สำคัญ ความเสี่ยง/ข้อจำกัดของข้อมูล และข้อเสนอแนะที่อิงจาก schema/aggregate ของไฟล์เท่านั้น`;
 
             try {
                 const aiText = await sendAI(aiPrompt, undefined, { disableCache: isExecutiveRecommendationIntent(aiPrompt) });
@@ -3431,7 +3521,12 @@ export default function AIChatPage() {
                     {/* Messages */}
                     <div className="ai-chat-page-messages">
                         {visibleMessages.map((msg, i) => (
-                            <ChatMessage key={i} msg={msg} onExpand={setExpandedChart} />
+                            <ChatMessage
+                                key={i}
+                                msg={msg}
+                                onExpand={setExpandedChart}
+                                onAskFollowUp={(seed) => setInput(`ต่อจาก insight นี้ ช่วยขยายให้หน่อย: ${seed}`)}
+                            />
                         ))}
                         {typing && (
                             <div className="ai-page-msg ai-page-msg-bot">

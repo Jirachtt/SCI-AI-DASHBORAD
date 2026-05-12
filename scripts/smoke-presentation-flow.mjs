@@ -33,6 +33,7 @@ const studentDataService = read('src/services/studentDataService.js');
 const rules = read('firestore.rules');
 const packageJson = JSON.parse(read('package.json'));
 const { scienceStudentList, studentListSummary } = await import('../src/data/studentListData.js');
+const { aiExecutiveEvaluationSet } = await import('../src/data/aiExecutiveEvaluationSet.js');
 
 expect(
   'Floating AI chat lazy-loads AIChatPage helpers',
@@ -195,6 +196,18 @@ expect(
   'Smoke script is registered in package.json',
   packageJson.scripts?.['smoke:presentation'] === 'node scripts/smoke-presentation-flow.mjs',
   'Run with npm run smoke:presentation before demo.'
+);
+
+expect(
+  'Executive AI evaluation set is registered and presentation-sized',
+  packageJson.scripts?.['eval:executive'] === 'node scripts/validate-ai-executive-eval-set.mjs'
+    && Array.isArray(aiExecutiveEvaluationSet)
+    && aiExecutiveEvaluationSet.length >= 30
+    && aiExecutiveEvaluationSet.length <= 50
+    && aiExecutiveEvaluationSet.some(item => item.intent === 'executive_advice')
+    && aiExecutiveEvaluationSet.some(item => item.intent === 'chart')
+    && aiExecutiveEvaluationSet.some(item => item.intent === 'blocked_sensitive'),
+  'Use npm run eval:executive to verify decision prompts, chart prompts, and role-denied prompts.'
 );
 
 const failed = results.filter(item => !item.ok);

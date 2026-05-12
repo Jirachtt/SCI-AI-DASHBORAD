@@ -51,6 +51,10 @@ export function createAIOrchestrationPlan(question, userContext = {}, options = 
             ? 'sensitive_or_row_level_data_requires_allowed_internal_context'
             : '',
         contextBundle,
+        selectedDatasets: contextBundle.contexts.map(item => item.id),
+        deniedDatasets: contextBundle.deniedContexts.map(item => item.id),
+        sourceCount: contextBundle.contexts.length,
+        requiresClarification: ['internal_lookup', 'chart', 'executive_advice'].includes(intent) && !hasAllowedContext,
         usageMode: intent === 'chart' ? 'deterministic_chart_first' : 'local_first_rag',
     };
 }
@@ -59,7 +63,9 @@ export function formatAIOrchestrationPlanForPrompt(plan) {
     if (!plan) return '';
     return [
         `AI orchestration: intent=${plan.intent}, usageMode=${plan.usageMode}, role=${plan.role}`,
+        `selectedDatasets=${(plan.selectedDatasets || []).join('|') || '-'}, deniedDatasets=${(plan.deniedDatasets || []).join('|') || '-'}`,
         `cache=${plan.shouldDisableCache ? 'disabled' : 'allowed'}, webFallback=${plan.shouldUseWebFallback ? 'allowed_when_needed' : 'only_if_settings_allow'}`,
+        plan.requiresClarification ? 'clarificationPolicy=if selected datasets are empty, state the missing data or ask a targeted follow-up instead of guessing' : '',
         plan.blockedReason ? `blockedSensitive=${plan.blockedReason}` : '',
     ].filter(Boolean).join('\n');
 }

@@ -134,19 +134,73 @@ export function datasetAccessStatus(item, roleOrUser) {
     return { allowed: canAIUseAnyInternalSection(roleOrUser, sections), sections };
 }
 
+function rowCountFromData(data) {
+    if (!data) return 0;
+    if (Array.isArray(data)) return data.length;
+    if (Array.isArray(data.rows)) return data.rows.length;
+    if (Array.isArray(data.items)) return data.items.length;
+    if (Array.isArray(data.records)) return data.records.length;
+    if (Array.isArray(data.data)) return data.data.length;
+    if (Number.isFinite(Number(data.rowCount))) return Number(data.rowCount);
+    if (Number.isFinite(Number(data.total))) return Number(data.total);
+    if (Number.isFinite(Number(data.totalStudents))) return Number(data.totalStudents);
+    return Object.keys(data || {}).length;
+}
+
+function confidenceFromTrust({ trustLevel, sourceType, hasData, isLive }) {
+    if (!hasData) return 'none';
+    if (isLive || trustLevel === 'live_official') return 'high';
+    if (trustLevel === 'approved_reference' || /official|uploaded|firestore|api/i.test(String(sourceType || ''))) return 'medium';
+    if (/fallback|mock|sample|demo|generated/i.test(String(sourceType || ''))) return 'low';
+    return 'medium';
+}
+
+function freshnessLabel(updatedAt) {
+    if (!updatedAt) return 'unknown';
+    try {
+        const date = new Date(updatedAt);
+        if (Number.isNaN(date.getTime())) return 'unknown';
+        return date.toISOString();
+    } catch {
+        return 'unknown';
+    }
+}
+
+function keywordScore(item, q) {
+    if (!item?.keywords) return 0;
+    item.keywords.lastIndex = 0;
+    if (!item.keywords.test(q)) return 0;
+    let score = 10;
+    const idParts = `${item.id} ${item.domain} ${(item.sections || []).join(' ')}`.toLowerCase().split(/[_\s]+/);
+    for (const part of idParts) {
+        if (part && q.includes(part)) score += 2;
+    }
+    return score;
+}
+
 export function datasetTrustSnapshot(id) {
     const meta = getSharedDashboardDatasetMetaSync(id);
     const data = getSharedDashboardDatasetSync(id);
     const trustLevel = getExecutiveAdviceTrustLevel(meta, { datasetId: id });
+    const hasData = Boolean(data);
+    const sourceType = meta?.sourceType || 'fallback';
     return {
         id,
-        hasData: Boolean(data),
+        hasData,
         isLive: Boolean(meta?.isLive),
         trustLevel,
-        sourceType: meta?.sourceType || 'fallback',
+        sourceType,
         sourceLabel: getDatasetQualityText(meta),
         sourceUrl: meta?.sourceUrl || '',
         updatedAt: meta?.updatedAt || null,
+        lastUpdated: freshnessLabel(meta?.updatedAt),
+        rowCount: rowCountFromData(data),
+        confidence: confidenceFromTrust({
+            trustLevel,
+            sourceType,
+            hasData,
+            isLive: Boolean(meta?.isLive),
+        }),
     };
 }
 
@@ -155,14 +209,21 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
     const role = resolveAIRole(roleOrUser);
     const matched = [];
     const denied = [];
+    const maxContexts = Number.isFinite(Number(options.maxContexts))
+        ? Number(options.maxContexts)
+        : options.intent === 'executive_advice'
+            ? 6
+            : 5;
 
     for (const item of AI_DATASET_REGISTRY) {
-        const keywordMatch = item.keywords?.test(q);
+        const score = options.includeAll ? 1 : keywordScore(item, q);
+        const keywordMatch = score > 0;
         if (!keywordMatch && !options.includeAll) continue;
         const access = datasetAccessStatus(item, role);
         const trust = datasetTrustSnapshot(item.id);
         const row = {
             ...item,
+            score,
             allowed: access.allowed,
             sections: access.sections,
             trustLevel: trust.trustLevel,
@@ -170,6 +231,10 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
             sourceLabel: trust.sourceLabel,
             sourceUrl: trust.sourceUrl,
             updatedAt: trust.updatedAt,
+            lastUpdated: trust.lastUpdated,
+            rowCount: trust.rowCount,
+            confidence: trust.confidence,
+            scope: item.domain,
             hasData: trust.hasData,
             isLive: trust.isLive,
         };
@@ -177,18 +242,31 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
         else denied.push(row);
     }
 
+    matched.sort((a, b) => {
+        const confidenceRank = { high: 3, medium: 2, low: 1, none: 0 };
+        const trustRank = { live_official: 4, approved_reference: 3, uploaded_file: 3, system_fallback: 2, untrusted_demo: 1 };
+        return (b.score - a.score)
+            || ((confidenceRank[b.confidence] || 0) - (confidenceRank[a.confidence] || 0))
+            || ((trustRank[b.trustLevel] || 0) - (trustRank[a.trustLevel] || 0))
+            || String(a.id).localeCompare(String(b.id));
+    });
+
     return {
         intentHint: options.intent || 'auto',
         role,
-        contexts: matched,
+        contexts: matched.slice(0, maxContexts),
         deniedSections: denied.flatMap(item => item.sections || []),
         deniedContexts: denied,
-        sourceSummary: matched.map(item => ({
+        sourceSummary: matched.slice(0, maxContexts).map(item => ({
             id: item.id,
             label: item.label,
             trustLevel: item.trustLevel,
             sourceType: item.sourceType,
             sourceLabel: item.sourceLabel,
+            lastUpdated: item.lastUpdated,
+            rowCount: item.rowCount,
+            confidence: item.confidence,
+            scope: item.scope,
             chartableFields: item.chartableFields,
         })),
     };
@@ -199,7 +277,7 @@ export function formatAIContextBundleForPrompt(bundle) {
         return 'AI context registry: no matched internal dataset; use local FAQ/public fallback if allowed.';
     }
     const allowed = (bundle.contexts || [])
-        .map(item => `- ${item.id}: allowed, trust=${item.trustLevel}, source=${item.sourceType}, chartable=${(item.chartableFields || []).join('|') || '-'}`)
+        .map(item => `- ${item.id}: allowed, scope=${item.scope || item.domain}, trust=${item.trustLevel}, confidence=${item.confidence}, source=${item.sourceType}, rows=${item.rowCount ?? 0}, updated=${item.lastUpdated || 'unknown'}, chartable=${(item.chartableFields || []).join('|') || '-'}`)
         .join('\n');
     const denied = (bundle.deniedContexts || [])
         .map(item => `- ${item.id}: denied for role=${bundle.role}, sections=${(item.sections || []).join('|')}`)

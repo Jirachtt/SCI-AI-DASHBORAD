@@ -53,11 +53,36 @@ function hasChartIntent(question) {
 
 function asResult({ text, chart, sources = [], trustWarnings = [], usageMode = 'deterministic_chart' }) {
     if (!chart || !isValidChartConfig(chart)) return null;
+    const nextChart = {
+        ...chart,
+        options: {
+            ...(chart.options || {}),
+            plugins: {
+                ...((chart.options || {}).plugins || {}),
+                title: {
+                    display: true,
+                    text: (chart.options?.plugins?.title?.text || chart.title || 'AI chart').toString(),
+                    ...((chart.options || {}).plugins?.title || {}),
+                },
+                subtitle: {
+                    display: Boolean(sources.length),
+                    text: sources.slice(0, 2).join(' • '),
+                    ...((chart.options || {}).plugins?.subtitle || {}),
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    ...((chart.options || {}).plugins?.tooltip || {}),
+                },
+            },
+        },
+        sourceLabel: sources.join(' • '),
+    };
     const sourceText = sources.length ? `\n\n**แหล่งข้อมูลที่ใช้:**\n${sources.map(item => `- ${item}`).join('\n')}` : '';
     const warningText = trustWarnings.length ? `\n\n${trustWarnings.map(item => `_หมายเหตุ: ${item}_`).join('\n')}` : '';
     return {
         text: `${text}${sourceText}${warningText}`.trim(),
-        chart,
+        chart: nextChart,
         sources,
         trustWarnings,
         blockedReason: '',
