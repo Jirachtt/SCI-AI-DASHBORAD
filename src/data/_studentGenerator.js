@@ -105,10 +105,10 @@ export function generatePaddedStudents(curated) {
     const existingIds = new Set(curated.map(s => s.id));
 
     const targets = [
-        { cohortCode: '65', year: 4, target: 303 },
-        { cohortCode: '66', year: 3, target: 320 },
-        { cohortCode: '67', year: 2, target: 409 },
-        { cohortCode: '68', year: 1, target: 397 },
+        { cohortCode: '65', year: 4, target: 189 },
+        { cohortCode: '66', year: 3, target: 345 },
+        { cohortCode: '67', year: 2, target: 435 },
+        { cohortCode: '68', year: 1, target: 408 },
     ];
 
     const padded = [];
@@ -137,7 +137,8 @@ export function generatePaddedStudents(curated) {
 
     // ป.โท เพิ่มให้ครบ 17 (curated มี 4)
     const masterExisting = curated.filter(s => s.level === 'ปริญญาโท').length;
-    const masterNeed = Math.max(0, 17 - masterExisting);
+    // Official latest science-faculty master total is 16.
+    const masterNeed = Math.max(0, 16 - masterExisting);
     for (let i = 0; i < masterNeed; i++) {
         const cohort = i < masterNeed / 2 ? '67' : '68';
         const major = pickMajor(rng);

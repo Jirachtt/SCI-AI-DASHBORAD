@@ -1,35 +1,35 @@
-export const OFFICIAL_STUDENT_SNAPSHOT_DATE = '2026-05-11';
+export const OFFICIAL_STUDENT_SNAPSHOT_DATE = '2026-05-12';
 export const OFFICIAL_STUDENT_SOURCE_URL = 'https://dashboard.mju.ac.th/student';
 
 export const OFFICIAL_STUDENT_LEVELS = [
     { key: 'certificate', level: 'ประกาศนียบัตร', count: 73, color: '#059669', icon: 'Cert' },
-    { key: 'bachelor', level: 'ปริญญาตรี', count: 15777, color: '#006838', icon: 'BSc' },
-    { key: 'master', level: 'ปริญญาโท', count: 434, color: '#2E86AB', icon: 'MSc' },
-    { key: 'doctoral', level: 'ปริญญาเอก', count: 222, color: '#A23B72', icon: 'PhD' },
+    { key: 'bachelor', level: 'ปริญญาตรี', count: 15776, color: '#006838', icon: 'BSc' },
+    { key: 'master', level: 'ปริญญาโท', count: 417, color: '#2E86AB', icon: 'MSc' },
+    { key: 'doctoral', level: 'ปริญญาเอก', count: 209, color: '#A23B72', icon: 'PhD' },
 ];
 
 export const OFFICIAL_SCIENCE_STUDENT_LEVELS = [
     { key: 'certificate', level: 'ประกาศนียบัตร', count: 0, color: '#059669', icon: 'Cert' },
     { key: 'bachelor', level: 'ปริญญาตรี', count: 1377, color: '#006838', icon: 'BSc' },
-    { key: 'master', level: 'ปริญญาโท', count: 17, color: '#2E86AB', icon: 'MSc' },
+    { key: 'master', level: 'ปริญญาโท', count: 16, color: '#2E86AB', icon: 'MSc' },
     { key: 'doctoral', level: 'ปริญญาเอก', count: 5, color: '#A23B72', icon: 'PhD' },
 ];
 
 export const OFFICIAL_STUDENT_FACULTY_ROWS = [
     { name: 'คณะบริหารธุรกิจ', certificate: 0, bachelor: 3640, master: 56, doctoral: 8, total: 3704 },
-    { name: 'คณะผลิตกรรมการเกษตร', certificate: 0, bachelor: 1878, master: 92, doctoral: 87, total: 2057 },
-    { name: 'คณะวิทยาศาสตร์', certificate: 0, bachelor: 1377, master: 17, doctoral: 5, total: 1399 },
+    { name: 'คณะผลิตกรรมการเกษตร', certificate: 0, bachelor: 1878, master: 90, doctoral: 79, total: 2047 },
+    { name: 'คณะวิทยาศาสตร์', certificate: 0, bachelor: 1377, master: 16, doctoral: 5, total: 1398 },
     { name: 'คณะสารสนเทศและการสื่อสาร', certificate: 0, bachelor: 1229, master: 0, doctoral: 0, total: 1229 },
-    { name: 'วิทยาลัยบริหารศาสตร์', certificate: 0, bachelor: 942, master: 59, doctoral: 14, total: 1015 },
-    { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ เฉลิมพระเกียรติ', certificate: 0, bachelor: 872, master: 60, doctoral: 0, total: 932 },
+    { name: 'วิทยาลัยบริหารศาสตร์', certificate: 0, bachelor: 942, master: 59, doctoral: 12, total: 1013 },
+    { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ เฉลิมพระเกียรติ', certificate: 0, bachelor: 872, master: 54, doctoral: 0, total: 926 },
     { name: 'คณะศิลปศาสตร์', certificate: 0, bachelor: 916, master: 0, doctoral: 0, total: 916 },
     { name: 'คณะเศรษฐศาสตร์', certificate: 0, bachelor: 812, master: 9, doctoral: 17, total: 838 },
     { name: 'คณะพัฒนาการท่องเที่ยว', certificate: 0, bachelor: 788, master: 8, doctoral: 12, total: 808 },
-    { name: 'วิทยาลัยพลังงานทดแทน', certificate: 0, bachelor: 735, master: 53, doctoral: 13, total: 801 },
-    { name: 'คณะสัตวศาสตร์และเทคโนโลยี', certificate: 0, bachelor: 682, master: 20, doctoral: 1, total: 703 },
-    { name: 'คณะวิศวกรรมและอุตสาหกรรมเกษตร', certificate: 0, bachelor: 629, master: 9, doctoral: 4, total: 642 },
+    { name: 'วิทยาลัยพลังงานทดแทน', certificate: 0, bachelor: 735, master: 47, doctoral: 10, total: 792 },
+    { name: 'คณะสัตวศาสตร์และเทคโนโลยี', certificate: 0, bachelor: 683, master: 20, doctoral: 1, total: 704 },
+    { name: 'คณะวิศวกรรมและอุตสาหกรรมเกษตร', certificate: 0, bachelor: 629, master: 8, doctoral: 4, total: 641 },
     { name: 'คณะสถาปัตยกรรมศาสตร์และการออกแบบสิ่งแวดล้อม', certificate: 0, bachelor: 409, master: 9, doctoral: 10, total: 428 },
-    { name: 'คณะเทคโนโลยีการประมงและทรัพยากรทางน้ำ', certificate: 0, bachelor: 403, master: 7, doctoral: 4, total: 414 },
+    { name: 'คณะเทคโนโลยีการประมงและทรัพยากรทางน้ำ', certificate: 0, bachelor: 401, master: 6, doctoral: 4, total: 411 },
     { name: 'มหาวิทยาลัยแม่โจ้-ชุมพร', certificate: 0, bachelor: 238, master: 0, doctoral: 0, total: 238 },
     { name: 'คณะพยาบาลศาสตร์', certificate: 0, bachelor: 131, master: 0, doctoral: 0, total: 131 },
     { name: 'คณะสัตวแพทยศาสตร์', certificate: 0, bachelor: 96, master: 0, doctoral: 0, total: 96 },
@@ -37,11 +37,11 @@ export const OFFICIAL_STUDENT_FACULTY_ROWS = [
     { name: 'โครงการ', certificate: 73, bachelor: 0, master: 0, doctoral: 0, total: 73 },
 ];
 
-export const OFFICIAL_STUDENT_TOTAL = 16506;
-export const OFFICIAL_SCIENCE_STUDENT_TOTAL = 1399;
+export const OFFICIAL_STUDENT_TOTAL = 16475;
+export const OFFICIAL_SCIENCE_STUDENT_TOTAL = 1398;
 
-const STALE_SCIENCE_TOTALS = new Set([1398, 1451, 1452]);
-const STALE_CURRENT_TOTALS = new Set([16505, 16834, 16839]);
+const STALE_SCIENCE_TOTALS = new Set([1399, 1451, 1452]);
+const STALE_CURRENT_TOTALS = new Set([16505, 16506, 16834, 16839]);
 const SCIENCE_MATCH = 'วิทยาศาสตร์';
 
 function clone(value) {

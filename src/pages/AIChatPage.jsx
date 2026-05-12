@@ -479,6 +479,33 @@ function getTrustedStudentsForAdvice() {
     return [...filtered, ..._uploadedStudentRows];
 }
 
+function isStudentRowLookupQuestion(question = '') {
+    const text = String(question || '').toLowerCase();
+    if (/\b6\d{9}\b/.test(text)) return true;
+    if (/(?:รหัส|id)\s*\d{2,}/i.test(text)) return true;
+    if (/(ค้นหานักศึกษา|หานักศึกษา|ชื่อนักศึกษา|ชื่อนิสิต)/.test(text)) return true;
+    if (/รายชื่อ/.test(text) && /(นักศึกษา|นิสิต|รหัส|gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย|ชั้นปี|สาขา|รอพินิจ|เสี่ยง|เกียรตินิยม)/.test(text)) return true;
+    if (/(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย).*(สูงสุด|มากสุด|มากที่สุด|top|ต่ำสุด|น้อยสุด|น้อยที่สุด|รอพินิจ|เสี่ยง|ต่ำ)/.test(text)) return true;
+    if (/(สูงสุด|มากสุด|มากที่สุด|top|ต่ำสุด|น้อยสุด|น้อยที่สุด).*(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย)/.test(text)) return true;
+    if (/(รอพินิจ|เกรดต่ำ|กลุ่มเสี่ยง|เสี่ยงพ้นสภาพ)/.test(text)) return true;
+    return false;
+}
+
+function parseStudentLookupLimit(question = '', fallback = 10) {
+    const text = String(question || '').toLowerCase();
+    const match = text.match(/top\s*(\d+)/i) || text.match(/(\d+)\s*(คน|ราย|รายการ|อันดับ)?/);
+    const limit = Number(match?.[1]);
+    if (!Number.isFinite(limit) || limit <= 0) return fallback;
+    return Math.min(Math.max(Math.trunc(limit), 1), 50);
+}
+
+function studentDisplayName(student) {
+    const prefix = String(student?.prefix || '').trim();
+    const name = String(student?.name || '').trim();
+    if (!prefix || name.startsWith(prefix)) return name;
+    return `${prefix}${name}`.trim();
+}
+
 export function setUploadedStudentRows(rows = []) {
     _uploadedStudentRows = Array.isArray(rows) ? rows : [];
     return getAllStudents();
@@ -782,9 +809,24 @@ function searchStudents(query) {
 
     let results = [];
     let searchDesc = '';
+    const wantsTopGpa = /(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย).*(สูงสุด|มากสุด|มากที่สุด|top)|(?:สูงสุด|มากสุด|มากที่สุด|top).*(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย)/.test(q);
+    const wantsLowGpa = /(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย).*(ต่ำสุด|น้อยสุด|น้อยที่สุด|ต่ำ|รอพินิจ|เสี่ยง)|(?:ต่ำสุด|น้อยสุด|น้อยที่สุด).*(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย)|รอพินิจ|เกรดต่ำ|กลุ่มเสี่ยง|เสี่ยงพ้นสภาพ/.test(q);
+
+    if (wantsTopGpa || wantsLowGpa) {
+        const direction = wantsLowGpa ? 'asc' : 'desc';
+        results = ALL_STUDENTS
+            .filter(student => Number.isFinite(Number(student.gpa)))
+            .sort((a, b) => {
+                const diff = direction === 'asc' ? Number(a.gpa) - Number(b.gpa) : Number(b.gpa) - Number(a.gpa);
+                if (diff !== 0) return diff;
+                return String(a.id || '').localeCompare(String(b.id || ''), 'th');
+            });
+        searchDesc = wantsLowGpa ? 'GPA ต่ำสุด' : 'GPA สูงสุด';
+        if (!limit) limit = parseStudentLookupLimit(q, 10);
+    }
 
     // Full 10-digit ID first (exact match), then prefix-based search
-    const fullIdMatch = q.match(/\b(6\d{9})\b/);
+    const fullIdMatch = results.length === 0 ? q.match(/\b(6\d{9})\b/) : null;
     if (fullIdMatch) {
         const fullId = fullIdMatch[1];
         results = ALL_STUDENTS.filter(s => s.id === fullId);
@@ -932,22 +974,14 @@ export function tryLocalResponse(question, userContext = {}) {
     }
 
     // 5. Student search — only for specific structured lookups (ID, name, GPA filter)
-    const isStudentLookup =
-        (q.match(/(?:รหัส|id)\s*\d{2,}/i)) ||  // search by ID with prefix
-        (/\b6\d{9}\b/.test(q)) ||              // bare 10-digit student ID
-        (q.includes('รอพินิจ') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
-        (q.includes('เกรดต่ำ') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
-        (q.includes('เกรดสูง') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
-        (q.includes('เกียรตินิยม') && (q.includes('รายชื่อ') || q.includes('แสดง') || q.includes('ใคร'))) ||
-        ((q.includes('รายชื่อ') || q.includes('ค้นหานักศึกษา') || q.includes('หานักศึกษา')) &&
-         (q.includes('สาขา') || q.includes('ชั้นปี') || q.match(/\d{2,}/)));
+    const isStudentLookup = isStudentRowLookupQuestion(question);
 
     if (isStudentLookup) {
         if (!canAIUseInternalSection(userContext, 'student_list')) {
             return buildAIAccessDeniedResult(userContext, ['student_list']);
         }
         const studentResult = searchStudents(q);
-        if (studentResult) return withStudentSourceNote(studentResult);
+        return withStudentSourceNote(studentResult || buildStudentRowsUnavailableChatResult('รายชื่อหรือ GPA รายคน'));
     }
 
     return null; // Let AI handle everything else
@@ -1028,11 +1062,27 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
         }
 
         if (canUseStudentRows) {
-            const sample = allStudents
-                .slice(0, 15)
-                .map(s => `${s.id},${s.name},${s.major},ปี ${s.year},GPA ${s.gpa},${s.status}`)
+            const rowLookup = isStudentRowLookupQuestion(question);
+            const lowGpaLookup = /(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย).*(ต่ำสุด|น้อยสุด|น้อยที่สุด|ต่ำ|รอพินิจ|เสี่ยง)|(?:ต่ำสุด|น้อยสุด|น้อยที่สุด).*(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย)|รอพินิจ|เกรดต่ำ|กลุ่มเสี่ยง|เสี่ยงพ้นสภาพ/.test(String(question || '').toLowerCase());
+            const rowsForPrompt = rowLookup
+                ? allStudents
+                    .filter(student => Number.isFinite(Number(student.gpa)))
+                    .sort((a, b) => {
+                        const diff = lowGpaLookup
+                            ? Number(a.gpa) - Number(b.gpa)
+                            : Number(b.gpa) - Number(a.gpa);
+                        if (diff !== 0) return diff;
+                        return String(a.id || '').localeCompare(String(b.id || ''), 'th');
+                    })
+                    .slice(0, parseStudentLookupLimit(question, 10))
+                : allStudents.slice(0, 15);
+            const sample = rowsForPrompt
+                .map(s => `${s.id},${studentDisplayName(s)},${s.major},ปี ${s.year},GPA ${s.gpa},${s.status}`)
                 .join('\n');
-            context += `ตัวอย่างข้อมูล (15 คนแรก):\n${sample}]\n\n`;
+            const rowLabel = rowLookup
+                ? (lowGpaLookup ? 'ข้อมูลเรียง GPA ต่ำสุด/กลุ่มเสี่ยงตามคำถาม' : 'ข้อมูลเรียง GPA สูงสุดตามคำถาม')
+                : 'ตัวอย่างข้อมูล (15 คนแรก)';
+            context += `${rowLabel}:\n${sample}]\n\n`;
         } else {
             context += 'ไม่มีการแนบตัวอย่างรายชื่อรายบุคคล เพราะ role นี้อ่านได้เฉพาะสถิติรวม ไม่ใช่ student_list\n\n';
         }

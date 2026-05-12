@@ -548,7 +548,7 @@ export default function StudentStatsPage() {
                 { key: 'students', label: 'นักศึกษา', align: 'right' },
                 { key: 'academicStaff', label: 'อาจารย์', align: 'right' },
             ],
-            note: 'คณะวิทยาศาสตร์คำนวณจากยอดนักศึกษาทางการ 1,399 คน และบุคลากรสายวิชาการ 104 คน',
+            note: 'คณะวิทยาศาสตร์คำนวณจากยอดนักศึกษาทางการ 1,398 คน และบุคลากรสายวิชาการ 113 คน',
         };
     });
 

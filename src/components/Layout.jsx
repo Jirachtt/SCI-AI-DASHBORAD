@@ -16,6 +16,7 @@ export default function Layout() {
     const location = useLocation();
     const [isTransitioning, setIsTransitioning] = useState(false);
     const prevPath = useRef(location.pathname);
+    const mainContentRef = useRef(null);
 
     // Pre-warm live student data once the user is authenticated.
     // Gemini + page consumers read it synchronously after this resolves;
@@ -39,6 +40,20 @@ export default function Layout() {
         if (prevPath.current !== location.pathname) {
             prevPath.current = location.pathname;
             setSidebarOpen(false);
+            const scrollToPageTop = () => {
+                const instantTop = { top: 0, left: 0, behavior: 'auto' };
+                window.scrollTo(instantTop);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+
+                const mainContent = mainContentRef.current;
+                mainContent?.scrollTo?.(instantTop);
+                mainContent?.querySelector?.('.page-content')?.scrollTo?.(instantTop);
+            };
+
+            scrollToPageTop();
+            const scrollRaf = requestAnimationFrame(scrollToPageTop);
+            const settleTimer = window.setTimeout(scrollToPageTop, 120);
             let exitRaf = null;
             const enterRaf = requestAnimationFrame(() => {
                 setIsTransitioning(true);
@@ -47,6 +62,8 @@ export default function Layout() {
                 });
             });
             return () => {
+                cancelAnimationFrame(scrollRaf);
+                window.clearTimeout(settleTimer);
                 cancelAnimationFrame(enterRaf);
                 if (exitRaf) cancelAnimationFrame(exitRaf);
             };
@@ -72,7 +89,7 @@ export default function Layout() {
         <div className="app-layout">
             <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)} />
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <div className="main-content">
+            <div className="main-content" ref={mainContentRef}>
                 <header className="main-header">
                     <div className="header-left">
                         <button className="menu-toggle" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">

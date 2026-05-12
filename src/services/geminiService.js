@@ -1237,19 +1237,12 @@ void LIVE_RAG_ONLY_LEGACY_BUILDERS;
 // Aggregate-style queries (counts, charts, by-major) are answered from
 // the precomputed stats already inlined in the base instruction.
 function needsStudentDetail(msg) {
-    const q = msg.toLowerCase();
+    const q = String(msg || '').toLowerCase();
     const skipDomains = ['งานวิจัย', 'ตีพิมพ์', 'scopus', 'สิทธิบัตร', 'ทุนวิจัย', 'citation',
         'ยุทธศาสตร์', 'okr', 'kpi', 'บุคลากร', 'ตำแหน่งวิชาการ', 'เกษียณ', 'ภาควิชา'];
     if (skipDomains.some(k => q.includes(k))) return false;
 
-    // Bare student-id pattern (10 digits starting with 6) — user pasting an ID
-    // to look someone up should always inject row-level data.
-    if (/\b6\d{9}\b/.test(msg)) return true;
-
-    // Row-level keywords ONLY — anything that requires looking at individual records.
-    const keywords = ['รายชื่อ', 'ชื่อนักศึกษา', 'ชื่อนิสิต', 'ค้นหานักศึกษา', 'หานักศึกษา', 'รหัส 6',
-        'ใครบ้าง', 'คนไหน', 'gpa สูง', 'เกรดสูง', 'รอพินิจ', 'เกรดต่ำ', 'เกียรตินิยม'];
-    return keywords.some(k => q.includes(k));
+    return isStudentRowLookupQuestion(q);
 }
 
 function classifyQueryIntent(msg) {
@@ -1312,7 +1305,55 @@ function liveDatasetContext(id, label, { adviceMode = false } = {}) {
     };
 }
 
-function studentAggregateContext(includeRows = false, { adviceMode = false } = {}) {
+function isStudentTopGpaQuery(question = '') {
+    const q = String(question || '').toLowerCase();
+    return /(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย).*(สูงสุด|มากสุด|มากที่สุด|top)|(?:สูงสุด|มากสุด|มากที่สุด|top).*(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย)/.test(q);
+}
+
+function isStudentLowGpaQuery(question = '') {
+    const q = String(question || '').toLowerCase();
+    return /(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย).*(ต่ำสุด|น้อยสุด|น้อยที่สุด|ต่ำ|รอพินิจ|เสี่ยง)|(?:ต่ำสุด|น้อยสุด|น้อยที่สุด).*(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย)|รอพินิจ|เกรดต่ำ|กลุ่มเสี่ยง|เสี่ยงพ้นสภาพ/.test(q);
+}
+
+function isStudentRowLookupQuestion(question = '') {
+    const q = String(question || '').toLowerCase();
+    if (/\b6\d{9}\b/.test(q)) return true;
+    if (/(?:รหัส|id)\s*\d{2,}/i.test(q)) return true;
+    if (/(ค้นหานักศึกษา|หานักศึกษา|ชื่อนักศึกษา|ชื่อนิสิต)/.test(q)) return true;
+    if (/รายชื่อ/.test(q) && /(นักศึกษา|นิสิต|รหัส|gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย|ชั้นปี|สาขา|รอพินิจ|เสี่ยง|เกียรตินิยม)/.test(q)) return true;
+    if (isStudentTopGpaQuery(q) || isStudentLowGpaQuery(q)) return true;
+    if (/(เกียรตินิยม).*(รายชื่อ|ใครบ้าง|คนไหน|top|\d+\s*(คน|ราย|อันดับ)?)/.test(q)) return true;
+    return false;
+}
+
+function parseStudentDetailLimit(question = '', fallback = 10) {
+    const q = String(question || '').toLowerCase();
+    const match = q.match(/top\s*(\d+)/i) || q.match(/(\d+)\s*(คน|ราย|รายการ|อันดับ)?/);
+    const limit = Number(match?.[1]);
+    if (!Number.isFinite(limit) || limit <= 0) return fallback;
+    return Math.min(Math.max(Math.trunc(limit), 1), 50);
+}
+
+function studentDetailRowsForPrompt(list = [], question = '') {
+    const wantsTop = isStudentTopGpaQuery(question);
+    const wantsLow = isStudentLowGpaQuery(question);
+    if (wantsTop || wantsLow) {
+        const direction = wantsLow ? 'asc' : 'desc';
+        return list
+            .filter(student => Number.isFinite(Number(student.gpa)))
+            .sort((a, b) => {
+                const diff = direction === 'asc'
+                    ? Number(a.gpa) - Number(b.gpa)
+                    : Number(b.gpa) - Number(a.gpa);
+                if (diff !== 0) return diff;
+                return String(a.id || '').localeCompare(String(b.id || ''), 'th');
+            })
+            .slice(0, parseStudentDetailLimit(question, 10));
+    }
+    return list.slice(0, 40);
+}
+
+function studentAggregateContext(includeRows = false, { adviceMode = false, question = '' } = {}) {
     const rosterTrust = getStudentRosterTrustStatus();
     const reconcile = getStudentReconciliationSnapshot();
     const canUseRows = rosterTrust.canAnswerIndividual;
@@ -1352,8 +1393,13 @@ function studentAggregateContext(includeRows = false, { adviceMode = false } = {
         : '';
     const contextTotal = Number(reconcile.officialTotal ?? scienceStats.total ?? list.length ?? 0);
     const yearSummary = Object.entries(byYear).map(([year, count]) => `ปี ${year}: ${count} คน`).join(', ');
+    const rowLabel = isStudentTopGpaQuery(question)
+        ? 'แถวที่เกี่ยวข้องเรียง GPA สูงสุดตามคำถาม'
+        : isStudentLowGpaQuery(question)
+            ? 'แถวที่เกี่ยวข้องเรียง GPA ต่ำสุด/กลุ่มเสี่ยงตามคำถาม'
+            : 'ตัวอย่างแถวที่เกี่ยวข้อง';
     const rows = includeRows && canUseRows
-        ? `\nตัวอย่างแถวที่เกี่ยวข้อง:\n${list.slice(0, 40).map(s => `${s.id}, ${s.name}, ${s.major}, ปี ${s.year}, GPA ${s.gpa}, ${s.status}`).join('\n')}`
+        ? `\n${rowLabel}:\n${studentDetailRowsForPrompt(list, question).map(s => `${s.id}, ${s.name}, ${s.major}, ปี ${s.year}, GPA ${s.gpa}, ${s.status}`).join('\n')}`
         : includeRows && !canUseRows
             ? '\nรายชื่อรายบุคคล: ไม่แนบ เพราะ datasets/students ตอนนี้เป็น sample/generated ไม่ใช่รายชื่อจริง'
         : '';
@@ -1514,7 +1560,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const role = resolveAIRole(userContext);
     const includeStudentRows = needsStudentDetail(userMessage) && canAIUseInternalSection(role, 'student_list');
     const adviceMode = isExecutiveRecommendationIntent(userMessage);
-    const contextOptions = { adviceMode };
+    const contextOptions = { adviceMode, question: userMessage };
     const isTcasPlanningQuery = /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|portfolio|quota/.test(q);
     const isStudentRecordQuery = /gpa|เกรด|รายชื่อ|รหัส|student\s*id|ชั้นปี|พ้นสภาพ|รอพินิจ|คงอยู่|ลาออก|หายไป|จำนวนนักศึกษาปัจจุบัน/.test(q);
     const candidates = [

@@ -31,6 +31,7 @@ const DOC_PATH = ['datasets', 'students'];
 const MANUAL_STUDENTS_KEY = 'sci_dashboard_manual_students';
 const DEMO_DATASET_KEY = 'sci_dashboard_demo_student_dataset';
 const MIN_TRUSTED_LIVE_ROWS = 1000;
+const STALE_GENERATED_ROW_COUNTS = new Set([1451, 1452]);
 
 let _cache = null;
 let _isLive = false;           // true once Firestore has returned a valid dataset
@@ -83,6 +84,22 @@ function loadDemoDataset() {
     } catch {
         return null;
     }
+}
+
+function isGeneratedMockSource(data = {}) {
+    const sourceTrust = String(data.sourceTrust || data.trustLevel || '').toLowerCase();
+    const lastWriteSource = String(data.lastWriteSource || data.sourceType || '').toLowerCase();
+    const fileName = String(data.fileName || '').toLowerCase();
+    return sourceTrust === 'generated_mock'
+        || sourceTrust === 'sample'
+        || lastWriteSource === 'generated_mock'
+        || lastWriteSource === 'sample'
+        || /sample|generated|mock|demo/.test(fileName);
+}
+
+function isStaleGeneratedDataset(data = {}, rows = []) {
+    if (!Array.isArray(rows) || !STALE_GENERATED_ROW_COUNTS.has(rows.length)) return false;
+    return isGeneratedMockSource(data) || !data.fileName;
 }
 
 function saveDemoDataset(payload) {
@@ -219,10 +236,17 @@ function studentDocRef() {
 function setBundledFallback() {
     const demo = loadDemoDataset();
     if (Array.isArray(demo?.rows) && demo.rows.length > 0) {
-        _cache = demo.rows;
-        _isLive = true;
-        _usesLocalOnlyData = true;
-        return;
+        if (isStaleGeneratedDataset(demo, demo.rows)) {
+            console.warn(
+                `[studentDataService] Ignoring stale local generated roster (${demo.rows.length} rows); ` +
+                `using bundled ${scienceStudentList.length}-row generated mock.`
+            );
+        } else {
+            _cache = demo.rows;
+            _isLive = true;
+            _usesLocalOnlyData = true;
+            return;
+        }
     }
     _cache = scienceStudentList;
     _isLive = false;
@@ -237,6 +261,14 @@ function applySnapshot(snap) {
     if (snap.exists()) {
         const data = snap.data();
         const rows = Array.isArray(data.rows) ? data.rows : [];
+        if (isStaleGeneratedDataset(data, rows)) {
+            console.warn(
+                `[studentDataService] Ignoring stale generated Firestore roster (${rows.length} rows); ` +
+                `using bundled ${scienceStudentList.length}-row generated mock until a real upload arrives.`
+            );
+            setBundledFallback();
+            return;
+        }
         if (isTrustedLiveRows(rows) || data.allowSmallDataset === true) {
             _cache = rows;
             _isLive = true;
@@ -258,6 +290,7 @@ async function readAuthoritativeRows() {
     if (snap.exists()) {
         const data = snap.data();
         const rows = Array.isArray(data.rows) ? data.rows : [];
+        if (isStaleGeneratedDataset(data, rows)) return _cache || scienceStudentList;
         if (isTrustedLiveRows(rows) || data.allowSmallDataset === true) return rows;
     }
     return _cache || scienceStudentList;
@@ -356,7 +389,7 @@ export function getStudentDataSourceStatus() {
     }
     return {
         mode: 'bundled_sample',
-        label: 'Bundled sample dataset',
+        label: 'Generated mock roster',
         rowCount: rows.length,
         isUploaded: false,
         isShared: false,
@@ -379,7 +412,7 @@ export function getStudentRosterTrustStatus() {
         isUserUploadedRoster,
         accuracyLabel: canAnswerIndividual
             ? (isOfficialRoster ? 'Official/Firestore roster' : 'Uploaded roster')
-            : 'Sample/generated roster',
+            : 'Generated mock roster',
         warning: canAnswerIndividual
             ? ''
             : 'รายชื่อ bundled เป็น sample/generated จึงห้ามใช้ยืนยันรายชื่อจริงหรือ GPA รายคน',

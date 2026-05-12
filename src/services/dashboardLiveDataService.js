@@ -262,6 +262,7 @@ function applyDatasetSnapshot(id, snap) {
     }
 
     const data = snap.data();
+    const incomingUpdatedAt = readTimestamp(data.updatedAt);
     const rawPayload = normalizeDocPayload(data);
     const payload = mergePayloadWithFallback(id, rawPayload);
     if (!isCompatiblePayload(id, payload)) {
@@ -289,7 +290,7 @@ function applyDatasetSnapshot(id, snap) {
         label: datasetConfig(id)?.label || id,
         sourceType,
         sourceUrl: data.sourceUrl || null,
-        updatedAt: readTimestamp(data.updatedAt),
+        updatedAt: incomingUpdatedAt,
         updatedBy: data.updatedBy || null,
         rowCount: data.rowCount ?? getRowCount(payload),
         version: data.version || 1,
@@ -305,6 +306,21 @@ function notify(id) {
             console.error('[dashboardLiveDataService] listener error:', err);
         }
     }
+}
+
+async function fetchDashboardDatasetFromSource(id) {
+    const url = new URL(SYNC_ENDPOINT, window.location.origin);
+    url.searchParams.set('dataset', id);
+
+    const response = await fetch(url.toString(), {
+        headers: { Accept: 'application/json' },
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(result?.error || `MJU sync failed with HTTP ${response.status}`);
+    }
+    return result;
 }
 
 function startDatasetListener(id) {
@@ -432,17 +448,7 @@ export async function saveDashboardDataset(id, payload, { uid, who, sourceUrl, s
 }
 
 export async function refreshDashboardDatasetFromSource(id, { uid, who } = {}) {
-    const url = new URL(SYNC_ENDPOINT, window.location.origin);
-    url.searchParams.set('dataset', id);
-
-    const response = await fetch(url.toString(), {
-        headers: { Accept: 'application/json' },
-    });
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-        throw new Error(result?.error || `MJU sync failed with HTTP ${response.status}`);
-    }
+    const result = await fetchDashboardDatasetFromSource(id);
 
     const payload = result.payload || result.data;
     await saveDashboardDataset(id, payload, {

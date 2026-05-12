@@ -18,6 +18,7 @@ const aiChat = read('src/components/AIChat.jsx');
 const aiChatPage = read('src/pages/AIChatPage.jsx');
 const instantAnswerService = read('src/services/aiInstantAnswerService.js');
 const dataAccuracy = read('src/services/dataAccuracyService.js');
+const dashboardLiveData = read('src/services/dashboardLiveDataService.js');
 const autoSyncPanel = read('src/components/AdminAutoSyncPanel.jsx');
 const uploadPanel = read('src/components/AdminDataUpload.jsx');
 const adminPanel = read('src/pages/AdminPanelPage.jsx');
@@ -28,8 +29,10 @@ const aiChartPlanner = read('src/services/aiChartPlanner.js');
 const tcasData = read('src/data/tcasAdmissionsData.js');
 const mockData = read('src/data/mockData.js');
 const officialStudentSnapshot = read('src/data/mjuOfficialStudentSnapshot.js');
+const studentDataService = read('src/services/studentDataService.js');
 const rules = read('firestore.rules');
 const packageJson = JSON.parse(read('package.json'));
+const { scienceStudentList, studentListSummary } = await import('../src/data/studentListData.js');
 
 expect(
   'Floating AI chat lazy-loads AIChatPage helpers',
@@ -69,6 +72,15 @@ expect(
 );
 
 expect(
+  'Public MJU datasets sync only from manual/admin action',
+  !/PUBLIC_LATEST_ENABLED/.test(dashboardLiveData)
+    && !/refreshPublicDashboardDataForDisplay/.test(dashboardLiveData)
+    && /refreshDashboardDatasetFromSource/.test(dashboardLiveData)
+    && /refreshDashboardDatasetFromSource/.test(autoSyncPanel),
+  'The visible app should not fetch public MJU Dashboard data on page load or on a public timer.'
+);
+
+expect(
   'Data Accuracy admin tab is wired',
   /AdminDataAccuracyPanel/.test(adminPanel) && /Data Accuracy/.test(adminPanel),
   'Admin can verify student totals and source health before presenting.'
@@ -84,6 +96,16 @@ expect(
   'AI prompt includes data accuracy context',
   /buildDataAccuracyContextForAI/.test(geminiService) && /DATA ACCURACY SNAPSHOT/.test(dataAccuracy),
   'AI must answer with source/reconcile context instead of guessing.'
+);
+
+expect(
+  'Student row lookups are deterministic before model fallback',
+  /isStudentRowLookupQuestion/.test(aiChatPage)
+    && /parseStudentLookupLimit/.test(aiChatPage)
+    && /GPA สูงสุด/.test(aiChatPage)
+    && /isStudentRowLookupQuestion/.test(geminiService)
+    && /studentDetailRowsForPrompt/.test(geminiService),
+  'Top/low GPA and row-level student questions must use one sorted student source instead of model guesses.'
 );
 
 expect(
@@ -147,12 +169,26 @@ expect(
 
 expect(
   'Student totals are locked to current MJU Dashboard aggregate',
-  /OFFICIAL_SCIENCE_STUDENT_TOTAL\s*=\s*1399/.test(officialStudentSnapshot)
-    && /OFFICIAL_STUDENT_TOTAL\s*=\s*16506/.test(officialStudentSnapshot)
-    && /totalStudents:\s*16506/.test(mockData)
-    && /total:\s*1399/.test(mockData)
-    && /totalStudents:\s*1399/.test(mockData),
+  /OFFICIAL_SCIENCE_STUDENT_TOTAL\s*=\s*1398/.test(officialStudentSnapshot)
+    && /OFFICIAL_STUDENT_TOTAL\s*=\s*16475/.test(officialStudentSnapshot)
+    && /totalStudents:\s*16475/.test(mockData)
+    && /total:\s*1398/.test(mockData)
+    && /totalStudents:\s*1398/.test(mockData),
   'Aggregate student totals must use MJU Dashboard official values, not roster row counts.'
+);
+
+expect(
+  'Generated student roster matches current MJU Dashboard aggregate',
+  scienceStudentList.length === 1398
+    && studentListSummary.total === 1398
+    && studentListSummary.byYear.year1 === 408
+    && studentListSummary.byYear.year2 === 435
+    && studentListSummary.byYear.year3 === 345
+    && studentListSummary.byYear.year4 === 189
+    && studentListSummary.graduate === 21
+    && /STALE_GENERATED_ROW_COUNTS\s*=\s*new Set\(\[1451,\s*1452\]\)/.test(studentDataService)
+    && /Generated mock roster/.test(studentDataService),
+  'Bundled/generated rows must match the official aggregate count while remaining marked as mock data.'
 );
 
 expect(
