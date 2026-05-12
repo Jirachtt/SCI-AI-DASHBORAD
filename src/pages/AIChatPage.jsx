@@ -1871,25 +1871,37 @@ function buildStudentGpaScatterChart(originalChart) {
     if (!combo) return chart;
 
     const labels = chart.data?.labels || [];
+    const counts = labels
+        .map((_, idx) => Number(combo.countDs.data?.[idx]))
+        .filter(value => Number.isFinite(value) && value > 0);
+    const minCount = counts.length ? Math.min(...counts) : 0;
+    const maxCount = counts.length ? Math.max(...counts) : 1;
+    const radiusForCount = (value) => {
+        if (!Number.isFinite(value) || value <= 0) return 5;
+        if (maxCount === minCount) return 9;
+        const normalized = (Math.sqrt(value) - Math.sqrt(minCount)) / Math.max(1, Math.sqrt(maxCount) - Math.sqrt(minCount));
+        return Math.round((6 + normalized * 10) * 10) / 10;
+    };
     const points = labels.map((label, idx) => {
         const x = Number(combo.countDs.data?.[idx]);
         const y = Number(combo.gpaDs.data?.[idx]);
-        return Number.isFinite(x) && Number.isFinite(y)
-            ? { x, y, major: String(label) }
+        return Number.isFinite(x) && Number.isFinite(y) && y > 0
+            ? { x: idx + 1, y, r: radiusForCount(x), count: x, major: String(label) }
             : null;
     }).filter(Boolean);
 
     return {
         ...chart,
-        chartType: 'scatter',
+        chartType: 'bubble',
         data: {
             datasets: [{
-                label: 'จำนวนนักศึกษา vs GPA เฉลี่ย',
+                label: 'GPA เฉลี่ย (ขนาดจุด = จำนวนนักศึกษา)',
                 data: points,
                 backgroundColor: 'rgba(0, 166, 81, 0.72)',
                 borderColor: '#00a651',
-                pointRadius: 7,
+                borderWidth: 2,
                 pointHoverRadius: 10,
+                hoverBorderWidth: 3,
             }],
         },
         options: {
@@ -1899,29 +1911,41 @@ function buildStudentGpaScatterChart(originalChart) {
                 x: {
                     type: 'linear',
                     position: 'bottom',
-                    beginAtZero: true,
-                    title: { display: true, text: 'จำนวนนักศึกษา (คน)' },
-                    ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => v.toLocaleString() },
+                    min: 0.5,
+                    max: Math.max(1.5, labels.length + 0.5),
+                    title: { display: true, text: 'คณะ/สาขา' },
+                    ticks: {
+                        color: '#9ca3af',
+                        font: { size: 10 },
+                        stepSize: 1,
+                        maxRotation: 35,
+                        minRotation: 20,
+                        callback: value => labels[Number(value) - 1] || '',
+                    },
                     grid: { color: 'rgba(255,255,255,0.05)' },
                 },
                 y: {
                     type: 'linear',
-                    min: 0,
+                    min: 2,
                     max: 4,
                     title: { display: true, text: 'GPA เฉลี่ย' },
-                    ticks: { color: '#9ca3af', font: { size: 11 } },
+                    ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 0.25 },
                     grid: { color: 'rgba(255,255,255,0.05)' },
                 },
             },
             plugins: {
                 ...(chart.options?.plugins || {}),
+                legend: {
+                    ...(chart.options?.plugins?.legend || {}),
+                    display: false,
+                },
                 tooltip: {
                     ...(chart.options?.plugins?.tooltip || {}),
                     ...AI_CHART_TOOLTIP_STYLE,
                     callbacks: {
                         label: ctx => {
                             const raw = ctx.raw || {};
-                            return `${raw.major || 'สาขา'}: ${Number(raw.x || 0).toLocaleString('th-TH')} คน, GPA ${Number(raw.y || 0).toFixed(2)}`;
+                            return `${raw.major || 'สาขา'}: ${Number(raw.count || 0).toLocaleString('th-TH')} คน, GPA ${Number(raw.y || 0).toFixed(2)}`;
                         },
                     },
                 },
@@ -2016,7 +2040,7 @@ function deriveChartConfig(originalChart, uiTargetType) {
         wantsHorizontal = false;
     }
     if (isStudentGpaComboChart(originalChart)) {
-        if (targetType === 'scatter') return buildStudentGpaScatterChart(originalChart);
+        if (targetType === 'scatter' || targetType === 'bubble') return buildStudentGpaScatterChart(originalChart);
         return normalizeStudentGpaComboChart(JSON.parse(JSON.stringify(originalChart)));
     }
     if (isGpaRateComboChart(originalChart)) {
@@ -2124,8 +2148,8 @@ function computeChartHeight(uiType, categoryCount = 0) {
     if (uiType === 'bar' && categoryCount > 12) {
         return 380;
     }
-    if (uiType === 'scatter') {
-        return 360;
+    if (uiType === 'scatter' || uiType === 'bubble') {
+        return Math.min(520, Math.max(360, categoryCount * 20 + 180));
     }
     if (uiType === 'pie' || uiType === 'doughnut' || uiType === 'radar') {
         return 380;
@@ -2196,7 +2220,7 @@ function availableChartTypes(chart) {
     if (isStudentGpaComboChart(chart)) {
         return [
             { id: 'bar', label: isTimeSeriesChart(chart) ? 'ผสม' : 'แท่งคู่', icon: BarChart3 },
-            { id: 'scatter', label: 'จุด', icon: CircleDot },
+            { id: 'bubble', label: 'จุด', icon: CircleDot },
         ];
     }
     if (isGpaRateComboChart(chart)) {
