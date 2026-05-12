@@ -49,6 +49,12 @@ function getStudentLevelColor(level, index = 0) {
     return levelColorRules.find(rule => rule.test.test(text))?.color || levelFallbackPalette[index % levelFallbackPalette.length];
 }
 
+function displayNationalityLabel(nationality) {
+    const text = String(nationality || '').trim();
+    if (!text || /ไม่มีสัญชาติ|อื่น|international|foreign/i.test(text)) return 'สัญชาติอื่นๆ';
+    return text;
+}
+
 function buildLevelDrilldownRows(point, rows, sourceLabel, rowNote) {
     const chartTotal = Number(point.value || 0);
     const rowCount = Array.isArray(rows) ? rows.length : 0;
@@ -1048,7 +1054,7 @@ export default function StudentStatsPage() {
                                                     {i === 0 ? 'TH' : 'INT'}
                                                 </div>
                                                 <div>
-                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 15 }}>{n.nationality}</div>
+                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 15 }}>{displayNationalityLabel(n.nationality)}</div>
                                                     <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500 }}>{pct}%</div>
                                                 </div>
                                             </div>
