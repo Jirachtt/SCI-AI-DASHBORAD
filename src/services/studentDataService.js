@@ -24,7 +24,7 @@
 
 import { doc, getDoc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { scienceStudentList } from '../data/studentListData.js';
+import { generateScienceMockRoster, scienceStudentList } from '../data/studentListData.js';
 import { writeAuditLog } from './auditLogService';
 
 const DOC_PATH = ['datasets', 'students'];
@@ -36,9 +36,24 @@ const STALE_GENERATED_ROW_COUNTS = new Set([1451, 1452]);
 let _cache = null;
 let _isLive = false;           // true once Firestore has returned a valid dataset
 let _usesLocalOnlyData = false;
+let _sourceMeta = null;
 let _loadPromise = null;
 let _unsubscribeLive = null;
 const _listeners = new Set();
+
+function toNumber(value, fallback = 0) {
+    if (value == null || value === '') return fallback;
+    const n = Number(String(value).replace(/,/g, ''));
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function readTimestamp(value) {
+    if (!value) return null;
+    if (value.toDate) return value.toDate();
+    if (value.seconds) return new Date(value.seconds * 1000);
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
 
 // ─── Manual Students (localStorage) ───
 function loadManualStudents() {
@@ -91,10 +106,35 @@ function isGeneratedMockSource(data = {}) {
     const lastWriteSource = String(data.lastWriteSource || data.sourceType || '').toLowerCase();
     const fileName = String(data.fileName || '').toLowerCase();
     return sourceTrust === 'generated_mock'
+        || sourceTrust === 'manual_adjusted_mock'
         || sourceTrust === 'sample'
         || lastWriteSource === 'generated_mock'
+        || lastWriteSource === 'generated_mock_reconcile'
         || lastWriteSource === 'sample'
         || /sample|generated|mock|demo/.test(fileName);
+}
+
+function isManualAdjustedMockSource(data = {}) {
+    const sourceTrust = String(data.sourceTrust || data.trustLevel || '').toLowerCase();
+    const lastWriteSource = String(data.lastWriteSource || data.sourceType || '').toLowerCase();
+    return sourceTrust === 'manual_adjusted_mock'
+        || (sourceTrust === 'generated_mock' && /manual/.test(lastWriteSource));
+}
+
+function setSourceMeta(data = {}, rows = [], overrides = {}) {
+    _sourceMeta = {
+        sourceTrust: data.sourceTrust || data.trustLevel || null,
+        sourceLabel: data.sourceLabel || null,
+        fileName: data.fileName || null,
+        updatedAt: readTimestamp(data.updatedAt) || (typeof data.updatedAt === 'string' ? new Date(data.updatedAt) : null),
+        updatedBy: data.updatedBy || null,
+        rowCount: data.rowCount ?? (Array.isArray(rows) ? rows.length : 0),
+        officialTotal: data.officialTotal ?? null,
+        officialSourceLabel: data.officialSourceLabel || null,
+        lastWriteSource: data.lastWriteSource || data.sourceType || null,
+        lastManualAction: data.lastManualAction || null,
+        ...overrides,
+    };
 }
 
 function isStaleGeneratedDataset(data = {}, rows = []) {
@@ -110,6 +150,162 @@ function saveDemoDataset(payload) {
     }
 }
 
+function findScienceFacultyRow(rows = []) {
+    if (!Array.isArray(rows)) return null;
+    return rows.find(row => String(row?.name || row?.faculty || '').includes('วิทยาศาสตร์')) || null;
+}
+
+function extractOfficialScienceFromStudentStats(data = {}) {
+    const science = data.scienceFaculty || {};
+    const facultyRow = findScienceFacultyRow(data.byFaculty);
+    const total = toNumber(science.total, null) ?? toNumber(facultyRow?.total, null);
+    if (!Number.isFinite(total)) return null;
+    return {
+        total,
+        byLevel: Array.isArray(science.byLevel) ? science.byLevel : [],
+        datasetId: 'student_stats',
+        sourceLabel: 'MJU Dashboard: Student Statistics',
+    };
+}
+
+function extractOfficialScienceFromDashboardSummary(data = {}) {
+    const facultyRow = findScienceFacultyRow(data.faculties);
+    const total = toNumber(facultyRow?.totalStudents ?? facultyRow?.total, null);
+    if (!Number.isFinite(total)) return null;
+    return {
+        total,
+        byLevel: Array.isArray(facultyRow?.byLevel) ? facultyRow.byLevel : [],
+        datasetId: 'dashboard_summary',
+        sourceLabel: 'MJU Dashboard: Overview',
+    };
+}
+
+async function getLatestOfficialScienceStudentSnapshot() {
+    const {
+        getDashboardDatasetMetaSync,
+        getDashboardDatasetSync,
+    } = await import('./dashboardLiveDataService');
+    const fromStudentStats = extractOfficialScienceFromStudentStats(getDashboardDatasetSync('student_stats') || {});
+    const fromDashboard = extractOfficialScienceFromDashboardSummary(getDashboardDatasetSync('dashboard_summary') || {});
+    const official = fromStudentStats || fromDashboard;
+    if (!official) return null;
+    const meta = getDashboardDatasetMetaSync(official.datasetId);
+    return {
+        ...official,
+        total: Math.round(official.total),
+        updatedAt: meta.updatedAt || null,
+        sourceType: meta.sourceType || 'fallback',
+        isLive: Boolean(meta.isLive),
+    };
+}
+
+function shouldReplaceWithGeneratedRoster(data = {}, rows = []) {
+    if (!Array.isArray(rows) || rows.length === 0) return true;
+    if (isStaleGeneratedDataset(data, rows)) return true;
+    if (isGeneratedMockSource(data)) return true;
+    if (!_isLive && !_usesLocalOnlyData) return true;
+    return false;
+}
+
+async function writeGeneratedRoster(rows, official, { uid, who, reason } = {}) {
+    const payload = {
+        rows,
+        rowCount: rows.length,
+        fileName: 'generated-mock-roster-aligned-to-mju-sync.json',
+        updatedBy: who || uid || 'mju-sync',
+        version: 1,
+        allowSmallDataset: true,
+        sourceTrust: 'generated_mock',
+        sourceLabel: 'Generated mock roster aligned to latest MJU sync',
+        officialTotal: official.total,
+        officialSourceLabel: official.sourceLabel,
+        lastWriteSource: 'generated_mock_reconcile',
+        reconcileReason: reason || 'mju_sync',
+    };
+
+    if (db && !isBypassUid(uid)) {
+        await setDoc(studentDocRef(), {
+            ...payload,
+            updatedAt: serverTimestamp(),
+        }, { merge: true });
+        _usesLocalOnlyData = false;
+    } else {
+        const localPayload = {
+            ...payload,
+            updatedAt: new Date().toISOString(),
+            updatedBy: uid || 'admin-bypass',
+        };
+        saveDemoDataset(localPayload);
+        _usesLocalOnlyData = true;
+    }
+
+    _cache = rows;
+    _isLive = true;
+    setSourceMeta(payload, rows, { storage: db && !isBypassUid(uid) ? 'firestore' : 'local_demo' });
+    _loadPromise = Promise.resolve(getStudentListSync());
+    notify();
+}
+
+export async function reconcileGeneratedRosterWithLatestOfficialTotal({ uid, who, reason = 'mju_sync', force = false } = {}) {
+    const official = await getLatestOfficialScienceStudentSnapshot();
+    if (!official?.total) {
+        return { status: 'no_official_total', rowCount: getStudentListSync().length };
+    }
+
+    let data = _sourceMeta || {};
+    let rows = getStudentListSync();
+    if (db && !isBypassUid(uid)) {
+        try {
+            const snap = await getDoc(studentDocRef());
+            if (snap.exists()) {
+                data = snap.data();
+                rows = Array.isArray(data.rows) ? data.rows : rows;
+            }
+        } catch (err) {
+            console.warn('[studentDataService] reconcile read failed, using cached rows:', err?.message || err);
+        }
+    } else {
+        const demo = loadDemoDataset();
+        if (Array.isArray(demo?.rows)) {
+            data = demo;
+            rows = demo.rows;
+        }
+    }
+
+    if (!force && !shouldReplaceWithGeneratedRoster(data, rows)) {
+        return {
+            status: rows.length === official.total ? 'real_roster_matches' : 'real_roster_mismatch',
+            rowCount: rows.length,
+            officialTotal: official.total,
+            difference: official.total - rows.length,
+        };
+    }
+
+    const generated = generateScienceMockRoster({
+        total: official.total,
+        byLevel: official.byLevel,
+    });
+    await writeGeneratedRoster(generated, official, { uid, who, reason });
+    writeAuditLog({
+        action: 'reconcile_generated_student_roster',
+        who: who || uid || 'mju-sync',
+        fileName: 'generated-mock-roster-aligned-to-mju-sync.json',
+        rowCount: generated.length,
+        version: 1,
+        meta: {
+            reason,
+            officialTotal: official.total,
+            officialSourceLabel: official.sourceLabel,
+        },
+    });
+    return {
+        status: 'generated_roster_rebuilt',
+        rowCount: generated.length,
+        officialTotal: official.total,
+        difference: 0,
+    };
+}
+
 /**
  * Add a single student manually. Real signed-in dean sessions persist to
  * Firestore so every device receives the realtime update. Admin-bypass/demo
@@ -118,6 +314,9 @@ function saveDemoDataset(payload) {
  */
 export async function addStudent(student, { uid, who } = {}) {
     if (!student?.id) throw new Error('student.id is required');
+    const wasGeneratedMock = isGeneratedMockSource(_sourceMeta || {}) || (!_isLive && !_usesLocalOnlyData);
+    const nextSourceTrust = wasGeneratedMock ? 'manual_adjusted_mock' : 'manual_adjusted_roster';
+    const official = await getLatestOfficialScienceStudentSnapshot().catch(() => null);
 
     if (db && !isBypassUid(uid)) {
         try {
@@ -127,11 +326,30 @@ export async function addStudent(student, { uid, who } = {}) {
                 source: 'manual_add',
                 manualAction: 'add_student',
                 manualStudentId: student.id,
+                sourceTrust: nextSourceTrust,
+                sourceLabel: wasGeneratedMock
+                    ? 'Generated mock roster aligned to latest MJU sync + manual adjustment'
+                    : 'Uploaded/Firestore roster + manual adjustment',
+                officialTotal: official?.total ?? _sourceMeta?.officialTotal ?? null,
+                officialSourceLabel: official?.sourceLabel || _sourceMeta?.officialSourceLabel || null,
             });
             removeManualStudent(student.id);
             _cache = rows;
             _isLive = true;
             _usesLocalOnlyData = false;
+            setSourceMeta({
+                ...(_sourceMeta || {}),
+                sourceTrust: nextSourceTrust,
+                sourceLabel: wasGeneratedMock
+                    ? 'Generated mock roster aligned to latest MJU sync + manual adjustment'
+                    : 'Uploaded/Firestore roster + manual adjustment',
+                rowCount: rows.length,
+                officialTotal: official?.total ?? _sourceMeta?.officialTotal ?? null,
+                officialSourceLabel: official?.sourceLabel || _sourceMeta?.officialSourceLabel || null,
+                lastWriteSource: 'manual_add',
+                lastManualAction: 'add_student',
+                updatedBy: uid || 'unknown',
+            }, rows, { storage: 'firestore' });
             _loadPromise = Promise.resolve(getStudentListSync());
             notify();
             writeAuditLog({
@@ -148,8 +366,33 @@ export async function addStudent(student, { uid, who } = {}) {
         }
     }
 
+    const rows = upsertStudent(getStudentListSync(), student);
+    const payload = {
+        rows,
+        rowCount: rows.length,
+        fileName: _sourceMeta?.fileName || 'local-manual-student-adjustment.json',
+        updatedAt: new Date().toISOString(),
+        updatedBy: uid || 'admin-bypass',
+        version: 1,
+        allowSmallDataset: true,
+        sourceTrust: nextSourceTrust,
+        sourceLabel: wasGeneratedMock
+            ? 'Generated mock roster aligned to latest MJU sync + manual adjustment'
+            : 'Local roster + manual adjustment',
+        officialTotal: official?.total ?? _sourceMeta?.officialTotal ?? null,
+        officialSourceLabel: official?.sourceLabel || _sourceMeta?.officialSourceLabel || null,
+        lastWriteSource: 'manual_add',
+        lastManualAction: 'add_student',
+        lastManualStudentId: student.id,
+    };
+    saveDemoDataset(payload);
+    _cache = rows;
+    _isLive = true;
+    _usesLocalOnlyData = true;
+    setSourceMeta(payload, rows, { storage: 'local_demo' });
+    _loadPromise = Promise.resolve(getStudentListSync());
     notify();
-    return { rowCount: getStudentListSync().length, scope: isBypassUid(uid) ? 'auth_required' : 'no_firebase' };
+    return { rowCount: rows.length, scope: isBypassUid(uid) ? 'local_demo' : 'no_firebase' };
 }
 
 /**
@@ -245,12 +488,19 @@ function setBundledFallback() {
             _cache = demo.rows;
             _isLive = true;
             _usesLocalOnlyData = true;
+            setSourceMeta(demo, demo.rows, { storage: 'local_demo' });
             return;
         }
     }
     _cache = scienceStudentList;
     _isLive = false;
     _usesLocalOnlyData = false;
+    setSourceMeta({
+        sourceTrust: 'generated_mock',
+        sourceLabel: 'Generated mock roster bundled with app',
+        fileName: 'bundled-generated-science-roster',
+        lastWriteSource: 'bundled_sample',
+    }, scienceStudentList, { storage: 'bundled' });
 }
 
 function isTrustedLiveRows(rows) {
@@ -273,6 +523,7 @@ function applySnapshot(snap) {
             _cache = rows;
             _isLive = true;
             _usesLocalOnlyData = false;
+            setSourceMeta(data, rows, { storage: 'firestore' });
             return;
         }
         if (rows.length > 0) {
@@ -296,7 +547,16 @@ async function readAuthoritativeRows() {
     return _cache || scienceStudentList;
 }
 
-async function persistRows(rows, { uid, source, manualAction, manualStudentId } = {}) {
+async function persistRows(rows, {
+    uid,
+    source,
+    manualAction,
+    manualStudentId,
+    sourceTrust,
+    sourceLabel,
+    officialTotal,
+    officialSourceLabel,
+} = {}) {
     await setDoc(studentDocRef(), {
         rows,
         rowCount: rows.length,
@@ -304,6 +564,10 @@ async function persistRows(rows, { uid, source, manualAction, manualStudentId } 
         updatedBy: uid || 'unknown',
         version: 1,
         allowSmallDataset: true,
+        sourceTrust: sourceTrust || _sourceMeta?.sourceTrust || null,
+        sourceLabel: sourceLabel || _sourceMeta?.sourceLabel || null,
+        officialTotal: officialTotal ?? _sourceMeta?.officialTotal ?? null,
+        officialSourceLabel: officialSourceLabel || _sourceMeta?.officialSourceLabel || null,
         lastWriteSource: source || 'manual',
         lastManualAction: manualAction || null,
         lastManualStudentId: manualStudentId || null,
@@ -367,6 +631,39 @@ export function isLiveData() {
 
 export function getStudentDataSourceStatus() {
     const rows = getStudentListSync();
+    if (isGeneratedMockSource(_sourceMeta || {})) {
+        const manualAdjusted = isManualAdjustedMockSource(_sourceMeta || {});
+        return {
+            mode: manualAdjusted ? 'manual_adjusted_mock' : 'generated_mock',
+            label: manualAdjusted
+                ? 'Generated mock roster + manual adjustment'
+                : 'Generated mock roster aligned to latest MJU sync',
+            rowCount: rows.length,
+            isUploaded: false,
+            isShared: _isLive && !_usesLocalOnlyData,
+            isBundledSample: true,
+            isGeneratedMock: true,
+            sourceTrust: _sourceMeta?.sourceTrust || 'generated_mock',
+            sourceLabel: _sourceMeta?.sourceLabel || null,
+            officialTotal: _sourceMeta?.officialTotal ?? null,
+            officialSourceLabel: _sourceMeta?.officialSourceLabel || null,
+        };
+    }
+    if (String(_sourceMeta?.sourceTrust || '').toLowerCase() === 'manual_adjusted_roster') {
+        return {
+            mode: 'manual_adjusted_roster',
+            label: _usesLocalOnlyData ? 'Local roster + manual adjustment' : 'Firestore roster + manual adjustment',
+            rowCount: rows.length,
+            isUploaded: true,
+            isShared: _isLive && !_usesLocalOnlyData,
+            isBundledSample: false,
+            isGeneratedMock: false,
+            sourceTrust: _sourceMeta?.sourceTrust,
+            sourceLabel: _sourceMeta?.sourceLabel || null,
+            officialTotal: _sourceMeta?.officialTotal ?? null,
+            officialSourceLabel: _sourceMeta?.officialSourceLabel || null,
+        };
+    }
     if (_isLive && !_usesLocalOnlyData) {
         return {
             mode: 'firestore',
@@ -375,6 +672,11 @@ export function getStudentDataSourceStatus() {
             isUploaded: true,
             isShared: true,
             isBundledSample: false,
+            isGeneratedMock: false,
+            sourceTrust: _sourceMeta?.sourceTrust || 'uploaded_file',
+            sourceLabel: _sourceMeta?.sourceLabel || null,
+            officialTotal: _sourceMeta?.officialTotal ?? null,
+            officialSourceLabel: _sourceMeta?.officialSourceLabel || null,
         };
     }
     if (_isLive && _usesLocalOnlyData) {
@@ -385,6 +687,11 @@ export function getStudentDataSourceStatus() {
             isUploaded: true,
             isShared: false,
             isBundledSample: false,
+            isGeneratedMock: false,
+            sourceTrust: _sourceMeta?.sourceTrust || 'uploaded_file',
+            sourceLabel: _sourceMeta?.sourceLabel || null,
+            officialTotal: _sourceMeta?.officialTotal ?? null,
+            officialSourceLabel: _sourceMeta?.officialSourceLabel || null,
         };
     }
     return {
@@ -394,6 +701,11 @@ export function getStudentDataSourceStatus() {
         isUploaded: false,
         isShared: false,
         isBundledSample: true,
+        isGeneratedMock: true,
+        sourceTrust: _sourceMeta?.sourceTrust || 'generated_mock',
+        sourceLabel: _sourceMeta?.sourceLabel || null,
+        officialTotal: _sourceMeta?.officialTotal ?? null,
+        officialSourceLabel: _sourceMeta?.officialSourceLabel || null,
     };
 }
 
@@ -447,11 +759,22 @@ export async function uploadStudentList(rows, { fileName, uid, who, meta } = {})
             updatedAt,
             updatedBy: uid || 'admin-bypass',
             version: 1,
-            allowSmallDataset: true
+            allowSmallDataset: true,
+            sourceTrust: 'uploaded_file',
+            sourceLabel: 'Uploaded student roster file',
+            lastWriteSource: 'upload_students',
         });
         _cache = rows;
         _isLive = true;
         _usesLocalOnlyData = true;
+        setSourceMeta({
+            sourceTrust: 'uploaded_file',
+            sourceLabel: 'Uploaded student roster file',
+            fileName: fileName || 'unknown',
+            updatedAt,
+            updatedBy: uid || 'admin-bypass',
+            lastWriteSource: 'upload_students',
+        }, rows, { storage: 'local_demo' });
         _loadPromise = Promise.resolve(getStudentListSync());
         notify();
         writeAuditLog({
@@ -472,11 +795,21 @@ export async function uploadStudentList(rows, { fileName, uid, who, meta } = {})
         updatedAt: serverTimestamp(),
         updatedBy: uid || 'unknown',
         version: 1,
-        allowSmallDataset: true
+        allowSmallDataset: true,
+        sourceTrust: 'uploaded_file',
+        sourceLabel: 'Uploaded student roster file',
+        lastWriteSource: 'upload_students',
     });
     _cache = rows;
     _isLive = true;
     _usesLocalOnlyData = false;
+    setSourceMeta({
+        sourceTrust: 'uploaded_file',
+        sourceLabel: 'Uploaded student roster file',
+        fileName: fileName || 'unknown',
+        updatedBy: uid || 'unknown',
+        lastWriteSource: 'upload_students',
+    }, rows, { storage: 'firestore' });
     _loadPromise = Promise.resolve(getStudentListSync());
     notify();
     // Fire-and-forget audit log; failures are swallowed inside the service.
@@ -499,7 +832,12 @@ export async function getStudentListMeta() {
             fileName: demo.fileName || null,
             updatedAt: demo.updatedAt ? new Date(demo.updatedAt) : null,
             updatedBy: demo.updatedBy || null,
-            version: demo.version || 1
+            version: demo.version || 1,
+            sourceTrust: demo.sourceTrust || null,
+            sourceLabel: demo.sourceLabel || null,
+            officialTotal: demo.officialTotal ?? null,
+            officialSourceLabel: demo.officialSourceLabel || null,
+            lastWriteSource: demo.lastWriteSource || null,
         };
     }
 
@@ -512,7 +850,12 @@ export async function getStudentListMeta() {
             fileName: d.fileName || null,
             updatedAt: d.updatedAt?.toDate ? d.updatedAt.toDate() : null,
             updatedBy: d.updatedBy || null,
-            version: d.version || 1
+            version: d.version || 1,
+            sourceTrust: d.sourceTrust || null,
+            sourceLabel: d.sourceLabel || null,
+            officialTotal: d.officialTotal ?? null,
+            officialSourceLabel: d.officialSourceLabel || null,
+            lastWriteSource: d.lastWriteSource || null,
         };
     } catch (err) {
         console.warn('[studentDataService] getStudentListMeta failed:', err?.message || err);

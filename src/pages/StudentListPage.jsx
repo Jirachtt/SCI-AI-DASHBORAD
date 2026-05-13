@@ -152,7 +152,7 @@ export default function StudentListPage() {
                 who: user?.email || user?.uid || 'unknown',
             });
             syncStudentState(getStudentListSync());
-            if (result.scope === 'live') {
+            if (result.scope === 'live' || result.scope === 'local_demo' || result.scope === 'no_firebase') {
                 setNewStudent({ id: '', name: '', major: MAJORS[0], year: '1', gpa: '' });
                 setShowModal(false);
                 return;
@@ -166,8 +166,8 @@ export default function StudentListPage() {
     };
 
     const statusColor = (s) => s === 'ปกติ' ? '#4CAF50' : s === 'กำลังศึกษา' ? '#4CAF50' : s === 'รอพินิจ' ? '#FFC107' : '#ef4444';
-    const dataSourceText = dataSourceStatus.isBundledSample
-        ? 'ยังเป็นข้อมูลตัวอย่างในเครื่อง'
+    const dataSourceText = dataSourceStatus.isGeneratedMock
+        ? 'ข้อมูล mock ที่ปรับให้ตรงยอด Sync ล่าสุด'
         : dataSourceStatus.isShared
             ? 'ข้อมูลจริงจากฐานกลาง Firestore'
             : 'ข้อมูลจากไฟล์ที่อัปโหลดในเครื่องนี้';

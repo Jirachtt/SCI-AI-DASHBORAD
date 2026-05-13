@@ -646,15 +646,27 @@ function computeWeightedOverallGpa({
     return round((otherGpaSum + (Number(nextScienceAvg) * nextScienceTotal)) / nextTotal, 2);
 }
 
-// Kept available for future admin-only derived views, but aggregate dashboard
-// totals must stay locked to official MJU Dashboard numbers.
+// Aggregate pages use official MJU totals by default. Generated/mock rosters
+// can temporarily overlay those totals when admins make demo/manual additions.
 const DISABLED_ROSTER_AGGREGATE_PATCHERS = {
     student_stats: patchStudentStats,
     dashboard_summary: patchDashboardSummary,
 };
 
+function shouldOverlayStudentRowsOnAggregate() {
+    const trust = getStudentRosterTrustStatus();
+    return Boolean(
+        trust.isGeneratedMock ||
+        trust.mode === 'manual_adjusted_mock' ||
+        trust.mode === 'manual_adjusted_roster'
+    );
+}
+
 function getLinkedDataset(id) {
     const base = getDashboardDatasetSync(id);
+    if ((id === 'student_stats' || id === 'dashboard_summary') && shouldOverlayStudentRowsOnAggregate()) {
+        return DISABLED_ROSTER_AGGREGATE_PATCHERS[id]?.(base) || base;
+    }
     if (id === 'student_stats' || id === 'dashboard_summary') return base;
     if (!canUseStudentRowsAsRealRoster()) return base;
     if (id === 'graduation') return patchGraduationData(base);
@@ -682,14 +694,16 @@ export function getSharedDashboardDatasetMetaSync(id) {
     const rosterTrust = getStudentRosterTrustStatus();
     if (id === 'student_stats' || id === 'dashboard_summary') {
         const studentRows = getStudentListSync();
+        const overlayActive = shouldOverlayStudentRowsOnAggregate();
         return {
             ...meta,
             rowCount: getPayloadRowCount(payload),
-            usesSharedDataHub: false,
+            usesSharedDataHub: overlayActive,
             linkedStudentRows: Array.isArray(studentRows) ? studentRows.length : 0,
             studentRosterMode: rosterTrust.mode,
             studentRosterWarning: rosterTrust.warning,
-            officialAggregateLocked: true,
+            officialAggregateLocked: !overlayActive,
+            manualAggregateOverlay: overlayActive,
         };
     }
     if (!rosterTrust.canAnswerIndividual) {

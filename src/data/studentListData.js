@@ -156,6 +156,15 @@ const curatedStudentList = [
     { id: '6601301301', prefix: 'นางสาว', name: 'สุวรรณี อินทะสอน', major: 'เทคโนโลยีชีวภาพ', level: 'ปริญญาเอก', year: 2, status: 'กำลังศึกษา', gpa: 3.88 },
 ];
 
+export function generateScienceMockRoster(options = {}) {
+    const rows = curatedStudentList.concat(generatePaddedStudents(curatedStudentList, options));
+    const expectedTotal = Number(options.total);
+    if (Number.isFinite(expectedTotal) && expectedTotal > 0 && rows.length !== Math.round(expectedTotal)) {
+        throw new Error(`Generated science mock roster mismatch: expected ${Math.round(expectedTotal)}, got ${rows.length}`);
+    }
+    return rows;
+}
+
 const _generatedStudents = generatePaddedStudents(curatedStudentList);
 export const scienceStudentList = curatedStudentList.concat(_generatedStudents);
 

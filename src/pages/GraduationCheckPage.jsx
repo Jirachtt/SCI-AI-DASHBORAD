@@ -10,6 +10,7 @@ import {
     Clock,
     GraduationCap,
     Star,
+    UserCheck,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
@@ -20,6 +21,7 @@ import {
     formatScienceActivityDate,
     getRecommendedScienceActivities,
 } from '../data/scienceActivitiesData';
+import { getMjuLinkedUserAcademicProfile } from '../services/mjuLinkedUserDataService';
 
 const graduationData = {
     gpa: { current: 3.15, required: 1.75 },
@@ -40,11 +42,17 @@ export default function GraduationCheckPage() {
     const { user } = useAuth();
     if (!canAccess(user?.role, 'graduation_check')) return <AccessDenied />;
 
-    const activityRequirement = SCIENCE_ACTIVITY_REQUIREMENT;
+    const linkedProfile = getMjuLinkedUserAcademicProfile(user);
+    const gpaData = linkedProfile.gpa || graduationData.gpa;
+    const creditData = linkedProfile.credits || graduationData.credits;
+    const activityRequirement = linkedProfile.activity || SCIENCE_ACTIVITY_REQUIREMENT;
     const missingHours = Math.max(0, activityRequirement.targetHours - activityRequirement.completedHours);
     const recommendation = getRecommendedScienceActivities(missingHours);
-    const creditPercent = pct(graduationData.credits.current, graduationData.credits.required);
+    const creditPercent = pct(creditData.current, creditData.required);
     const activityPercent = pct(activityRequirement.completedHours, activityRequirement.targetHours);
+    const linkedSourceText = linkedProfile.isMjuLinked
+        ? `เชื่อมข้อมูลจาก MJU Account${linkedProfile.student ? ` (${linkedProfile.student.id})` : ''}`
+        : 'ยังไม่ได้เชื่อมข้อมูลรายบุคคลจาก MJU Account';
 
     return (
         <div className="graduation-check-page">
@@ -65,14 +73,25 @@ export default function GraduationCheckPage() {
                 </div>
             </div>
 
+            <section className={`graduation-mju-link-banner ${linkedProfile.isMjuLinked ? 'linked' : 'idle'}`}>
+                <div>
+                    <span><UserCheck size={16} /> {linkedSourceText}</span>
+                    <strong>{linkedProfile.identityLabel}</strong>
+                </div>
+                <p>
+                    ระบบใช้ studentId/mjuId จาก MJU SSO เพื่อผูก GPAX, หน่วยกิตรวม, ชั่วโมงกิจกรรม
+                    และส่งต่อข้อมูลตามผู้ใช้ให้หน้าอื่นที่รองรับข้อมูลรายบุคคลเดียวกัน
+                </p>
+            </section>
+
             <section className="graduation-status-grid">
                 <article className="graduation-status-card">
                     <div className="graduation-status-head">
                         <span><Award size={15} /> เกรดเฉลี่ยสะสม (GPAX)</span>
                         <CheckCircle size={20} color="#22c55e" />
                     </div>
-                    <strong className="graduation-status-value success">{graduationData.gpa.current.toFixed(2)}</strong>
-                    <p>เกณฑ์ขั้นต่ำ {graduationData.gpa.required.toFixed(2)}</p>
+                    <strong className="graduation-status-value success">{Number(gpaData.current || 0).toFixed(2)}</strong>
+                    <p>เกณฑ์ขั้นต่ำ {Number(gpaData.required || 0).toFixed(2)} · {gpaData.source}</p>
                 </article>
 
                 <article className="graduation-status-card">
@@ -80,18 +99,19 @@ export default function GraduationCheckPage() {
                         <span><BookOpen size={15} /> หน่วยกิตรวม</span>
                         <span className="graduation-mini-badge">{creditPercent}%</span>
                     </div>
-                    <strong className="graduation-status-value info">{graduationData.credits.current}/{graduationData.credits.required}</strong>
+                    <strong className="graduation-status-value info">{creditData.current}/{creditData.required}</strong>
                     <div className="graduation-progress-track">
                         <span style={{ width: `${creditPercent}%`, background: '#2E86AB' }} />
                     </div>
                     <div className="graduation-mini-list">
-                        {graduationData.credits.details.map(item => (
+                        {creditData.details.map(item => (
                             <div key={item.name}>
                                 <span>{item.status === 'complete' ? '✓' : '○'} {item.name}</span>
                                 <strong>{item.current}/{item.required}</strong>
                             </div>
                         ))}
                     </div>
+                    <p>{creditData.source}</p>
                 </article>
 
                 <article className="graduation-status-card">
@@ -103,7 +123,7 @@ export default function GraduationCheckPage() {
                     <div className="graduation-progress-track">
                         <span style={{ width: `${activityPercent}%`, background: '#E91E63' }} />
                     </div>
-                    <p>ยังขาด {missingHours} ชั่วโมง เพื่อครบเกณฑ์ {activityRequirement.programLabel}</p>
+                    <p>ยังขาด {missingHours} ชั่วโมง เพื่อครบเกณฑ์ {activityRequirement.programLabel} · {activityRequirement.source}</p>
                 </article>
             </section>
 

@@ -100,16 +100,99 @@ function makeStudent(rng, id, major, level, year) {
     };
 }
 
-export function generatePaddedStudents(curated) {
+const DEFAULT_BACHELOR_YEAR_TARGETS = [
+    { cohortCode: '65', year: 4, target: 189 },
+    { cohortCode: '66', year: 3, target: 345 },
+    { cohortCode: '67', year: 2, target: 435 },
+    { cohortCode: '68', year: 1, target: 408 },
+];
+
+const DEFAULT_LEVEL_TARGETS = {
+    bachelor: 1377,
+    master: 16,
+    doctoral: 5,
+    certificate: 0,
+};
+
+function toPositiveInteger(value, fallback = 0) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(0, Math.round(n));
+}
+
+function largestRemainderScale(rows, total, key = 'target') {
+    const targetTotal = toPositiveInteger(total);
+    const sourceTotal = rows.reduce((sum, row) => sum + toPositiveInteger(row[key]), 0);
+    if (!sourceTotal) return rows.map(row => ({ ...row, [key]: 0 }));
+
+    const scaled = rows.map(row => {
+        const raw = (toPositiveInteger(row[key]) / sourceTotal) * targetTotal;
+        return { ...row, [key]: Math.floor(raw), _remainder: raw - Math.floor(raw) };
+    });
+    let remaining = targetTotal - scaled.reduce((sum, row) => sum + row[key], 0);
+    scaled
+        .slice()
+        .sort((a, b) => b._remainder - a._remainder)
+        .forEach(row => {
+            if (remaining <= 0) return;
+            row[key] += 1;
+            remaining -= 1;
+        });
+    return scaled.map(row => {
+        const next = { ...row };
+        delete next._remainder;
+        return next;
+    });
+}
+
+function levelKeyFromRow(row = {}) {
+    const icon = String(row.icon || row.key || '').toLowerCase();
+    if (icon.includes('msc') || icon.includes('master')) return 'master';
+    if (icon.includes('phd') || icon.includes('doctoral')) return 'doctoral';
+    if (icon.includes('cert')) return 'certificate';
+    if (icon.includes('bsc') || icon.includes('bachelor')) return 'bachelor';
+    const text = String(row.level || row.label || row.name || '').toLowerCase();
+    if (text.includes('โท')) return 'master';
+    if (text.includes('เอก')) return 'doctoral';
+    if (text.includes('ประกาศ')) return 'certificate';
+    if (/master|msc/.test(text)) return 'master';
+    if (/doctoral|phd/.test(text)) return 'doctoral';
+    if (/cert/.test(text)) return 'certificate';
+    return 'bachelor';
+}
+
+function normalizeLevelTargets({ total, byLevel } = {}) {
+    const defaultTotal = Object.values(DEFAULT_LEVEL_TARGETS).reduce((sum, value) => sum + value, 0);
+    const targetTotal = toPositiveInteger(total, defaultTotal);
+    const explicit = { bachelor: 0, master: 0, doctoral: 0, certificate: 0 };
+
+    if (Array.isArray(byLevel)) {
+        byLevel.forEach(row => {
+            explicit[levelKeyFromRow(row)] += toPositiveInteger(row.count ?? row.total ?? row.value);
+        });
+    } else if (byLevel && typeof byLevel === 'object') {
+        Object.keys(explicit).forEach(key => {
+            explicit[key] = toPositiveInteger(byLevel[key]);
+        });
+    }
+
+    const explicitTotal = Object.values(explicit).reduce((sum, value) => sum + value, 0);
+    const source = explicitTotal > 0 ? explicit : DEFAULT_LEVEL_TARGETS;
+    return largestRemainderScale(
+        Object.entries(source).map(([key, target]) => ({ key, target })),
+        targetTotal
+    ).reduce((acc, row) => ({ ...acc, [row.key]: row.target }), {});
+}
+
+function normalizeBachelorYearTargets(bachelorTarget) {
+    return largestRemainderScale(DEFAULT_BACHELOR_YEAR_TARGETS, bachelorTarget, 'target');
+}
+
+export function generatePaddedStudents(curated, options = {}) {
     const rng = makeRng(20240425);
     const existingIds = new Set(curated.map(s => s.id));
-
-    const targets = [
-        { cohortCode: '65', year: 4, target: 189 },
-        { cohortCode: '66', year: 3, target: 345 },
-        { cohortCode: '67', year: 2, target: 435 },
-        { cohortCode: '68', year: 1, target: 408 },
-    ];
+    const levelTargets = normalizeLevelTargets(options);
+    const targets = normalizeBachelorYearTargets(levelTargets.bachelor);
 
     const padded = [];
     for (let ti = 0; ti < targets.length; ti++) {
@@ -138,7 +221,7 @@ export function generatePaddedStudents(curated) {
     // ป.โท เพิ่มให้ครบ 17 (curated มี 4)
     const masterExisting = curated.filter(s => s.level === 'ปริญญาโท').length;
     // Official latest science-faculty master total is 16.
-    const masterNeed = Math.max(0, 16 - masterExisting);
+    const masterNeed = Math.max(0, levelTargets.master - masterExisting);
     for (let i = 0; i < masterNeed; i++) {
         const cohort = i < masterNeed / 2 ? '67' : '68';
         const major = pickMajor(rng);
@@ -153,7 +236,7 @@ export function generatePaddedStudents(curated) {
 
     // ป.เอก ให้ครบ 5 (curated มี 2)
     const docExisting = curated.filter(s => s.level === 'ปริญญาเอก').length;
-    const docNeed = Math.max(0, 5 - docExisting);
+    const docNeed = Math.max(0, levelTargets.doctoral - docExisting);
     for (let i = 0; i < docNeed; i++) {
         const cohort = ['65', '66', '67'][i % 3];
         const major = pickMajor(rng);

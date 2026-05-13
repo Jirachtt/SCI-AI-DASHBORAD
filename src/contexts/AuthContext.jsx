@@ -91,6 +91,47 @@ const hasMjuSsoClaims = (claims = {}) => Boolean(
     claims.humanID
 );
 
+const firstClaimValue = (claims = {}, keys = []) => {
+    for (const key of keys) {
+        if (claims[key] != null && claims[key] !== '') return claims[key];
+    }
+    return null;
+};
+
+const MJU_CLAIM_PERSIST_KEYS = [
+    'mjuVerified', 'mjuId', 'mjuRole', 'mjuUserType', 'studentId', 'studentID', 'studentCode',
+    'employeeId', 'personID', 'humanID', 'username', 'email', 'name', 'displayName', 'faculty',
+    'department', 'position', 'positionName', 'personType', 'gpax', 'gpa', 'gradePointAverage',
+    'earnedCredits', 'totalCredits', 'creditEarned', 'completedCredits', 'requiredCredits',
+    'creditRequired', 'graduationCredits', 'activityHoursCompleted', 'completedActivityHours',
+    'activityHours', 'activityHoursTarget', 'requiredActivityHours', 'completedActivityEvents',
+    'requiredActivityEvents',
+];
+
+const buildMjuLinkedDataFromClaims = (claims = {}) => {
+    const mjuAcademic = {
+        gpax: firstClaimValue(claims, ['gpax', 'gpa', 'gradePointAverage', 'cumGpa', 'cumulativeGpa']),
+        earnedCredits: firstClaimValue(claims, ['earnedCredits', 'totalCredits', 'creditEarned', 'completedCredits']),
+        requiredCredits: firstClaimValue(claims, ['requiredCredits', 'creditRequired', 'graduationCredits']),
+        creditDetails: Array.isArray(claims.creditDetails) ? claims.creditDetails : null,
+        minimumGpax: firstClaimValue(claims, ['minimumGpax', 'requiredGpax']),
+    };
+    const mjuActivity = {
+        completedHours: firstClaimValue(claims, ['activityHoursCompleted', 'completedActivityHours', 'activityHours']),
+        targetHours: firstClaimValue(claims, ['activityHoursTarget', 'requiredActivityHours']),
+        completedEvents: firstClaimValue(claims, ['completedActivityEvents', 'activityEventsCompleted']),
+        requiredEvents: firstClaimValue(claims, ['requiredActivityEvents']),
+        categoryTargets: Array.isArray(claims.activityCategories) ? claims.activityCategories : null,
+    };
+    return {
+        mjuClaims: Object.fromEntries(MJU_CLAIM_PERSIST_KEYS
+            .filter(key => claims[key] != null)
+            .map(key => [key, claims[key]])),
+        mjuAcademic: Object.fromEntries(Object.entries(mjuAcademic).filter(([, value]) => value != null)),
+        mjuActivity: Object.fromEntries(Object.entries(mjuActivity).filter(([, value]) => value != null)),
+    };
+};
+
 const buildMjuUserPatchFromClaims = (claims = {}, currentUser, createdAt = new Date().toISOString()) => {
     const role = normalizeMjuRoleFromClaims(claims);
     return {
@@ -108,6 +149,7 @@ const buildMjuUserPatchFromClaims = (claims = {}, currentUser, createdAt = new D
         employeeId: claims.employeeId || claims.personID || claims.humanID || null,
         department: claims.department || claims.faculty || null,
         faculty: claims.faculty || null,
+        ...buildMjuLinkedDataFromClaims(claims),
         ...buildRoleValidityPatch(role, createdAt),
     };
 };

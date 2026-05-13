@@ -25,6 +25,7 @@ import {
     monthKeyFromDate,
     sumScienceActivityHours,
 } from '../data/scienceActivitiesData';
+import { getMjuLinkedUserAcademicProfile } from '../services/mjuLinkedUserDataService';
 
 const STATUS_META = {
     open: { label: 'เปิดลงทะเบียน', className: 'open' },
@@ -61,10 +62,13 @@ export default function StudentLifePage() {
 
     const accessAllowed = canAccess(user?.role, 'student_life');
     const summary = getScienceActivitySummary();
-    const activityHours = studentLifeData?.activityHours || summary.requirement;
+    const linkedProfile = getMjuLinkedUserAcademicProfile(user);
+    const activityHours = linkedProfile.isMjuLinked
+        ? linkedProfile.activity
+        : (studentLifeData?.activityHours || summary.requirement);
     const requirement = summary.requirement;
-    const targetHours = Number(activityHours.target ?? requirement.targetHours);
-    const completedHours = Number(activityHours.completed ?? requirement.completedHours);
+    const targetHours = Number(activityHours.targetHours ?? activityHours.target ?? requirement.targetHours);
+    const completedHours = Number(activityHours.completedHours ?? activityHours.completed ?? requirement.completedHours);
     const events = (Array.isArray(studentLifeData?.scienceActivities) && studentLifeData.scienceActivities.length
         ? studentLifeData.scienceActivities
         : summary.all)
@@ -122,6 +126,15 @@ export default function StudentLifePage() {
                     <ExportPDFButton title="กิจกรรมคณะวิทยาศาสตร์" />
                 </div>
             </div>
+
+            {linkedProfile.isMjuLinked && (
+                <section className="science-activity-user-link">
+                    <CheckCircle2 size={16} />
+                    <span>
+                        เชื่อมชั่วโมงกิจกรรมของ {linkedProfile.identityLabel} จาก MJU Account · {activityHours.source}
+                    </span>
+                </section>
+            )}
 
             <section className="science-activity-hero">
                 <div>

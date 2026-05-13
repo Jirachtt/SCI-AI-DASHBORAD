@@ -464,6 +464,19 @@ export async function refreshDashboardDatasetFromSource(id, { uid, who } = {}) {
         },
     });
 
+    if (id === 'student_stats' || id === 'dashboard_summary') {
+        try {
+            const { reconcileGeneratedRosterWithLatestOfficialTotal } = await import('./studentDataService');
+            await reconcileGeneratedRosterWithLatestOfficialTotal({
+                uid,
+                who,
+                reason: `sync:${id}`,
+            });
+        } catch (err) {
+            console.warn('[dashboardLiveDataService] Student roster reconciliation skipped:', err?.message || err);
+        }
+    }
+
     return getDashboardDatasetMetaSync(id);
 }
 

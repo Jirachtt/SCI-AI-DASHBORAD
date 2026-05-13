@@ -139,6 +139,63 @@
   color: var(--text-primary);
 }
 
+.graduation-mju-link-banner,
+.science-activity-user-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(0, 166, 81, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 166, 81, 0.08);
+  color: var(--text-secondary);
+}
+
+.graduation-mju-link-banner {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.graduation-mju-link-banner.idle {
+  border-color: rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.graduation-mju-link-banner div {
+  display: grid;
+  gap: 5px;
+  min-width: 220px;
+}
+
+.graduation-mju-link-banner span,
+.science-activity-user-link span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.graduation-mju-link-banner strong {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.graduation-mju-link-banner p {
+  max-width: 720px;
+  margin: 0;
+  line-height: 1.65;
+}
+
+.science-activity-user-link {
+  margin-top: -4px;
+  color: var(--success);
+  font-weight: 750;
+}
+
 .science-activity-kpi-grid,
 .graduation-status-grid {
   display: grid;
@@ -611,6 +668,10 @@
   .graduation-activity-bridge,
   .science-activity-hero {
     grid-template-columns: 1fr;
+  }
+
+  .graduation-mju-link-banner {
+    flex-direction: column;
   }
 }
 

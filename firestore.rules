@@ -78,6 +78,48 @@ service cloud.firestore {
         && request.resource.data.get('roleExpiresAt', null) == resource.data.get('roleExpiresAt', null);
     }
 
+    function mjuSsoMutableKeys() {
+      return [
+        'name',
+        'avatar',
+        'photoURL',
+        'displayName',
+        'email',
+        'role',
+        'roleLabel',
+        'status',
+        'authProvider',
+        'mjuVerified',
+        'mjuId',
+        'studentId',
+        'employeeId',
+        'department',
+        'faculty',
+        'mjuDetectedRole',
+        'mjuDetectedRoleLabel',
+        'mjuClaims',
+        'mjuAcademic',
+        'mjuActivity',
+        'roleStartedAt',
+        'roleStartsAt',
+        'roleExpiresAt',
+        'roleDurationYears',
+        'roleManagedAt',
+        'roleValidity',
+        'lastLoginAt',
+        'lastSeenAt'
+      ];
+    }
+
+    function safeMjuSsoUserUpdate(uid) {
+      return isSignedIn()
+        && request.auth.uid == uid
+        && hasMjuSsoClaim()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(mjuSsoMutableKeys())
+        && request.resource.data.status == 'approved'
+        && request.resource.data.role in ['dean', 'chair', 'staff', 'student', 'general', 'executive', 'instructor'];
+    }
+
     match /users/{uid} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
@@ -86,11 +128,11 @@ service cloud.firestore {
           publicSignupRoleIsAllowed()
           || (
             hasMjuSsoClaim()
-            && request.resource.data.role in ['dean', 'chair', 'staff', 'student', 'general']
+            && request.resource.data.role in ['dean', 'chair', 'staff', 'student', 'general', 'executive', 'instructor']
             && request.resource.data.status == 'approved'
           )
         );
-      allow update: if safeSelfUserUpdate(uid) || callerIsDean();
+      allow update: if safeSelfUserUpdate(uid) || safeMjuSsoUserUpdate(uid) || callerIsDean();
       allow delete: if false;
     }
 
