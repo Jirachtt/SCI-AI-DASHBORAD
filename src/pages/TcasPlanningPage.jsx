@@ -82,6 +82,7 @@ export default function TcasPlanningPage() {
     ));
     const roundChartItems = (data.roundPlan2569 || []).filter(item => hasNumber(item.plan));
     const hasRoundChartData = roundChartItems.length > 0;
+    const round3PlanRows = data.round3Plan2569 || [];
     const intakeTargetRows = data.intakeTarget2570 || [];
     const impact = calculateTcasImpact({
         intake,
@@ -121,11 +122,11 @@ export default function TcasPlanningPage() {
     };
 
     const majorPlanChartData = {
-        labels: data.round3Plan2569.map(item => item.major),
+        labels: round3PlanRows.map(item => item.major),
         datasets: [{
             label: 'จำนวนรับรอบ 3 Admission 2569',
-            data: data.round3Plan2569.map(item => item.plan),
-            backgroundColor: data.round3Plan2569.map((_, idx) => ['#00a651', '#2E86AB', '#7B68EE', '#C5A028', '#E91E63'][idx % 5]),
+            data: round3PlanRows.map(item => item.plan),
+            backgroundColor: round3PlanRows.map((_, idx) => ['#00a651', '#2E86AB', '#7B68EE', '#C5A028', '#E91E63'][idx % 5]),
             borderRadius: 6,
         }],
     };
@@ -166,6 +167,28 @@ export default function TcasPlanningPage() {
     const majorPlanOptions = {
         ...commonOptions,
         indexAxis: 'y',
+        interaction: {
+            mode: 'nearest',
+            axis: 'y',
+            intersect: true,
+        },
+        hover: {
+            mode: 'nearest',
+            axis: 'y',
+            intersect: true,
+        },
+        plugins: {
+            ...commonOptions.plugins,
+            tooltip: {
+                mode: 'nearest',
+                axis: 'y',
+                intersect: true,
+                callbacks: {
+                    title: (items) => round3PlanRows[items?.[0]?.dataIndex]?.major || items?.[0]?.label || '',
+                    label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.x} คน`,
+                },
+            },
+        },
         scales: {
             x: { ticks: { color: 'var(--text-secondary)' }, grid: { color: 'var(--border-color)' } },
             y: { ticks: { color: 'var(--text-secondary)', font: { size: 11 } }, grid: { color: 'var(--border-color)' } },
