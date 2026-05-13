@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { FileDown, Printer, TableProperties } from 'lucide-react';
-import { exportCSVReportWorkbook, exportPageAsCSVReport } from '../utils/exportUtils';
+import { FileDown, FileSpreadsheet, Printer } from 'lucide-react';
+import { exportExcelReportWorkbook, exportPageAsExcelReport } from '../utils/exportUtils';
 import { APP_NAME_TH } from '../config/appBrand';
 
 export default function ExportPDFButton({
@@ -12,7 +12,7 @@ export default function ExportPDFButton({
     getCSVReportSheets = null,
 }) {
     const [printing, setPrinting] = useState(false);
-    const [exportingCSV, setExportingCSV] = useState(false);
+    const [exportingExcel, setExportingExcel] = useState(false);
 
     const handleClick = () => {
         if (printing) return;
@@ -39,24 +39,24 @@ export default function ExportPDFButton({
         }, 60);
     };
 
-    const handleCSVReport = async () => {
-        if (exportingCSV) return;
-        setExportingCSV(true);
+    const handleExcelReport = async () => {
+        if (exportingExcel) return;
+        setExportingExcel(true);
         try {
             if (getCSVReportSheets) {
                 const sheets = await getCSVReportSheets();
-                await exportCSVReportWorkbook(title, sheets);
+                await exportExcelReportWorkbook(title, sheets);
                 return;
             }
             if (onCSVExport) {
                 await onCSVExport();
                 return;
             }
-            await exportPageAsCSVReport(title);
+            await exportPageAsExcelReport(title);
         } catch (error) {
-            console.error('[ExportPDFButton] CSV report export failed:', error);
+            console.error('[ExportPDFButton] Excel report export failed:', error);
         } finally {
-            setExportingCSV(false);
+            setExportingExcel(false);
         }
     };
 
@@ -67,13 +67,13 @@ export default function ExportPDFButton({
             {includeDataExports && (
                 <button
                     type="button"
-                    onClick={handleCSVReport}
+                    onClick={handleExcelReport}
                     className="export-action-btn export-action-btn-csv export-csv-primary no-print"
-                    disabled={exportingCSV}
-                    aria-label="Export page CSV data and graph images as one Excel workbook"
-                    title="Export ข้อมูล CSV ของหน้านี้พร้อมรูปกราฟในไฟล์ Excel เดียว"
+                    disabled={exportingExcel}
+                    aria-label="Export page data and graph images as one Excel workbook"
+                    title="Export Excel พร้อมข้อมูลครบถ้วนและรูปกราฟของหน้านี้"
                 >
-                    <TableProperties size={15} /> {exportingCSV ? 'CSV...' : 'CSV'}
+                    <FileSpreadsheet size={15} /> {exportingExcel ? 'Excel...' : 'Excel'}
                 </button>
             )}
             <button

@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, TableProperties, Database, ShieldCheck, Clock3, Gauge, Layers3, GraduationCap, Copy, CornerDownRight } from 'lucide-react';
+import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, Database, ShieldCheck, Clock3, Gauge, Layers3, GraduationCap, Copy, CornerDownRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import {
@@ -2426,10 +2426,10 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
                             <button
                                 className="ai-page-chart-btn"
                                 onClick={() => exportChartAsCSVReport(chartExportTitle, { ...chartData, chartType })}
-                                aria-label="Export chart CSV data and graph image as one Excel workbook"
-                                data-tooltip="Export CSV + รูปกราฟ"
+                                aria-label="Export chart data and graph image as one Excel workbook"
+                                data-tooltip="Export Excel + รูปกราฟ"
                             >
-                                <TableProperties size={13} /> CSV
+                                <FileSpreadsheet size={13} /> Excel
                             </button>
                         </div>
                         <div className="ai-page-chart-wrapper" style={{ height: wrapperHeight }}>
@@ -2616,7 +2616,7 @@ export default function AIChatPage() {
         { label: 'Uploaded file', value: uploadedFileData ? uploadedFileLabel : 'ไม่มี', state: uploadedFileData ? 'ready' : 'idle' },
         { label: 'RAG mode', value: aiRuntimeStatus.contextMode, state: 'ready' },
         { label: 'Theme-aware charts', value: theme === 'dark' ? 'Dark palette' : 'Light palette', state: 'ready' },
-        { label: 'CSV + graph export', value: 'Workbook + images', state: 'ready' },
+        { label: 'Excel + graph export', value: 'Workbook + images', state: 'ready' },
         { label: 'AI selected context', value: selectedDatasetLabel, state: lastAIMetadata ? 'ready' : 'idle' },
     ];
     const systemReadiness = [
@@ -2626,7 +2626,7 @@ export default function AIChatPage() {
         { label: 'Token + model', value: aiRuntimeStatus.lastModelLabel, state: 'ready' },
         { label: 'RAG', value: aiRuntimeStatus.contextMode, state: 'ready' },
         { label: 'Theme charts', value: theme === 'dark' ? 'dark mode' : 'light mode', state: 'ready' },
-        { label: 'Export CSV+graph', value: 'Excel report + chart image', state: 'ready' },
+        { label: 'Export Excel+graph', value: 'Excel report + chart image', state: 'ready' },
     ];
     const quickActionGroups = QUICK_ACTION_GROUPS
         .map(group => ({
@@ -3900,10 +3900,10 @@ export function ExpandedChartModal({ chart, onClose }) {
                         <button
                             className="ai-page-chart-modal-reset"
                             onClick={() => exportChartAsCSVReport(expandedChartExportTitle, expandedChart)}
-                            aria-label="Export chart CSV data and graph image as one Excel workbook"
-                            data-tooltip="Export CSV + รูปกราฟ"
+                            aria-label="Export chart data and graph image as one Excel workbook"
+                            data-tooltip="Export Excel + รูปกราฟ"
                         >
-                            <TableProperties size={15} /> CSV
+                            <FileSpreadsheet size={15} /> Excel
                         </button>
                         <button className="ai-page-chart-modal-close" onClick={onClose} aria-label="ปิดกราฟขยาย" data-tooltip="ปิด">
                             <X size={22} />

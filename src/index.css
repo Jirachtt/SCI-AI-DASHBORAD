@@ -14160,7 +14160,7 @@ input {
   }
 }
 
-/* CSV report is the primary export path because it includes workbook data and chart images. */
+/* Excel report is the primary export path because it includes workbook data and chart images. */
 .export-actions .export-csv-primary {
   order: 0;
   min-width: 78px;
@@ -14405,9 +14405,9 @@ input {
   }
 }
 
-/* Export controls: one consistent CSV/PDF control set across every dashboard page. */
+/* Export controls: one consistent Excel/PDF control set across every dashboard page. */
 :root {
-  --export-button-width: 88px;
+  --export-button-width: 104px;
   --export-button-height: 42px;
 }
 
@@ -14533,7 +14533,7 @@ input {
   }
 }
 
-/* Header action alignment: CSV/PDF and page-specific actions share one row rhythm. */
+/* Header action alignment: Excel/PDF and page-specific actions share one row rhythm. */
 .section-header-actions,
 .admin-panel-actions {
   margin-left: auto;

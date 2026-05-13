@@ -676,6 +676,23 @@ function rowsToGrid(rows) {
     ];
 }
 
+function estimateColumnWidths(grid, providedWidths, maxCol) {
+    if (Array.isArray(providedWidths) && providedWidths.length) {
+        return Array.from({ length: Math.min(30, Math.max(1, maxCol)) }, (_, idx) =>
+            providedWidths[idx] ?? (idx === 0 ? 20 : 16)
+        );
+    }
+
+    const sampleRows = grid.slice(0, 220);
+    return Array.from({ length: Math.min(30, Math.max(1, maxCol)) }, (_, colIdx) => {
+        const longest = sampleRows.reduce((max, row) => {
+            const text = String(row[colIdx] ?? '');
+            return Math.max(max, Math.min(64, text.length));
+        }, colIdx === 0 ? 14 : 10);
+        return Math.max(10, Math.min(42, Math.round(longest * 1.25 + 3)));
+    });
+}
+
 function columnName(index) {
     let n = index + 1;
     let name = '';
@@ -687,11 +704,16 @@ function columnName(index) {
     return name;
 }
 
-function cellXml(value, ref) {
-    if (value == null || value === '') return `<c r="${ref}"/>`;
-    if (typeof value === 'number' && Number.isFinite(value)) return `<c r="${ref}"><v>${value}</v></c>`;
-    if (typeof value === 'boolean') return `<c r="${ref}" t="b"><v>${value ? 1 : 0}</v></c>`;
-    return `<c r="${ref}" t="inlineStr"><is><t>${xmlEscape(value)}</t></is></c>`;
+function styleAttribute(styleId = 0) {
+    return styleId ? ` s="${styleId}"` : '';
+}
+
+function cellXml(value, ref, styleId = 0) {
+    const style = styleAttribute(styleId);
+    if (value == null || value === '') return `<c r="${ref}"${style}/>`;
+    if (typeof value === 'number' && Number.isFinite(value)) return `<c r="${ref}"${style}><v>${value}</v></c>`;
+    if (typeof value === 'boolean') return `<c r="${ref}" t="b"${style}><v>${value ? 1 : 0}</v></c>`;
+    return `<c r="${ref}" t="inlineStr"${style}><is><t>${xmlEscape(value)}</t></is></c>`;
 }
 
 function worksheetXml({
@@ -714,7 +736,7 @@ function worksheetXml({
     }
 
     if (title) {
-        rowXml.push(`<row r="1">${cellXml(title, 'A1')}</row>`);
+        rowXml.push(`<row r="1" ht="26" customHeight="1">${cellXml(title, 'A1', 1)}</row>`);
     }
 
     if (grid.length === 0 && !title) {
@@ -731,25 +753,33 @@ function worksheetXml({
             rowXml.push(
                 `<row${rowAttributes}>${cells.map((value, colIdx) => {
                     const ref = `${columnName(colIdx)}${rowNumber}`;
-                    return cellXml(value, ref);
+                    return cellXml(value, ref, rowIdx === 0 ? 2 : 0);
                 }).join('')}</row>`
             );
         });
     }
 
     const dimension = `A1:${columnName(maxCol - 1)}${maxRow}`;
-    const cols = Array.from({ length: Math.min(30, Math.max(1, maxCol)) }, (_, idx) => {
-        const width = colWidths?.[idx] ?? (idx === 0 ? 24 : 18);
+    const widths = estimateColumnWidths(grid, colWidths, maxCol);
+    const cols = widths.map((width, idx) => {
         return `<col min="${idx + 1}" max="${idx + 1}" width="${width}" customWidth="1"/>`;
     }).join('');
+    const freezePane = grid.length > 1 && dataStartRow <= 3
+        ? `<pane ySplit="${dataStartRow}" topLeftCell="A${dataStartRow + 1}" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft"/>`
+        : '';
+    const gridLastRow = dataStartRow + Math.max(0, grid.length - 1);
+    const autoFilter = grid.length > 1
+        ? `<autoFilter ref="A${dataStartRow}:${columnName(Math.max(0, grid[0].length - 1))}${gridLastRow}"/>`
+        : '';
 
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <dimension ref="${dimension}"/>
-<sheetViews><sheetView workbookViewId="0"/></sheetViews>
+<sheetViews><sheetView workbookViewId="0">${freezePane}</sheetView></sheetViews>
 <sheetFormatPr defaultRowHeight="18"/>
 <cols>${cols}</cols>
 <sheetData>${rowXml.join('')}</sheetData>
+${autoFilter}
 ${drawingRelId ? `<drawing r:id="${drawingRelId}"/>` : ''}
 </worksheet>`;
 }
@@ -765,6 +795,7 @@ function workbookRelsXml(sheets) {
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 ${sheets.map((_, idx) => `<Relationship Id="rId${idx + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${idx + 1}.xml"/>`).join('')}
+<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`;
 }
 
@@ -791,11 +822,42 @@ function contentTypesXml(sheets, drawingCount) {
 <Default Extension="xml" ContentType="application/xml"/>
 <Default Extension="png" ContentType="image/png"/>
 <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
 <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
 <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
 ${worksheetTypes}
 ${drawingTypes}
 </Types>`;
+}
+
+function stylesXml() {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="3">
+<font><sz val="11"/><color rgb="FF111827"/><name val="Noto Sans Thai"/></font>
+<font><b/><sz val="14"/><color rgb="FFFFFFFF"/><name val="Noto Sans Thai"/></font>
+<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Noto Sans Thai"/></font>
+</fonts>
+<fills count="4">
+<fill><patternFill patternType="none"/></fill>
+<fill><patternFill patternType="gray125"/></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FF006838"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FF00A651"/><bgColor indexed="64"/></patternFill></fill>
+</fills>
+<borders count="2">
+<border><left/><right/><top/><bottom/><diagonal/></border>
+<border><left style="thin"><color rgb="FFD9E2DD"/></left><right style="thin"><color rgb="FFD9E2DD"/></right><top style="thin"><color rgb="FFD9E2DD"/></top><bottom style="thin"><color rgb="FFD9E2DD"/></bottom><diagonal/></border>
+</borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="3">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+<dxfs count="0"/>
+<tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleMedium9"/>
+</styleSheet>`;
 }
 
 function docPropsCoreXml() {
@@ -972,7 +1034,7 @@ function numberOr(value, fallback) {
     return Number.isFinite(number) ? number : fallback;
 }
 
-function fitImageToCellBox(image, { maxCols = 11, maxRows = 18, minRows = 10 } = {}) {
+function fitImageToCellBox(image, { maxCols = 10, maxRows = 15, minRows = 8 } = {}) {
     const { width, height } = imageSizeFromDataUrl(image.imageDataUrl);
     const aspect = width > 0 && height > 0 ? width / height : 16 / 9;
     const fromCol = numberOr(image.fromCol, 0);
@@ -1085,7 +1147,7 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
             name: uniqueSheetName(chart.name || `Chart ${idx + 1}`, usedNames, `Chart ${idx + 1}`),
             rows: rows.length > 0 ? rows : [{ note: 'Chart image captured from the dashboard page.' }],
             images,
-            dataStartRow: images.length ? Math.max(22, lastImageRow + 3) : 1,
+            dataStartRow: images.length ? Math.max(18, lastImageRow + 3) : 1,
             title: images.length ? (chart.name || `Chart ${idx + 1}`) : '',
             colWidths: null,
             rowHeights: null,
@@ -1111,6 +1173,7 @@ async function downloadXlsx(fileName, sheets, chartSheets = []) {
         { name: 'docProps/app.xml', content: docPropsAppXml(sheetDefs.length) },
         { name: 'xl/workbook.xml', content: workbookXml(sheetDefs) },
         { name: 'xl/_rels/workbook.xml.rels', content: workbookRelsXml(sheetDefs) },
+        { name: 'xl/styles.xml', content: stylesXml() },
     ];
 
     let drawingIndex = 0;
@@ -1352,11 +1415,11 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
 
     const overviewRows = [
         { section: 'Report', item: 'Report title', value: title || 'page-export' },
-        { section: 'Report', item: 'File type', value: 'Single Excel workbook (.xlsx)' },
+        { section: 'Report', item: 'File type', value: 'Professional Excel workbook (.xlsx)' },
         { section: 'Report', item: 'Data sheets', value: sheetEntries.length },
         { section: 'Report', item: 'Data rows', value: dataRowCount },
         { section: 'Report', item: 'Chart previews', value: embeddedImageCount },
-        { section: 'Report', item: 'Use', value: 'This sheet is a compact preview. Detail sheets follow for sorting and analysis.' },
+        { section: 'Report', item: 'Use', value: 'Overview sheet contains chart previews. Detail sheets contain raw data prepared for sorting, filtering, and reuse.' },
         { section: '', item: '', value: '' },
         ...visibleSummaryRows.map((row, idx) => ({
             section: 'Visible summary',
@@ -1372,7 +1435,7 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
     if (chartImages.length > 0) {
         overviewRows.push(
             { section: '', item: '', value: '' },
-            { section: 'Chart previews', item: 'Layout', value: 'One chart per block with title and aspect ratio preserved' }
+            { section: 'Chart previews', item: 'Layout', value: 'Charts are embedded as compact PNG previews with source rows in the following sheets.' }
         );
     }
 
@@ -1393,9 +1456,9 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
             name: chartName,
             imageDataUrl: chart.imageDataUrl,
             fromCol: 0,
-            toCol: 12,
+            toCol: 9,
             fromRow,
-        }, { maxCols: 12, maxRows: 24, minRows: 12 });
+        }, { maxCols: 9, maxRows: 14, minRows: 8 });
         overviewImages.push(fittedImage);
 
         const chartRowSpan = Math.max(1, fittedImage.toRow - fittedImage.fromRow);
@@ -1420,7 +1483,7 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
                 ? chart.rows
                 : [{ note: 'Chart image captured from the dashboard page.' }],
             images,
-            dataStartRow: Math.max(22, lastImageRow + 3),
+            dataStartRow: Math.max(18, lastImageRow + 3),
             title: chartName,
         }];
     }));
@@ -1430,7 +1493,7 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
             rows: overviewRows,
             images: overviewImages,
             dataStartRow: 1,
-            colWidths: [16, 18, 54, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+            colWidths: [16, 18, 52, 14, 14, 14, 14, 14, 14, 14],
             rowHeights: overviewRowHeights,
         },
         ...dataSheets,
@@ -1440,17 +1503,26 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
 
 export async function exportPageAsCSV(title = 'page-export') {
     const { sheets } = extractPageExportData(document);
-    await exportCSVReportWorkbook(title, sheets);
+    await exportExcelReportWorkbook(title, sheets);
+}
+
+export async function exportExcelReportWorkbook(title = 'page-export', sheets = {}) {
+    const chartSheets = await collectChartSheets();
+    await exportWorkbook(`${title}_excel_report`, singleFileReportSheets(title, sheets, chartSheets));
 }
 
 export async function exportCSVReportWorkbook(title = 'page-export', sheets = {}) {
-    const chartSheets = await collectChartSheets();
-    await exportWorkbook(`${title}_csv_report`, singleFileReportSheets(title, sheets, chartSheets));
+    await exportExcelReportWorkbook(title, sheets);
 }
 
 export async function exportPageAsCSVReport(title = 'page-export') {
     const { sheets } = extractPageExportData();
-    await exportCSVReportWorkbook(title, sheets);
+    await exportExcelReportWorkbook(title, sheets);
+}
+
+export async function exportPageAsExcelReport(title = 'page-export') {
+    const { sheets } = extractPageExportData();
+    await exportExcelReportWorkbook(title, sheets);
 }
 
 export async function exportPageAsExcel(title = 'page-export') {
@@ -1466,7 +1538,7 @@ export async function exportChartAsCSV(title, chart) {
 export async function exportChartAsCSVReport(title, chart) {
     const chartTitle = title || 'Chart';
     const imageDataUrl = await renderChartImageDataUrl(chart);
-    await exportWorkbook(`${chartTitle}_csv_report`, {}, [{
+    await exportWorkbook(`${chartTitle}_excel_report`, {}, [{
         name: chartTitle,
         rows: chartToRows(chart, chartTitle),
         imageDataUrl,
