@@ -54,10 +54,53 @@ const REQUIRED_CATEGORIES = new Set([
   'uploaded_file',
 ]);
 
+const ALLOWED_ROLES = new Set([
+  'dean',
+  'executive',
+  'chair',
+  'instructor',
+  'staff',
+  'student',
+  'general',
+]);
+
+const REQUIRED_ROLES = new Set([
+  'dean',
+  'executive',
+  'chair',
+  'staff',
+  'student',
+  'general',
+]);
+
+const ALLOWED_PRIVACY_LEVELS = new Set([
+  'aggregate',
+  'public',
+  'student_scope',
+  'role_limited',
+  'row_level',
+  'locked',
+  'uploaded_file',
+  'uploaded_user_file',
+  'blocked_sensitive',
+]);
+
+const QUALITY_CATEGORIES = new Set([
+  'data_accuracy',
+  'source_grounding',
+  'guardrail',
+  'executive_summary',
+]);
+
 const issues = [];
 const ids = new Set();
 const intents = new Set();
 const categories = new Set();
+const roles = new Set();
+let chartCases = 0;
+let blockedCases = 0;
+let uploadedFileCases = 0;
+let publicOrStudentCases = 0;
 
 function fail(message) {
   issues.push(message);
@@ -80,6 +123,20 @@ if (!Array.isArray(aiExecutiveEvaluationSet)) {
     ids.add(item.id);
     intents.add(item.intent);
     categories.add(item.category);
+    roles.add(item.role);
+
+    if (!ALLOWED_ROLES.has(item.role)) {
+      fail(`${label}: unknown role "${item.role}".`);
+    }
+
+    if (!ALLOWED_PRIVACY_LEVELS.has(item.privacy)) {
+      fail(`${label}: unknown privacy level "${item.privacy}".`);
+    }
+
+    if (item.requiresChart === true) chartCases += 1;
+    if (item.intent === 'blocked_sensitive') blockedCases += 1;
+    if (item.intent === 'uploaded_file' || item.expectedDatasets?.includes('uploaded_file')) uploadedFileCases += 1;
+    if (item.role === 'student' || item.role === 'general' || item.intent === 'maejo_public') publicOrStudentCases += 1;
 
     if ('expectedAnswer' in item || 'answer' in item) {
       fail(`${label}: must not hardcode expected answers.`);
@@ -131,6 +188,19 @@ for (const requiredCategory of REQUIRED_CATEGORIES) {
   if (!categories.has(requiredCategory)) fail(`Missing required category "${requiredCategory}".`);
 }
 
+for (const requiredCategory of QUALITY_CATEGORIES) {
+  if (!categories.has(requiredCategory)) fail(`Missing quality category "${requiredCategory}".`);
+}
+
+for (const requiredRole of REQUIRED_ROLES) {
+  if (!roles.has(requiredRole)) fail(`Missing required role coverage "${requiredRole}".`);
+}
+
+if (chartCases < 8) fail(`Expected at least 8 chart cases, found ${chartCases}.`);
+if (blockedCases < 2) fail(`Expected at least 2 blocked-sensitive cases, found ${blockedCases}.`);
+if (uploadedFileCases < 2) fail(`Expected at least 2 uploaded-file cases, found ${uploadedFileCases}.`);
+if (publicOrStudentCases < 6) fail(`Expected at least 6 public/student cases, found ${publicOrStudentCases}.`);
+
 if (issues.length > 0) {
   console.error('AI executive evaluation set validation failed:');
   for (const issue of issues) console.error(`- ${issue}`);
@@ -140,3 +210,5 @@ if (issues.length > 0) {
 console.log(`PASS AI executive evaluation set: ${aiExecutiveEvaluationSet.length} cases`);
 console.log(`PASS Categories covered: ${[...categories].sort().join(', ')}`);
 console.log(`PASS Intents covered: ${[...intents].sort().join(', ')}`);
+console.log(`PASS Roles covered: ${[...roles].sort().join(', ')}`);
+console.log(`PASS Chart/blocked/uploaded coverage: ${chartCases}/${blockedCases}/${uploadedFileCases}`);

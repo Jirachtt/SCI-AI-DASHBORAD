@@ -270,6 +270,9 @@ export function getMjuConnectedDataSummary(user = {}) {
     const domains = MJU_CONNECTED_DATA_DOMAINS.map(domain => ({
         id: domain.id,
         label: domain.label,
+        scope: domain.scope,
+        sensitive: domain.sensitive,
+        endpointTodo: domain.endpointTodo,
         ...getMjuConnectedDataStatus(user, domain.id),
     }));
     const counts = domains.reduce((acc, item) => {

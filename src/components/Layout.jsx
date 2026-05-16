@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AIChat from './AIChat';
 import MjuConnectedConsent from './MjuConnectedConsent';
+import DataSourceStatusPill from './DataSourceStatusPill';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Activity, Menu, Sun, Moon, ShieldCheck } from 'lucide-react';
@@ -107,6 +108,7 @@ export default function Layout() {
                                 <Activity size={14} />
                                 Live Data
                             </span>
+                            <DataSourceStatusPill />
                             {user?.mjuVerified && (
                                 <span className="header-status-pill header-status-mju">
                                     <ShieldCheck size={14} />

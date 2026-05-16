@@ -6,7 +6,7 @@ import { collection, doc, getDocs, orderBy, query, updateDoc } from 'firebase/fi
 import {
     Shield, Users, Clock, Briefcase, Building, Check, X, Search, Filter,
     RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
-    Database, ScrollText, ShieldCheck
+    Database, ScrollText, ShieldCheck, Activity
 } from 'lucide-react';
 import { canManageUsers, getRoleBadgeColor, getRoleInfo, isPendingRole } from '../utils/accessControl';
 import {
@@ -23,6 +23,7 @@ import AdminDataUpload from '../components/AdminDataUpload';
 import AdminAuditLog from '../components/AdminAuditLog';
 import AdminAutoSyncPanel from '../components/AdminAutoSyncPanel';
 import AdminDataAccuracyPanel from '../components/AdminDataAccuracyPanel';
+import AdminAIUsagePanel from '../components/AdminAIUsagePanel';
 import ExportPDFButton from '../components/ExportPDFButton';
 
 const MANAGEABLE_ROLES = ['executive', 'dean', 'chair', 'instructor', 'staff', 'student', 'general'];
@@ -507,6 +508,12 @@ export default function AdminPanelPage() {
                     <ShieldCheck size={16} /> Data Accuracy
                 </button>
                 <button
+                    className={`admin-tab ${activeTab === 'ai-usage' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('ai-usage')}
+                >
+                    <Activity size={16} /> AI Usage
+                </button>
+                <button
                     className={`admin-tab ${activeTab === 'audit' ? 'active' : ''}`}
                     onClick={() => setActiveTab('audit')}
                 >
@@ -756,6 +763,13 @@ export default function AdminPanelPage() {
             {activeTab === 'accuracy' && (
                 <div className="admin-tab-panel">
                     <AdminDataAccuracyPanel onToast={showToast} />
+                </div>
+            )}
+
+            {/* AI usage tab */}
+            {activeTab === 'ai-usage' && (
+                <div className="admin-tab-panel">
+                    <AdminAIUsagePanel onToast={showToast} />
                 </div>
             )}
 

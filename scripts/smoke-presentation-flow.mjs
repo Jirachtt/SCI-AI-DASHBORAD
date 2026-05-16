@@ -16,12 +16,17 @@ function expect(name, condition, detail = '') {
 
 const aiChat = read('src/components/AIChat.jsx');
 const aiChatPage = read('src/pages/AIChatPage.jsx');
+const layout = read('src/components/Layout.jsx');
+const dataSourceStatusPill = read('src/components/DataSourceStatusPill.jsx');
 const instantAnswerService = read('src/services/aiInstantAnswerService.js');
 const dataAccuracy = read('src/services/dataAccuracyService.js');
 const dashboardLiveData = read('src/services/dashboardLiveDataService.js');
 const autoSyncPanel = read('src/components/AdminAutoSyncPanel.jsx');
 const uploadPanel = read('src/components/AdminDataUpload.jsx');
 const adminPanel = read('src/pages/AdminPanelPage.jsx');
+const adminAIUsagePanel = read('src/components/AdminAIUsagePanel.jsx');
+const mjuConnectedPanel = read('src/components/MjuConnectedPagePanel.jsx');
+const mjuConnectedDataService = read('src/services/mjuConnectedDataService.js');
 const geminiService = read('src/services/geminiService.js');
 const aiOrchestrator = read('src/services/aiOrchestrator.js');
 const aiContextRegistry = read('src/services/aiContextRegistry.js');
@@ -85,6 +90,23 @@ expect(
   'Data Accuracy admin tab is wired',
   /AdminDataAccuracyPanel/.test(adminPanel) && /Data Accuracy/.test(adminPanel),
   'Admin can verify student totals and source health before presenting.'
+);
+
+expect(
+  'Data Accuracy is visible in the global header',
+  /DataSourceStatusPill/.test(layout)
+    && /ensureDataAccuracy/.test(dataSourceStatusPill)
+    && /studentReconcile/.test(dataSourceStatusPill),
+  'Every page should show whether official totals and roster rows are aligned.'
+);
+
+expect(
+  'AI quota monitor is wired into Admin',
+  /AdminAIUsagePanel/.test(adminPanel)
+    && /AI Usage/.test(adminPanel)
+    && /\/api\/ai-usage/.test(adminAIUsagePanel)
+    && /serverBacked/.test(adminAIUsagePanel),
+  'Admin needs production usage/quota visibility before and during presentation.'
 );
 
 expect(
@@ -152,6 +174,15 @@ expect(
 );
 
 expect(
+  'MJU Connected panel exposes data status and endpoint gaps',
+  /mju-page-status-strip/.test(mjuConnectedPanel)
+    && /endpointTodo/.test(mjuConnectedPanel)
+    && /scope/.test(mjuConnectedDataService)
+    && /sensitive/.test(mjuConnectedDataService),
+  'Users should see what MJU data is connected, waiting for consent, unavailable, or unauthorized.'
+);
+
+expect(
   'Firestore rules prevent self role escalation',
   /safeSelfUserUpdate/.test(rules)
     && /get\('role', null\) == resource\.data\.get\('role', null\)/.test(rules)
@@ -208,6 +239,15 @@ expect(
     && aiExecutiveEvaluationSet.some(item => item.intent === 'chart')
     && aiExecutiveEvaluationSet.some(item => item.intent === 'blocked_sensitive'),
   'Use npm run eval:executive to verify decision prompts, chart prompts, and role-denied prompts.'
+);
+
+expect(
+  'Role and stability audits are registered',
+  packageJson.scripts?.['audit:roles'] === 'node scripts/validate-role-access-matrix.mjs'
+    && /eval:executive/.test(packageJson.scripts?.['verify:stability'] || '')
+    && /audit:roles/.test(packageJson.scripts?.['verify:stability'] || '')
+    && /smoke:presentation/.test(packageJson.scripts?.['verify:stability'] || ''),
+  'Run npm run verify:stability before a presentation freeze.'
 );
 
 const failed = results.filter(item => !item.ok);

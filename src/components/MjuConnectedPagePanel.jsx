@@ -58,6 +58,12 @@ export default function MjuConnectedPagePanel({
             : summary.domains;
         return list.slice(0, compact ? 4 : 6);
     }, [compact, domains, summary.domains]);
+    const statusChips = [
+        { key: 'connected', label: 'เชื่อมแล้ว', value: summary.connectedCount },
+        { key: 'partial', label: 'รอ consent/ข้อมูล', value: summary.partialCount },
+        { key: 'unavailable', label: 'รอ API', value: summary.unavailableCount },
+        { key: 'unauthorized', label: 'นอกสิทธิ์', value: summary.unauthorizedCount },
+    ].filter(item => item.value > 0);
 
     if (!user?.mjuVerified || selectedDomains.length === 0) return null;
 
@@ -77,6 +83,14 @@ export default function MjuConnectedPagePanel({
                 </div>
             </div>
 
+            <div className="mju-page-status-strip">
+                {statusChips.map(item => (
+                    <span key={item.key} className={`mju-page-status-chip ${item.key}`}>
+                        {item.label} <strong>{item.value}</strong>
+                    </span>
+                ))}
+            </div>
+
             <div className="mju-page-domain-grid">
                 {selectedDomains.map(domain => {
                     const Icon = STATUS_ICON[domain.status] || Database;
@@ -94,6 +108,9 @@ export default function MjuConnectedPagePanel({
                                 <span>{domain.source}</span>
                                 <span>{formatDate(domain.lastUpdated)}</span>
                             </div>
+                            {domain.status === 'unavailable' && domain.endpointTodo ? (
+                                <small className="mju-page-domain-todo">รอ endpoint: {domain.endpointTodo}</small>
+                            ) : null}
                         </article>
                     );
                 })}

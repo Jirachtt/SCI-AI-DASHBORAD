@@ -1,4 +1,4 @@
-import { canAccess, getRoleInfo } from './accessControl';
+import { canAccess, getRoleInfo } from './accessControl.js';
 
 const UNRESTRICTED_AI_ROLES = new Set(['dean', 'executive']);
 

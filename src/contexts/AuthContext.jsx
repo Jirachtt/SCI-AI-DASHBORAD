@@ -101,13 +101,16 @@ const firstClaimValue = (claims = {}, keys = []) => {
 
 const MJU_CLAIM_PERSIST_KEYS = [
     'mjuVerified', 'mjuId', 'mjuRole', 'mjuUserType', 'studentId', 'studentID', 'studentCode',
-    'employeeId', 'personID', 'humanID', 'username', 'email', 'name', 'displayName', 'faculty',
+    'employeeId', 'employeeCode', 'personID', 'humanID', 'username', 'email', 'name', 'displayName',
+    'photoURL', 'pictureUrl', 'personnelPhoto', 'titleName', 'firstName', 'lastName',
+    'titleNameEn', 'firstNameEn', 'lastNameEn', 'faculty',
     'department', 'major', 'majorName', 'program', 'programName', 'curriculum', 'yearLevel', 'year',
     'studentYear', 'classYear', 'position', 'positionName', 'personType', 'gpax', 'gpa', 'gradePointAverage',
     'earnedCredits', 'totalCredits', 'creditEarned', 'completedCredits', 'requiredCredits',
     'creditRequired', 'graduationCredits', 'activityHoursCompleted', 'completedActivityHours',
     'activityHours', 'activityHoursTarget', 'requiredActivityHours', 'completedActivityEvents',
-    'requiredActivityEvents',
+    'activityEventsCompleted', 'requiredActivityEvents', 'activityEventsRequired',
+    'minimumGpax', 'requiredGpax', 'academicYear', 'currentSemester', 'graduationStatus',
 ];
 
 const buildMjuLinkedDataFromClaims = (claims = {}) => {

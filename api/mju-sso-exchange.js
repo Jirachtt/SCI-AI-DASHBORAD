@@ -150,6 +150,11 @@ function fullNameFromMjuData(data = {}) {
   return `${title}${firstName}${lastName ? ` ${lastName}` : ''}`.trim();
 }
 
+function optionalValue(data, keys) {
+  const value = firstValue(data, keys);
+  return value || undefined;
+}
+
 export function buildClaims(data = {}) {
   const studentId = firstValue(data, ['studentId', 'studentID', 'studentCode']);
   const employeeId = firstValue(data, ['employeeId', 'personID', 'humanID']);
@@ -176,6 +181,24 @@ export function buildClaims(data = {}) {
     yearLevel: firstValue(data, ['yearLevel', 'year', 'studentYear', 'classYear']),
     position: firstValue(data, ['position', 'positionName', 'jobTitle', 'title']),
     personType: firstValue(data, ['personType', 'personnelType', 'userGroup']),
+    username: optionalValue(data, ['username', 'userName', 'loginName']),
+    titleName: optionalValue(data, ['titleName', 'titleNameTh']),
+    firstName: optionalValue(data, ['firstName', 'firstNameTh']),
+    lastName: optionalValue(data, ['lastName', 'lastNameTh']),
+    titleNameEn: optionalValue(data, ['titleNameEn', 'titleNameEN']),
+    firstNameEn: optionalValue(data, ['firstNameEn', 'firstNameEN']),
+    lastNameEn: optionalValue(data, ['lastNameEn', 'lastNameEN']),
+    gpax: optionalValue(data, ['gpax', 'gpa', 'gradePointAverage', 'cumGpa', 'cumulativeGpa']),
+    earnedCredits: optionalValue(data, ['earnedCredits', 'totalCredits', 'creditEarned', 'completedCredits']),
+    requiredCredits: optionalValue(data, ['requiredCredits', 'creditRequired', 'graduationCredits']),
+    minimumGpax: optionalValue(data, ['minimumGpax', 'requiredGpax']),
+    activityHoursCompleted: optionalValue(data, ['activityHoursCompleted', 'completedActivityHours', 'activityHours']),
+    activityHoursTarget: optionalValue(data, ['activityHoursTarget', 'requiredActivityHours']),
+    completedActivityEvents: optionalValue(data, ['completedActivityEvents', 'activityEventsCompleted']),
+    requiredActivityEvents: optionalValue(data, ['requiredActivityEvents', 'activityEventsRequired']),
+    academicYear: optionalValue(data, ['academicYear', 'studyYear']),
+    currentSemester: optionalValue(data, ['currentSemester', 'semester', 'term']),
+    graduationStatus: optionalValue(data, ['graduationStatus', 'graduateStatus', 'completionStatus']),
   };
 }
 
