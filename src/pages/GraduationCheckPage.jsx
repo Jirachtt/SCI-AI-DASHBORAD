@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import ExportPDFButton from '../components/ExportPDFButton';
+import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 import {
     SCIENCE_ACTIVITY_REQUIREMENT,
     formatScienceActivityDate,
@@ -72,6 +73,12 @@ export default function GraduationCheckPage() {
                     <ExportPDFButton title="graduation_requirements" />
                 </div>
             </div>
+
+            <MjuConnectedPagePanel
+                domains={['profile', 'grades', 'activities', 'graduation']}
+                title="ข้อมูลเงื่อนไขจบจากบัญชี MJU"
+                description="เกรด หน่วยกิต ชั่วโมงกิจกรรม และสถานะจบรายบุคคลจะแสดงจากระบบ MJU เมื่อเชื่อม endpoint จริงแล้วเท่านั้น"
+            />
 
             <section className={`graduation-mju-link-banner ${linkedProfile.isMjuLinked ? 'linked' : 'idle'}`}>
                 <div>

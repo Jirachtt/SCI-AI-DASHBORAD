@@ -31,6 +31,7 @@ import { appendStudentAnswerSourceNote, buildDataAccuracyContextForAI, getStuden
 import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
 import { exportChartAsCSVReport } from '../utils/exportUtils';
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
+import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 import { tryInstantAnswer } from '../services/aiInstantAnswerService';
 import { createPlannedChartAnswer } from '../services/aiChartPlanner';
 import {
@@ -44,6 +45,7 @@ import {
     coerceStructuredAIResponseMarkdown,
     stripRawStructuredAIResponseText,
 } from '../utils/aiChartResponse';
+import { buildMjuConnectedContextForAI } from '../services/mjuConnectedDataService';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -1054,6 +1056,10 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
 
     const dataAccuracyContext = buildDataAccuracyContextForAI();
     let context = dataAccuracyContext ? `[DATA ACCURACY / SOURCE STATUS]\n${dataAccuracyContext}\n\n` : '';
+    const mjuConnectedContext = buildMjuConnectedContextForAI(userContext);
+    if (mjuConnectedContext) {
+        context += `[MJU CONNECTED IDENTITY]\n${mjuConnectedContext}\n\n`;
+    }
     if (adviceMode) {
         context += '[EXECUTIVE ADVICE DATA POLICY]\nคำถามนี้เป็นคำถามเชิงคำแนะนำ/วางแผน ให้ใช้ข้อมูลในเว็บก่อนเสมอ โดย live_official ใช้ได้เต็ม และ approved_reference เช่น TCAS จากประกาศทางการ/ไฟล์ในระบบใช้ตอบเชิงทิศทางได้พร้อมบอกข้อจำกัด ห้ามใช้ mock/demo/sample/generated เป็นฐานคำแนะนำเชิงบริหาร ถ้าข้อมูลไม่พร้อมจริงให้แจ้ง dataset ที่ต้อง sync/อัปโหลดก่อน\n\n';
     }
@@ -3609,6 +3615,13 @@ export default function AIChatPage() {
 
                 {/* Right Sidebar — Feature Cards */}
                 <div className="ai-chat-page-sidebar">
+                    <MjuConnectedPagePanel
+                        domains={['profile', 'grades', 'activities', 'finance', 'faculty_scope']}
+                        title="MJU context"
+                        description="AI ใช้ข้อมูลที่เชื่อมแล้วตามสิทธิ์ของบัญชีนี้"
+                        compact
+                    />
+
                     <h3><Sparkles size={16} /> Context ที่ AI ใช้อยู่</h3>
                     <div className="ai-context-source-list">
                         {contextSources.map((source) => (

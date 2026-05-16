@@ -170,22 +170,22 @@ expect(
 
 expect(
   'Student totals are locked to current MJU Dashboard aggregate',
-  /OFFICIAL_SCIENCE_STUDENT_TOTAL\s*=\s*1398/.test(officialStudentSnapshot)
-    && /OFFICIAL_STUDENT_TOTAL\s*=\s*16475/.test(officialStudentSnapshot)
-    && /totalStudents:\s*16475/.test(mockData)
-    && /total:\s*1398/.test(mockData)
-    && /totalStudents:\s*1398/.test(mockData),
+  /OFFICIAL_SCIENCE_STUDENT_TOTAL\s*=\s*1390/.test(officialStudentSnapshot)
+    && /OFFICIAL_STUDENT_TOTAL\s*=\s*16392/.test(officialStudentSnapshot)
+    && /totalStudents:\s*16392/.test(mockData)
+    && /total:\s*1390/.test(mockData)
+    && /totalStudents:\s*1390/.test(mockData),
   'Aggregate student totals must use MJU Dashboard official values, not roster row counts.'
 );
 
 expect(
   'Generated student roster matches current MJU Dashboard aggregate',
-  scienceStudentList.length === 1398
-    && studentListSummary.total === 1398
-    && studentListSummary.byYear.year1 === 408
-    && studentListSummary.byYear.year2 === 435
-    && studentListSummary.byYear.year3 === 345
-    && studentListSummary.byYear.year4 === 189
+  scienceStudentList.length === 1390
+    && studentListSummary.total === 1390
+    && studentListSummary.byYear.year1 === 406
+    && studentListSummary.byYear.year2 === 433
+    && studentListSummary.byYear.year3 === 343
+    && studentListSummary.byYear.year4 === 187
     && studentListSummary.graduate === 21
     && /STALE_GENERATED_ROW_COUNTS\s*=\s*new Set\(\[1451,\s*1452\]\)/.test(studentDataService)
     && /Generated mock roster/.test(studentDataService),

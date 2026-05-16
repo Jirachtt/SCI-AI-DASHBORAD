@@ -155,18 +155,27 @@ export function buildClaims(data = {}) {
   const employeeId = firstValue(data, ['employeeId', 'personID', 'humanID']);
   const id = firstValue(data, ['mjuId', 'studentId', 'studentID', 'studentCode', 'employeeId', 'personID', 'humanID', 'username', 'userId', 'uid']);
   const role = normalizeRole(data);
+  const major = firstValue(data, ['major', 'majorName', 'programMajor']);
+  const department = firstValue(data, ['department', 'division', 'departmentName']);
   return {
     mjuVerified: true,
     mjuId: id,
     studentId,
+    studentCode: studentId,
     employeeId,
+    employeeCode: employeeId,
     mjuRole: role,
     mjuUserType: firstValue(data, ['userType', 'mjuUserType', 'type']) || role,
     email: firstValue(data, ['email', 'mail', 'e_mail']),
     name: fullNameFromMjuData(data),
     photoURL: firstValue(data, ['photoURL', 'pictureUrl', 'personnelPhoto']),
-    department: firstValue(data, ['department', 'division', 'major']),
+    department: department || major,
     faculty: firstValue(data, ['faculty']),
+    major,
+    program: firstValue(data, ['program', 'programName', 'curriculum', 'courseProgram']),
+    yearLevel: firstValue(data, ['yearLevel', 'year', 'studentYear', 'classYear']),
+    position: firstValue(data, ['position', 'positionName', 'jobTitle', 'title']),
+    personType: firstValue(data, ['personType', 'personnelType', 'userGroup']),
   };
 }
 

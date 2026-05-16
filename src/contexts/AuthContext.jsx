@@ -23,6 +23,7 @@ import {
     readMjuSsoCallback,
     roleLabelForMjuRole
 } from '../services/mjuSsoService';
+import { normalizeMjuIdentity } from '../services/mjuConnectedDataService';
 
 const AuthContext = createContext(null);
 
@@ -101,7 +102,8 @@ const firstClaimValue = (claims = {}, keys = []) => {
 const MJU_CLAIM_PERSIST_KEYS = [
     'mjuVerified', 'mjuId', 'mjuRole', 'mjuUserType', 'studentId', 'studentID', 'studentCode',
     'employeeId', 'personID', 'humanID', 'username', 'email', 'name', 'displayName', 'faculty',
-    'department', 'position', 'positionName', 'personType', 'gpax', 'gpa', 'gradePointAverage',
+    'department', 'major', 'majorName', 'program', 'programName', 'curriculum', 'yearLevel', 'year',
+    'studentYear', 'classYear', 'position', 'positionName', 'personType', 'gpax', 'gpa', 'gradePointAverage',
     'earnedCredits', 'totalCredits', 'creditEarned', 'completedCredits', 'requiredCredits',
     'creditRequired', 'graduationCredits', 'activityHoursCompleted', 'completedActivityHours',
     'activityHours', 'activityHoursTarget', 'requiredActivityHours', 'completedActivityEvents',
@@ -134,6 +136,9 @@ const buildMjuLinkedDataFromClaims = (claims = {}) => {
 
 const buildMjuUserPatchFromClaims = (claims = {}, currentUser, createdAt = new Date().toISOString()) => {
     const role = normalizeMjuRoleFromClaims(claims);
+    const studentCode = claims.studentCode || claims.studentId || claims.studentID || null;
+    const employeeCode = claims.employeeCode || claims.employeeId || claims.personID || claims.humanID || null;
+    const major = claims.major || claims.majorName || claims.programMajor || null;
     return {
         name: claims.name || claims.displayName || currentUser.displayName || 'MJU User',
         email: currentUser.email || claims.email || '',
@@ -144,13 +149,30 @@ const buildMjuUserPatchFromClaims = (claims = {}, currentUser, createdAt = new D
         status: 'approved',
         authProvider: claims.authProvider || 'mju_sso',
         mjuVerified: true,
-        mjuId: claims.mjuId || claims.studentId || claims.studentID || claims.studentCode || claims.employeeId || claims.personID || claims.humanID || claims.username || null,
-        studentId: claims.studentId || claims.studentID || claims.studentCode || null,
-        employeeId: claims.employeeId || claims.personID || claims.humanID || null,
-        department: claims.department || claims.faculty || null,
+        mjuConnectedAt: new Date().toISOString(),
+        mjuIdentityStatus: 'connected',
+        mjuId: claims.mjuId || studentCode || employeeCode || claims.username || null,
+        studentId: studentCode,
+        studentCode,
+        employeeId: employeeCode,
+        employeeCode,
+        department: claims.department || claims.departmentName || claims.division || major || claims.faculty || null,
         faculty: claims.faculty || null,
+        major,
+        program: claims.program || claims.programName || claims.curriculum || claims.courseProgram || null,
+        yearLevel: claims.yearLevel || claims.year || claims.studentYear || claims.classYear || null,
+        position: claims.position || claims.positionName || claims.jobTitle || claims.title || null,
+        personType: claims.personType || claims.personnelType || claims.userGroup || claims.mjuUserType || null,
         ...buildMjuLinkedDataFromClaims(claims),
         ...buildRoleValidityPatch(role, createdAt),
+    };
+};
+
+const withMjuIdentity = (payload = {}) => {
+    if (!payload?.mjuVerified && payload?.authProvider !== 'mju_sso') return payload;
+    return {
+        ...payload,
+        mjuIdentity: normalizeMjuIdentity(payload),
     };
 };
 
@@ -278,7 +300,7 @@ export function AuthProvider({ children }) {
                                 console.warn('[Auth] Failed to normalize role label:', err?.message || err);
                             });
                         }
-                        setUser(prev => ({
+                        setUser(prev => withMjuIdentity({
                             ...prev,
                             ...userData,
                             assignedRole: role,
@@ -291,7 +313,13 @@ export function AuthProvider({ children }) {
                             requestedRole: userData.requestedRole || null,
                             status: userData.status || 'approved',
                             employeeId: userData.employeeId || null,
+                            employeeCode: userData.employeeCode || userData.employeeId || null,
+                            studentCode: userData.studentCode || userData.studentId || null,
                             department: userData.department || null,
+                            faculty: userData.faculty || null,
+                            major: userData.major || null,
+                            program: userData.program || null,
+                            yearLevel: userData.yearLevel || null,
                             approvedBy: userData.approvedBy || null,
                             approvedAt: userData.approvedAt || null
                         }));
@@ -303,7 +331,7 @@ export function AuthProvider({ children }) {
                         };
                         await setDoc(userDocRef, newDoc);
                         if (!mounted) return;
-                        setUser(prev => ({ ...prev, ...newDoc, role: newDoc.role }));
+                        setUser(prev => withMjuIdentity({ ...prev, ...newDoc, role: newDoc.role }));
                     } else if (currentUser.providerData?.some(p => p.providerId === 'google.com')) {
                         // First-time Google sign-in — provision a student doc.
                         const createdAt = new Date().toISOString();
@@ -319,7 +347,7 @@ export function AuthProvider({ children }) {
                         };
                         await setDoc(userDocRef, newDoc);
                         if (!mounted) return;
-                        setUser(prev => ({ ...prev, ...newDoc, role: 'student' }));
+                        setUser(prev => withMjuIdentity({ ...prev, ...newDoc, role: 'student' }));
                     }
                 } catch (err) {
                     console.error("Error fetching user data:", err);

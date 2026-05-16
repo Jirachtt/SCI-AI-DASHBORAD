@@ -1,24 +1,24 @@
-export const OFFICIAL_STUDENT_SNAPSHOT_DATE = '2026-05-12';
+export const OFFICIAL_STUDENT_SNAPSHOT_DATE = '2026-05-16';
 export const OFFICIAL_STUDENT_SOURCE_URL = 'https://dashboard.mju.ac.th/student';
 
 export const OFFICIAL_STUDENT_LEVELS = [
     { key: 'certificate', level: 'ประกาศนียบัตร', count: 73, color: '#059669', icon: 'Cert' },
-    { key: 'bachelor', level: 'ปริญญาตรี', count: 15776, color: '#006838', icon: 'BSc' },
+    { key: 'bachelor', level: 'ปริญญาตรี', count: 15693, color: '#006838', icon: 'BSc' },
     { key: 'master', level: 'ปริญญาโท', count: 417, color: '#2E86AB', icon: 'MSc' },
     { key: 'doctoral', level: 'ปริญญาเอก', count: 209, color: '#A23B72', icon: 'PhD' },
 ];
 
 export const OFFICIAL_SCIENCE_STUDENT_LEVELS = [
     { key: 'certificate', level: 'ประกาศนียบัตร', count: 0, color: '#059669', icon: 'Cert' },
-    { key: 'bachelor', level: 'ปริญญาตรี', count: 1377, color: '#006838', icon: 'BSc' },
+    { key: 'bachelor', level: 'ปริญญาตรี', count: 1369, color: '#006838', icon: 'BSc' },
     { key: 'master', level: 'ปริญญาโท', count: 16, color: '#2E86AB', icon: 'MSc' },
     { key: 'doctoral', level: 'ปริญญาเอก', count: 5, color: '#A23B72', icon: 'PhD' },
 ];
 
 export const OFFICIAL_STUDENT_FACULTY_ROWS = [
-    { name: 'คณะบริหารธุรกิจ', certificate: 0, bachelor: 3640, master: 56, doctoral: 8, total: 3704 },
+    { name: 'คณะบริหารธุรกิจ', certificate: 0, bachelor: 3565, master: 56, doctoral: 8, total: 3629 },
     { name: 'คณะผลิตกรรมการเกษตร', certificate: 0, bachelor: 1878, master: 90, doctoral: 79, total: 2047 },
-    { name: 'คณะวิทยาศาสตร์', certificate: 0, bachelor: 1377, master: 16, doctoral: 5, total: 1398 },
+    { name: 'คณะวิทยาศาสตร์', certificate: 0, bachelor: 1369, master: 16, doctoral: 5, total: 1390 },
     { name: 'คณะสารสนเทศและการสื่อสาร', certificate: 0, bachelor: 1229, master: 0, doctoral: 0, total: 1229 },
     { name: 'วิทยาลัยบริหารศาสตร์', certificate: 0, bachelor: 942, master: 59, doctoral: 12, total: 1013 },
     { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ เฉลิมพระเกียรติ', certificate: 0, bachelor: 872, master: 54, doctoral: 0, total: 926 },
@@ -37,11 +37,11 @@ export const OFFICIAL_STUDENT_FACULTY_ROWS = [
     { name: 'โครงการ', certificate: 73, bachelor: 0, master: 0, doctoral: 0, total: 73 },
 ];
 
-export const OFFICIAL_STUDENT_TOTAL = 16475;
-export const OFFICIAL_SCIENCE_STUDENT_TOTAL = 1398;
+export const OFFICIAL_STUDENT_TOTAL = 16392;
+export const OFFICIAL_SCIENCE_STUDENT_TOTAL = 1390;
 
-const STALE_SCIENCE_TOTALS = new Set([1399, 1451, 1452]);
-const STALE_CURRENT_TOTALS = new Set([16505, 16506, 16834, 16839]);
+const STALE_SCIENCE_TOTALS = new Set([1398, 1399, 1451, 1452]);
+const STALE_CURRENT_TOTALS = new Set([16475, 16505, 16506, 16834, 16839]);
 const SCIENCE_MATCH = 'วิทยาศาสตร์';
 
 function clone(value) {

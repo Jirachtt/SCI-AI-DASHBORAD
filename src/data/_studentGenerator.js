@@ -101,14 +101,14 @@ function makeStudent(rng, id, major, level, year) {
 }
 
 const DEFAULT_BACHELOR_YEAR_TARGETS = [
-    { cohortCode: '65', year: 4, target: 189 },
-    { cohortCode: '66', year: 3, target: 345 },
-    { cohortCode: '67', year: 2, target: 435 },
-    { cohortCode: '68', year: 1, target: 408 },
+    { cohortCode: '65', year: 4, target: 187 },
+    { cohortCode: '66', year: 3, target: 343 },
+    { cohortCode: '67', year: 2, target: 433 },
+    { cohortCode: '68', year: 1, target: 406 },
 ];
 
 const DEFAULT_LEVEL_TARGETS = {
-    bachelor: 1377,
+    bachelor: 1369,
     master: 16,
     doctoral: 5,
     certificate: 0,

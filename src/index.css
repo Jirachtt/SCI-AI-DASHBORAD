@@ -4195,6 +4195,271 @@ html {
   background: linear-gradient(135deg, rgba(0, 166, 81, 0.12), rgba(197, 160, 40, 0.08));
 }
 
+.settings-mju-card {
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid rgba(0, 166, 81, 0.2);
+  border-radius: 14px;
+  background: rgba(0, 166, 81, 0.06);
+}
+
+.settings-mju-head,
+.settings-mju-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.settings-mju-head {
+  margin-bottom: 9px;
+}
+
+.settings-mju-list {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-mju-row {
+  min-height: 25px;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+.settings-mju-row > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-mju-pill,
+.settings-mju-status {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.settings-mju-pill,
+.settings-mju-status.connected {
+  background: rgba(16, 185, 129, 0.16);
+  color: #059669;
+}
+
+.settings-mju-status.partial {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+}
+
+.settings-mju-status.unavailable {
+  background: rgba(100, 116, 139, 0.16);
+  color: #64748b;
+}
+
+.settings-mju-status.unauthorized,
+.settings-mju-status.error {
+  background: rgba(239, 68, 68, 0.13);
+  color: #dc2626;
+}
+
+.mju-page-panel {
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--mju-green) 20%, var(--surface-border));
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--mju-green) 8%, transparent), transparent 56%),
+    color-mix(in srgb, var(--surface-card) 94%, transparent);
+  box-shadow: 0 16px 36px -32px rgba(0, 0, 0, 0.45);
+}
+
+.mju-page-panel.compact {
+  padding: 12px;
+  border-radius: 14px;
+}
+
+.mju-page-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.mju-page-kicker,
+.mju-page-identity,
+.mju-page-domain-top,
+.mju-page-domain-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mju-page-kicker {
+  color: var(--mju-green-light);
+  font-size: 0.74rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+}
+
+.mju-page-panel h3 {
+  margin: 4px 0 4px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.mju-page-panel p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.mju-page-identity {
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--mju-green) 18%, var(--surface-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-panel) 72%, var(--mju-green) 7%);
+  text-align: right;
+}
+
+.mju-page-identity strong {
+  color: var(--text-primary);
+  font-size: 0.82rem;
+}
+
+.mju-page-identity span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.mju-page-domain-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.mju-page-panel.compact .mju-page-domain-grid {
+  grid-template-columns: 1fr;
+}
+
+.mju-page-domain {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--surface-border);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--surface-card) 86%, transparent);
+}
+
+.mju-page-domain.connected {
+  border-color: rgba(16, 185, 129, 0.24);
+}
+
+.mju-page-domain.partial {
+  border-color: rgba(245, 158, 11, 0.24);
+}
+
+.mju-page-domain.unauthorized,
+.mju-page-domain.error {
+  border-color: rgba(239, 68, 68, 0.22);
+}
+
+.mju-page-domain-top {
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.mju-page-domain-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--mju-green-light);
+}
+
+.mju-page-domain strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.mju-page-domain p {
+  margin-top: 5px;
+  font-size: 0.76rem;
+}
+
+.mju-page-status {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.mju-page-status.connected {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.mju-page-status.partial {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+
+.mju-page-status.unavailable {
+  background: rgba(100, 116, 139, 0.16);
+  color: #64748b;
+}
+
+.mju-page-status.unauthorized,
+.mju-page-status.error {
+  background: rgba(239, 68, 68, 0.13);
+  color: #dc2626;
+}
+
+.mju-page-domain-meta {
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 0.69rem;
+}
+
+.mju-page-domain-meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-chat-page-sidebar .mju-page-panel {
+  margin-bottom: 14px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.ai-chat-page-sidebar .mju-page-panel-head {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-chat-page-sidebar .mju-page-identity {
+  width: 100%;
+  align-items: flex-start;
+  text-align: left;
+}
+
 .settings-token-head {
   display: flex;
   align-items: center;
@@ -4259,6 +4524,117 @@ html {
 
 .settings-logout-row:hover {
   background: rgba(239, 68, 68, 0.11);
+}
+
+.mju-consent-panel {
+  position: fixed;
+  right: 22px;
+  bottom: 92px;
+  z-index: 1500;
+  width: min(420px, calc(100vw - 28px));
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid rgba(0, 166, 81, 0.24);
+  border-radius: 18px;
+  background: var(--surface-card);
+  box-shadow: 0 28px 70px -36px rgba(0, 0, 0, 0.6);
+}
+
+.mju-consent-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+  background: var(--surface-panel-soft);
+  color: var(--text-secondary);
+}
+
+.mju-consent-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--mju-green), #10b981);
+  color: #fff;
+  box-shadow: 0 16px 34px -24px rgba(0, 166, 81, 0.8);
+}
+
+.mju-consent-body {
+  min-width: 0;
+  padding-right: 22px;
+}
+
+.mju-consent-body strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+  font-size: 0.96rem;
+}
+
+.mju-consent-body p {
+  margin: 0 0 9px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.mju-consent-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 11px;
+}
+
+.mju-consent-meta span {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(0, 166, 81, 0.1);
+  color: var(--mju-green-light);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.mju-consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mju-consent-actions button {
+  min-height: 36px;
+  border: 1px solid rgba(0, 166, 81, 0.26);
+  border-radius: 11px;
+  padding: 0 12px;
+  background: var(--mju-green);
+  color: #fff;
+  font-weight: 850;
+}
+
+.mju-consent-actions button.secondary {
+  background: var(--surface-panel-soft);
+  color: var(--text-secondary);
+}
+
+@media (max-width: 640px) {
+  .mju-consent-panel {
+    right: 12px;
+    bottom: 80px;
+    grid-template-columns: 1fr;
+  }
+
+  .mju-consent-body {
+    padding-right: 0;
+  }
 }
 
 [data-theme="light"] .settings-popover {
@@ -10626,12 +11002,22 @@ body {
   background: rgba(59, 130, 246, 0.09);
 }
 
+.header-status-mju {
+  color: #86efac;
+  border-color: rgba(134, 239, 172, 0.24);
+  background: rgba(22, 163, 74, 0.09);
+}
+
 [data-theme="light"] .header-status-live {
   color: #047857;
 }
 
 [data-theme="light"] .header-status-ai {
   color: #1d4ed8;
+}
+
+[data-theme="light"] .header-status-mju {
+  color: #047857;
 }
 
 .page-content {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
+import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
 import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText, BarChart3, Microscope, MousePointerClick } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
@@ -637,6 +638,12 @@ export default function StudentStatsPage() {
                     <ExportPDFButton title="สถิตินิสิตปัจจุบัน" />
                 </div>
             </div>
+
+            <MjuConnectedPagePanel
+                domains={['profile', 'enrollment', 'grades', 'faculty_scope']}
+                title="ข้อมูลนักศึกษาจากบัญชี MJU"
+                description="นักศึกษาเห็นเฉพาะข้อมูลตัวเอง ส่วนผู้บริหารใช้ยอดรวมจาก dashboard และไม่เปิดข้อมูลรายคนเกินสิทธิ์"
+            />
 
             {/* Knowledge Dynamic Dashboard — Filter Bar */}
             <div className="filter-bar">

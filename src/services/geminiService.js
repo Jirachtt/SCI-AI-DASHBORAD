@@ -46,6 +46,7 @@ import {
     formatAIOrchestrationPlanForPrompt,
 } from './aiOrchestrator';
 import { formatAIContextBundleForPrompt } from './aiContextRegistry';
+import { buildMjuConnectedContextForAI } from './mjuConnectedDataService';
 import { getAllAlerts } from '../utils/alerts';
 
 const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
@@ -1813,6 +1814,7 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
     const useMaejoWebMode = shouldUseWebSearch(userMessage);
     const localContexts = retrieveRelevantContexts(userMessage, userContext, settings);
     const dataAccuracyContext = buildDataAccuracyContextForAI();
+    const mjuConnectedContext = buildMjuConnectedContextForAI(userContext);
     const contexts = useMaejoWebMode
         ? [
             {
@@ -1859,6 +1861,9 @@ ${getSharedDashboardFreshnessContext()}
 
 DATA ACCURACY / SOURCE STATUS:
 ${dataAccuracyContext}
+
+MJU CONNECTED IDENTITY / PRIVACY:
+${mjuConnectedContext || 'ไม่มี MJU connected identity context สำหรับผู้ใช้นี้'}
 
 AI ORCHESTRATION / CONTEXT REGISTRY:
 ${formatAIOrchestrationPlanForPrompt(orchestrationPlan)}
