@@ -1782,6 +1782,69 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
         .map(c => ({ id: c.id, text: c.text() }));
 }
 
+function contextBudgetForIntent(intent, settings = {}) {
+    const configured = Number(settings.maxContextChars || 0);
+    if (Number.isFinite(configured) && configured > 2000) {
+        return { total: configured, perContext: Math.max(1200, Math.floor(configured / 4)) };
+    }
+    if (intent === 'executive_advice') return { total: 12000, perContext: 3000 };
+    if (intent === 'chart_analysis' || intent === 'chart') return { total: 14000, perContext: 3400 };
+    if (intent === 'web_lookup') return { total: 9000, perContext: 2200 };
+    return { total: 10000, perContext: 2600 };
+}
+
+function slimContextText(text, limit) {
+    const raw = String(text || '').trim();
+    if (raw.length <= limit) {
+        return { text: raw, originalChars: raw.length, slimmedChars: raw.length, truncated: false };
+    }
+    const headLength = Math.max(600, Math.floor(limit * 0.72));
+    const tailLength = Math.max(260, limit - headLength - 180);
+    const head = raw.slice(0, headLength).trimEnd();
+    const tail = raw.slice(-tailLength).trimStart();
+    const textOut = `${head}\n\n[context_slimmed: omitted ${(raw.length - head.length - tail.length).toLocaleString('en-US')} chars that were less relevant]\n\n${tail}`;
+    return {
+        text: textOut,
+        originalChars: raw.length,
+        slimmedChars: textOut.length,
+        truncated: true,
+    };
+}
+
+function slimRetrievedContexts(contexts = [], { intent, settings = {} } = {}) {
+    const budget = contextBudgetForIntent(intent, settings);
+    let remaining = budget.total;
+    let trimmedCount = 0;
+    const slimmed = [];
+
+    for (const context of contexts) {
+        if (!context?.text || remaining <= 0) continue;
+        const limit = Math.max(700, Math.min(budget.perContext, remaining));
+        const result = slimContextText(context.text, limit);
+        if (result.truncated) trimmedCount += 1;
+        remaining -= result.slimmedChars;
+        slimmed.push({
+            ...context,
+            text: result.text,
+            originalChars: result.originalChars,
+            slimmedChars: result.slimmedChars,
+            truncated: result.truncated,
+        });
+    }
+
+    return {
+        contexts: slimmed,
+        meta: {
+            totalBudgetChars: budget.total,
+            perContextBudgetChars: budget.perContext,
+            usedChars: slimmed.reduce((sum, context) => sum + Number(context.slimmedChars || 0), 0),
+            originalChars: slimmed.reduce((sum, context) => sum + Number(context.originalChars || 0), 0),
+            trimmedContextCount: trimmedCount,
+            droppedContextCount: Math.max(0, contexts.length - slimmed.length),
+        },
+    };
+}
+
 function maejoLocalFirstContext(userMessage, localContexts = []) {
     const privateLookup = isStudentPrivateLookupQuery(userMessage);
     const adviceMode = isExecutiveRecommendationIntent(userMessage);
@@ -1823,7 +1886,12 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
     const memory = getAIUserMemory(userContext);
     const orchestrationPlan = createAIOrchestrationPlan(userMessage, userContext);
     const useMaejoWebMode = shouldUseWebSearch(userMessage);
-    const localContexts = retrieveRelevantContexts(userMessage, userContext, settings);
+    const rawLocalContexts = retrieveRelevantContexts(userMessage, userContext, settings);
+    const slimmedLocal = slimRetrievedContexts(rawLocalContexts, {
+        intent: orchestrationPlan.intent,
+        settings,
+    });
+    const localContexts = slimmedLocal.contexts;
     const dataAccuracyContext = buildDataAccuracyContextForAI();
     const mjuConnectedContext = buildMjuConnectedContextForAI(userContext);
     const contexts = useMaejoWebMode
@@ -1839,7 +1907,12 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
             }
         ]
         : localContexts;
-    const contextText = contexts.map((c, idx) => `### Context ${idx + 1}: ${c.id}\n${c.text}`).join('\n\n');
+    const contextText = contexts.map((c, idx) => {
+        const slimmingNote = c.truncated
+            ? `\n[context metadata: originalChars=${c.originalChars}, keptChars=${c.slimmedChars}, slimmed=true]`
+            : '';
+        return `### Context ${idx + 1}: ${c.id}${slimmingNote}\n${c.text}`;
+    }).join('\n\n');
     const roleLabel = roleInfo?.label || userContext?.roleLabel || role;
     const accessNote = getAIAccessInstruction(role, useMaejoWebMode);
     const executiveRecommendationMode = isExecutiveRecommendationIntent(userMessage);
@@ -1907,7 +1980,14 @@ OUTPUT FORMAT:
 - ห้ามปล่อย raw JSON/dataset นอก block กราฟ
 
 RETRIEVED CONTEXTS:
-${contextText || 'ไม่มี context ที่เข้าถึงได้สำหรับคำถามนี้'}`;
+${contextText || 'ไม่มี context ที่เข้าถึงได้สำหรับคำถามนี้'}
+
+CONTEXT SELECTION / SLIMMING:
+- selectedContextCount=${localContexts.length}
+- originalChars=${slimmedLocal.meta.originalChars}
+- keptChars=${slimmedLocal.meta.usedChars}
+- trimmedContextCount=${slimmedLocal.meta.trimmedContextCount}
+- droppedContextCount=${slimmedLocal.meta.droppedContextCount}`;
 }
 
 // Conversation history for multi-turn chat
@@ -1963,7 +2043,13 @@ async function _sendMessageImpl(userMessage, options = {}) {
     if (wantsStructuredOutput) {
         finalMessage += `\n\n[System: Return a JSON object that matches the configured responseJsonSchema. Put user-facing Thai prose in "answer". Put chart config JSON as a string in "chartJson" only when a chart is needed. Fill "sources" with the retrieved dataset labels used and "actions" with 1-3 useful next actions.]`;
     }
-    const requestLocalContexts = retrieveRelevantContexts(originalQuestion, options.user || {}, settings);
+    const rawRequestLocalContexts = retrieveRelevantContexts(originalQuestion, options.user || {}, settings);
+    const requestContextBundle = slimRetrievedContexts(rawRequestLocalContexts, {
+        intent: orchestrationPlan.intent,
+        settings,
+    });
+    const requestLocalContexts = requestContextBundle.contexts;
+    const contextSlimming = requestContextBundle.meta;
     const selectedDatasets = requestLocalContexts.map(context => context.id).filter(Boolean);
     const responseCacheKey = buildAIResponseCacheKey({
         finalMessage,
@@ -1995,6 +2081,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
             deniedDatasets: orchestrationPlan.deniedDatasets || [],
             sourceCount: selectedDatasets.length,
             tokenEstimate: estimateTokens(finalMessage),
+            contextSlimming,
             latencyMs: Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - requestStartedAt),
             modelName: 'cache',
             useSearch,
@@ -2151,6 +2238,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 sourceCount: selectedDatasets.length,
                 tokenEstimate: estimateTokens(`${systemText}\n${finalMessage}`),
                 providerTokens: providerUsage.totalTokenCount || null,
+                contextSlimming,
                 latencyMs,
                 modelName: model,
                 useSearch,

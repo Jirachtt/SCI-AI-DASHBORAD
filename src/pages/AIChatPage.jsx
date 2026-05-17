@@ -1008,6 +1008,9 @@ export function formatUploadedFileContextForAI(uploadedFileData) {
         .join('\n');
     const warnings = (uploadedFileData.qualityWarnings || []).map(item => `- ${item}`).join('\n') || '- none';
     const suggestions = (uploadedFileData.suggestedQuestions || []).map(item => `- ${item}`).join('\n') || '- สรุป insight สำคัญจากไฟล์นี้';
+    const chartSuggestions = (uploadedFileData.recommendedCharts || [])
+        .map(item => `- ${item.type}: ${item.label} (${item.reason})`)
+        .join('\n') || '- none';
     const preview = (uploadedFileData.rows || [])
         .slice(0, 5)
         .map(row => (uploadedFileData.headers || []).map(header => `${header}=${row[header]}`).join(' | '))
@@ -1021,6 +1024,9 @@ export function formatUploadedFileContextForAI(uploadedFileData) {
         `numericColumns=${(uploadedFileData.numericCols || []).join(', ') || '-'}`,
         `labelColumn=${uploadedFileData.labelCol || '-'}`,
         `missingTotal=${uploadedFileData.missingValues?.total ?? 0}`,
+        `missingPercent=${uploadedFileData.missingValues?.percent ?? 0}`,
+        `analysisReadiness=${uploadedFileData.analysisReadiness?.label || 'unknown'} (${uploadedFileData.analysisReadiness?.score ?? '-'} / 100)`,
+        `columnTypeCounts=${JSON.stringify(uploadedFileData.columnTypeCounts || {})}`,
         `truncated=${uploadedFileData.truncated ? 'yes' : 'no'}`,
         'columnProfiles:',
         profileLines || '- none',
@@ -1028,6 +1034,8 @@ export function formatUploadedFileContextForAI(uploadedFileData) {
         aggregateLines || '- none',
         'qualityWarnings:',
         warnings,
+        'recommendedCharts:',
+        chartSuggestions,
         'suggestedQuestions:',
         suggestions,
         'previewRows:',
@@ -2558,6 +2566,75 @@ const SUGGESTED_PROMPTS = [
     { label: 'แม่โจ้อยู่ที่ไหน เดินทางยังไง', query: 'แม่โจ้อยู่ที่ไหน เดินทางยังไง' },
 ];
 
+function FileIntelligenceSummary({ fileData, onAsk, disabled = false }) {
+    if (!fileData) return null;
+    const readiness = fileData.analysisReadiness || {};
+    const missingPercent = fileData.missingValues?.percent ?? readiness.missingPercent ?? 0;
+    const typeCounts = fileData.columnTypeCounts || {};
+    const topColumns = (fileData.columnProfiles || []).slice(0, 6);
+    const suggestions = (fileData.suggestedQuestions || []).slice(0, 3);
+    const charts = (fileData.recommendedCharts || []).slice(0, 2);
+    const readinessState = readiness.status || 'partial';
+
+    return (
+        <section className={`ai-file-intelligence-card ${readinessState}`} aria-label="File intelligence summary">
+            <div className="ai-file-intelligence-head">
+                <div>
+                    <span>File Intelligence</span>
+                    <strong>{readiness.label || 'Ready for analysis'}</strong>
+                </div>
+                <b>{readiness.score ?? 0}/100</b>
+            </div>
+            <div className="ai-file-intelligence-metrics">
+                <div><span>Rows</span><strong>{Number(fileData.rowCount || 0).toLocaleString('th-TH')}</strong></div>
+                <div><span>Columns</span><strong>{(fileData.headers || []).length}</strong></div>
+                <div><span>Numeric</span><strong>{(fileData.numericCols || []).length}</strong></div>
+                <div><span>Missing</span><strong>{missingPercent}%</strong></div>
+            </div>
+            <div className="ai-file-intelligence-types">
+                {Object.entries(typeCounts).slice(0, 5).map(([type, count]) => (
+                    <span key={type}>{type}: {count}</span>
+                ))}
+                {fileData.truncated && <span className="warn">truncated</span>}
+            </div>
+            {topColumns.length > 0 && (
+                <div className="ai-file-column-profile">
+                    {topColumns.map(column => (
+                        <div key={column.name}>
+                            <strong>{column.name}</strong>
+                            <span>{column.type} • missing {column.missingPercent}% • unique {column.uniqueCount}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+            {(charts.length > 0 || suggestions.length > 0) && (
+                <div className="ai-file-suggestion-row">
+                    {charts.map(chart => (
+                        <button
+                            key={chart.label}
+                            type="button"
+                            onClick={() => onAsk?.(`สร้างกราฟ ${chart.label}`)}
+                            disabled={disabled}
+                        >
+                            <BarChart3 size={13} /> {chart.label}
+                        </button>
+                    ))}
+                    {suggestions.map(question => (
+                        <button
+                            key={question}
+                            type="button"
+                            onClick={() => onAsk?.(question)}
+                            disabled={disabled}
+                        >
+                            <Search size={13} /> {question}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </section>
+    );
+}
+
 export default function AIChatPage() {
     const { user } = useAuth();
     const { theme } = useTheme();
@@ -2614,6 +2691,19 @@ export default function AIChatPage() {
         { icon: FileSpreadsheet, label: 'ไฟล์วิเคราะห์', value: uploadedFileLabel, detail: uploadedFileData ? 'พร้อมนำไปรวมบริบท' : 'CSV / Excel', color: '#b45309' },
         { icon: Bot, label: 'Model ล่าสุด', value: aiRuntimeStatus.lastModelLabel, detail: aiRuntimeStatus.mode === 'auto' ? 'ต่ำไปสูงอัตโนมัติ' : 'manual override', color: '#4f46e5' },
         { icon: Gauge, label: 'Token คงเหลือ', value: tokenBudgetLabel, detail: tokenBudgetReady ? `${tokenBudget.remainingTokens.toLocaleString('th-TH')} tokens` : 'กำลังซิงก์ server', color: '#0891b2' },
+    ];
+    const answerVerification = lastAIMetadata?.answerVerification;
+    const contextSlimming = lastAIMetadata?.contextSlimming || {};
+    const verificationState = answerVerification?.status === 'warning' ? 'warn' : (answerVerification?.status ? 'ready' : 'idle');
+    const observabilityRows = [
+        { label: 'Intent', value: lastAIMetadata?.intent || 'waiting', detail: lastAIMetadata?.chartRequest ? 'chart request' : 'question router', state: lastAIMetadata ? 'ready' : 'idle' },
+        { label: 'Datasets', value: selectedDatasetLabel, detail: selectedDatasetDetail, state: lastAIMetadata ? 'ready' : 'idle' },
+        { label: 'Denied', value: lastAIMetadata?.deniedDatasets?.length ? lastAIMetadata.deniedDatasets.slice(0, 3).join(', ') : 'none', detail: 'role policy', state: lastAIMetadata?.deniedDatasets?.length ? 'warn' : 'ready' },
+        { label: 'Verification', value: answerVerification?.status || 'waiting', detail: answerVerification?.warningCount ? `${answerVerification.warningCount} warning` : `${answerVerification?.answerNumberCount || 0} numbers`, state: verificationState },
+        { label: 'Context budget', value: contextSlimming.usedChars ? `${contextSlimming.usedChars.toLocaleString('th-TH')} chars` : 'waiting', detail: contextSlimming.originalChars ? `from ${contextSlimming.originalChars.toLocaleString('th-TH')}` : 'selected per intent', state: contextSlimming.trimmedContextCount ? 'warn' : (lastAIMetadata ? 'ready' : 'idle') },
+        { label: 'Token estimate', value: lastAIMetadata?.tokenEstimate ? lastAIMetadata.tokenEstimate.toLocaleString('th-TH') : '-', detail: lastAIMetadata?.providerTokens ? `provider ${lastAIMetadata.providerTokens.toLocaleString('th-TH')}` : 'estimated', state: lastAIMetadata ? 'ready' : 'idle' },
+        { label: 'Latency', value: lastAIMetadata?.latencyMs ? `${lastAIMetadata.latencyMs}ms` : '-', detail: lastAIMetadata?.cached ? 'cache hit' : 'fresh response', state: lastAIMetadata ? 'ready' : 'idle' },
+        { label: 'Model route', value: lastAIMetadata?.modelName || aiRuntimeStatus.lastModelLabel, detail: lastAIMetadata?.useSearch ? 'trusted web fallback' : 'local-first', state: 'ready' },
     ];
     const contextSources = [
         { label: 'Student records', value: `${allStudentsForStatus.length.toLocaleString('th-TH')} คน`, state: isLiveData() ? 'live' : 'ready' },
@@ -2932,6 +3022,12 @@ export default function AIChatPage() {
             summaryText += `**คอลัมน์ตัวเลข:** ${parsed.numericCols.join(', ') || 'ไม่พบ'}\n`;
             summaryText += `**Schema:** ${parsed.schemaSummary || '-'}\n`;
             summaryText += `**Missing values:** ${parsed.missingValues?.total ?? 0} ช่องว่าง\n`;
+            if (parsed.analysisReadiness) {
+                summaryText += `**File readiness:** ${parsed.analysisReadiness.label} (${parsed.analysisReadiness.score}/100)\n`;
+            }
+            if (parsed.recommendedCharts?.length) {
+                summaryText += `**Recommended charts:** ${parsed.recommendedCharts.map(item => item.label).join(' | ')}\n`;
+            }
             if (parsed.qualityWarnings?.length) {
                 summaryText += `**Data quality:** ${parsed.qualityWarnings.join(' | ')}\n`;
             }
@@ -3196,6 +3292,13 @@ export default function AIChatPage() {
                             <X size={14} />
                         </button>
                     </div>
+                )}
+                {uploadedFileData && !isMinimal && (
+                    <FileIntelligenceSummary
+                        fileData={uploadedFileData}
+                        onAsk={handleQuickAction}
+                        disabled={typing}
+                    />
                 )}
                 <div className={`ai-chat-page-input-area ${isMinimal ? 'minimal' : ''}`}>
                     <button
@@ -3722,6 +3825,24 @@ export default function AIChatPage() {
                                     );
                                 })}
                             </div>
+                        </div>
+
+                        <div className="ai-system-info-section ai-observability-panel">
+                            <h4><Gauge size={15} /> AI Observability</h4>
+                            <div className="ai-observability-grid">
+                                {observabilityRows.map((item) => (
+                                    <div key={item.label} className={`ai-observability-item ${item.state}`}>
+                                        <span>{item.label}</span>
+                                        <strong>{item.value}</strong>
+                                        <small>{item.detail}</small>
+                                    </div>
+                                ))}
+                            </div>
+                            {answerVerification?.unsupportedNumbers?.length > 0 && (
+                                <div className="ai-observability-warning">
+                                    ตรวจพบตัวเลขที่ยังไม่ตรงกับ context: {answerVerification.unsupportedNumbers.slice(0, 6).join(', ')}
+                                </div>
+                            )}
                         </div>
 
                         <div className="ai-system-info-section">

@@ -29,6 +29,7 @@ const mjuConnectedPanel = read('src/components/MjuConnectedPagePanel.jsx');
 const mjuConnectedDataService = read('src/services/mjuConnectedDataService.js');
 const geminiService = read('src/services/geminiService.js');
 const aiAnswerVerifier = read('src/utils/aiAnswerVerifier.js');
+const fileParsers = read('src/utils/fileParsers.js');
 const aiOrchestrator = read('src/services/aiOrchestrator.js');
 const aiContextRegistry = read('src/services/aiContextRegistry.js');
 const aiChartPlanner = read('src/services/aiChartPlanner.js');
@@ -249,6 +250,30 @@ expect(
     && /extractNumericEvidence/.test(aiAnswerVerifier)
     && /answerVerification/.test(geminiService),
   'AI answers with unsupported numbers should be flagged and surfaced in debug metadata.'
+);
+
+expect(
+  'Context slimming is wired into Gemini prompts and metadata',
+  /slimRetrievedContexts/.test(geminiService)
+    && /contextSlimming/.test(geminiService)
+    && /CONTEXT SELECTION \/ SLIMMING/.test(geminiService),
+  'AI prompts should send only selected, budgeted context and report trimming metadata.'
+);
+
+expect(
+  'AI observability panel surfaces runtime and verification metadata',
+  /ai-observability-panel/.test(aiChatPage)
+    && /observabilityRows/.test(aiChatPage)
+    && /answerVerification/.test(aiChatPage),
+  'The AI system panel should show selected datasets, verification, token, latency, and context budget.'
+);
+
+expect(
+  'File intelligence upload UI exposes schema readiness and chart suggestions',
+  /FileIntelligenceSummary/.test(aiChatPage)
+    && /analysisReadiness/.test(fileParsers)
+    && /recommendedCharts/.test(fileParsers),
+  'Uploaded CSV/XLSX files should show schema health, missing values, and suggested chart/questions.'
 );
 
 expect(

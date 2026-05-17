@@ -170,11 +170,117 @@ function buildSuggestedQuestions(headers, numericCols, labelCol) {
     return [...new Set(suggestions)].slice(0, 5);
 }
 
+function countColumnTypes(columnProfiles) {
+    return columnProfiles.reduce((acc, column) => {
+        const type = column.type || 'unknown';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+    }, {});
+}
+
+function buildRecommendedCharts(numericCols, labelCol, columnProfiles) {
+    const dateColumn = columnProfiles.find(column => column.type === 'date')?.name;
+    const firstMetric = numericCols[0];
+    const secondMetric = numericCols[1];
+    const charts = [];
+
+    if (dateColumn && firstMetric) {
+        charts.push({
+            type: 'line',
+            label: `Trend: ${firstMetric} by ${dateColumn}`,
+            x: dateColumn,
+            y: firstMetric,
+            reason: 'date/time column with a numeric metric',
+        });
+    }
+    if (labelCol && firstMetric) {
+        charts.push({
+            type: 'bar',
+            label: `Compare: ${firstMetric} by ${labelCol}`,
+            x: labelCol,
+            y: firstMetric,
+            reason: 'category label with a numeric metric',
+        });
+    }
+    if (labelCol && firstMetric && secondMetric) {
+        charts.push({
+            type: 'bar',
+            label: `Compare: ${firstMetric} vs ${secondMetric}`,
+            x: labelCol,
+            y: [firstMetric, secondMetric],
+            reason: 'two numeric metrics are available for comparison',
+        });
+    }
+
+    return charts.slice(0, 4);
+}
+
+function buildAnalysisReadiness({ rowCount, headers, numericCols, labelCol, missingTotal, truncated }) {
+    const cellCount = Math.max(1, rowCount * Math.max(1, headers.length));
+    const missingPercent = Number(((missingTotal / cellCount) * 100).toFixed(1));
+    let score = 100;
+    const reasons = [];
+
+    if (rowCount === 0) {
+        score -= 70;
+        reasons.push('no data rows detected');
+    }
+    if (headers.length < 2) {
+        score -= 20;
+        reasons.push('fewer than two columns');
+    }
+    if (numericCols.length === 0) {
+        score -= 25;
+        reasons.push('no numeric column for charts or aggregates');
+    }
+    if (!labelCol) {
+        score -= 10;
+        reasons.push('no clear label/category column');
+    }
+    if (missingPercent >= 20) {
+        score -= 20;
+        reasons.push(`missing values ${missingPercent}%`);
+    } else if (missingPercent >= 5) {
+        score -= 8;
+        reasons.push(`some missing values ${missingPercent}%`);
+    }
+    if (truncated) {
+        score -= 10;
+        reasons.push(`truncated to ${MAX_ROWS.toLocaleString('en-US')} rows`);
+    }
+
+    const normalizedScore = Math.max(0, Math.min(100, Math.round(score)));
+    const status = normalizedScore >= 80 ? 'ready' : normalizedScore >= 55 ? 'partial' : 'limited';
+    const label = status === 'ready'
+        ? 'Ready for analysis'
+        : status === 'partial'
+            ? 'Usable with caution'
+            : 'Needs cleanup';
+
+    return {
+        score: normalizedScore,
+        status,
+        label,
+        reasons,
+        missingPercent,
+    };
+}
+
 function enrichParsedTable(headers, rows, extra = {}) {
     const { numericCols, labelCol } = detectMeta(headers, rows);
     const columnProfiles = profileColumns(headers, rows);
     const missingByColumn = Object.fromEntries(columnProfiles.map(col => [col.name, col.missingCount]));
     const missingTotal = columnProfiles.reduce((sum, col) => sum + col.missingCount, 0);
+    const columnTypeCounts = countColumnTypes(columnProfiles);
+    const analysisReadiness = buildAnalysisReadiness({
+        rowCount: rows.length,
+        headers,
+        numericCols,
+        labelCol,
+        missingTotal,
+        truncated: extra.truncated,
+    });
+    const recommendedCharts = buildRecommendedCharts(numericCols, labelCol, columnProfiles);
     const aggregates = Object.fromEntries(
         columnProfiles
             .filter(col => col.numericStats)
@@ -191,8 +297,12 @@ function enrichParsedTable(headers, rows, extra = {}) {
         dataTypes: Object.fromEntries(columnProfiles.map(col => [col.name, col.type])),
         missingValues: {
             total: missingTotal,
+            percent: analysisReadiness.missingPercent,
             byColumn: missingByColumn,
         },
+        columnTypeCounts,
+        analysisReadiness,
+        recommendedCharts,
         aggregates,
         schemaSummary: `${rows.length.toLocaleString('th-TH')} rows, ${headers.length.toLocaleString('th-TH')} columns, ${numericCols.length.toLocaleString('th-TH')} numeric columns, label=${labelCol || '-'}`,
         qualityWarnings: buildQualityWarnings(columnProfiles, rows.length, extra.truncated),
