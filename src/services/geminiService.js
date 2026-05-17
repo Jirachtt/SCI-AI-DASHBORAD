@@ -48,6 +48,7 @@ import {
 import { formatAIContextBundleForPrompt } from './aiContextRegistry';
 import { buildMjuConnectedContextForAI } from './mjuConnectedDataService';
 import { getAllAlerts } from '../utils/alerts';
+import { verifyAIAnswerAgainstContext } from '../utils/aiAnswerVerifier';
 
 const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
 const AI_USAGE_ENDPOINT = import.meta.env.VITE_AI_USAGE_ENDPOINT || '/api/ai-usage';
@@ -551,7 +552,17 @@ function extractNumberTokens(text) {
     return [...new Set(matches.map(normalizeNumberToken).filter(Boolean))];
 }
 
+let lastAnswerVerificationMetadata = null;
+
 function appendNumericEvidenceGuardrail(text, { evidenceText, question, useSearch }) {
+    const verification = verifyAIAnswerAgainstContext(text, {
+        contextText: evidenceText,
+        question,
+        allowExternalNumbers: useSearch,
+    });
+    lastAnswerVerificationMetadata = verification.metadata;
+    if (verification.metadata?.enabled) return verification.text;
+
     if (useSearch) return String(text || '').trim();
     const output = String(text || '').trim();
     const answerNumbers = extractNumberTokens(output);
@@ -2125,6 +2136,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 question: originalQuestion,
                 useSearch,
             });
+            const answerVerification = lastAnswerVerificationMetadata;
 
             console.log(`[Gemini] ✅ ${model} OK`);
             onModelSuccess(model);
@@ -2144,6 +2156,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 useSearch,
                 chartRequest: isChartRequest,
                 structuredOutput: wantsStructuredOutput,
+                answerVerification,
             }, options.onMetadata);
             recordTokenStats({
                 model,

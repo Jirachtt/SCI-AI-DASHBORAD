@@ -28,6 +28,7 @@ const adminAIUsagePanel = read('src/components/AdminAIUsagePanel.jsx');
 const mjuConnectedPanel = read('src/components/MjuConnectedPagePanel.jsx');
 const mjuConnectedDataService = read('src/services/mjuConnectedDataService.js');
 const geminiService = read('src/services/geminiService.js');
+const aiAnswerVerifier = read('src/utils/aiAnswerVerifier.js');
 const aiOrchestrator = read('src/services/aiOrchestrator.js');
 const aiContextRegistry = read('src/services/aiContextRegistry.js');
 const aiChartPlanner = read('src/services/aiChartPlanner.js');
@@ -232,6 +233,7 @@ expect(
 expect(
   'Executive AI evaluation set is registered and presentation-sized',
   packageJson.scripts?.['eval:executive'] === 'node scripts/validate-ai-executive-eval-set.mjs'
+    && packageJson.scripts?.['eval:e2e'] === 'node scripts/run-ai-e2e-eval.mjs'
     && Array.isArray(aiExecutiveEvaluationSet)
     && aiExecutiveEvaluationSet.length >= 30
     && aiExecutiveEvaluationSet.length <= 50
@@ -242,9 +244,19 @@ expect(
 );
 
 expect(
+  'Post-answer verifier is wired into Gemini responses',
+  /verifyAIAnswerAgainstContext/.test(aiAnswerVerifier)
+    && /extractNumericEvidence/.test(aiAnswerVerifier)
+    && /answerVerification/.test(geminiService),
+  'AI answers with unsupported numbers should be flagged and surfaced in debug metadata.'
+);
+
+expect(
   'Role and stability audits are registered',
   packageJson.scripts?.['audit:roles'] === 'node scripts/validate-role-access-matrix.mjs'
+    && packageJson.scripts?.['smoke:vercel'] === 'node scripts/smoke-vercel-production.mjs'
     && /eval:executive/.test(packageJson.scripts?.['verify:stability'] || '')
+    && /eval:e2e/.test(packageJson.scripts?.['verify:stability'] || '')
     && /audit:roles/.test(packageJson.scripts?.['verify:stability'] || '')
     && /smoke:presentation/.test(packageJson.scripts?.['verify:stability'] || ''),
   'Run npm run verify:stability before a presentation freeze.'
