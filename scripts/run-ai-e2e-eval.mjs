@@ -18,6 +18,10 @@ function takeCases(limit) {
   return selected.map((item, index) => ({ ...item, index: index + 1 }));
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function normalizeText(value) {
   return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
@@ -170,20 +174,27 @@ async function main() {
   const model = argValue('model', process.env.AI_E2E_MODEL || DEFAULT_MODEL);
   const limit = Number(argValue('limit', process.env.AI_E2E_LIMIT || '8'));
   const timeoutMs = Number(argValue('timeout', process.env.AI_E2E_TIMEOUT_MS || '45000'));
+  const delayMs = Number(argValue('delay', process.env.AI_E2E_DELAY_MS || '0'));
   const cases = takeCases(Number.isFinite(limit) && limit > 0 ? limit : 8);
   const results = [];
 
   console.log(`Running live AI E2E eval: ${cases.length} cases`);
   console.log(`Endpoint: ${endpoint}`);
   console.log(`Model: ${model}`);
+  if (Number.isFinite(delayMs) && delayMs > 0) {
+    console.log(`Delay: ${delayMs}ms between cases`);
+  }
 
-  for (const item of cases) {
+  for (const [caseIndex, item] of cases.entries()) {
     const result = await runLiveCase(endpoint, model, item, timeoutMs);
     results.push(result);
     const label = result.ok ? 'PASS' : 'FAIL';
     const warn = result.warnings.length ? ` WARN ${result.warnings.join(', ')}` : '';
     const issue = result.issues.length ? ` ${result.issues.join(', ')}` : '';
     console.log(`${label} ${item.index}. ${item.id} HTTP ${result.status} len=${result.textLength}${warn}${issue}`);
+    if (Number.isFinite(delayMs) && delayMs > 0 && caseIndex < cases.length - 1) {
+      await sleep(delayMs);
+    }
   }
 
   const failed = results.filter(item => !item.ok);
