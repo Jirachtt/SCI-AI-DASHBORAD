@@ -1,4 +1,5 @@
 import { aiExecutiveEvaluationSet } from '../src/data/aiExecutiveEvaluationSet.js';
+import { appendFileSync, writeFileSync } from 'node:fs';
 
 const DEFAULT_ENDPOINT = 'https://sci-ai-dashboradmju.vercel.app/api/gemini-chat';
 const DEFAULT_MODEL = 'gemini-2.5-flash-lite';
@@ -13,9 +14,11 @@ function hasFlag(name) {
   return process.argv.includes(`--${name}`);
 }
 
-function takeCases(limit) {
-  const selected = aiExecutiveEvaluationSet.slice(0, limit || aiExecutiveEvaluationSet.length);
-  return selected.map((item, index) => ({ ...item, index: index + 1 }));
+function takeCases(limit, start = 1) {
+  const startIndex = Math.max(0, Number(start || 1) - 1);
+  const endIndex = limit ? startIndex + limit : aiExecutiveEvaluationSet.length;
+  const selected = aiExecutiveEvaluationSet.slice(startIndex, endIndex);
+  return selected.map((item, index) => ({ ...item, index: startIndex + index + 1 }));
 }
 
 function sleep(ms) {
@@ -173,14 +176,23 @@ async function main() {
   const endpoint = argValue('endpoint', process.env.AI_E2E_ENDPOINT || DEFAULT_ENDPOINT);
   const model = argValue('model', process.env.AI_E2E_MODEL || DEFAULT_MODEL);
   const limit = Number(argValue('limit', process.env.AI_E2E_LIMIT || '8'));
+  const start = Number(argValue('start', process.env.AI_E2E_START || '1'));
   const timeoutMs = Number(argValue('timeout', process.env.AI_E2E_TIMEOUT_MS || '45000'));
   const delayMs = Number(argValue('delay', process.env.AI_E2E_DELAY_MS || '0'));
-  const cases = takeCases(Number.isFinite(limit) && limit > 0 ? limit : 8);
+  const jsonOut = argValue('json-out', process.env.AI_E2E_JSON_OUT || '');
+  const cases = takeCases(
+    Number.isFinite(limit) && limit > 0 ? limit : 8,
+    Number.isFinite(start) && start > 0 ? start : 1,
+  );
   const results = [];
 
   console.log(`Running live AI E2E eval: ${cases.length} cases`);
   console.log(`Endpoint: ${endpoint}`);
   console.log(`Model: ${model}`);
+  if (jsonOut) {
+    writeFileSync(jsonOut, '', 'utf8');
+    console.log(`JSONL output: ${jsonOut}`);
+  }
   if (Number.isFinite(delayMs) && delayMs > 0) {
     console.log(`Delay: ${delayMs}ms between cases`);
   }
@@ -192,6 +204,9 @@ async function main() {
     const warn = result.warnings.length ? ` WARN ${result.warnings.join(', ')}` : '';
     const issue = result.issues.length ? ` ${result.issues.join(', ')}` : '';
     console.log(`${label} ${item.index}. ${item.id} HTTP ${result.status} len=${result.textLength}${warn}${issue}`);
+    if (jsonOut) {
+      appendFileSync(jsonOut, `${JSON.stringify({ ...result, index: item.index })}\n`, 'utf8');
+    }
     if (Number.isFinite(delayMs) && delayMs > 0 && caseIndex < cases.length - 1) {
       await sleep(delayMs);
     }
