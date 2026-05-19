@@ -220,6 +220,7 @@ export function normalizeMjuRoleFromClaims(claims = {}) {
         claims.departmentRole,
     ].filter(Boolean).join(' ');
 
+    if (['admin', 'system_admin'].includes(raw)) return 'admin';
     if (['dean', 'คณบดี', 'ผจก.คณะ', 'ผู้จัดการคณะ'].includes(raw) || hasDeanSignal(roleText)) return 'dean';
     if (executiveEmails.includes(email) || hasExecutiveSignal(roleText)) return 'executive';
     if (['chair', 'program_chair', 'head', 'หัวหน้าหลักสูตร', 'ประธานหลักสูตร'].includes(raw)) return 'chair';
@@ -234,6 +235,7 @@ export function normalizeMjuRoleFromClaims(claims = {}) {
 
 export function roleLabelForMjuRole(role) {
     const labels = {
+        admin: 'Admin',
         dean: 'คณบดี (MJU SSO)',
         chair: 'ประธานหลักสูตร (MJU SSO)',
         executive: 'ผู้บริหาร (Executive)',

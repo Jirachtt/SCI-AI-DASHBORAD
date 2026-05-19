@@ -42,15 +42,16 @@ export default async function handler(req, res) {
       mjuVerified: true,
       mjuId: 'admin313',
       employeeId: 'admin313',
-      mjuRole: 'dean',
-      mjuUserType: 'dean',
+      role: 'admin',
+      mjuRole: 'admin',
+      mjuUserType: 'admin',
       authProvider: 'admin_code',
-      email: process.env.ADMIN_LOGIN_EMAIL || 'dean@mju.ac.th',
-      name: process.env.ADMIN_LOGIN_NAME || 'คณบดี (Admin)',
+      email: process.env.ADMIN_LOGIN_EMAIL || 'admin@mju.ac.th',
+      name: process.env.ADMIN_LOGIN_NAME || 'Admin',
       department: process.env.ADMIN_LOGIN_DEPARTMENT || 'Faculty of Science',
       faculty: process.env.ADMIN_LOGIN_FACULTY || 'Faculty of Science',
     };
-    const token = createFirebaseCustomToken('admin-dean-313', claims);
+    const token = createFirebaseCustomToken('admin-313', claims);
     sendJson(res, 200, { token, claims });
   } catch (err) {
     sendJson(res, err.statusCode || 500, {

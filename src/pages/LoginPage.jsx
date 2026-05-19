@@ -65,7 +65,7 @@ export default function LoginPage() {
         e.preventDefault();
         const result = await loginWithAdminCode(adminCode);
         if (!result.success) {
-            setError('รหัสผ่านคณบดีไม่ถูกต้อง');
+            setError('รหัสผ่าน Admin ไม่ถูกต้อง');
             setTimeout(() => setError(''), 3000);
         }
     };
@@ -132,7 +132,7 @@ export default function LoginPage() {
                             <div className="login-preview-content">
                                 <div className="login-preview-topline">
                                     <div>
-                                        <strong>สวัสดี, คณบดี (Admin)</strong>
+                                        <strong>สวัสดี, Admin</strong>
                                         <span>Decision Support Dashboard</span>
                                     </div>
                                     <div className="login-preview-actions">
@@ -288,7 +288,7 @@ export default function LoginPage() {
                             onClick={() => setShowAdminModal(true)}
                         >
                             <ShieldCheck size={16} />
-                            เข้าสู่ระบบคณบดี
+                            เข้าสู่ระบบ Admin
                         </button>
                     </div>
                 </div>
@@ -307,8 +307,8 @@ export default function LoginPage() {
 
                         <div className="modal-header">
                             <ShieldCheck size={48} color="#10b981" />
-                            <h2>เข้าถึงสิทธิ์คณบดี</h2>
-                            <p>กรุณากรอกรหัสผ่านสำหรับ คณบดี หรือ ประธานหลักสูตร</p>
+                            <h2>เข้าสู่ระบบ Admin</h2>
+                            <p>กรุณากรอกรหัสผ่านสำหรับผู้ดูแลระบบเพื่อจัดการผู้ใช้และสิทธิ์</p>
                         </div>
 
                         <form onSubmit={handleAdminCodeSubmit} className="admin-code-form">

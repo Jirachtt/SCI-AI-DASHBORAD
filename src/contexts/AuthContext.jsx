@@ -28,6 +28,7 @@ import { normalizeMjuIdentity } from '../services/mjuConnectedDataService';
 const AuthContext = createContext(null);
 
 const ROLE_LABELS_BY_ROLE = {
+    admin: 'Admin',
     dean: 'คณบดี (Dean)',
     chair: 'ประธานหลักสูตร (Chair)',
     executive: 'ผู้บริหาร (Executive)',
@@ -186,22 +187,21 @@ const firebaseUnavailable = () => ({
 });
 
 const buildAdminBypassUser = () => {
-    const validity = buildRoleValidityPatch('dean', new Date());
+    const validity = buildRoleValidityPatch('admin', new Date());
     return {
         uid: 'admin-bypass-' + Date.now(),
-        email: 'dean@mju.ac.th',
-        name: 'คณบดี (Admin)',
-        avatar: '👨‍💼',
-        role: 'dean',
-        assignedRole: 'dean',
-        roleLabel: 'คณบดี (Dean)',
-        assignedRoleLabel: 'คณบดี (Dean)',
+        email: 'admin@mju.ac.th',
+        name: 'Admin',
+        avatar: 'AD',
+        role: 'admin',
+        assignedRole: 'admin',
+        roleLabel: 'Admin',
+        assignedRoleLabel: 'Admin',
         status: 'approved',
         authProvider: 'admin_code_fallback',
         isAdminCodeSession: true,
-        isPrivilegedAdmin: true,
         ...validity,
-        roleValidity: getRoleValidity({ role: 'dean', ...validity })
+        roleValidity: getRoleValidity({ role: 'admin', ...validity })
     };
 };
 

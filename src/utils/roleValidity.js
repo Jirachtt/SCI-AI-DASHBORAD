@@ -1,4 +1,5 @@
 export const ROLE_DURATION_YEARS = {
+    admin: 1,
     dean: 4,
     chair: 4,
     executive: 4,
@@ -11,6 +12,7 @@ export const ROLE_DURATION_YEARS = {
 export const TERM_REQUIRED_ROLES = ['executive', 'dean', 'chair', 'instructor', 'staff', 'student'];
 
 export const ROLE_DURATION_LABELS = {
+    admin: '1 ปี',
     dean: '4 ปี',
     chair: '4 ปี',
     executive: '4 ปี',

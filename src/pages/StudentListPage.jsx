@@ -182,7 +182,7 @@ export default function StudentListPage() {
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.7 }}>
                         หน้ารายชื่อนักศึกษามีข้อมูลส่วนบุคคล (ชื่อ-นามสกุล, รหัส, ผลการเรียน)<br />
                         ตาม <strong style={{ color: '#FFC107' }}>พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)</strong><br />
-                        เฉพาะคณบดี (Admin) เท่านั้นที่สามารถเข้าถึงได้
+                        เฉพาะคณบดีเท่านั้นที่สามารถเข้าถึงได้
                     </p>
                     <div style={{
                         marginTop: 20, padding: '12px 24px', borderRadius: '10px',

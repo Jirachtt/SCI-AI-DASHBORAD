@@ -4,6 +4,17 @@
 const GENERAL_SECTIONS = ['dashboard', 'tuition', 'ai_chat', 'academic_rules'];
 
 const ACCESS_LEVELS = {
+    admin: {
+        label: 'Admin',
+        level: 1,
+        dataRows: 100000,
+        color: '#0F766E',
+        sections: [
+            'dashboard',
+            'admin_panel',
+            'academic_rules'
+        ]
+    },
     dean: {
         label: 'คณบดี',
         level: 1,
@@ -19,7 +30,6 @@ const ACCESS_LEVELS = {
             'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
             'graduation_stats',
             'alert_center',
-            'admin_panel',
             'academic_rules'
         ]
     },
@@ -145,12 +155,7 @@ export function getDataRowLimit(role) {
 
 export function canManageUsers(userOrRole) {
     const role = typeof userOrRole === 'string' ? userOrRole : userOrRole?.role;
-    return Boolean(
-        role === 'dean' ||
-        userOrRole?.canManageUsers ||
-        userOrRole?.systemAdmin ||
-        userOrRole?.isPrivilegedAdmin
-    );
+    return role === 'admin';
 }
 
 export function isPendingRole(role) {
