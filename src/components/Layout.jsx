@@ -2,11 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AIChat from './AIChat';
-import MjuConnectedConsent from './MjuConnectedConsent';
 import DataSourceStatusPill from './DataSourceStatusPill';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Activity, Menu, Sun, Moon, ShieldCheck } from 'lucide-react';
+import { Activity, Menu, Sun, Moon } from 'lucide-react';
 import { ensureStudentList } from '../services/studentDataService';
 import { ensureDashboardLiveData, startDashboardAutoSync } from '../services/dashboardLiveDataService';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
@@ -109,12 +108,6 @@ export default function Layout() {
                                 Live Data
                             </span>
                             <DataSourceStatusPill />
-                            {user?.mjuVerified && (
-                                <span className="header-status-pill header-status-mju">
-                                    <ShieldCheck size={14} />
-                                    MJU Connected
-                                </span>
-                            )}
                         </div>
                         <button
                             className={`theme-toggle ${theme}`}
@@ -137,7 +130,6 @@ export default function Layout() {
                 </div>
             </div>
             <AIChat />
-            <MjuConnectedConsent />
         </div>
     );
 }

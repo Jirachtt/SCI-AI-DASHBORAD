@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+﻿/* eslint-disable react-refresh/only-export-components */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, Database, ShieldCheck, Clock3, Gauge, Layers3, GraduationCap, Copy, CornerDownRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,7 +31,6 @@ import { appendStudentAnswerSourceNote, buildDataAccuracyContextForAI, getStuden
 import { buildLiveDashboardMergeSummary, getForecastDataSourceNote, getForecastSeries } from '../services/forecastDataService';
 import { exportChartAsCSVReport } from '../utils/exportUtils';
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
-import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 import { tryInstantAnswer } from '../services/aiInstantAnswerService';
 import { createPlannedChartAnswer } from '../services/aiChartPlanner';
 import {
@@ -3718,12 +3717,6 @@ export default function AIChatPage() {
 
                 {/* Right Sidebar — Feature Cards */}
                 <div className="ai-chat-page-sidebar">
-                    <MjuConnectedPagePanel
-                        domains={['profile', 'grades', 'activities', 'finance', 'faculty_scope']}
-                        title="MJU context"
-                        description="AI ใช้ข้อมูลที่เชื่อมแล้วตามสิทธิ์ของบัญชีนี้"
-                        compact
-                    />
 
                     <h3><Sparkles size={16} /> Context ที่ AI ใช้อยู่</h3>
                     <div className="ai-context-source-list">

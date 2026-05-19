@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
@@ -17,7 +17,6 @@ import {
     Users,
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
-import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import {
     formatScienceActivityDate,
@@ -127,22 +126,6 @@ export default function StudentLifePage() {
                     <ExportPDFButton title="กิจกรรมคณะวิทยาศาสตร์" />
                 </div>
             </div>
-
-            <MjuConnectedPagePanel
-                domains={['profile', 'activities']}
-                title="ข้อมูลกิจกรรมจากบัญชี MJU"
-                description="ชั่วโมงกิจกรรมรายบุคคลต้องมาจาก MJU Activity และใช้ได้เฉพาะเจ้าของข้อมูลหรือผู้มีสิทธิ์เท่านั้น"
-                compact
-            />
-
-            {linkedProfile.isMjuLinked && (
-                <section className="science-activity-user-link">
-                    <CheckCircle2 size={16} />
-                    <span>
-                        เชื่อมชั่วโมงกิจกรรมของ {linkedProfile.identityLabel} จาก MJU Account · {activityHours.source}
-                    </span>
-                </section>
-            )}
 
             <section className="science-activity-hero">
                 <div>

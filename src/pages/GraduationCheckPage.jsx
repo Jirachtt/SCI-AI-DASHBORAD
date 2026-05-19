@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import {
     AlertCircle,
     ArrowLeft,
@@ -10,13 +10,11 @@ import {
     Clock,
     GraduationCap,
     Star,
-    UserCheck,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import ExportPDFButton from '../components/ExportPDFButton';
-import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 import {
     SCIENCE_ACTIVITY_REQUIREMENT,
     formatScienceActivityDate,
@@ -51,10 +49,6 @@ export default function GraduationCheckPage() {
     const recommendation = getRecommendedScienceActivities(missingHours);
     const creditPercent = pct(creditData.current, creditData.required);
     const activityPercent = pct(activityRequirement.completedHours, activityRequirement.targetHours);
-    const linkedSourceText = linkedProfile.isMjuLinked
-        ? `เชื่อมข้อมูลจาก MJU Account${linkedProfile.student ? ` (${linkedProfile.student.id})` : ''}`
-        : 'ยังไม่ได้เชื่อมข้อมูลรายบุคคลจาก MJU Account';
-
     return (
         <div className="graduation-check-page">
             <Link to="/dashboard" className="back-button">
@@ -73,23 +67,6 @@ export default function GraduationCheckPage() {
                     <ExportPDFButton title="graduation_requirements" />
                 </div>
             </div>
-
-            <MjuConnectedPagePanel
-                domains={['profile', 'grades', 'activities', 'graduation']}
-                title="ข้อมูลเงื่อนไขจบจากบัญชี MJU"
-                description="เกรด หน่วยกิต ชั่วโมงกิจกรรม และสถานะจบรายบุคคลจะแสดงจากระบบ MJU เมื่อเชื่อม endpoint จริงแล้วเท่านั้น"
-            />
-
-            <section className={`graduation-mju-link-banner ${linkedProfile.isMjuLinked ? 'linked' : 'idle'}`}>
-                <div>
-                    <span><UserCheck size={16} /> {linkedSourceText}</span>
-                    <strong>{linkedProfile.identityLabel}</strong>
-                </div>
-                <p>
-                    ระบบใช้ studentId/mjuId จาก MJU SSO เพื่อผูก GPAX, หน่วยกิตรวม, ชั่วโมงกิจกรรม
-                    และส่งต่อข้อมูลตามผู้ใช้ให้หน้าอื่นที่รองรับข้อมูลรายบุคคลเดียวกัน
-                </p>
-            </section>
 
             <section className="graduation-status-grid">
                 <article className="graduation-status-card">

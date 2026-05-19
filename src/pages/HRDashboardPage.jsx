@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
@@ -11,7 +11,6 @@ import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { Users, UserCheck, Award, TrendingUp, Building2, GraduationCap } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
-import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 import { normalizeThaiText, withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 
@@ -590,13 +589,6 @@ export default function HRDashboardPage() {
                     <ExportPDFButton title="บุคลากรและโครงสร้างองค์กร" />
                 </div>
             </div>
-
-            <MjuConnectedPagePanel
-                domains={['profile', 'hr', 'faculty_scope']}
-                title="ข้อมูลบุคลากรจากบัญชี MJU"
-                description="ข้อมูล HR รายบุคคลต้องผ่านสิทธิ์บุคลากร/ผู้บริหารและ endpoint จริงจาก MJU HR ก่อนใช้งาน"
-                compact
-            />
 
             {/* Scorecards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24, alignItems: 'stretch' }}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
@@ -12,7 +12,6 @@ import {
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
-import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 
@@ -187,13 +186,6 @@ export default function TuitionPage() {
                     <ExportPDFButton title="ค่าธรรมเนียมการศึกษา" />
                 </div>
             </div>
-
-            <MjuConnectedPagePanel
-                domains={['profile', 'finance']}
-                title="ข้อมูลค่าธรรมเนียมจากบัญชี MJU"
-                description="ข้อมูลค้างชำระ/จ่ายล่าช้ารายบุคคลจะเปิดเฉพาะเจ้าของข้อมูลหรือสิทธิ์ที่ได้รับอนุญาตจาก MJU Finance"
-                compact
-            />
 
             {/* Info boxes */}
             <div className="stats-grid" style={{ marginBottom: 32 }}>

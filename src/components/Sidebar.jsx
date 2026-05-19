@@ -6,12 +6,11 @@ import { canAccess, canManageUsers, getRoleBadgeColor } from '../utils/accessCon
 import { prefetchRoute } from '../utils/routePrefetch';
 import { getAIModelRuntimeStatus, getAITokenBudgetSnapshot, refreshAITokenBudgetSnapshot } from '../services/geminiService';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
-import { getMjuConnectedDataSummary } from '../services/mjuConnectedDataService';
 import {
     Home, CreditCard, DollarSign, LogOut, Lock, FileText,
     GraduationCap, CheckCircle, BarChart3,
     Microscope, Target, UserCheck, BookOpen, Award,
-    Shield, UserCog, Clock, Bell, Bot, Settings,
+    UserCog, Clock, Bell, Bot, Settings,
     ChevronRight, UserRound, Palette, Activity, ScrollText, CalendarDays,
     ClipboardList, X
 } from 'lucide-react';
@@ -92,7 +91,6 @@ export default function Sidebar({ isOpen, onClose }) {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [tokenBudget, setTokenBudget] = useState(() => getAITokenBudgetSnapshot());
     const [modelRuntime, setModelRuntime] = useState(() => getAIModelRuntimeStatus());
-    const [mjuConsentTick, setMjuConsentTick] = useState(0);
 
     const handleLogout = async () => {
         setSettingsOpen(false);
@@ -127,12 +125,9 @@ export default function Sidebar({ isOpen, onClose }) {
         const handleKeyDown = (event) => {
             if (event.key === 'Escape') setSettingsOpen(false);
         };
-        const handleConsent = () => setMjuConsentTick(value => value + 1);
         window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('sci-mju-consent-updated', handleConsent);
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('sci-mju-consent-updated', handleConsent);
         };
     }, [settingsOpen]);
 
@@ -148,11 +143,6 @@ export default function Sidebar({ isOpen, onClose }) {
     const tokenBarWidth = tokenSyncing ? 0 : tokenBudget.remainingPercent;
     const modelModeLabel = modelRuntime.mode === 'auto' ? 'Auto escalation' : 'Manual';
     const modelLastLabel = modelRuntime.lastModelLabel || modelRuntime.lastModel || '-';
-    const mjuConnected = getMjuConnectedDataSummary(user || {});
-    void mjuConsentTick;
-    const mjuVisibleDomains = mjuConnected.domains
-        .filter(item => ['profile', 'grades', 'activities', 'graduation', 'finance'].includes(item.id))
-        .slice(0, 5);
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -305,26 +295,6 @@ export default function Sidebar({ isOpen, onClose }) {
                                     <span style={{ background: `${badgeColor}22`, color: badgeColor }}>{user?.roleLabel || user?.role || 'General'}</span>
                                 </div>
                             </div>
-                            {user?.mjuVerified && (
-                                <div className="settings-mju-card" aria-label="MJU connected data status">
-                                    <div className="settings-mju-head">
-                                        <span className="settings-menu-icon"><Shield size={15} /></span>
-                                        <span className="settings-menu-main">
-                                            <span>MJU Connected</span>
-                                            <small>{mjuConnected.consentGranted ? 'ยืนยัน consent แล้ว' : 'รอ consent สำหรับข้อมูลส่วนบุคคล'}</small>
-                                        </span>
-                                        <span className="settings-mju-pill">{mjuConnected.connectedCount}/{mjuConnected.domains.length}</span>
-                                    </div>
-                                    <div className="settings-mju-list">
-                                        {mjuVisibleDomains.map(item => (
-                                            <div className="settings-mju-row" key={item.id}>
-                                                <span>{item.label}</span>
-                                                <span className={`settings-mju-status ${item.status}`}>{item.status}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         <div className="settings-popover-section">

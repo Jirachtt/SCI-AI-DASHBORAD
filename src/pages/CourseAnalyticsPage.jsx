@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
     ArrowLeft,
@@ -26,7 +26,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import ExportPDFButton from '../components/ExportPDFButton';
-import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import {
@@ -121,13 +120,6 @@ export default function CourseAnalyticsPage() {
                     ))}
                 </div>
             </section>
-
-            <MjuConnectedPagePanel
-                domains={['profile', 'enrollment', 'grades']}
-                title="ข้อมูลรายวิชาและเกรดจากบัญชี MJU"
-                description="ใช้ข้อมูลจาก Reg/Grade เฉพาะสิทธิ์ของผู้ใช้เมื่อ endpoint จริงพร้อม ข้อมูลหน้าเว็บยังแยกจากข้อมูลส่วนบุคคลเสมอ"
-                compact
-            />
 
             <section className="course-kpi-grid">
                 <article className="course-kpi-card">
