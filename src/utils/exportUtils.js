@@ -833,26 +833,56 @@ ${drawingTypes}
 function stylesXml() {
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<fonts count="3">
+<fonts count="11">
 <font><sz val="11"/><color rgb="FF111827"/><name val="Noto Sans Thai"/></font>
 <font><b/><sz val="14"/><color rgb="FFFFFFFF"/><name val="Noto Sans Thai"/></font>
 <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Noto Sans Thai"/></font>
+<font><b/><sz val="18"/><color rgb="FFFFFFFF"/><name val="Noto Sans Thai"/></font>
+<font><b/><sz val="18"/><color rgb="FF0F172A"/><name val="Noto Sans Thai"/></font>
+<font><sz val="10"/><color rgb="FF64748B"/><name val="Noto Sans Thai"/></font>
+<font><b/><sz val="12"/><color rgb="FF0F172A"/><name val="Noto Sans Thai"/></font>
+<font><b/><sz val="11"/><color rgb="FF0F766E"/><name val="Noto Sans Thai"/></font>
+<font><sz val="10"/><color rgb="FF475569"/><name val="Noto Sans Thai"/></font>
+<font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Noto Sans Thai"/></font>
+<font><b/><sz val="13"/><color rgb="FF0F172A"/><name val="Noto Sans Thai"/></font>
 </fonts>
-<fills count="4">
+<fills count="13">
 <fill><patternFill patternType="none"/></fill>
 <fill><patternFill patternType="gray125"/></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FF006838"/><bgColor indexed="64"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FF00A651"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFF4F8F7"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFE7F6EF"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFEAF3FF"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFFF7E6"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFCE7F3"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFECFEFF"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFEDE9FE"/><bgColor indexed="64"/></patternFill></fill>
 </fills>
-<borders count="2">
+<borders count="3">
 <border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="thin"><color rgb="FFD9E2DD"/></left><right style="thin"><color rgb="FFD9E2DD"/></right><top style="thin"><color rgb="FFD9E2DD"/></top><bottom style="thin"><color rgb="FFD9E2DD"/></bottom><diagonal/></border>
+<border><left style="thin"><color rgb="FFE2E8F0"/></left><right style="thin"><color rgb="FFE2E8F0"/></right><top style="thin"><color rgb="FFE2E8F0"/></top><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="3">
+<cellXfs count="15">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1"/>
+<xf numFmtId="0" fontId="3" fillId="6" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+<xf numFmtId="0" fontId="0" fillId="5" borderId="2" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf numFmtId="3" fontId="4" fillId="5" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+<xf numFmtId="0" fontId="5" fillId="5" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="9" fillId="6" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf numFmtId="0" fontId="6" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+<xf numFmtId="0" fontId="2" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="3" fontId="0" fillId="5" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+<xf numFmtId="10" fontId="0" fillId="5" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+<xf numFmtId="0" fontId="7" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="8" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 <dxfs count="0"/>
@@ -918,6 +948,813 @@ function sheetRelsXml(drawingIndex) {
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${drawingIndex}.xml"/>
 </Relationships>`;
+}
+
+function normalizeDepartmentLabel(value) {
+    return String(value || '').replace(/^ภาควิชา/u, '').trim() || String(value || '');
+}
+
+function expandWeightedValues(items = [], labelKey = 'label') {
+    return (items || []).flatMap(item =>
+        Array.from({ length: Math.max(0, Number(item?.count) || 0) }, () => item?.[labelKey] || '')
+    );
+}
+
+function buildHrPersonnelExportRows(science = {}) {
+    const positions = expandWeightedValues((science.academicPositions || []).filter(item => item.count > 0), 'position');
+    const education = expandWeightedValues(science.byEducation || [], 'level');
+    const genders = expandWeightedValues(science.byGender || [], 'gender');
+    const ageGroups = expandWeightedValues(science.diversity?.ageGroup || [], 'group');
+    const supportPositions = [
+        'เจ้าหน้าที่บริหารงานทั่วไป',
+        'นักวิทยาศาสตร์',
+        'เจ้าหน้าที่ห้องปฏิบัติการ',
+        'เจ้าหน้าที่การเงิน',
+        'เจ้าหน้าที่สารสนเทศ',
+    ];
+    const rows = [];
+    let academicCursor = 0;
+    let supportCursor = 0;
+
+    (science.byDepartment || []).forEach((dept, deptIndex) => {
+        const department = normalizeDepartmentLabel(dept.dept);
+        for (let i = 0; i < Number(dept.academic || 0); i += 1) {
+            const code = `SCI-A${String(deptIndex + 1).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`;
+            rows.push({
+                code,
+                name: `บุคลากรสายวิชาการ ${code}`,
+                department,
+                role: 'สายวิชาการ',
+                gender: genders[rows.length % Math.max(1, genders.length)] || '',
+                position: positions[academicCursor % Math.max(1, positions.length)] || 'อาจารย์',
+                education: education[academicCursor % Math.max(1, education.length)] || 'ปริญญาเอก',
+                ageGroup: ageGroups[rows.length % Math.max(1, ageGroups.length)] || '',
+            });
+            academicCursor += 1;
+        }
+        for (let i = 0; i < Number(dept.support || 0); i += 1) {
+            const code = `SCI-S${String(deptIndex + 1).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`;
+            rows.push({
+                code,
+                name: `บุคลากรสายสนับสนุน ${code}`,
+                department,
+                role: 'สายสนับสนุน',
+                gender: genders[rows.length % Math.max(1, genders.length)] || '',
+                position: supportPositions[supportCursor % supportPositions.length],
+                education: supportCursor % 5 === 0 ? 'ปริญญาโท' : 'ปริญญาตรี',
+                ageGroup: ageGroups[rows.length % Math.max(1, ageGroups.length)] || '',
+            });
+            supportCursor += 1;
+        }
+    });
+
+    return rows;
+}
+
+function excelQuoteSheet(name) {
+    return `'${String(name).replace(/'/g, "''")}'`;
+}
+
+function excelRange(sheet, range) {
+    return `${excelQuoteSheet(sheet)}!${range}`;
+}
+
+function formulaCell(formula, style = 0, cachedValue = '') {
+    return { formula: String(formula || '').replace(/^=/, ''), style, value: cachedValue };
+}
+
+function styledCell(value, style = 0) {
+    return { value, style };
+}
+
+function blankStyledRow(cols, style = 3) {
+    return Array.from({ length: cols }, () => styledCell('', style));
+}
+
+function setCell(rows, row, col, value, style = 0) {
+    if (!rows[row - 1]) rows[row - 1] = [];
+    rows[row - 1][col - 1] = styledCell(value, style);
+}
+
+function setFormula(rows, row, col, formula, style = 0, cachedValue = '') {
+    if (!rows[row - 1]) rows[row - 1] = [];
+    rows[row - 1][col - 1] = formulaCell(formula, style, cachedValue);
+}
+
+function fillRect(rows, startRow, startCol, endRow, endCol, style = 0) {
+    for (let row = startRow; row <= endRow; row += 1) {
+        if (!rows[row - 1]) rows[row - 1] = [];
+        for (let col = startCol; col <= endCol; col += 1) {
+            rows[row - 1][col - 1] = rows[row - 1][col - 1] || styledCell('', style);
+        }
+    }
+}
+
+function professionalCellXml(rawCell, ref) {
+    const cell = rawCell && typeof rawCell === 'object' && !Array.isArray(rawCell) && ('value' in rawCell || 'formula' in rawCell || 'style' in rawCell)
+        ? rawCell
+        : { value: rawCell };
+    const style = styleAttribute(cell.style || 0);
+    const value = cell.value;
+    if (cell.formula) {
+        const cached = value == null || value === '' ? '' : `<v>${xmlEscape(value)}</v>`;
+        return `<c r="${ref}"${style}><f>${xmlEscape(cell.formula)}</f>${cached}</c>`;
+    }
+    if (value == null || value === '') return `<c r="${ref}"${style}/>`;
+    if (typeof value === 'number' && Number.isFinite(value)) return `<c r="${ref}"${style}><v>${value}</v></c>`;
+    if (typeof value === 'boolean') return `<c r="${ref}" t="b"${style}><v>${value ? 1 : 0}</v></c>`;
+    return `<c r="${ref}" t="inlineStr"${style}><is><t>${xmlEscape(value)}</t></is></c>`;
+}
+
+function professionalWorksheetXml({
+    rows = [],
+    colWidths = [],
+    rowHeights = {},
+    merges = [],
+    drawingRelId = '',
+    chartBounds = null,
+    tableRefs = [],
+    freezeRows = 0,
+    showGridLines = true,
+}) {
+    let maxCol = Math.max(1, colWidths.length, ...rows.map(row => row?.length || 0));
+    let maxRow = Math.max(1, rows.length);
+    if (chartBounds) {
+        maxCol = Math.max(maxCol, chartBounds.maxCol || 1);
+        maxRow = Math.max(maxRow, chartBounds.maxRow || 1);
+    }
+    tableRefs.forEach(ref => {
+        const match = String(ref).match(/:([A-Z]+)(\d+)$/);
+        if (match) {
+            maxCol = Math.max(maxCol, columnIndexFromName(match[1]) + 1);
+            maxRow = Math.max(maxRow, Number(match[2]));
+        }
+    });
+
+    const rowXml = [];
+    rows.forEach((row, rowIdx) => {
+        const rowNumber = rowIdx + 1;
+        const rowHeight = rowHeights[rowNumber] ?? rowHeights[String(rowNumber)];
+        const cells = [];
+        for (let colIdx = 0; colIdx < Math.max(row?.length || 0, maxCol); colIdx += 1) {
+            const cell = row?.[colIdx];
+            if (cell == null || cell === '') continue;
+            cells.push(professionalCellXml(cell, `${columnName(colIdx)}${rowNumber}`));
+        }
+        if (cells.length === 0 && !rowHeight) return;
+        rowXml.push(`<row r="${rowNumber}"${rowHeight ? ` ht="${rowHeight}" customHeight="1"` : ''}>${cells.join('')}</row>`);
+    });
+
+    const cols = Array.from({ length: maxCol }, (_, idx) =>
+        `<col min="${idx + 1}" max="${idx + 1}" width="${colWidths[idx] || 12}" customWidth="1"/>`
+    ).join('');
+    const mergeXml = merges.length
+        ? `<mergeCells count="${merges.length}">${merges.map(ref => `<mergeCell ref="${ref}"/>`).join('')}</mergeCells>`
+        : '';
+    const freezePane = freezeRows > 0
+        ? `<pane ySplit="${freezeRows}" topLeftCell="A${freezeRows + 1}" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft"/>`
+        : '';
+    const tableParts = tableRefs.length
+        ? `<tableParts count="${tableRefs.length}">${tableRefs.map((_, idx) => `<tablePart r:id="rId${drawingRelId ? idx + 2 : idx + 1}"/>`).join('')}</tableParts>`
+        : '';
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<dimension ref="A1:${columnName(maxCol - 1)}${maxRow}"/>
+<sheetViews><sheetView workbookViewId="0" showGridLines="${showGridLines ? 1 : 0}">${freezePane}</sheetView></sheetViews>
+<sheetFormatPr defaultRowHeight="21"/>
+<cols>${cols}</cols>
+<sheetData>${rowXml.join('')}</sheetData>
+${mergeXml}
+${drawingRelId ? `<drawing r:id="${drawingRelId}"/>` : ''}
+${tableParts}
+</worksheet>`;
+}
+
+function columnIndexFromName(name) {
+    return String(name || 'A').split('').reduce((sum, char) => sum * 26 + char.charCodeAt(0) - 64, 0) - 1;
+}
+
+function chartBounds(charts = []) {
+    if (!charts.length) return null;
+    return {
+        maxCol: Math.max(...charts.map(chart => chart.toCol || 12)) + 1,
+        maxRow: Math.max(...charts.map(chart => chart.toRow || 18)) + 1,
+    };
+}
+
+function solidFill(color = '#64748B') {
+    return `<a:solidFill><a:srgbClr val="${String(color).replace('#', '').toUpperCase()}"/></a:solidFill>`;
+}
+
+function chartTitleXml(title) {
+    return `<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="th-TH" sz="1200" b="1"/><a:t>${xmlEscape(title)}</a:t></a:r></a:p></c:rich></c:tx><c:layout/><c:overlay val="0"/></c:title>`;
+}
+
+function chartTextCache(values = []) {
+    return `<c:strCache><c:ptCount val="${values.length}"/>${values.map((value, idx) =>
+        `<c:pt idx="${idx}"><c:v>${xmlEscape(value)}</c:v></c:pt>`
+    ).join('')}</c:strCache>`;
+}
+
+function chartNumberCache(values = []) {
+    return `<c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="${values.length}"/>${values.map((value, idx) =>
+        `<c:pt idx="${idx}"><c:v>${Number(value) || 0}</c:v></c:pt>`
+    ).join('')}</c:numCache>`;
+}
+
+function chartFormula(sheet, range) {
+    return `${excelQuoteSheet(sheet)}!${range}`;
+}
+
+function chartSeriesXml(series, categories, index, { type = 'bar' } = {}) {
+    const color = series.color || '#2563EB';
+    const marker = type === 'line'
+        ? '<c:marker><c:symbol val="circle"/><c:size val="5"/></c:marker>'
+        : '';
+    const lineProps = type === 'line'
+        ? `<c:spPr><a:ln w="25400">${solidFill(color)}</a:ln></c:spPr>`
+        : `<c:spPr>${solidFill(color)}<a:ln>${solidFill(color)}</a:ln></c:spPr>`;
+    return `<c:ser>
+<c:idx val="${index}"/><c:order val="${index}"/>
+<c:tx><c:v>${xmlEscape(series.name)}</c:v></c:tx>
+${lineProps}
+${marker}
+<c:cat><c:strRef><c:f>${xmlEscape(chartFormula(categories.sheet, categories.range))}</c:f>${chartTextCache(categories.values)}</c:strRef></c:cat>
+<c:val><c:numRef><c:f>${xmlEscape(chartFormula(series.sheet, series.range))}</c:f>${chartNumberCache(series.values)}</c:numRef></c:val>
+${type === 'line' ? '<c:smooth val="1"/>' : ''}
+</c:ser>`;
+}
+
+function doughnutSeriesXml(chart) {
+    const series = chart.series[0];
+    const colors = chart.colors || ['#0F766E', '#2563EB', '#C5A028', '#64748B', '#7C3AED', '#EC4899'];
+    return `<c:ser>
+<c:idx val="0"/><c:order val="0"/>
+<c:tx><c:v>${xmlEscape(series.name || chart.title)}</c:v></c:tx>
+${(chart.categories.values || []).map((_, idx) =>
+        `<c:dPt><c:idx val="${idx}"/><c:spPr>${solidFill(colors[idx % colors.length])}</c:spPr></c:dPt>`
+    ).join('')}
+<c:cat><c:strRef><c:f>${xmlEscape(chartFormula(chart.categories.sheet, chart.categories.range))}</c:f>${chartTextCache(chart.categories.values)}</c:strRef></c:cat>
+<c:val><c:numRef><c:f>${xmlEscape(chartFormula(series.sheet, series.range))}</c:f>${chartNumberCache(series.values)}</c:numRef></c:val>
+</c:ser>`;
+}
+
+function axesXml(catAxisId, valAxisId) {
+    return `<c:catAx><c:axId val="${catAxisId}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${valAxisId}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/></c:catAx>
+<c:valAx><c:axId val="${valAxisId}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:majorGridlines/><c:numFmt formatCode="#,##0" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${catAxisId}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>`;
+}
+
+function nativeChartXml(chart, chartIndex) {
+    const catAxisId = 100000 + chartIndex * 2;
+    const valAxisId = catAxisId + 1;
+    let plotXml = '';
+
+    if (chart.type === 'doughnut') {
+        plotXml = `<c:doughnutChart><c:varyColors val="1"/>${doughnutSeriesXml(chart)}<c:firstSliceAng val="270"/><c:holeSize val="62"/></c:doughnutChart>`;
+    } else if (chart.type === 'line') {
+        plotXml = `<c:lineChart><c:grouping val="standard"/>${chart.series.map((series, idx) =>
+            chartSeriesXml(series, chart.categories, idx, { type: 'line' })
+        ).join('')}<c:axId val="${catAxisId}"/><c:axId val="${valAxisId}"/></c:lineChart>${axesXml(catAxisId, valAxisId)}`;
+    } else {
+        plotXml = `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${chart.series.map((series, idx) =>
+            chartSeriesXml(series, chart.categories, idx, { type: 'bar' })
+        ).join('')}<c:gapWidth val="140"/><c:axId val="${catAxisId}"/><c:axId val="${valAxisId}"/></c:barChart>${axesXml(catAxisId, valAxisId)}`;
+    }
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<c:date1904 val="0"/><c:lang val="th-TH"/><c:roundedCorners val="0"/>
+<c:chart>${chartTitleXml(chart.title)}<c:autoTitleDeleted val="0"/><c:plotArea><c:layout/>${plotXml}</c:plotArea><c:legend><c:legendPos val="b"/><c:layout/><c:overlay val="0"/></c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>
+<c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln><a:solidFill><a:srgbClr val="D9E2DD"/></a:solidFill></a:ln></c:spPr>
+</c:chartSpace>`;
+}
+
+function chartDrawingXml(charts = []) {
+    const anchors = charts.map((chart, idx) => `<xdr:twoCellAnchor editAs="oneCell">
+<xdr:from><xdr:col>${chart.fromCol || 0}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${chart.fromRow || 0}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
+<xdr:to><xdr:col>${chart.toCol || 12}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${chart.toRow || 18}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+<xdr:graphicFrame macro="">
+<xdr:nvGraphicFramePr><xdr:cNvPr id="${idx + 2}" name="${xmlEscape(chart.title || `Chart ${idx + 1}`)}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr>
+<xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm>
+<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rId${idx + 1}"/></a:graphicData></a:graphic>
+</xdr:graphicFrame>
+<xdr:clientData/>
+</xdr:twoCellAnchor>`).join('');
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+${anchors}
+</xdr:wsDr>`;
+}
+
+function chartDrawingRelsXml(charts = [], firstChartIndex = 1) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${charts.map((_, idx) => `<Relationship Id="rId${idx + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${firstChartIndex + idx}.xml"/>`).join('')}
+</Relationships>`;
+}
+
+function sheetRelsXmlAdvanced({ drawingIndex = 0, tables = [] }) {
+    const rels = [];
+    if (drawingIndex) {
+        rels.push(`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${drawingIndex}.xml"/>`);
+    }
+    tables.forEach((table, idx) => {
+        rels.push(`<Relationship Id="rId${drawingIndex ? idx + 2 : idx + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table${table.tableIndex}.xml"/>`);
+    });
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${rels.join('')}
+</Relationships>`;
+}
+
+function tableXml({ id, name, ref, headers = [] }) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="${id}" name="${xmlEscape(name)}" displayName="${xmlEscape(name)}" ref="${ref}" totalsRowShown="0">
+<autoFilter ref="${ref}"/>
+<tableColumns count="${headers.length}">${headers.map((header, idx) => `<tableColumn id="${idx + 1}" name="${xmlEscape(header || `Column ${idx + 1}`)}"/>`).join('')}</tableColumns>
+<tableStyleInfo name="TableStyleMedium4" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>
+</table>`;
+}
+
+function professionalContentTypesXml(sheets, drawingCount, chartCount, tableCount) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+${sheets.map((_, idx) => `<Override PartName="/xl/worksheets/sheet${idx + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}
+${Array.from({ length: drawingCount }, (_, idx) => `<Override PartName="/xl/drawings/drawing${idx + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`).join('')}
+${Array.from({ length: chartCount }, (_, idx) => `<Override PartName="/xl/charts/chart${idx + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`).join('')}
+${Array.from({ length: tableCount }, (_, idx) => `<Override PartName="/xl/tables/table${idx + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>`).join('')}
+</Types>`;
+}
+
+function buildHrProfessionalWorkbookSheets(title = 'บุคลากรและโครงสร้างองค์กร') {
+    const data = getDataset('hr', hrData) || {};
+    const science = data.scienceFaculty || {};
+    const personnelRows = buildHrPersonnelExportRows(science);
+    const rawEndRow = Math.max(2, personnelRows.length + 1);
+    const rawHeaders = ['รหัสบุคลากร', 'ชื่อในระบบ', 'ภาควิชา', 'สายงาน', 'เพศ', 'ตำแหน่ง', 'วุฒิ', 'ช่วงอายุ'];
+    const departmentRows = (science.byDepartment || []).map(row => ({
+        label: normalizeDepartmentLabel(row.dept),
+        academic: Number(row.academic) || 0,
+        support: Number(row.support) || 0,
+    }));
+    const positionRows = science.academicPositions || [];
+    const genderRows = science.byGender || [];
+    const ageRows = science.diversity?.ageGroup || [];
+    const educationRows = science.byEducation || [];
+    const trendRows = science.trend || [];
+    const promotionRows = science.promotionTrend || [];
+    const ratioRows = science.studentFacultyRatio || [];
+    const assocAssist = Number(positionRows[1]?.count || 0) + Number(positionRows[2]?.count || 0);
+    const phdCount = Number(educationRows.find(row => /เอก|phd|doctor/i.test(row.level || ''))?.count || 0);
+    const retirement = Number(science.diversity?.retirementIn5Years || 0);
+
+    const rawRows = [
+        rawHeaders.map(header => styledCell(header, 10)),
+        ...personnelRows.map(row => [
+            row.code,
+            row.name,
+            row.department,
+            row.role,
+            row.gender,
+            row.position,
+            row.education,
+            row.ageGroup,
+        ]),
+    ];
+
+    const summaryRows = Array.from({ length: 44 }, () => []);
+    setCell(summaryRows, 1, 1, 'สรุปข้อมูลบุคลากร', 4);
+    setCell(summaryRows, 2, 2, 'ตัวชี้วัด', 10);
+    setCell(summaryRows, 2, 3, 'จำนวน', 10);
+    setCell(summaryRows, 2, 4, 'สัดส่วน', 10);
+
+    const roleRange = `${excelRange('Raw Data', `$D$2:$D$${rawEndRow}`)}`;
+    const educationRange = `${excelRange('Raw Data', `$G$2:$G$${rawEndRow}`)}`;
+    const positionRange = `${excelRange('Raw Data', `$F$2:$F$${rawEndRow}`)}`;
+    const codeRange = `${excelRange('Raw Data', `$A$2:$A$${rawEndRow}`)}`;
+    const kpis = [
+        ['จำนวนบุคลากรทั้งหมด', `COUNTA(${codeRange})`, Number(science.total || personnelRows.length), ''],
+        ['สายวิชาการ', `COUNTIF(${roleRange},"สายวิชาการ")`, Number(science.academic || 0), '=C4/$C$3'],
+        ['สายสนับสนุน', `COUNTIF(${roleRange},"สายสนับสนุน")`, Number(science.support || 0), '=C5/$C$3'],
+        ['ปริญญาเอก', `COUNTIF(${educationRange},"*เอก*")`, phdCount, '=C6/$C$3'],
+        ['รศ.+ผศ.', `COUNTIF(${positionRange},"*รองศาสตราจารย์*")+COUNTIF(${positionRange},"*ผู้ช่วยศาสตราจารย์*")`, assocAssist, '=C7/$C$3'],
+        ['เกษียณใน 5 ปี', `${retirement}`, retirement, '=C8/$C$3'],
+    ];
+    kpis.forEach((row, idx) => {
+        const excelRow = idx + 3;
+        setCell(summaryRows, excelRow, 2, row[0], 13);
+        setFormula(summaryRows, excelRow, 3, row[1], 11, row[2]);
+        setFormula(summaryRows, excelRow, 4, row[3] || `=C${excelRow}/$C$3`, 12, Number(science.total) ? row[2] / Number(science.total) : 0);
+    });
+
+    setCell(summaryRows, 11, 2, 'ภาควิชา', 10);
+    setCell(summaryRows, 11, 3, 'สายวิชาการ', 10);
+    setCell(summaryRows, 11, 4, 'สายสนับสนุน', 10);
+    setCell(summaryRows, 11, 5, 'รวม', 10);
+    departmentRows.forEach((dept, idx) => {
+        const excelRow = idx + 12;
+        const deptRange = excelRange('Raw Data', `$C$2:$C$${rawEndRow}`);
+        setCell(summaryRows, excelRow, 2, dept.label, 5);
+        setFormula(summaryRows, excelRow, 3, `COUNTIFS(${deptRange},B${excelRow},${roleRange},"สายวิชาการ")`, 11, dept.academic);
+        setFormula(summaryRows, excelRow, 4, `COUNTIFS(${deptRange},B${excelRow},${roleRange},"สายสนับสนุน")`, 11, dept.support);
+        setFormula(summaryRows, excelRow, 5, `SUM(C${excelRow}:D${excelRow})`, 11, dept.academic + dept.support);
+    });
+
+    setCell(summaryRows, 21, 2, 'ตำแหน่งทางวิชาการ', 10);
+    setCell(summaryRows, 21, 3, 'จำนวน', 10);
+    positionRows.forEach((position, idx) => {
+        const excelRow = idx + 22;
+        setCell(summaryRows, excelRow, 2, position.position, 5);
+        setFormula(summaryRows, excelRow, 3, `COUNTIF(${positionRange},B${excelRow})`, 11, Number(position.count || 0));
+    });
+
+    setCell(summaryRows, 28, 2, 'ปี', 10);
+    setCell(summaryRows, 28, 3, 'สายวิชาการ', 10);
+    setCell(summaryRows, 28, 4, 'สายสนับสนุน', 10);
+    setCell(summaryRows, 28, 5, 'รวม', 10);
+    trendRows.forEach((trend, idx) => {
+        const excelRow = idx + 29;
+        setCell(summaryRows, excelRow, 2, trend.year, 5);
+        setCell(summaryRows, excelRow, 3, Number(trend.academic || 0), 11);
+        setCell(summaryRows, excelRow, 4, Number(trend.support || 0), 11);
+        setFormula(summaryRows, excelRow, 5, `SUM(C${excelRow}:D${excelRow})`, 11, Number(trend.total || 0));
+    });
+
+    setCell(summaryRows, 11, 7, 'เพศ', 10);
+    setCell(summaryRows, 11, 8, 'จำนวน', 10);
+    setCell(summaryRows, 11, 9, 'สัดส่วน', 10);
+    genderRows.forEach((gender, idx) => {
+        const excelRow = idx + 12;
+        const genderRange = excelRange('Raw Data', `$E$2:$E$${rawEndRow}`);
+        setCell(summaryRows, excelRow, 7, gender.gender, 5);
+        setFormula(summaryRows, excelRow, 8, `COUNTIF(${genderRange},G${excelRow})`, 11, Number(gender.count || 0));
+        setFormula(summaryRows, excelRow, 9, `H${excelRow}/SUM($H$12:$H$13)`, 12, Number(gender.count || 0) / Math.max(1, Number(science.total || 1)));
+    });
+
+    setCell(summaryRows, 16, 7, 'กลุ่มอายุ', 10);
+    setCell(summaryRows, 16, 8, 'จำนวน', 10);
+    ageRows.forEach((age, idx) => {
+        const excelRow = idx + 17;
+        const ageRange = excelRange('Raw Data', `$H$2:$H$${rawEndRow}`);
+        setCell(summaryRows, excelRow, 7, age.group, 5);
+        setFormula(summaryRows, excelRow, 8, `COUNTIF(${ageRange},G${excelRow})`, 11, Number(age.count || 0));
+    });
+
+    setCell(summaryRows, 23, 7, 'วุฒิการศึกษา', 10);
+    setCell(summaryRows, 23, 8, 'จำนวน', 10);
+    setCell(summaryRows, 23, 9, 'สัดส่วน', 10);
+    educationRows.forEach((ed, idx) => {
+        const excelRow = idx + 24;
+        setCell(summaryRows, excelRow, 7, ed.level, 5);
+        setFormula(summaryRows, excelRow, 8, `COUNTIF(${educationRange},G${excelRow})`, 11, Number(ed.count || 0));
+        setFormula(summaryRows, excelRow, 9, `H${excelRow}/SUM($H$24:$H$${23 + educationRows.length})`, 12, Number(ed.count || 0) / Math.max(1, Number(science.academic || 1)));
+    });
+
+    setCell(summaryRows, 28, 7, 'ปี', 10);
+    setCell(summaryRows, 28, 8, 'รศ. ใหม่', 10);
+    setCell(summaryRows, 28, 9, 'ผศ. ใหม่', 10);
+    setCell(summaryRows, 28, 10, 'ศ. ใหม่', 10);
+    promotionRows.forEach((promotion, idx) => {
+        const excelRow = idx + 29;
+        setCell(summaryRows, excelRow, 7, promotion.year, 5);
+        setCell(summaryRows, excelRow, 8, Number(promotion.newAssocProf || 0), 11);
+        setCell(summaryRows, excelRow, 9, Number(promotion.newAssistProf || 0), 11);
+        setCell(summaryRows, excelRow, 10, Number(promotion.newProf || 0), 11);
+    });
+
+    setCell(summaryRows, 36, 7, 'ปี', 10);
+    setCell(summaryRows, 36, 8, 'อัตราส่วนนักศึกษา:อาจารย์', 10);
+    ratioRows.forEach((ratio, idx) => {
+        const excelRow = idx + 37;
+        setCell(summaryRows, excelRow, 7, ratio.year, 5);
+        setCell(summaryRows, excelRow, 8, Number(ratio.ratio || 0), 11);
+    });
+
+    const dashboardRows = Array.from({ length: 58 }, () => blankStyledRow(26, 3));
+    fillRect(dashboardRows, 2, 2, 4, 25, 4);
+    setCell(dashboardRows, 2, 2, title || 'บุคลากรและโครงสร้างองค์กร', 4);
+    setCell(dashboardRows, 3, 2, 'HR & Faculty Profile Dashboard - คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้', 4);
+    setCell(dashboardRows, 4, 2, `ข้อมูลล่าสุด: ${new Date().toLocaleDateString('th-TH')}`, 4);
+
+    const cardDefs = [
+        { label: 'บุคลากรทั้งหมด', value: science.total || personnelRows.length, icon: 'HR', style: 8 },
+        { label: 'สายวิชาการ', value: science.academic || 0, icon: 'AC', style: 8 },
+        { label: 'สายสนับสนุน', value: science.support || 0, icon: 'SP', style: 8 },
+        { label: 'ปริญญาเอก', value: phdCount, icon: 'PhD', style: 8 },
+        { label: 'รศ.+ผศ.', value: assocAssist, icon: 'AP', style: 8 },
+        { label: 'เกษียณใน 5 ปี', value: retirement, icon: '5Y', style: 8 },
+    ];
+    cardDefs.forEach((card, idx) => {
+        const startCol = 2 + idx * 4;
+        fillRect(dashboardRows, 6, startCol, 9, startCol + 3, 5);
+        setCell(dashboardRows, 6, startCol, card.icon, card.style);
+        setCell(dashboardRows, 6, startCol + 1, card.label, 7);
+        setCell(dashboardRows, 7, startCol + 1, Number(card.value || 0), 6);
+        setCell(dashboardRows, 8, startCol + 1, 'คน', 7);
+    });
+    setCell(dashboardRows, 11, 2, 'ภาพรวมตามภาควิชาและโครงสร้างบุคลากร', 9);
+    setCell(dashboardRows, 29, 2, 'แนวโน้มและสัดส่วนสำคัญ', 9);
+
+    const chartColors = {
+        green: '#0F766E',
+        blue: '#2563EB',
+        gold: '#C5A028',
+        purple: '#7C3AED',
+        pink: '#DB2777',
+    };
+    const chartDefs = {
+        department: {
+            type: 'bar',
+            title: 'บุคลากรแยกตามภาควิชา',
+            categories: { sheet: 'Summary', range: `$B$12:$B$${11 + departmentRows.length}`, values: departmentRows.map(row => row.label) },
+            series: [
+                { name: 'สายวิชาการ', sheet: 'Summary', range: `$C$12:$C$${11 + departmentRows.length}`, values: departmentRows.map(row => row.academic), color: chartColors.green },
+                { name: 'สายสนับสนุน', sheet: 'Summary', range: `$D$12:$D$${11 + departmentRows.length}`, values: departmentRows.map(row => row.support), color: chartColors.blue },
+            ],
+        },
+        position: {
+            type: 'doughnut',
+            title: 'ตำแหน่งทางวิชาการ',
+            categories: { sheet: 'Summary', range: `$B$22:$B$${21 + positionRows.length}`, values: positionRows.map(row => row.position) },
+            series: [{ name: 'จำนวน', sheet: 'Summary', range: `$C$22:$C$${21 + positionRows.length}`, values: positionRows.map(row => Number(row.count || 0)) }],
+            colors: ['#C5A028', '#2563EB', '#0F766E', '#7C3AED'],
+        },
+        trend: {
+            type: 'line',
+            title: 'แนวโน้มจำนวนบุคลากร',
+            categories: { sheet: 'Summary', range: `$B$29:$B$${28 + trendRows.length}`, values: trendRows.map(row => row.year) },
+            series: [
+                { name: 'สายวิชาการ', sheet: 'Summary', range: `$C$29:$C$${28 + trendRows.length}`, values: trendRows.map(row => Number(row.academic || 0)), color: chartColors.green },
+                { name: 'สายสนับสนุน', sheet: 'Summary', range: `$D$29:$D$${28 + trendRows.length}`, values: trendRows.map(row => Number(row.support || 0)), color: chartColors.blue },
+            ],
+        },
+        gender: {
+            type: 'doughnut',
+            title: 'สัดส่วนเพศ',
+            categories: { sheet: 'Summary', range: `$G$12:$G$${11 + genderRows.length}`, values: genderRows.map(row => row.gender) },
+            series: [{ name: 'จำนวน', sheet: 'Summary', range: `$H$12:$H$${11 + genderRows.length}`, values: genderRows.map(row => Number(row.count || 0)) }],
+            colors: ['#2563EB', '#DB2777'],
+        },
+        age: {
+            type: 'bar',
+            title: 'กลุ่มอายุ',
+            categories: { sheet: 'Summary', range: `$G$17:$G$${16 + ageRows.length}`, values: ageRows.map(row => row.group) },
+            series: [{ name: 'จำนวน', sheet: 'Summary', range: `$H$17:$H$${16 + ageRows.length}`, values: ageRows.map(row => Number(row.count || 0)), color: chartColors.gold }],
+        },
+        promotion: {
+            type: 'bar',
+            title: 'การได้ตำแหน่งทางวิชาการใหม่รายปี',
+            categories: { sheet: 'Summary', range: `$G$29:$G$${28 + promotionRows.length}`, values: promotionRows.map(row => row.year) },
+            series: [
+                { name: 'รศ. ใหม่', sheet: 'Summary', range: `$H$29:$H$${28 + promotionRows.length}`, values: promotionRows.map(row => Number(row.newAssocProf || 0)), color: chartColors.purple },
+                { name: 'ผศ. ใหม่', sheet: 'Summary', range: `$I$29:$I$${28 + promotionRows.length}`, values: promotionRows.map(row => Number(row.newAssistProf || 0)), color: chartColors.blue },
+                { name: 'ศ. ใหม่', sheet: 'Summary', range: `$J$29:$J$${28 + promotionRows.length}`, values: promotionRows.map(row => Number(row.newProf || 0)), color: chartColors.gold },
+            ],
+        },
+    };
+
+    const dashboardCharts = [
+        { ...chartDefs.department, fromRow: 11, fromCol: 1, toRow: 27, toCol: 13 },
+        { ...chartDefs.position, fromRow: 11, fromCol: 14, toRow: 27, toCol: 25 },
+        { ...chartDefs.trend, fromRow: 30, fromCol: 1, toRow: 45, toCol: 13 },
+        { ...chartDefs.gender, fromRow: 30, fromCol: 14, toRow: 45, toCol: 19 },
+        { ...chartDefs.age, fromRow: 30, fromCol: 20, toRow: 45, toCol: 25 },
+        { ...chartDefs.promotion, fromRow: 47, fromCol: 1, toRow: 57, toCol: 25 },
+    ];
+    const chartsSheetCharts = [
+        { ...chartDefs.department, fromRow: 1, fromCol: 0, toRow: 18, toCol: 12 },
+        { ...chartDefs.position, fromRow: 1, fromCol: 13, toRow: 18, toCol: 25 },
+        { ...chartDefs.trend, fromRow: 20, fromCol: 0, toRow: 37, toCol: 12 },
+        { ...chartDefs.gender, fromRow: 20, fromCol: 13, toRow: 37, toCol: 18 },
+        { ...chartDefs.age, fromRow: 20, fromCol: 19, toRow: 37, toCol: 25 },
+        { ...chartDefs.promotion, fromRow: 39, fromCol: 0, toRow: 56, toCol: 25 },
+    ];
+
+    const chartsRows = Array.from({ length: 58 }, () => blankStyledRow(26, 3));
+    setCell(chartsRows, 1, 1, 'Charts', 9);
+    const tableRef = `A1:H${rawEndRow}`;
+
+    return [
+        {
+            name: 'Dashboard',
+            rows: dashboardRows,
+            colWidths: [3, 12, 11, 11, 4, 12, 11, 11, 4, 12, 11, 11, 4, 12, 11, 11, 4, 12, 11, 11, 4, 12, 11, 11, 4, 3],
+            rowHeights: { 1: 10, 2: 30, 3: 24, 4: 22, 5: 10, 6: 26, 7: 30, 8: 20, 9: 12, 11: 24, 29: 24, 47: 20 },
+            merges: ['B2:Y2', 'B3:Y3', 'B4:Y4', ...cardDefs.map((_, idx) => {
+                const start = columnName(2 + idx * 4);
+                const end = columnName(4 + idx * 4);
+                return `${start}6:${end}6`;
+            })],
+            charts: dashboardCharts,
+            showGridLines: false,
+        },
+        {
+            name: 'Raw Data',
+            rows: rawRows,
+            colWidths: [18, 30, 28, 16, 12, 28, 18, 16],
+            freezeRows: 1,
+            tables: [{ name: 'RawData', ref: tableRef, headers: rawHeaders }],
+        },
+        {
+            name: 'Summary',
+            rows: summaryRows,
+            colWidths: [3, 28, 15, 14, 14, 4, 24, 15, 14, 14],
+            freezeRows: 2,
+            showGridLines: false,
+        },
+        {
+            name: 'Charts',
+            rows: chartsRows,
+            colWidths: Array.from({ length: 26 }, () => 11),
+            rowHeights: { 1: 24, 20: 18, 39: 18 },
+            charts: chartsSheetCharts,
+            showGridLines: false,
+        },
+    ];
+}
+
+function downloadProfessionalWorkbook(fileName, sheetDefs) {
+    let drawingIndex = 0;
+    let chartIndex = 0;
+    let tableIndex = 0;
+    const drawingEntries = [];
+    const chartEntries = [];
+    const tableEntries = [];
+
+    const preparedSheets = sheetDefs.map(sheet => {
+        const charts = sheet.charts || [];
+        const tables = (sheet.tables || []).map(table => {
+            tableIndex += 1;
+            return { ...table, tableIndex };
+        });
+        let sheetDrawingIndex = 0;
+        if (charts.length) {
+            drawingIndex += 1;
+            sheetDrawingIndex = drawingIndex;
+            drawingEntries.push({
+                drawingIndex,
+                charts,
+                firstChartIndex: chartIndex + 1,
+            });
+            charts.forEach(chart => {
+                chartIndex += 1;
+                chartEntries.push({ chart, chartIndex });
+            });
+        }
+        tables.forEach(table => tableEntries.push(table));
+        return {
+            ...sheet,
+            drawingIndex: sheetDrawingIndex,
+            tables,
+        };
+    });
+
+    const entries = [
+        { name: '[Content_Types].xml', content: professionalContentTypesXml(preparedSheets, drawingEntries.length, chartEntries.length, tableEntries.length) },
+        { name: '_rels/.rels', content: rootRelsXml() },
+        { name: 'docProps/core.xml', content: docPropsCoreXml() },
+        { name: 'docProps/app.xml', content: docPropsAppXml(preparedSheets.length) },
+        { name: 'xl/workbook.xml', content: workbookXml(preparedSheets) },
+        { name: 'xl/_rels/workbook.xml.rels', content: workbookRelsXml(preparedSheets) },
+        { name: 'xl/styles.xml', content: stylesXml() },
+    ];
+
+    preparedSheets.forEach((sheet, idx) => {
+        entries.push({
+            name: `xl/worksheets/sheet${idx + 1}.xml`,
+            content: professionalWorksheetXml({
+                rows: sheet.rows,
+                colWidths: sheet.colWidths,
+                rowHeights: sheet.rowHeights,
+                merges: sheet.merges,
+                drawingRelId: sheet.drawingIndex ? 'rId1' : '',
+                chartBounds: chartBounds(sheet.charts),
+                tableRefs: sheet.tables?.map(table => table.ref) || [],
+                freezeRows: sheet.freezeRows || 0,
+                showGridLines: sheet.showGridLines !== false,
+            }),
+        });
+        if (sheet.drawingIndex || sheet.tables?.length) {
+            entries.push({
+                name: `xl/worksheets/_rels/sheet${idx + 1}.xml.rels`,
+                content: sheetRelsXmlAdvanced({ drawingIndex: sheet.drawingIndex, tables: sheet.tables || [] }),
+            });
+        }
+    });
+
+    drawingEntries.forEach(entry => {
+        entries.push({
+            name: `xl/drawings/drawing${entry.drawingIndex}.xml`,
+            content: chartDrawingXml(entry.charts),
+        });
+        entries.push({
+            name: `xl/drawings/_rels/drawing${entry.drawingIndex}.xml.rels`,
+            content: chartDrawingRelsXml(entry.charts, entry.firstChartIndex),
+        });
+    });
+
+    chartEntries.forEach(({ chart, chartIndex: index }) => {
+        entries.push({
+            name: `xl/charts/chart${index}.xml`,
+            content: nativeChartXml(chart, index),
+        });
+    });
+
+    tableEntries.forEach(table => {
+        entries.push({
+            name: `xl/tables/table${table.tableIndex}.xml`,
+            content: tableXml({
+                id: table.tableIndex,
+                name: table.name || `Table${table.tableIndex}`,
+                ref: table.ref,
+                headers: table.headers,
+            }),
+        });
+    });
+
+    triggerBlobDownload(`${safeFileName(fileName)}.xlsx`, createZip(entries));
+}
+
+export function buildHrProfessionalDashboardWorkbookBlob(title = 'บุคลากรและโครงสร้างองค์กร') {
+    const sheets = buildHrProfessionalWorkbookSheets(title);
+    let drawingIndex = 0;
+    let chartIndex = 0;
+    let tableIndex = 0;
+    const drawingEntries = [];
+    const chartEntries = [];
+    const tableEntries = [];
+    const preparedSheets = sheets.map(sheet => {
+        const charts = sheet.charts || [];
+        const tables = (sheet.tables || []).map(table => {
+            tableIndex += 1;
+            return { ...table, tableIndex };
+        });
+        let sheetDrawingIndex = 0;
+        if (charts.length) {
+            drawingIndex += 1;
+            sheetDrawingIndex = drawingIndex;
+            drawingEntries.push({ drawingIndex, charts, firstChartIndex: chartIndex + 1 });
+            charts.forEach(chart => {
+                chartIndex += 1;
+                chartEntries.push({ chart, chartIndex });
+            });
+        }
+        tables.forEach(table => tableEntries.push(table));
+        return { ...sheet, drawingIndex: sheetDrawingIndex, tables };
+    });
+    const entries = [
+        { name: '[Content_Types].xml', content: professionalContentTypesXml(preparedSheets, drawingEntries.length, chartEntries.length, tableEntries.length) },
+        { name: '_rels/.rels', content: rootRelsXml() },
+        { name: 'docProps/core.xml', content: docPropsCoreXml() },
+        { name: 'docProps/app.xml', content: docPropsAppXml(preparedSheets.length) },
+        { name: 'xl/workbook.xml', content: workbookXml(preparedSheets) },
+        { name: 'xl/_rels/workbook.xml.rels', content: workbookRelsXml(preparedSheets) },
+        { name: 'xl/styles.xml', content: stylesXml() },
+    ];
+    preparedSheets.forEach((sheet, idx) => {
+        entries.push({
+            name: `xl/worksheets/sheet${idx + 1}.xml`,
+            content: professionalWorksheetXml({
+                rows: sheet.rows,
+                colWidths: sheet.colWidths,
+                rowHeights: sheet.rowHeights,
+                merges: sheet.merges,
+                drawingRelId: sheet.drawingIndex ? 'rId1' : '',
+                chartBounds: chartBounds(sheet.charts),
+                tableRefs: sheet.tables?.map(table => table.ref) || [],
+                freezeRows: sheet.freezeRows || 0,
+                showGridLines: sheet.showGridLines !== false,
+            }),
+        });
+        if (sheet.drawingIndex || sheet.tables?.length) {
+            entries.push({
+                name: `xl/worksheets/_rels/sheet${idx + 1}.xml.rels`,
+                content: sheetRelsXmlAdvanced({ drawingIndex: sheet.drawingIndex, tables: sheet.tables || [] }),
+            });
+        }
+    });
+    drawingEntries.forEach(entry => {
+        entries.push({ name: `xl/drawings/drawing${entry.drawingIndex}.xml`, content: chartDrawingXml(entry.charts) });
+        entries.push({ name: `xl/drawings/_rels/drawing${entry.drawingIndex}.xml.rels`, content: chartDrawingRelsXml(entry.charts, entry.firstChartIndex) });
+    });
+    chartEntries.forEach(({ chart, chartIndex: index }) => {
+        entries.push({ name: `xl/charts/chart${index}.xml`, content: nativeChartXml(chart, index) });
+    });
+    tableEntries.forEach(table => {
+        entries.push({
+            name: `xl/tables/table${table.tableIndex}.xml`,
+            content: tableXml({ id: table.tableIndex, name: table.name || `Table${table.tableIndex}`, ref: table.ref, headers: table.headers }),
+        });
+    });
+    return createZip(entries);
 }
 
 function crc32(bytes) {
@@ -1414,12 +2251,11 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
     }
 
     const overviewRows = [
-        { section: 'Report', item: 'Report title', value: title || 'page-export' },
-        { section: 'Report', item: 'File type', value: 'Professional Excel workbook (.xlsx)' },
-        { section: 'Report', item: 'Data sheets', value: sheetEntries.length },
-        { section: 'Report', item: 'Data rows', value: dataRowCount },
-        { section: 'Report', item: 'Chart previews', value: embeddedImageCount },
-        { section: 'Report', item: 'Use', value: 'Overview sheet contains chart previews. Detail sheets contain raw data prepared for sorting, filtering, and reuse.' },
+        { section: 'Overview', item: 'รายงาน', value: title || 'page-export' },
+        { section: 'Overview', item: 'จำนวนชีตข้อมูล', value: sheetEntries.length },
+        { section: 'Overview', item: 'จำนวนแถวข้อมูล', value: dataRowCount },
+        { section: 'Overview', item: 'จำนวนกราฟ', value: embeddedImageCount },
+        { section: 'Overview', item: 'การใช้งาน', value: 'ชีตสรุปและชีตรายละเอียดถูกจัดรูปแบบสำหรับอ่าน วิเคราะห์ และนำข้อมูลไปใช้ต่อ' },
         { section: '', item: '', value: '' },
         ...visibleSummaryRows.map((row, idx) => ({
             section: 'Visible summary',
@@ -1435,7 +2271,7 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
     if (chartImages.length > 0) {
         overviewRows.push(
             { section: '', item: '', value: '' },
-            { section: 'Chart previews', item: 'Layout', value: 'Charts are embedded as compact PNG previews with source rows in the following sheets.' }
+            { section: 'Charts', item: 'Layout', value: 'กราฟและข้อมูลต้นทางถูกจัดวางไว้ในชีตถัดไป' }
         );
     }
 
@@ -1445,7 +2281,7 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
 
         overviewRows.push(blankRow());
         overviewRows.push({
-            section: 'Chart previews',
+            section: 'Charts',
             item: `${idx + 1}.`,
             value: chartName,
         });
@@ -1507,6 +2343,11 @@ export async function exportPageAsCSV(title = 'page-export') {
 }
 
 export async function exportExcelReportWorkbook(title = 'page-export', sheets = {}) {
+    const path = normalizeRoutePath(typeof window !== 'undefined' ? window.location?.pathname : '');
+    if (path.endsWith('/hr')) {
+        downloadProfessionalWorkbook(`${title}_professional_dashboard`, buildHrProfessionalWorkbookSheets(title));
+        return;
+    }
     const chartSheets = await collectChartSheets();
     await exportWorkbook(`${title}_excel_report`, singleFileReportSheets(title, sheets, chartSheets));
 }
