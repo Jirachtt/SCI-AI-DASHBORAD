@@ -520,38 +520,93 @@ export default function StudentStatsPage() {
         };
     });
 
+    const intakeTrendRows = (Array.isArray(scienceFaculty.newStudentIntake) ? scienceFaculty.newStudentIntake : [])
+        .filter(row => Number(row.total || 0) > 0 || Number(row.bachelor || 0) > 0 || Number(row.master || 0) > 0 || Number(row.doctoral || 0) > 0)
+        .sort((a, b) => Number(a.year || 0) - Number(b.year || 0))
+        .slice(-5);
+
     const intakeData = {
-        labels: scienceFaculty.newStudentIntake.map(s => `ปี ${s.year}`),
+        labels: intakeTrendRows.map(s => `ปี ${s.year}`),
         datasets: [
             {
                 label: 'ป.ตรี',
-                data: scienceFaculty.newStudentIntake.map(s => s.bachelor),
-                backgroundColor: 'rgba(34, 197, 94, 0.7)',
-                borderColor: '#22c55e', borderWidth: 1, borderRadius: 4,
+                data: intakeTrendRows.map(s => s.bachelor),
+                backgroundColor: 'rgba(37, 99, 235, 0.86)',
+                borderColor: '#2563eb',
+                borderWidth: 1,
+                borderRadius: 10,
+                borderSkipped: false,
+                barPercentage: 0.62,
+                categoryPercentage: 0.72,
             },
             {
                 label: 'ป.โท + ป.เอก',
-                data: scienceFaculty.newStudentIntake.map(s => s.master + s.doctoral),
-                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4,
+                data: intakeTrendRows.map(s => s.master + s.doctoral),
+                backgroundColor: 'rgba(139, 92, 246, 0.84)',
+                borderColor: '#8b5cf6',
+                borderWidth: 1,
+                borderRadius: 10,
+                borderSkipped: false,
+                barPercentage: 0.62,
+                categoryPercentage: 0.72,
+                minBarLength: 3,
             }
         ]
     };
 
     const intakeOptions = {
-        responsive: true, maintainAspectRatio: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
         plugins: {
-            legend: { position: 'bottom', labels: { color: 'var(--text-muted)', padding: 12, font: { size: 11 } } },
-            tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} คน` } }
+            legend: {
+                position: 'bottom',
+                labels: {
+                    color: 'var(--text-muted)',
+                    padding: 14,
+                    usePointStyle: true,
+                    pointStyle: 'circle',
+                    font: { size: 12, weight: 600 },
+                },
+            },
+            tooltip: {
+                backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                titleColor: '#fff',
+                bodyColor: '#e5e7eb',
+                borderColor: 'rgba(255, 255, 255, 0.12)',
+                borderWidth: 1,
+                cornerRadius: 12,
+                padding: 12,
+                displayColors: true,
+                callbacks: {
+                    title: (items) => items?.[0]?.label || '',
+                    label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('th-TH')} คน`,
+                    footer: (items) => {
+                        const row = intakeTrendRows[items?.[0]?.dataIndex];
+                        return row ? `รวม ${Number(row.total || 0).toLocaleString('th-TH')} คน` : '';
+                    },
+                },
+            },
         },
         scales: {
-            x: { stacked: true, ticks: { color: 'var(--text-muted)' }, grid: { display: false } },
-            y: { stacked: true, ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } }
+            x: {
+                stacked: true,
+                ticks: { color: 'var(--text-muted)', font: { size: 12, weight: 600 } },
+                grid: { display: false },
+                border: { display: false },
+            },
+            y: {
+                stacked: true,
+                beginAtZero: true,
+                ticks: { color: 'var(--text-muted)', callback: value => Number(value).toLocaleString('th-TH') },
+                grid: { color: 'rgba(148, 163, 184, 0.16)' },
+                border: { display: false },
+            }
         }
     };
 
     const intakeDrilldownOptions = withChartDrilldown(intakeOptions, intakeData, setDrillDetail, (point) => {
-        const intake = scienceFaculty.newStudentIntake[point.index];
+        const intake = intakeTrendRows[point.index];
         if (!intake) return null;
         const shortYear = String(intake.year).slice(-2);
         const rows = studentRows.filter(student => {
@@ -881,35 +936,29 @@ export default function StudentStatsPage() {
                 </div>
 
                 {/* New Student Intake */}
-                <div className="chart-card animate-in" style={{ marginTop: 20 }}>
+                <div className="chart-card intake-trend-card bg-white rounded-2xl shadow-sm p-6 animate-in">
                     <div className="chart-card-header">
                         <div>
                             <div className="chart-card-title">จำนวนนักศึกษาใหม่ (Intake) คณะวิทยาศาสตร์</div>
                             <div className="chart-card-subtitle">ย้อนหลัง 5 ปี — อ้างอิงจาก MJU Dashboard</div>
                         </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, padding: '0 20px 20px' }}>
-                        <div className="chart-container" style={{ height: 260 }}>
+                    <div className="intake-trend-layout grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)] gap-5">
+                        <div className="chart-container intake-trend-chart">
                             <Bar data={intakeData} options={intakeDrilldownOptions} />
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {scienceFaculty.newStudentIntake.map((intake, i) => {
-                                const prev = i > 0 ? scienceFaculty.newStudentIntake[i - 1].total : null;
+                        <div className="intake-year-summary">
+                            {intakeTrendRows.map((intake, i) => {
+                                const prev = i > 0 ? intakeTrendRows[i - 1].total : null;
                                 const growth = prev ? (((intake.total - prev) / prev) * 100).toFixed(1) : null;
                                 return (
-                                    <div key={i} style={{
-                                        background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 14px',
-                                        border: '1px solid var(--border-color)'
-                                    }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>ปี {intake.year}</span>
-                                            <span style={{ fontSize: 17, fontWeight: 800, color: '#00a651' }}>{intake.total}</span>
+                                    <div key={intake.year} className="intake-year-card rounded-2xl bg-slate-50 p-3 shadow-sm">
+                                        <div className="intake-year-card-main">
+                                            <span>ปี {intake.year}</span>
+                                            <strong>{Number(intake.total || 0).toLocaleString('th-TH')}</strong>
                                         </div>
                                         {growth && (
-                                            <span style={{
-                                                fontSize: 12, fontWeight: 600,
-                                                color: parseFloat(growth) >= 0 ? '#00a651' : '#E91E63'
-                                            }}>
+                                            <span className={parseFloat(growth) >= 0 ? 'intake-growth up' : 'intake-growth down'}>
                                                 {parseFloat(growth) >= 0 ? '↑' : '↓'} {growth}%
                                             </span>
                                         )}
