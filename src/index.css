@@ -6220,6 +6220,148 @@ button.composition-metric-card:focus-visible {
   background: linear-gradient(90deg, color-mix(in srgb, var(--metric-accent) 82%, white), var(--metric-accent));
 }
 
+.composition-pie-panel {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.92fr) minmax(190px, 1.08fr);
+  align-items: center;
+  gap: 18px;
+  min-height: auto;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 34%),
+    var(--bg-card);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.07);
+}
+
+.composition-pie-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.composition-pie {
+  width: min(100%, 214px);
+  max-width: 214px;
+  filter: drop-shadow(0 16px 26px rgba(15, 23, 42, 0.1));
+}
+
+.composition-pie-bg {
+  fill: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.composition-pie-slice {
+  cursor: pointer;
+  stroke: var(--bg-card);
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+  transition: filter 160ms ease, transform 160ms ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.composition-pie-slice:hover,
+.composition-pie-slice:focus-visible {
+  filter: brightness(1.06) saturate(1.12);
+  transform: scale(1.025);
+  outline: none;
+}
+
+.composition-pie-center {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.composition-pie-center strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+}
+
+.composition-pie-legend {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.composition-pie-legend-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid color-mix(in srgb, var(--segment-color) 12%, var(--border-color));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--segment-color) 5%, var(--bg-card));
+  color: var(--text-primary);
+  padding: 9px 11px;
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+button.composition-pie-legend-row {
+  cursor: pointer;
+}
+
+button.composition-pie-legend-row:hover,
+button.composition-pie-legend-row:focus-visible {
+  border-color: color-mix(in srgb, var(--segment-color) 34%, var(--border-color));
+  background: color-mix(in srgb, var(--segment-color) 9%, var(--bg-card));
+  transform: translateX(2px);
+  outline: none;
+}
+
+.composition-pie-dot {
+  width: 10px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--segment-color);
+}
+
+.composition-pie-legend-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.composition-pie-legend-copy span {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.composition-pie-legend-copy strong {
+  color: var(--text-primary);
+  font-size: 1.08rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.composition-pie-legend-row em {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--segment-color) 10%, var(--bg-card));
+  color: color-mix(in srgb, var(--segment-color) 82%, var(--text-primary));
+  font-size: 0.75rem;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
 .intake-trend-card {
   margin-top: 20px;
   padding: 24px !important;
@@ -6287,6 +6429,10 @@ button.composition-metric-card:focus-visible {
 }
 
 @media (max-width: 1100px) {
+  .composition-pie-panel {
+    grid-template-columns: 1fr;
+  }
+
   .intake-trend-layout {
     grid-template-columns: 1fr;
   }
@@ -6304,6 +6450,18 @@ button.composition-metric-card:focus-visible {
 
   .composition-metric-card {
     min-height: 118px;
+  }
+
+  .composition-pie-panel {
+    padding: 15px;
+  }
+
+  .composition-pie {
+    max-width: 186px;
+  }
+
+  .composition-pie-legend-row {
+    min-height: 46px;
   }
 
   .intake-trend-card {
