@@ -45,6 +45,8 @@ const countText = value => (hasNumber(value) ? `${money(value)} คน` : 'ร�
 const pct = value => (hasNumber(value) ? `${(Number(value) * 100).toFixed(1)}%` : 'รอข้อมูล');
 
 function sourceLabel(status) {
+    if (status === 'presentation_mock') return 'Presentation mock';
+    if (status === 'mixed_official_mock') return 'Official + mock';
     if (status === 'official_public') return 'ข้อมูลทางการ';
     if (status === 'internal_file') return 'จากไฟล์อาจารย์';
     if (status === 'waiting_for_admissions_reg') return 'รอ Admissions/Reg';
@@ -54,6 +56,7 @@ function sourceLabel(status) {
 
 function compactSourceLabel(source) {
     const label = source?.label || '';
+    if (label.includes('Presentation mock')) return 'Demo history';
     if (label.includes('TCAS Science')) return 'TCAS MJU';
     if (label.includes('Admissions MJU')) return 'ประกาศรอบ 3';
     if (label.includes('คำนวณประมาณการ')) return 'ประมาณการ 2570';
@@ -110,8 +113,9 @@ export default function TcasPlanningPage() {
             },
             {
                 type: 'line',
-                label: 'หายไป/ออก',
-                data: data.fiveYearTrend.map(item => item.withdrawn),
+                yAxisID: 'y1',
+                data: data.fiveYearTrend.map(item => item.enrolled ? (item.withdrawn / item.enrolled) * 100 : null),
+                label: 'Attrition rate',
                 borderColor: '#ef4444',
                 backgroundColor: 'rgba(239, 68, 68, 0.14)',
                 tension: 0.35,
@@ -162,6 +166,42 @@ export default function TcasPlanningPage() {
         scales: {
             x: { ticks: { color: 'var(--text-secondary)' }, grid: { color: 'var(--border-color)' } },
             y: { ticks: { color: 'var(--text-secondary)' }, grid: { color: 'var(--border-color)' } },
+        },
+    };
+    const trendOptions = {
+        ...commonOptions,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            ...commonOptions.plugins,
+            tooltip: {
+                callbacks: {
+                    label: (ctx) => {
+                        const suffix = ctx.dataset.yAxisID === 'y1' ? '%' : ' คน';
+                        const value = Number(ctx.parsed.y ?? 0);
+                        return `${ctx.dataset.label}: ${value.toLocaleString('th-TH', { maximumFractionDigits: ctx.dataset.yAxisID === 'y1' ? 1 : 0 })}${suffix}`;
+                    },
+                },
+            },
+        },
+        scales: {
+            ...commonOptions.scales,
+            y: {
+                ...commonOptions.scales.y,
+                beginAtZero: true,
+                title: { display: true, text: 'Students', color: 'var(--text-secondary)' },
+            },
+            y1: {
+                type: 'linear',
+                position: 'right',
+                beginAtZero: true,
+                suggestedMax: 15,
+                grid: { drawOnChartArea: false },
+                ticks: {
+                    color: '#ef4444',
+                    callback: value => `${value}%`,
+                },
+                title: { display: true, text: 'Attrition rate', color: '#ef4444' },
+            },
         },
     };
     const majorPlanOptions = {
@@ -220,7 +260,7 @@ export default function TcasPlanningPage() {
                 <div>
                     <span><FileSpreadsheet size={15} /> สถานะข้อมูล</span>
                     <strong>ข้อมูลหลัก: รอบ 3/2569 และเป้ารับ 2570</strong>
-                    <p>รอบ 3 จากประกาศรับสมัคร; เป้ารับ 2570 จากไฟล์ประมาณการ. สถิติย้อนหลังรอ Admissions/Reg.</p>
+                    <p>รอบ 3 จากประกาศรับสมัคร; เป้ารับ 2570 จากไฟล์ประมาณการ. สถิติย้อนหลังใช้ presentation mock ระหว่างรอ Admissions/Reg.</p>
                 </div>
                 <div className="tcas-source-links">
                     {data.sources.map(source => (
@@ -252,13 +292,13 @@ export default function TcasPlanningPage() {
                     <div><TrendingUp size={20} /></div>
                     <strong>{pct(summary.retentionRate)}</strong>
                     <span>อัตราคงอยู่</span>
-                    <small>รอข้อมูลรายงานตัว/คงอยู่จาก Admissions/Reg</small>
+                    <small>presentation mock จนกว่า Admissions/Reg จะเชื่อมต่อ</small>
                 </article>
                 <article className="tcas-kpi-card">
                     <div><TrendingDown size={20} /></div>
                     <strong>{countText(summary.latestWithdrawn)}</strong>
                     <span>หายไป/ออกล่าสุด</span>
-                    <small>ไม่ใช้เลข seed แทนข้อมูลจริง</small>
+                    <small>presentation mock สำหรับการนำเสนอ</small>
                 </article>
             </section>
 
@@ -267,12 +307,12 @@ export default function TcasPlanningPage() {
                     <div className="chart-card-header">
                         <div>
                             <div className="chart-card-title">แนวโน้มรับเข้า-คงอยู่-หายไป 5 ปี</div>
-                            <div className="chart-card-subtitle">รองรับการแทนค่าด้วยไฟล์ย้อนหลังจริงจาก Admissions/Reg</div>
+                            <div className="chart-card-subtitle">ใช้ presentation mock ตอนนี้ และพร้อมแทนค่าด้วยไฟล์ย้อนหลังจริงจาก Admissions/Reg</div>
                         </div>
                     </div>
                     <div className="tcas-chart">
                         {hasTrendData ? (
-                            <Bar data={trendChartData} options={commonOptions} />
+                            <Bar data={trendChartData} options={trendOptions} />
                         ) : (
                             <div className="tcas-empty-state">
                                 <strong>ยังไม่มีข้อมูลสมัคร/รายงานตัวย้อนหลังที่ตรวจสอบได้</strong>
@@ -429,7 +469,7 @@ export default function TcasPlanningPage() {
             <section className="tcas-next-step">
                 <AlertTriangle size={18} />
                 <span>
-                    ข้อมูลที่ยังต้องขอเพิ่มเพื่อให้ TCAS ครบ 100% คือไฟล์หรือ API จาก Admissions/Reg ที่มีปี, รอบ TCAS, สาขา, สมัคร, ผ่าน, รายงานตัว, คงอยู่ และลาออก/หายไป ตอนนี้ระบบจะไม่ใช้เลข seed แทนข้อมูลจริง
+                    ตอนนี้กราฟ TCAS ใช้ข้อมูล presentation mock เพื่อให้แดชบอร์ดนำเสนอได้ครบถ้วน ระหว่างรอไฟล์หรือ API จาก Admissions/Reg ที่มีปี, รอบ TCAS, สาขา, สมัคร, ผ่าน, รายงานตัว, คงอยู่ และลาออก/หายไป
                 </span>
             </section>
         </div>

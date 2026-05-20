@@ -7,6 +7,7 @@ import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../s
 import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText, BarChart3, Microscope, MousePointerClick } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
+import CompositionBreakdown from '../components/CompositionBreakdown';
 import { Doughnut, Line, Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
@@ -220,32 +221,11 @@ export default function StudentStatsPage() {
         return levels.map(l => ({ ...l, count: filteredFaculty.reduce((s, f) => s + f[l.key], 0) }));
     })();
 
-    // Doughnut chart for student levels
-    const doughnutData = {
-        labels: current.byLevel.map(l => l.level),
-        datasets: [{
-            data: current.byLevel.map(l => l.count),
-            backgroundColor: current.byLevel.map((item, i) => getStudentLevelColor(item.level, i)),
-            borderWidth: 0,
-            cutout: '60%',
-        }]
-    };
-
-    const doughnutOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: { color: 'var(--text-muted)', padding: 14, font: { size: 11 } }
-            },
-            tooltip: {
-                callbacks: {
-                    label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString()} คน (${((ctx.parsed / current.total) * 100).toFixed(1)}%)`
-                }
-            }
-        }
-    };
+    const levelCompositionItems = current.byLevel.map((item, i) => ({
+        label: item.level,
+        value: item.count,
+        color: item.color || getStudentLevelColor(item.level, i),
+    }));
 
     // Line chart for trend (actual + forecast)
     const actualData = trend.filter(t => t.type === 'actual');
@@ -326,31 +306,13 @@ export default function StudentStatsPage() {
         : 0;
 
     // ==================== Science Faculty Charts ====================
-    const sciDoughnutData = {
-        labels: scienceFaculty.byLevel.filter(l => l.count > 0).map(l => l.level),
-        datasets: [{
-            data: scienceFaculty.byLevel.filter(l => l.count > 0).map(l => l.count),
-            backgroundColor: scienceFaculty.byLevel.filter(l => l.count > 0).map((item, i) => getStudentLevelColor(item.level, i)),
-            borderWidth: 0,
-            cutout: '60%',
-        }]
-    };
-
-    const sciDoughnutOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: { color: 'var(--text-muted)', padding: 14, font: { size: 11 } }
-            },
-            tooltip: {
-                callbacks: {
-                    label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString()} คน (${((ctx.parsed / scienceFaculty.total) * 100).toFixed(1)}%)`
-                }
-            }
-        }
-    };
+    const scienceLevelCompositionItems = scienceFaculty.byLevel
+        .filter(item => Number(item.count || 0) > 0)
+        .map((item, i) => ({
+            label: item.level,
+            value: item.count,
+            color: item.color || getStudentLevelColor(item.level, i),
+        }));
 
     const majorBarData = {
         labels: scienceMajorRows.map(row => row.major),
@@ -394,10 +356,10 @@ export default function StudentStatsPage() {
 
     const studentDataNote = 'รายชื่อที่แสดงดึงจาก studentDataService ซึ่งอัปเดตตาม Firestore/ไฟล์อัปโหลดล่าสุดแบบ realtime';
 
-    const doughnutDrilldownOptions = withChartDrilldown(doughnutOptions, doughnutData, setDrillDetail, (point) => {
+    const openOverallLevelDetail = (point) => {
         const rows = studentRows.filter(student => student.level === point.label);
         const detailRows = buildLevelDrilldownRows(point, rows, 'MJU Dashboard (ภาพรวมมหาวิทยาลัย)', studentDataNote);
-        return {
+        setDrillDetail({
             title: `นักศึกษา ${point.label}`,
             subtitle: 'รายละเอียดจากข้อมูลนักศึกษาที่ระบบมีอยู่',
             valueLabel: point.label,
@@ -405,8 +367,22 @@ export default function StudentStatsPage() {
             unit: 'คน',
             accentColor: point.color,
             ...detailRows,
-        };
-    });
+        });
+    };
+
+    const openScienceLevelDetail = (point) => {
+        const rows = studentRows.filter(student => student.level === point.label);
+        const detailRows = buildLevelDrilldownRows(point, rows, 'MJU Dashboard (คณะวิทยาศาสตร์)', studentDataNote);
+        setDrillDetail({
+            title: `คณะวิทยาศาสตร์: ${point.label}`,
+            subtitle: 'รายชื่อนักศึกษาในระดับที่เลือก',
+            valueLabel: point.label,
+            value: point.value,
+            unit: 'คน',
+            accentColor: point.color,
+            ...detailRows,
+        });
+    };
 
     const trendLineDrilldownOptions = withChartDrilldown(trendLineOptions, trendLineData, setDrillDetail, (point) => {
         const row = trend[point.index];
@@ -427,20 +403,6 @@ export default function StudentStatsPage() {
                 { key: 'doctoral', label: 'ป.เอก', align: 'right' },
                 { key: 'type', label: 'ประเภท' },
             ],
-        };
-    });
-
-    const sciDoughnutDrilldownOptions = withChartDrilldown(sciDoughnutOptions, sciDoughnutData, setDrillDetail, (point) => {
-        const rows = studentRows.filter(student => student.level === point.label);
-        const detailRows = buildLevelDrilldownRows(point, rows, 'MJU Dashboard (คณะวิทยาศาสตร์)', studentDataNote);
-        return {
-            title: `คณะวิทยาศาสตร์: ${point.label}`,
-            subtitle: 'รายชื่อนักศึกษาในระดับที่เลือก',
-            valueLabel: point.label,
-            value: point.value,
-            unit: 'คน',
-            accentColor: point.color,
-            ...detailRows,
         };
     });
 
@@ -699,9 +661,12 @@ export default function StudentStatsPage() {
                             <div className="chart-card-subtitle">รวมทั้งหมด {current.total.toLocaleString()} คน</div>
                         </div>
                     </div>
-                    <div className="chart-container">
-                        <Doughnut data={doughnutData} options={doughnutDrilldownOptions} />
-                    </div>
+                    <CompositionBreakdown
+                        items={levelCompositionItems}
+                        total={current.total}
+                        ariaLabel="Student level composition"
+                        onItemClick={openOverallLevelDetail}
+                    />
                 </div>
 
                 <div className="chart-card animate-in">
@@ -833,9 +798,12 @@ export default function StudentStatsPage() {
                                 <div className="chart-card-subtitle">รวม {scienceFaculty.total.toLocaleString()} คน</div>
                             </div>
                         </div>
-                        <div className="chart-container">
-                            <Doughnut data={sciDoughnutData} options={sciDoughnutDrilldownOptions} />
-                        </div>
+                        <CompositionBreakdown
+                            items={scienceLevelCompositionItems}
+                            total={scienceFaculty.total}
+                            ariaLabel="Science faculty student level composition"
+                            onItemClick={openScienceLevelDetail}
+                        />
                     </div>
 
                     <div className="chart-card animate-in">

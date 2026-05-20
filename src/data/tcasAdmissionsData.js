@@ -23,6 +23,12 @@ export const tcasSources = [
         note: 'ยังต้องเชื่อมข้อมูลสมัคร ผ่าน รายงานตัว คงอยู่ และลาออก/หายไปย้อนหลังจากระบบรับเข้า/ทะเบียน',
         status: 'waiting_for_admissions_reg',
     },
+    {
+        label: 'Presentation mock: Admissions history',
+        url: '',
+        note: 'Realistic demo seed for admission, retention, and dropout charts until Admissions/Reg history is connected.',
+        status: 'presentation_mock',
+    },
 ];
 
 export const tcasRound3Plan2569 = [
@@ -38,15 +44,66 @@ export const tcasRound3Plan2569 = [
 ];
 
 export const tcasRoundPlan2569 = [
-    { round: 'Portfolio 1.1', plan: null, enrolled: null, sourceStatus: 'waiting_for_admissions_reg' },
-    { round: 'Portfolio 1.2', plan: null, enrolled: null, sourceStatus: 'waiting_for_admissions_reg' },
-    { round: 'Quota', plan: null, enrolled: null, sourceStatus: 'waiting_for_admissions_reg' },
-    { round: 'Admission', plan: 110, enrolled: null, sourceStatus: 'official_public' },
-    { round: 'Direct Admission', plan: null, enrolled: null, sourceStatus: 'waiting_for_admissions_reg' },
+    { round: 'Portfolio 1.1', plan: 45, enrolled: 42, sourceStatus: 'presentation_mock' },
+    { round: 'Portfolio 1.2', plan: 25, enrolled: 23, sourceStatus: 'presentation_mock' },
+    { round: 'Quota', plan: 90, enrolled: 84, sourceStatus: 'presentation_mock' },
+    { round: 'Admission', plan: 110, enrolled: 104, sourceStatus: 'mixed_official_mock' },
+    { round: 'Direct Admission', plan: 30, enrolled: 25, sourceStatus: 'presentation_mock' },
 ];
 
-// ยังไม่พบข้อมูลสมัคร/ผ่าน/รายงานตัว/คงอยู่ย้อนหลังในไฟล์ที่แนบมา จึงไม่ใส่เลข seed แทนข้อมูลจริง
-export const tcasFiveYearTrend = [];
+// Presentation mock seed: replace with Admissions/Reg history once the real feed is connected.
+export const tcasFiveYearTrend = [
+    {
+        year: 2565,
+        applied: 965,
+        qualified: 352,
+        enrolled: 244,
+        retained: 214,
+        withdrawn: 30,
+        retentionRate: 87.7,
+        sourceStatus: 'presentation_mock',
+    },
+    {
+        year: 2566,
+        applied: 1018,
+        qualified: 374,
+        enrolled: 256,
+        retained: 226,
+        withdrawn: 30,
+        retentionRate: 88.3,
+        sourceStatus: 'presentation_mock',
+    },
+    {
+        year: 2567,
+        applied: 1085,
+        qualified: 396,
+        enrolled: 270,
+        retained: 241,
+        withdrawn: 29,
+        retentionRate: 89.3,
+        sourceStatus: 'presentation_mock',
+    },
+    {
+        year: 2568,
+        applied: 1142,
+        qualified: 418,
+        enrolled: 282,
+        retained: 254,
+        withdrawn: 28,
+        retentionRate: 90.1,
+        sourceStatus: 'presentation_mock',
+    },
+    {
+        year: 2569,
+        applied: 1210,
+        qualified: 442,
+        enrolled: 278,
+        retained: 260,
+        withdrawn: 18,
+        retentionRate: 93.5,
+        sourceStatus: 'presentation_mock',
+    },
+];
 
 export const tcasIntakeTarget2570 = [
     { major: 'เทคโนโลยีชีวภาพ', target2570: 50, tuitionPerTerm: 20000, projectedRevenuePerTerm: 1000000, sourceSheet: 'ประมาณการ-70', sourceStatus: 'internal_file' },
@@ -85,7 +142,7 @@ export const tcasPlanningData = {
         tuitionPerTerm: 18500,
         termsInProgram: 8,
         targetRetentionRate2570: 0.9,
-        note: 'รอบ 3 ปี 2569 ใช้ประกาศทางการจาก Admissions MJU 214.pdf; เป้าหมายปี 2570 ใช้ไฟล์คำนวณประมาณการปี 70_Ver5.xlsx; ข้อมูลสมัคร ผ่าน รายงานตัว คงอยู่ และลาออก/หายไปย้อนหลังยังไม่พบในไฟล์ที่แนบมา จึงรอเชื่อม Admissions/Reg API แทนการใช้เลข seed',
+        note: 'Round 3/2569 uses the Admissions MJU public announcement; 2570 targets use the internal projection workbook. Admission, retention, and dropout history currently uses presentation mock data until the Admissions/Reg feed is connected.',
     },
 };
 
