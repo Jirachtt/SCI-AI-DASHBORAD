@@ -17,6 +17,7 @@ import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import { SCIENCE_MAJORS } from '../data/studentListData';
+import { legacyColorToVar, themeAlpha, themeGradient } from '../utils/themeTokens';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
 
@@ -30,12 +31,12 @@ const studentColumns = [
     { key: 'gpa', label: 'GPA', align: 'right', render: value => typeof value === 'number' ? value.toFixed(2) : '-' },
 ];
 
-const levelFallbackPalette = ['#059669', '#2563eb', '#7c3aed', '#ea580c', '#64748b'];
+const levelFallbackPalette = ['var(--accent-success)', 'var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-orange)', 'var(--text-subtle)'];
 const levelColorRules = [
-    { test: /ประกาศ|cert/i, color: '#059669' },
-    { test: /ตรี|bachelor/i, color: '#2563eb' },
-    { test: /โท|master/i, color: '#7c3aed' },
-    { test: /เอก|doctoral|phd/i, color: '#ea580c' },
+    { test: /ประกาศ|cert/i, color: 'var(--accent-success)' },
+    { test: /ตรี|bachelor/i, color: 'var(--accent-blue)' },
+    { test: /โท|master/i, color: 'var(--accent-purple)' },
+    { test: /เอก|doctoral|phd/i, color: 'var(--accent-orange)' },
 ];
 
 const aggregateLevelColumns = [
@@ -236,11 +237,11 @@ export default function StudentStatsPage() {
             {
                 label: 'จำนวนนิสิตรวม (ข้อมูลจริง)',
                 data: trend.map(t => t.type === 'actual' ? t.total : null),
-                borderColor: '#22c55e',
-                backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                borderColor: 'var(--accent-success)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 12%, transparent)',
                 fill: true,
                 tension: 0.4,
-                pointBackgroundColor: '#22c55e',
+                pointBackgroundColor: 'var(--accent-success)',
                 pointRadius: 6,
                 pointHoverRadius: 8,
                 spanGaps: false,
@@ -252,12 +253,12 @@ export default function StudentStatsPage() {
                     if (i === actualData.length - 1) return t.total;
                     return null;
                 }),
-                borderColor: '#22c55e',
+                borderColor: 'var(--accent-success)',
                 borderDash: [8, 4],
-                backgroundColor: 'rgba(34, 197, 94, 0.05)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 5%, transparent)',
                 fill: true,
                 tension: 0.4,
-                pointBackgroundColor: '#22c55e',
+                pointBackgroundColor: 'var(--accent-success)',
                 pointRadius: 6,
                 pointHoverRadius: 8,
                 pointStyle: 'triangle',
@@ -265,7 +266,7 @@ export default function StudentStatsPage() {
             {
                 label: 'ป.ตรี',
                 data: trend.map(t => t.bachelor),
-                borderColor: '#3b82f6',
+                borderColor: 'var(--accent-blue)',
                 tension: 0.4,
                 pointRadius: 4,
                 borderWidth: 2,
@@ -273,7 +274,7 @@ export default function StudentStatsPage() {
             {
                 label: 'ป.โท + ป.เอก',
                 data: trend.map(t => t.master + t.doctoral),
-                borderColor: '#f59e0b',
+                borderColor: 'var(--accent-warning)',
                 tension: 0.4,
                 pointRadius: 4,
                 borderWidth: 2,
@@ -320,12 +321,12 @@ export default function StudentStatsPage() {
             label: 'จำนวนนิสิต',
             data: scienceMajorRows.map(row => row.total),
             backgroundColor: scienceMajorRows.map((_, i) => {
-                const colors = ['rgba(37, 99, 235, 0.78)', 'rgba(5, 150, 105, 0.78)', 'rgba(124, 58, 237, 0.78)', 'rgba(234, 88, 12, 0.78)', 'rgba(8, 145, 178, 0.78)', 'rgba(219, 39, 119, 0.76)', 'rgba(202, 138, 4, 0.78)', 'rgba(79, 70, 229, 0.76)', 'rgba(71, 85, 105, 0.76)'];
-                return colors[i] || 'rgba(34, 197, 94, 0.7)';
+                const colors = ['color-mix(in srgb, var(--accent-blue) 78%, transparent)', 'color-mix(in srgb, var(--accent-success) 78%, transparent)', 'color-mix(in srgb, var(--accent-purple) 78%, transparent)', 'color-mix(in srgb, var(--accent-orange) 78%, transparent)', 'color-mix(in srgb, var(--accent-cyan) 78%, transparent)', 'color-mix(in srgb, var(--accent-pink) 76%, transparent)', 'color-mix(in srgb, var(--accent-gold) 78%, transparent)', 'color-mix(in srgb, var(--accent-purple) 76%, transparent)', 'color-mix(in srgb, var(--text-muted) 76%, transparent)'];
+                return colors[i] || 'color-mix(in srgb, var(--accent-success) 70%, transparent)';
             }),
             borderColor: scienceMajorRows.map((_, i) => {
-                const colors = ['#2563eb', '#059669', '#7c3aed', '#ea580c', '#0891b2', '#db2777', '#ca8a04', '#4f46e5', '#475569'];
-                return colors[i] || '#22c55e';
+                const colors = ['var(--accent-blue)', 'var(--accent-success)', 'var(--accent-purple)', 'var(--accent-orange)', 'var(--accent-cyan)', 'var(--accent-pink)', 'var(--accent-gold)', 'var(--accent-purple)', 'var(--text-muted)'];
+                return colors[i] || 'var(--accent-success)';
             }),
             borderWidth: 1,
             borderRadius: 8,
@@ -432,7 +433,7 @@ export default function StudentStatsPage() {
         labels: ['ชาย', 'หญิง'],
         datasets: [{
             data: [scienceFaculty.byGender.male, scienceFaculty.byGender.female],
-            backgroundColor: ['#3b82f6', '#ec4899'],
+            backgroundColor: ['var(--accent-blue)', 'var(--accent-pink)'],
             borderWidth: 0,
             cutout: '65%',
         }]
@@ -470,11 +471,11 @@ export default function StudentStatsPage() {
             label: 'อัตราส่วน นศ./อาจารย์',
             data: scienceFaculty.studentFacultyRatio.comparison.map(c => c.ratio),
             backgroundColor: scienceFaculty.studentFacultyRatio.comparison.map((_, i) => {
-                const p = ['#22c55e', '#f59e0b', '#3b82f6', '#7B68EE', '#ec4899', '#06b6d4'];
+                const p = ['var(--accent-success)', 'var(--accent-warning)', 'var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-pink)', 'var(--accent-cyan)'];
                 return p[i % p.length] + 'cc';
             }),
             borderColor: scienceFaculty.studentFacultyRatio.comparison.map((_, i) => {
-                const p = ['#22c55e', '#f59e0b', '#3b82f6', '#7B68EE', '#ec4899', '#06b6d4'];
+                const p = ['var(--accent-success)', 'var(--accent-warning)', 'var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-pink)', 'var(--accent-cyan)'];
                 return p[i % p.length];
             }),
             borderWidth: 1, borderRadius: 4,
@@ -531,8 +532,8 @@ export default function StudentStatsPage() {
             {
                 label: 'ป.ตรี',
                 data: intakeTrendRows.map(s => s.bachelor),
-                backgroundColor: 'rgba(37, 99, 235, 0.86)',
-                borderColor: '#2563eb',
+                backgroundColor: 'color-mix(in srgb, var(--accent-blue) 86%, transparent)',
+                borderColor: 'var(--accent-blue)',
                 borderWidth: 1,
                 borderRadius: 10,
                 borderSkipped: false,
@@ -542,8 +543,8 @@ export default function StudentStatsPage() {
             {
                 label: 'ป.โท + ป.เอก',
                 data: intakeTrendRows.map(s => s.master + s.doctoral),
-                backgroundColor: 'rgba(139, 92, 246, 0.84)',
-                borderColor: '#8b5cf6',
+                backgroundColor: 'color-mix(in srgb, var(--accent-purple) 84%, transparent)',
+                borderColor: 'var(--accent-purple)',
                 borderWidth: 1,
                 borderRadius: 10,
                 borderSkipped: false,
@@ -570,10 +571,10 @@ export default function StudentStatsPage() {
                 },
             },
             tooltip: {
-                backgroundColor: 'rgba(15, 23, 42, 0.94)',
-                titleColor: '#fff',
-                bodyColor: '#e5e7eb',
-                borderColor: 'rgba(255, 255, 255, 0.12)',
+                backgroundColor: 'var(--chart-tooltip-bg)',
+                titleColor: 'var(--text-on-accent)',
+                bodyColor: 'var(--chart-muted)',
+                borderColor: 'var(--accent-border-soft)',
                 borderWidth: 1,
                 cornerRadius: 12,
                 padding: 12,
@@ -599,7 +600,7 @@ export default function StudentStatsPage() {
                 stacked: true,
                 beginAtZero: true,
                 ticks: { color: 'var(--text-muted)', callback: value => Number(value).toLocaleString('th-TH') },
-                grid: { color: 'rgba(148, 163, 184, 0.16)' },
+                grid: { color: 'color-mix(in srgb, var(--text-subtle) 16%, transparent)' },
                 border: { display: false },
             }
         }
@@ -643,8 +644,8 @@ export default function StudentStatsPage() {
             </Link>
 
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #7B68EE, #5B4FCF)' }}>
-                    <BarChart3 size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-purple))' }}>
+                    <BarChart3 size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h2>สถิตินิสิตปัจจุบัน</h2>
@@ -683,7 +684,7 @@ export default function StudentStatsPage() {
                     <RotateCcw size={12} /> Reset
                 </button>
                 {isFiltered && (
-                    <span style={{ fontSize: '0.85rem', color: '#00a651', fontWeight: 600, marginLeft: 'auto' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--accent-success)', fontWeight: 600, marginLeft: 'auto' }}>
                         กรอง: {appliedFaculty !== 'all' ? appliedFaculty : 'ทุกคณะ'} / {appliedLevel !== 'all' ? (appliedLevel === 'bachelor' ? 'ป.ตรี' : appliedLevel === 'master' ? 'ป.โท' : 'ป.เอก') : 'ทุกระดับ'} — ผลลัพธ์: {filteredTotal.toLocaleString()} คน
                     </span>
                 )}
@@ -694,9 +695,9 @@ export default function StudentStatsPage() {
                 {(isFiltered ? filteredByLevel : current.byLevel).map((item, i) => (
                     <div key={i} className="stat-card animate-in">
                         <div className="stat-card-header">
-                            <div className="stat-card-icon" style={{ background: `linear-gradient(135deg, ${item.color}, ${item.color}cc)` }}>
+                            <div className="stat-card-icon" style={{ background: themeGradient(item.color) }}>
                                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {item.key === 'bachelor' || (!item.key && i === 0) ? <GraduationCap size={20} color="#fff" /> : item.key === 'master' || (!item.key && i === 1) ? <BookOpen size={20} color="#fff" /> : item.key === 'doctoral' || (!item.key && i === 2) ? <Award size={20} color="#fff" /> : <FileText size={20} color="#fff" />}
+                                    {item.key === 'bachelor' || (!item.key && i === 0) ? <GraduationCap size={20} color="var(--text-on-accent)" /> : item.key === 'master' || (!item.key && i === 1) ? <BookOpen size={20} color="var(--text-on-accent)" /> : item.key === 'doctoral' || (!item.key && i === 2) ? <Award size={20} color="var(--text-on-accent)" /> : <FileText size={20} color="var(--text-on-accent)" />}
                                 </span>
                             </div>
                             {!isFiltered && i === 0 && <span className="stat-card-trend up">+{growthYoY}%</span>}
@@ -759,20 +760,20 @@ export default function StudentStatsPage() {
                                 : fac[appliedLevel] || 0;
                             const isSci = fac.name === 'คณะวิทยาศาสตร์';
                             return (
-                                <tr key={i} style={isSci ? { background: 'rgba(0, 104, 56, 0.15)', borderLeft: '3px solid #00a651' } : {}}>
-                                    <td style={{ fontWeight: isSci ? 700 : 500, color: isSci ? '#00a651' : undefined }}>{fac.name}</td>
+                                <tr key={i} style={isSci ? { background: 'color-mix(in srgb, var(--accent-success-deep) 15%, transparent)', borderLeft: '3px solid var(--accent-success)' } : {}}>
+                                    <td style={{ fontWeight: isSci ? 700 : 500, color: isSci ? 'var(--accent-success)' : undefined }}>{fac.name}</td>
                                     {(appliedLevel === 'all' || appliedLevel === 'bachelor') && <td style={{ color: 'var(--mju-green-light)' }}>{fac.bachelor.toLocaleString()}</td>}
-                                    {(appliedLevel === 'all' || appliedLevel === 'master') && <td style={{ color: '#2E86AB' }}>{fac.master}</td>}
-                                    {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <td style={{ color: '#A23B72' }}>{fac.doctoral}</td>}
+                                    {(appliedLevel === 'all' || appliedLevel === 'master') && <td style={{ color: 'var(--accent-info)' }}>{fac.master}</td>}
+                                    {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <td style={{ color: 'var(--accent-pink)' }}>{fac.doctoral}</td>}
                                     {appliedLevel === 'all' && <td style={{ fontWeight: 700 }}>{total.toLocaleString()}</td>}
                                 </tr>
                             );
                         })}
-                        <tr style={{ background: 'rgba(0,104,56,0.1)', fontWeight: 700 }}>
+                        <tr style={{ background: 'color-mix(in srgb, var(--accent-success-deep) 10%, transparent)', fontWeight: 700 }}>
                             <td>รวม{isFiltered ? ' (กรองแล้ว)' : 'ทั้งหมด'}</td>
                             {(appliedLevel === 'all' || appliedLevel === 'bachelor') && <td style={{ color: 'var(--mju-green-light)' }}>{filteredFaculty.reduce((s, f) => s + f.bachelor, 0).toLocaleString()}</td>}
-                            {(appliedLevel === 'all' || appliedLevel === 'master') && <td style={{ color: '#2E86AB' }}>{filteredFaculty.reduce((s, f) => s + f.master, 0)}</td>}
-                            {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <td style={{ color: '#A23B72' }}>{filteredFaculty.reduce((s, f) => s + f.doctoral, 0)}</td>}
+                            {(appliedLevel === 'all' || appliedLevel === 'master') && <td style={{ color: 'var(--accent-info)' }}>{filteredFaculty.reduce((s, f) => s + f.master, 0)}</td>}
+                            {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <td style={{ color: 'var(--accent-pink)' }}>{filteredFaculty.reduce((s, f) => s + f.doctoral, 0)}</td>}
                             {appliedLevel === 'all' && <td>{filteredFaculty.reduce((s, f) => s + f.bachelor + f.master + f.doctoral, 0).toLocaleString()}</td>}
                         </tr>
                     </tbody>
@@ -780,10 +781,10 @@ export default function StudentStatsPage() {
             </div>
 
             {/* ==================== คณะวิทยาศาสตร์ Section ==================== */}
-            <div style={{ marginTop: 48, paddingTop: 32, borderTop: '2px solid rgba(0, 166, 81, 0.2)' }}>
+            <div style={{ marginTop: 48, paddingTop: 32, borderTop: '2px solid color-mix(in srgb, var(--accent-success) 20%, transparent)' }}>
                 <div className="section-header">
-                    <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
-                        <Microscope size={22} color="#fff" />
+                    <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))' }}>
+                        <Microscope size={22} color="var(--text-on-accent)" />
                     </div>
                     <div>
                         <h2>คณะวิทยาศาสตร์</h2>
@@ -791,15 +792,15 @@ export default function StudentStatsPage() {
                     </div>
                     <div style={{
                         marginLeft: 'auto',
-                        background: 'linear-gradient(135deg, rgba(0, 104, 56, 0.2), rgba(0, 166, 81, 0.1))',
-                        border: '1px solid rgba(0, 166, 81, 0.3)',
+                        background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-success-deep) 20%, transparent), color-mix(in srgb, var(--accent-success) 10%, transparent))',
+                        border: '1px solid color-mix(in srgb, var(--accent-success) 30%, transparent)',
                         borderRadius: 12,
                         padding: '8px 18px',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center'
                     }}>
-                        <span style={{ fontSize: 22, fontWeight: 800, color: '#00a651' }}>{scienceFaculty.total.toLocaleString()}</span>
+                        <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent-success)' }}>{scienceFaculty.total.toLocaleString()}</span>
                         <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>คน ({scienceSharePct}% ของทั้งมหาวิทยาลัย)</span>
                     </div>
                 </div>
@@ -808,7 +809,7 @@ export default function StudentStatsPage() {
                 <div className="stats-grid">
                     {scienceFaculty.byLevel.map((item, i) => (
                         <div key={i} className="stat-card animate-in" style={{
-                            borderTop: `3px solid ${item.color}`,
+                            borderTop: `3px solid ${legacyColorToVar(item.color)}`,
                             position: 'relative',
                             overflow: 'hidden'
                         }}>
@@ -816,13 +817,13 @@ export default function StudentStatsPage() {
                                 position: 'absolute',
                                 top: 0, right: 0,
                                 width: 80, height: 80,
-                                background: `radial-gradient(circle at top right, ${item.color}15, transparent 70%)`,
+                                background: `radial-gradient(circle at top right, ${themeAlpha(item.color, 8)}, transparent 70%)`,
                                 borderRadius: '0 0 0 100%'
                             }} />
                             <div className="stat-card-header">
-                                <div className="stat-card-icon" style={{ background: `linear-gradient(135deg, ${item.color}, ${item.color}cc)` }}>
+                                <div className="stat-card-icon" style={{ background: themeGradient(item.color) }}>
                                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {i === 0 ? <GraduationCap size={20} color="#fff" /> : i === 1 ? <BookOpen size={20} color="#fff" /> : i === 2 ? <Award size={20} color="#fff" /> : <FileText size={20} color="#fff" />}
+                                        {i === 0 ? <GraduationCap size={20} color="var(--text-on-accent)" /> : i === 1 ? <BookOpen size={20} color="var(--text-on-accent)" /> : i === 2 ? <Award size={20} color="var(--text-on-accent)" /> : <FileText size={20} color="var(--text-on-accent)" />}
                                     </span>
                                 </div>
                                 {item.count > 0 && (
@@ -869,8 +870,8 @@ export default function StudentStatsPage() {
                             </div>
                             <span style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
-                                fontSize: '0.75rem', color: '#7B68EE', fontWeight: 600,
-                                padding: '4px 10px', background: 'rgba(123,104,238,0.12)',
+                                fontSize: '0.75rem', color: 'var(--accent-purple)', fontWeight: 600,
+                                padding: '4px 10px', background: 'color-mix(in srgb, var(--accent-purple) 12%, transparent)',
                                 borderRadius: 999
                             }}>
                                 <MousePointerClick size={12} /> คลิกแท่งเพื่อดูรายชื่อ
@@ -898,12 +899,12 @@ export default function StudentStatsPage() {
                             </div>
                             <div style={{ display: 'flex', gap: 24, justifyContent: 'flex-start', width: '100%' }}>
                                 <div style={{ textAlign: 'left' }}>
-                                    <div style={{ fontSize: 28, fontWeight: 800, color: '#2E86AB' }}>{scienceFaculty.byGender.male}</div>
+                                    <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-info)' }}>{scienceFaculty.byGender.male}</div>
                                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>ชาย ({scienceFaculty.byGender.malePercent}%)</div>
                                 </div>
                                 <div style={{ width: 1, background: 'var(--border-color)' }} />
                                 <div style={{ textAlign: 'left' }}>
-                                    <div style={{ fontSize: 28, fontWeight: 800, color: '#E91E63' }}>{scienceFaculty.byGender.female}</div>
+                                    <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-pink)' }}>{scienceFaculty.byGender.female}</div>
                                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>หญิง ({scienceFaculty.byGender.femalePercent}%)</div>
                                 </div>
                             </div>
@@ -921,11 +922,11 @@ export default function StudentStatsPage() {
                         <div style={{ padding: '0 20px 20px' }}>
                             <div style={{
                                 textAlign: 'left', padding: '16px', marginBottom: 16,
-                                background: 'linear-gradient(135deg, rgba(0,104,56,0.15), rgba(0,166,81,0.08))',
-                                border: '1px solid rgba(0,166,81,0.3)', borderRadius: 12
+                                background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-success-deep) 15%, transparent), color-mix(in srgb, var(--accent-success) 8%, transparent))',
+                                border: '1px solid color-mix(in srgb, var(--accent-success) 30%, transparent)', borderRadius: 12
                             }}>
                                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>อัตราส่วน นศ./อาจารย์</div>
-                                <div style={{ fontSize: 36, fontWeight: 800, color: '#00a651' }}>{scienceFaculty.studentFacultyRatio.ratio}:1</div>
+                                <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--accent-success)' }}>{scienceFaculty.studentFacultyRatio.ratio}:1</div>
                                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>({scienceFaculty.studentFacultyRatio.students} นศ. / {scienceFaculty.studentFacultyRatio.academicStaff} อาจารย์)</div>
                             </div>
                             <div className="chart-container" style={{ height: 180 }}>
@@ -984,7 +985,7 @@ export default function StudentStatsPage() {
                                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>ตำแหน่งทางวิชาการ</div>
                                 {scienceFaculty.personnel.byPosition.map((pos, i) => {
                                     const pct = ((pos.count / scienceFaculty.personnel.total) * 100).toFixed(0);
-                                    const colors = ['#006838', '#2E86AB', '#C5A028'];
+                                    const colors = ['var(--accent-success-deep)', 'var(--accent-info)', 'var(--accent-gold)'];
                                     return (
                                         <div key={i} style={{ marginBottom: 10 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
@@ -1017,7 +1018,7 @@ export default function StudentStatsPage() {
                                             textAlign: 'center',
                                             border: '1px solid var(--border-color)'
                                         }}>
-                                            <div style={{ fontSize: 22, fontWeight: 800, color: i === 0 ? '#00a651' : '#C5A028' }}>{t.count}</div>
+                                            <div style={{ fontSize: 22, fontWeight: 800, color: i === 0 ? 'var(--accent-success)' : 'var(--accent-gold)' }}>{t.count}</div>
                                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{t.type}</div>
                                         </div>
                                     ))}
@@ -1036,7 +1037,7 @@ export default function StudentStatsPage() {
                                             textAlign: 'center',
                                             border: '1px solid var(--border-color)'
                                         }}>
-                                            <div style={{ fontSize: 22, fontWeight: 800, color: i === 0 ? '#7B68EE' : '#2E86AB' }}>{e.count}</div>
+                                            <div style={{ fontSize: 22, fontWeight: 800, color: i === 0 ? 'var(--accent-purple)' : 'var(--accent-info)' }}>{e.count}</div>
                                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{e.level}</div>
                                         </div>
                                     ))}
@@ -1056,7 +1057,7 @@ export default function StudentStatsPage() {
                         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                             {scienceFaculty.byNationality.map((n, i) => {
                                 const pct = ((n.count / scienceFaculty.total) * 100).toFixed(1);
-                                const color = i === 0 ? '#006838' : '#F18F01';
+                                const color = i === 0 ? 'var(--accent-success-deep)' : 'var(--accent-orange)';
                                 return (
                                     <div key={i}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -1064,7 +1065,7 @@ export default function StudentStatsPage() {
                                                 <div style={{
                                                     width: 40, height: 40,
                                                     borderRadius: 10,
-                                                    background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+                                                    background: themeGradient(color),
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     fontSize: 20
                                                 }}>
@@ -1095,13 +1096,13 @@ export default function StudentStatsPage() {
                             <div style={{
                                 marginTop: 8,
                                 padding: '14px 16px',
-                                background: 'linear-gradient(135deg, rgba(0,104,56,0.1), rgba(0,166,81,0.05))',
-                                border: '1px solid rgba(0,166,81,0.2)',
+                                background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-success-deep) 10%, transparent), color-mix(in srgb, var(--accent-success) 5%, transparent))',
+                                border: '1px solid color-mix(in srgb, var(--accent-success) 20%, transparent)',
                                 borderRadius: 12,
                                 textAlign: 'center'
                             }}>
                                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>นิสิตสัญชาติไทยคิดเป็น</div>
-                                <div style={{ fontSize: 28, fontWeight: 800, color: '#00a651', marginTop: 4 }}>
+                                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-success)', marginTop: 4 }}>
                                     {((scienceFaculty.byNationality[0].count / scienceFaculty.total) * 100).toFixed(1)}%
                                 </div>
                             </div>

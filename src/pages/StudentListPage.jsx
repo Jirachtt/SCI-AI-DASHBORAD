@@ -29,7 +29,7 @@ const optionStyle = {
     backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)',
 };
 const modalOverlay = {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+    position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--bg-primary) 68%, transparent)', backdropFilter: 'blur(6px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999,
 };
 const modalBox = {
@@ -99,10 +99,10 @@ export default function StudentListPage() {
         count: students.filter(s => s.year === y).length,
         icon: [`Y1`, `Y2`, `Y3`, `Y4`][y - 1],
         gradient: [
-            'linear-gradient(135deg, #2E86AB, #1a6a8c)',
-            'linear-gradient(135deg, #006838, #004d29)',
-            'linear-gradient(135deg, #C5A028, #9a7d1e)',
-            'linear-gradient(135deg, #E91E63, #c2185b)',
+            'linear-gradient(135deg, var(--accent-info), var(--accent-info))',
+            'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success-deep))',
+            'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))',
+            'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))',
         ][y - 1]
     }));
 
@@ -165,7 +165,7 @@ export default function StudentListPage() {
         }
     };
 
-    const statusColor = (s) => s === 'ปกติ' ? '#4CAF50' : s === 'กำลังศึกษา' ? '#4CAF50' : s === 'รอพินิจ' ? '#FFC107' : '#ef4444';
+    const statusColor = (s) => s === 'ปกติ' ? 'var(--accent-success)' : s === 'กำลังศึกษา' ? 'var(--accent-success)' : s === 'รอพินิจ' ? 'var(--accent-warning)' : 'var(--accent-danger)';
     const dataSourceText = dataSourceStatus.isGeneratedMock
         ? 'ข้อมูล mock ที่ปรับให้ตรงยอด Sync ล่าสุด'
         : dataSourceStatus.isShared
@@ -181,7 +181,7 @@ export default function StudentListPage() {
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>จำกัดสิทธิ์การเข้าถึง</h2>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.7 }}>
                         หน้ารายชื่อนักศึกษามีข้อมูลส่วนบุคคล (ชื่อ-นามสกุล, รหัส, ผลการเรียน)<br />
-                        ตาม <strong style={{ color: '#FFC107' }}>พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)</strong><br />
+                        ตาม <strong style={{ color: 'var(--accent-warning)' }}>พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)</strong><br />
                         เฉพาะคณบดีเท่านั้นที่สามารถเข้าถึงได้
                     </p>
                     <div style={{
@@ -200,8 +200,8 @@ export default function StudentListPage() {
         <div className="dashboard-content">
             {/* ── Header ── */}
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #7B68EE, #5B4FCF)' }}>
-                    <GraduationCap size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-purple))' }}>
+                    <GraduationCap size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h1>รายชื่อนักศึกษา</h1>
@@ -212,8 +212,8 @@ export default function StudentListPage() {
                     {canManage && (
                         <button onClick={() => { setStudentSaveMessage(''); setShowModal(true); }} style={{
                             display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',
-                            borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #006838, #00a651)',
-                            color: '#fff', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, transition: 'all 0.2s',
+                            borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))',
+                            color: 'var(--text-on-accent)', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, transition: 'all 0.2s',
                         }}>
                             <UserPlus size={16} /> เพิ่มนักศึกษา
                         </button>
@@ -231,13 +231,13 @@ export default function StudentListPage() {
                 margin: '-6px 0 18px',
                 padding: '12px 14px',
                 borderRadius: 12,
-                border: dataSourceStatus.isBundledSample ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(0, 166, 81, 0.24)',
-                background: dataSourceStatus.isBundledSample ? 'rgba(245, 158, 11, 0.10)' : 'rgba(0, 166, 81, 0.08)',
+                border: dataSourceStatus.isBundledSample ? '1px solid color-mix(in srgb, var(--accent-warning) 35%, transparent)' : '1px solid color-mix(in srgb, var(--accent-success) 24%, transparent)',
+                background: dataSourceStatus.isBundledSample ? 'color-mix(in srgb, var(--accent-warning) 10%, transparent)' : 'color-mix(in srgb, var(--accent-success) 8%, transparent)',
                 color: 'var(--text-primary)',
                 fontSize: '0.86rem',
                 lineHeight: 1.55,
             }}>
-                <AlertTriangle size={16} color={dataSourceStatus.isBundledSample ? '#f59e0b' : '#00a651'} />
+                <AlertTriangle size={16} color={dataSourceStatus.isBundledSample ? 'var(--accent-warning)' : 'var(--accent-success)'} />
                 <strong>{dataSourceText}</strong>
                 <span style={{ color: 'var(--text-secondary)' }}>
                     {dataSourceStatus.isBundledSample
@@ -253,7 +253,7 @@ export default function StudentListPage() {
                         style={{
                             ...card, padding: '16px', cursor: 'pointer', position: 'relative', overflow: 'hidden',
                             minWidth: 0,
-                            borderColor: yearFilter === String(ys.year) ? 'var(--border-active, rgba(0,104,56,0.5))' : 'var(--border-color)',
+                            borderColor: yearFilter === String(ys.year) ? 'var(--border-active, color-mix(in srgb, var(--accent-success-deep) 50%, transparent))' : 'var(--border-color)',
                             transition: 'border-color 0.2s',
                         }}>
                         <div style={{ position: 'absolute', top: 0, right: 0, width: '48px', height: '48px', background: ys.gradient, borderRadius: '0 16px 0 32px', opacity: 0.25 }} />
@@ -314,9 +314,9 @@ export default function StudentListPage() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                             <div style={{
                                                 width: 32, height: 32, borderRadius: '50%',
-                                                background: s.prefix?.includes('นาย') ? 'linear-gradient(135deg, #2E86AB, #1a6a8c)' : 'linear-gradient(135deg, #E91E63, #c2185b)',
+                                                background: s.prefix?.includes('นาย') ? 'linear-gradient(135deg, var(--accent-info), var(--accent-info))' : 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: '0.75rem', fontWeight: 700, color: '#fff', flexShrink: 0
+                                                fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-on-accent)', flexShrink: 0
                                             }}>
                                                 {s.name.charAt(0)}
                                             </div>
@@ -329,8 +329,8 @@ export default function StudentListPage() {
                                     <td style={{ padding: '12px 18px', textAlign: 'center' }}>
                                         <span style={{
                                             padding: '3px 10px', borderRadius: '20px', fontSize: '0.76rem', fontWeight: 600,
-                                            background: s.level === 'ปริญญาตรี' ? 'rgba(0,166,81,0.15)' : s.level === 'ปริญญาโท' ? 'rgba(46,134,171,0.15)' : 'rgba(162,59,114,0.15)',
-                                            color: s.level === 'ปริญญาตรี' ? '#00a651' : s.level === 'ปริญญาโท' ? '#2E86AB' : '#A23B72',
+                                            background: s.level === 'ปริญญาตรี' ? 'color-mix(in srgb, var(--accent-success) 15%, transparent)' : s.level === 'ปริญญาโท' ? 'color-mix(in srgb, var(--accent-info) 15%, transparent)' : 'color-mix(in srgb, var(--accent-pink) 15%, transparent)',
+                                            color: s.level === 'ปริญญาตรี' ? 'var(--accent-success)' : s.level === 'ปริญญาโท' ? 'var(--accent-info)' : 'var(--accent-pink)',
                                         }}>
                                             {s.level || 'ป.ตรี'}
                                         </span>
@@ -340,7 +340,7 @@ export default function StudentListPage() {
                                             ปี {s.year}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '12px 18px', textAlign: 'center', fontWeight: 700, color: s.gpa < 2.0 ? '#ef4444' : s.gpa >= 3.5 ? '#4CAF50' : 'var(--text-primary)' }}>
+                                    <td style={{ padding: '12px 18px', textAlign: 'center', fontWeight: 700, color: s.gpa < 2.0 ? 'var(--accent-danger)' : s.gpa >= 3.5 ? 'var(--accent-success)' : 'var(--text-primary)' }}>
                                         {s.gpa.toFixed(2)}
                                     </td>
                                     <td style={{ padding: '12px 18px', textAlign: 'center' }}>
@@ -382,8 +382,8 @@ export default function StudentListPage() {
                         <button onClick={() => { setShowAll(!showAll); setPage(1); }}
                             style={{
                                 ...inputBase, width: 'auto', padding: '6px 14px', textAlign: 'center', cursor: 'pointer',
-                                background: showAll ? 'rgba(0,104,56,0.4)' : inputBase.background,
-                                borderColor: showAll ? '#006838' : 'var(--border-color)',
+                                background: showAll ? 'color-mix(in srgb, var(--accent-success-deep) 40%, transparent)' : inputBase.background,
+                                borderColor: showAll ? 'var(--accent-success-deep)' : 'var(--border-color)',
                                 fontWeight: 600, fontSize: '0.82rem',
                             }}>
                             {showAll ? 'แบ่งหน้า' : 'แสดงทั้งหมด'}
@@ -410,8 +410,8 @@ export default function StudentListPage() {
                                             <button key={p} onClick={() => setPage(p)}
                                                 style={{
                                                     ...inputBase, width: 36, padding: '6px', textAlign: 'center', cursor: 'pointer',
-                                                    background: p === page ? 'rgba(0,104,56,0.4)' : inputBase.background,
-                                                    borderColor: p === page ? '#006838' : inputBase.borderColor,
+                                                    background: p === page ? 'color-mix(in srgb, var(--accent-success-deep) 40%, transparent)' : inputBase.background,
+                                                    borderColor: p === page ? 'var(--accent-success-deep)' : inputBase.borderColor,
                                                     fontWeight: p === page ? 700 : 400,
                                                 }}>
                                                 {p}
@@ -489,13 +489,13 @@ export default function StudentListPage() {
                                 marginTop: 18,
                                 padding: '12px 14px',
                                 borderRadius: 10,
-                                border: '1px solid rgba(245, 158, 11, 0.35)',
-                                background: 'rgba(245, 158, 11, 0.12)',
+                                border: '1px solid color-mix(in srgb, var(--accent-warning) 35%, transparent)',
+                                background: 'color-mix(in srgb, var(--accent-warning) 12%, transparent)',
                                 color: 'var(--text-primary)',
                                 fontSize: '0.84rem',
                                 lineHeight: 1.55,
                             }}>
-                                <AlertTriangle size={15} style={{ verticalAlign: '-3px', marginRight: 6, color: '#F59E0B' }} />
+                                <AlertTriangle size={15} style={{ verticalAlign: '-3px', marginRight: 6, color: 'var(--accent-warning)' }} />
                                 {studentSaveMessage}
                             </div>
                         )}
@@ -509,8 +509,8 @@ export default function StudentListPage() {
                             <button onClick={handleAdd} disabled={savingStudent || !newStudent.id || !newStudent.name || !newStudent.gpa}
                                 style={{
                                     padding: '10px 24px', borderRadius: '10px', border: 'none', fontWeight: 600,
-                                    background: (savingStudent || !newStudent.id || !newStudent.name || !newStudent.gpa) ? 'var(--bg-card-hover)' : 'linear-gradient(135deg, #006838, #00a651)',
-                                    color: (savingStudent || !newStudent.id || !newStudent.name || !newStudent.gpa) ? 'var(--text-muted)' : '#fff',
+                                    background: (savingStudent || !newStudent.id || !newStudent.name || !newStudent.gpa) ? 'var(--bg-card-hover)' : 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))',
+                                    color: (savingStudent || !newStudent.id || !newStudent.name || !newStudent.gpa) ? 'var(--text-muted)' : 'var(--text-on-accent)',
                                     cursor: (savingStudent || !newStudent.id || !newStudent.name || !newStudent.gpa) ? 'not-allowed' : 'pointer',
                                 }}>
                                 {savingStudent ? 'กำลังบันทึก...' : 'เพิ่มนักศึกษา'}

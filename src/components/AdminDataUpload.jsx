@@ -367,8 +367,8 @@ export default function AdminDataUpload({ onToast }) {
                     <div className="admin-data-actions">
                         <span className="admin-data-hint">
                             {mappedRequired
-                                ? <><CheckCircle size={14} color="#22c55e" /> จับคู่คอลัมน์จำเป็นครบแล้ว</>
-                                : <><AlertTriangle size={14} color="#f59e0b" /> ต้องจับคู่คอลัมน์ที่มีเครื่องหมาย * ให้ครบ</>}
+                                ? <><CheckCircle size={14} color="var(--accent-success)" /> จับคู่คอลัมน์จำเป็นครบแล้ว</>
+                                : <><AlertTriangle size={14} color="var(--accent-warning)" /> ต้องจับคู่คอลัมน์ที่มีเครื่องหมาย * ให้ครบ</>}
                         </span>
                         <button
                             className="admin-data-btn primary"

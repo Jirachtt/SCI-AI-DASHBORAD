@@ -2,17 +2,17 @@ export const OFFICIAL_STUDENT_SNAPSHOT_DATE = '2026-05-16';
 export const OFFICIAL_STUDENT_SOURCE_URL = 'https://dashboard.mju.ac.th/student';
 
 export const OFFICIAL_STUDENT_LEVELS = [
-    { key: 'certificate', level: 'ประกาศนียบัตร', count: 73, color: '#059669', icon: 'Cert' },
-    { key: 'bachelor', level: 'ปริญญาตรี', count: 15693, color: '#006838', icon: 'BSc' },
-    { key: 'master', level: 'ปริญญาโท', count: 417, color: '#2E86AB', icon: 'MSc' },
-    { key: 'doctoral', level: 'ปริญญาเอก', count: 209, color: '#A23B72', icon: 'PhD' },
+    { key: 'certificate', level: 'ประกาศนียบัตร', count: 73, color: 'var(--accent-success)', icon: 'Cert' },
+    { key: 'bachelor', level: 'ปริญญาตรี', count: 15693, color: 'var(--accent-success-deep)', icon: 'BSc' },
+    { key: 'master', level: 'ปริญญาโท', count: 417, color: 'var(--accent-info)', icon: 'MSc' },
+    { key: 'doctoral', level: 'ปริญญาเอก', count: 209, color: 'var(--accent-pink)', icon: 'PhD' },
 ];
 
 export const OFFICIAL_SCIENCE_STUDENT_LEVELS = [
-    { key: 'certificate', level: 'ประกาศนียบัตร', count: 0, color: '#059669', icon: 'Cert' },
-    { key: 'bachelor', level: 'ปริญญาตรี', count: 1369, color: '#006838', icon: 'BSc' },
-    { key: 'master', level: 'ปริญญาโท', count: 16, color: '#2E86AB', icon: 'MSc' },
-    { key: 'doctoral', level: 'ปริญญาเอก', count: 5, color: '#A23B72', icon: 'PhD' },
+    { key: 'certificate', level: 'ประกาศนียบัตร', count: 0, color: 'var(--accent-success)', icon: 'Cert' },
+    { key: 'bachelor', level: 'ปริญญาตรี', count: 1369, color: 'var(--accent-success-deep)', icon: 'BSc' },
+    { key: 'master', level: 'ปริญญาโท', count: 16, color: 'var(--accent-info)', icon: 'MSc' },
+    { key: 'doctoral', level: 'ปริญญาเอก', count: 5, color: 'var(--accent-pink)', icon: 'PhD' },
 ];
 
 export const OFFICIAL_STUDENT_FACULTY_ROWS = [

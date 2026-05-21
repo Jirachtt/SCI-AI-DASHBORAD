@@ -14,6 +14,7 @@ import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
+import { legacyColorToVar, themeAlpha, themeGradient } from '../utils/themeTokens';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, Filler, RadialLinearScale, themeAdaptorPlugin);
 
@@ -25,11 +26,12 @@ const cardStyle = {
 
 function ProgressBar({ value, target, color }) {
     const pct = Math.min((value / target) * 100, 100);
+    const accentColor = legacyColorToVar(color || 'var(--accent-success)');
     return (
         <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'var(--bg-secondary)' }}>
             <div style={{
                 width: `${pct}%`, height: '100%', borderRadius: 4,
-                background: `linear-gradient(90deg, ${color}, ${color}aa)`,
+                background: themeGradient(accentColor, '--accent-success', '90deg'),
                 transition: 'width 0.8s ease'
             }} />
         </div>
@@ -79,9 +81,9 @@ export default function StrategicDashboardPage() {
         return String(value);
     };
     const statusStyle = (status) => {
-        if (status === 'met') return { label: 'ถึงเป้า', color: '#059669', bg: '#dcfce7' };
-        if (status === 'near') return { label: 'ใกล้เป้า', color: '#b45309', bg: '#fef3c7' };
-        if (status === 'below') return { label: 'ต้องเร่ง', color: '#dc2626', bg: '#fee2e2' };
+        if (status === 'met') return { label: 'ถึงเป้า', color: 'var(--accent-success)', bg: 'color-mix(in srgb, var(--accent-success) 14%, transparent)' };
+        if (status === 'near') return { label: 'ใกล้เป้า', color: 'var(--accent-orange)', bg: 'color-mix(in srgb, var(--accent-warning) 16%, transparent)' };
+        if (status === 'below') return { label: 'ต้องเร่ง', color: 'var(--accent-danger)', bg: 'color-mix(in srgb, var(--accent-danger) 14%, transparent)' };
         return { label: 'รอข้อมูล', color: 'var(--text-muted)', bg: 'var(--bg-secondary)' };
     };
 
@@ -92,8 +94,8 @@ export default function StrategicDashboardPage() {
             {
                 label: 'เป้าหมาย',
                 data: performanceRadar.targetYear,
-                backgroundColor: 'rgba(245, 158, 11, 0.7)',
-                borderColor: '#f59e0b',
+                backgroundColor: 'color-mix(in srgb, var(--accent-warning) 70%, transparent)',
+                borderColor: 'var(--accent-warning)',
                 borderWidth: 1,
                 borderRadius: 4,
                 barPercentage: 0.7,
@@ -102,8 +104,8 @@ export default function StrategicDashboardPage() {
             {
                 label: 'ปีปัจจุบัน',
                 data: performanceRadar.currentYear,
-                backgroundColor: 'rgba(34, 197, 94, 0.7)',
-                borderColor: '#22c55e',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 70%, transparent)',
+                borderColor: 'var(--accent-success)',
                 borderWidth: 1,
                 borderRadius: 4,
                 barPercentage: 0.7,
@@ -112,8 +114,8 @@ export default function StrategicDashboardPage() {
             {
                 label: 'ปีที่แล้ว',
                 data: performanceRadar.lastYear,
-                backgroundColor: 'rgba(123, 104, 238, 0.7)',
-                borderColor: '#7B68EE',
+                backgroundColor: 'color-mix(in srgb, var(--accent-purple) 70%, transparent)',
+                borderColor: 'var(--accent-purple)',
                 borderWidth: 1,
                 borderRadius: 4,
                 barPercentage: 0.7,
@@ -174,11 +176,11 @@ export default function StrategicDashboardPage() {
         datasets: [
             {
                 label: 'คะแนนประสิทธิภาพรวม', data: efficiencyTrend.map(e => e.score),
-                borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.12)', fill: true, tension: 0.4,
+                borderColor: 'var(--accent-success)', backgroundColor: 'color-mix(in srgb, var(--accent-success) 12%, transparent)', fill: true, tension: 0.4,
             },
             {
                 label: 'ประสิทธิภาพงบประมาณ (%)', data: efficiencyTrend.map(e => e.budgetEfficiency),
-                borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.12)', fill: true, tension: 0.4,
+                borderColor: 'var(--accent-blue)', backgroundColor: 'color-mix(in srgb, var(--accent-blue) 12%, transparent)', fill: true, tension: 0.4,
             }
         ]
     };
@@ -261,8 +263,8 @@ export default function StrategicDashboardPage() {
         <div style={{ padding: '0 4px' }}>
             <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #A23B72, #7B2D8E)' }}>
-                    <Target size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))' }}>
+                    <Target size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h1>ยุทธศาสตร์และการดำเนินงาน</h1>
@@ -274,27 +276,27 @@ export default function StrategicDashboardPage() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
-                <div style={{ ...cardStyle, padding: '16px 18px', borderLeft: '4px solid #7B68EE' }}>
+                <div style={{ ...cardStyle, padding: '16px 18px', borderLeft: '4px solid var(--accent-purple)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                        <CheckCircle2 size={18} color="#00a651" />
+                        <CheckCircle2 size={18} color="var(--accent-success)" />
                         <strong style={{ color: 'var(--text-primary)' }}>ข้อมูลจากไฟล์จริง</strong>
                     </div>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', lineHeight: 1.45 }}>
                         ใช้ไฟล์ยุทธศาสตร์ {sourceFiles.length || 2} ไฟล์ และผูกกับ AI/export แล้ว
                     </div>
                 </div>
-                <div style={{ ...cardStyle, padding: '16px 18px', borderLeft: '4px solid #ef4444' }}>
+                <div style={{ ...cardStyle, padding: '16px 18px', borderLeft: '4px solid var(--accent-danger)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                        <AlertTriangle size={18} color="#ef4444" />
+                        <AlertTriangle size={18} color="var(--accent-danger)" />
                         <strong style={{ color: 'var(--text-primary)' }}>KPI คำรับรอง 2569</strong>
                     </div>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', lineHeight: 1.45 }}>
                         ทั้งหมด {kpiReviewSummary.totalKpis} ตัวชี้วัด · ต้องเร่ง {kpiReviewSummary.below} · ใกล้เป้า {kpiReviewSummary.near} · รอข้อมูล {unknownKpiCount}
                     </div>
                 </div>
-                <div style={{ ...cardStyle, padding: '16px 18px', borderLeft: '4px solid #0ea5e9' }}>
+                <div style={{ ...cardStyle, padding: '16px 18px', borderLeft: '4px solid var(--accent-sky)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                        <TrendingUp size={18} color="#0ea5e9" />
+                        <TrendingUp size={18} color="var(--accent-sky)" />
                         <strong style={{ color: 'var(--text-primary)' }}>แผนพัฒนา 2569-2572</strong>
                     </div>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', lineHeight: 1.45 }}>
@@ -313,8 +315,8 @@ export default function StrategicDashboardPage() {
                                 <span style={{ fontSize: '1.5rem' }}>{goal.icon}</span>
                                 <span style={{
                                     fontSize: '0.78rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                                    background: pct >= 90 ? '#00683822' : pct >= 70 ? '#C5A02822' : '#E91E6322',
-                                    color: pct >= 90 ? '#00a651' : pct >= 70 ? '#C5A028' : '#E91E63'
+                                    background: pct >= 90 ? 'color-mix(in srgb, var(--accent-success-deep) 13%, transparent)' : pct >= 70 ? 'color-mix(in srgb, var(--accent-gold) 13%, transparent)' : 'color-mix(in srgb, var(--accent-pink) 13%, transparent)',
+                                    color: pct >= 90 ? 'var(--accent-success)' : pct >= 70 ? 'var(--accent-gold)' : 'var(--accent-pink)'
                                 }}>{pct}%</span>
                             </div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, lineHeight: 1.3 }}>{goal.title}</div>
@@ -536,7 +538,7 @@ export default function StrategicDashboardPage() {
                                             <span style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 500 }}>{goal.icon} {kpi.name}</span>
                                             <span style={{
                                                 fontSize: '0.82rem', fontWeight: 700,
-                                                color: pct >= 90 ? '#00a651' : pct >= 70 ? '#C5A028' : '#E91E63'
+                                                color: pct >= 90 ? 'var(--accent-success)' : pct >= 70 ? 'var(--accent-gold)' : 'var(--accent-pink)'
                                             }}>{kpi.current}/{kpi.target} {kpi.unit}</span>
                                         </div>
                                         <div style={{ marginTop: 6 }}>
@@ -562,9 +564,9 @@ export default function StrategicDashboardPage() {
                             style={{
                                 padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
                                 fontSize: '0.88rem', fontWeight: 600, transition: 'all 0.2s',
-                                background: activeOKR === i ? `${obj.color}33` : 'var(--bg-secondary)',
-                                color: activeOKR === i ? obj.color : 'var(--text-muted)',
-                                outline: activeOKR === i ? `2px solid ${obj.color}66` : 'none',
+                                background: activeOKR === i ? themeAlpha(obj.color, 20) : 'var(--bg-secondary)',
+                                color: activeOKR === i ? legacyColorToVar(obj.color) : 'var(--text-muted)',
+                                outline: activeOKR === i ? `2px solid ${themeAlpha(obj.color, 40)}` : 'none',
                             }}
                         >
                             {obj.id}: {obj.title.substring(0, 20)}...
@@ -576,7 +578,7 @@ export default function StrategicDashboardPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
                     <div style={{
                         width: 60, height: 60, borderRadius: 15,
-                        background: `conic-gradient(${selectedObj.color} ${selectedObj.progress * 3.6}deg, var(--bg-secondary) 0deg)`,
+                        background: `conic-gradient(${legacyColorToVar(selectedObj.color)} ${selectedObj.progress * 3.6}deg, var(--bg-secondary) 0deg)`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                         <div style={{

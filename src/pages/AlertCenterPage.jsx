@@ -15,11 +15,12 @@ import {
     GraduationCap, Wallet, Microscope, Target, RefreshCw, CheckCircle, Search
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import { legacyColorToVar, themeGradient } from '../utils/themeTokens';
 
 const SEVERITY_META = {
-    critical: { label: 'วิกฤต', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', Icon: ShieldAlert },
-    warning: { label: 'เฝ้าระวัง', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', Icon: AlertTriangle },
-    info: { label: 'ติดตาม', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', Icon: Info },
+    critical: { label: 'วิกฤต', color: 'var(--accent-danger)', bg: 'color-mix(in srgb, var(--accent-danger) 12%, transparent)', Icon: ShieldAlert },
+    warning: { label: 'เฝ้าระวัง', color: 'var(--accent-warning)', bg: 'color-mix(in srgb, var(--accent-warning) 12%, transparent)', Icon: AlertTriangle },
+    info: { label: 'ติดตาม', color: 'var(--accent-blue)', bg: 'color-mix(in srgb, var(--accent-blue) 12%, transparent)', Icon: Info },
 };
 
 const DOMAIN_ICON = {
@@ -134,8 +135,8 @@ export default function AlertCenterPage() {
             </Link>
 
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #ef4444, #f59e0b)' }}>
-                    <Bell size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-danger), var(--accent-warning))' }}>
+                    <Bell size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h2>ศูนย์แจ้งเตือน (Alert Center)</h2>
@@ -170,10 +171,10 @@ export default function AlertCenterPage() {
 
             {/* Summary */}
             <div className="stats-grid alert-summary-grid" style={{ marginTop: 12 }}>
-                <SummaryCard label="แจ้งเตือนทั้งหมด" value={summary.total} color="#7B68EE" Icon={Bell} />
-                <SummaryCard label="วิกฤต (Critical)" value={summary.critical} color="#ef4444" Icon={ShieldAlert} pulse={summary.critical > 0} />
-                <SummaryCard label="เฝ้าระวัง (Warning)" value={summary.warning} color="#f59e0b" Icon={AlertTriangle} />
-                <SummaryCard label="ติดตาม (Info)" value={summary.info} color="#3b82f6" Icon={Info} />
+                <SummaryCard label="แจ้งเตือนทั้งหมด" value={summary.total} color="var(--accent-purple)" Icon={Bell} />
+                <SummaryCard label="วิกฤต (Critical)" value={summary.critical} color="var(--accent-danger)" Icon={ShieldAlert} pulse={summary.critical > 0} />
+                <SummaryCard label="เฝ้าระวัง (Warning)" value={summary.warning} color="var(--accent-warning)" Icon={AlertTriangle} />
+                <SummaryCard label="ติดตาม (Info)" value={summary.info} color="var(--accent-blue)" Icon={Info} />
             </div>
 
             {/* Filters */}
@@ -218,7 +219,7 @@ export default function AlertCenterPage() {
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="admin-empty-state">
-                        <CheckCircle size={48} color="#22c55e" />
+                        <CheckCircle size={48} color="var(--accent-success)" />
                         <h3>ไม่มีสัญญาณเตือนที่ตรงเงื่อนไข</h3>
                         <p>ปลอดภัยดี — หรือลองเปลี่ยนตัวกรอง</p>
                     </div>
@@ -259,11 +260,11 @@ export default function AlertCenterPage() {
                                         {a.sourceLabel && (
                                             <span style={{
                                                 fontSize: '0.72rem',
-                                                color: a.sourceMode === 'live' ? '#00a651' : 'var(--text-muted)',
+                                                color: a.sourceMode === 'live' ? 'var(--accent-success)' : 'var(--text-muted)',
                                                 padding: '3px 9px',
                                                 borderRadius: 999,
-                                                border: '1px solid rgba(123,104,238,0.24)',
-                                                background: 'rgba(123,104,238,0.08)'
+                                                border: '1px solid color-mix(in srgb, var(--accent-purple) 24%, transparent)',
+                                                background: 'color-mix(in srgb, var(--accent-purple) 8%, transparent)'
                                             }}>
                                                 {a.sourceLabel}
                                             </span>
@@ -276,11 +277,11 @@ export default function AlertCenterPage() {
                                     {a.suggestedAction && (
                                         <div style={{
                                             marginTop: 10, padding: '8px 12px',
-                                            background: 'rgba(0,166,81,0.08)',
-                                            borderLeft: '3px solid #00a651',
+                                            background: 'color-mix(in srgb, var(--accent-success) 8%, transparent)',
+                                            borderLeft: '3px solid var(--accent-success)',
                                             borderRadius: 6, fontSize: '0.85rem'
                                         }}>
-                                            <strong style={{ color: '#00a651' }}>แนวทาง:</strong> {a.suggestedAction}
+                                            <strong style={{ color: 'var(--accent-success)' }}>แนวทาง:</strong> {a.suggestedAction}
                                         </div>
                                     )}
                                     {a.data && a.data.length > 0 && (
@@ -317,14 +318,15 @@ export default function AlertCenterPage() {
 }
 
 function SummaryCard({ label, value, color, Icon: IconComponent, pulse }) {
+    const accent = legacyColorToVar(color);
     return (
         <div className={`stat-card alert-summary-card animate-in ${pulse ? 'pulse' : ''}`}>
             <div className="stat-card-header">
-                <div className="stat-card-icon" style={{ background: `linear-gradient(135deg, ${color}, ${color}aa)` }}>
-                    {createElement(IconComponent, { size: 20, color: '#fff' })}
+                <div className="stat-card-icon" style={{ background: themeGradient(color) }}>
+                    {createElement(IconComponent, { size: 20, color: 'var(--text-on-accent)' })}
                 </div>
             </div>
-            <div className="stat-card-value" style={{ color }}>{value}</div>
+            <div className="stat-card-value" style={{ color: accent }}>{value}</div>
             <div className="stat-card-label">{label}</div>
         </div>
     );
@@ -389,7 +391,7 @@ function AlertDetailList({ items }) {
                                     <td>{it.prefix || ''} {it.name}</td>
                                     <td>{it.major}</td>
                                     <td>{it.year}</td>
-                                    <td style={{ color: it.gpa < 2 ? '#ef4444' : '#f59e0b', fontWeight: 800 }}>
+                                    <td style={{ color: it.gpa < 2 ? 'var(--accent-danger)' : 'var(--accent-warning)', fontWeight: 800 }}>
                                         {Number(it.gpa)?.toFixed(2)}
                                     </td>
                                 </tr>

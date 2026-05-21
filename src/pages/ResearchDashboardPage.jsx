@@ -19,6 +19,7 @@ import {
     percentOf,
     summarizeSmartRows,
 } from '../utils/smartChartData';
+import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
@@ -51,10 +52,10 @@ export default function ResearchDashboardPage() {
     const pubChartData = {
         labels: publicationTrend.map(p => p.year),
         datasets: [
-            { label: 'Scopus', data: publicationTrend.map(p => p.scopus), borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.12)', fill: true, tension: 0.4 },
-            { label: 'TCI-1', data: publicationTrend.map(p => p.tci1), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.12)', fill: true, tension: 0.4 },
-            { label: 'TCI-2', data: publicationTrend.map(p => p.tci2), borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.12)', fill: true, tension: 0.4 },
-            { label: 'ระดับชาติ', data: publicationTrend.map(p => p.national), borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.12)', fill: true, tension: 0.4 },
+            { label: 'Scopus', data: publicationTrend.map(p => p.scopus), borderColor: 'var(--accent-success)', backgroundColor: 'color-mix(in srgb, var(--accent-success) 12%, transparent)', fill: true, tension: 0.4 },
+            { label: 'TCI-1', data: publicationTrend.map(p => p.tci1), borderColor: 'var(--accent-blue)', backgroundColor: 'color-mix(in srgb, var(--accent-blue) 12%, transparent)', fill: true, tension: 0.4 },
+            { label: 'TCI-2', data: publicationTrend.map(p => p.tci2), borderColor: 'var(--accent-warning)', backgroundColor: 'color-mix(in srgb, var(--accent-warning) 12%, transparent)', fill: true, tension: 0.4 },
+            { label: 'ระดับชาติ', data: publicationTrend.map(p => p.national), borderColor: 'var(--accent-purple)', backgroundColor: 'color-mix(in srgb, var(--accent-purple) 12%, transparent)', fill: true, tension: 0.4 },
         ]
     };
 
@@ -88,8 +89,8 @@ export default function ResearchDashboardPage() {
             {
                 label: 'ผลงานตีพิมพ์',
                 data: chartablePublicationRows.map(d => d.value),
-                backgroundColor: chartablePublicationRows.map(row => row.isFallback ? 'rgba(148, 163, 184, 0.72)' : 'rgba(34, 197, 94, 0.76)'),
-                borderColor: chartablePublicationRows.map(row => row.isFallback ? '#94a3b8' : '#22c55e'),
+                backgroundColor: chartablePublicationRows.map(row => row.isFallback ? 'color-mix(in srgb, var(--text-subtle) 72%, transparent)' : 'color-mix(in srgb, var(--accent-success) 76%, transparent)'),
+                borderColor: chartablePublicationRows.map(row => row.isFallback ? 'var(--text-subtle)' : 'var(--accent-success)'),
                 borderWidth: 1,
                 borderRadius: 6,
                 valueStatus: chartablePublicationRows.map(row => row.valueStatus),
@@ -101,14 +102,14 @@ export default function ResearchDashboardPage() {
     const fundChartData = {
         labels: fundingTrend.map(f => f.year),
         datasets: [
-            { label: 'ทุนภายใน', data: fundingTrend.map(f => f.internal), backgroundColor: 'rgba(34, 197, 94, 0.7)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 6 },
-            { label: 'ทุนภายนอก', data: fundingTrend.map(f => f.external), backgroundColor: 'rgba(59, 130, 246, 0.7)', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 6 },
-            { label: 'ภาคเอกชน', data: fundingTrend.map(f => f.industry), backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 6 },
+            { label: 'ทุนภายใน', data: fundingTrend.map(f => f.internal), backgroundColor: 'color-mix(in srgb, var(--accent-success) 70%, transparent)', borderColor: 'var(--accent-success)', borderWidth: 1, borderRadius: 6 },
+            { label: 'ทุนภายนอก', data: fundingTrend.map(f => f.external), backgroundColor: 'color-mix(in srgb, var(--accent-blue) 70%, transparent)', borderColor: 'var(--accent-blue)', borderWidth: 1, borderRadius: 6 },
+            { label: 'ภาคเอกชน', data: fundingTrend.map(f => f.industry), backgroundColor: 'color-mix(in srgb, var(--accent-warning) 70%, transparent)', borderColor: 'var(--accent-warning)', borderWidth: 1, borderRadius: 6 },
         ]
     };
 
     // Funding sources pie
-    const gradPalette = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
+    const gradPalette = ['var(--accent-purple)', 'var(--accent-success)', 'var(--accent-warning)', 'var(--accent-danger)', 'var(--accent-blue)', 'var(--accent-cyan)', 'var(--accent-purple)', 'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-orange)', 'var(--accent-purple)', 'var(--text-subtle)'];
     const sourceData = {
         labels: fundingSources.map(s => s.source),
         datasets: [{
@@ -122,9 +123,9 @@ export default function ResearchDashboardPage() {
     const benchData = {
         labels: benchmark.map(b => b.university),
         datasets: [
-            { label: 'Scopus Papers', data: benchmark.map(b => b.scopus), backgroundColor: 'rgba(34, 197, 94, 0.7)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 6 },
-            { label: 'h-Index', data: benchmark.map(b => b.hIndex), backgroundColor: 'rgba(59, 130, 246, 0.7)', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 6 },
-            { label: 'สิทธิบัตร', data: benchmark.map(b => b.patents), backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 6 },
+            { label: 'Scopus Papers', data: benchmark.map(b => b.scopus), backgroundColor: 'color-mix(in srgb, var(--accent-success) 70%, transparent)', borderColor: 'var(--accent-success)', borderWidth: 1, borderRadius: 6 },
+            { label: 'h-Index', data: benchmark.map(b => b.hIndex), backgroundColor: 'color-mix(in srgb, var(--accent-blue) 70%, transparent)', borderColor: 'var(--accent-blue)', borderWidth: 1, borderRadius: 6 },
+            { label: 'สิทธิบัตร', data: benchmark.map(b => b.patents), backgroundColor: 'color-mix(in srgb, var(--accent-warning) 70%, transparent)', borderColor: 'var(--accent-warning)', borderWidth: 1, borderRadius: 6 },
         ]
     };
 
@@ -135,8 +136,8 @@ export default function ResearchDashboardPage() {
             tooltip: { backgroundColor: 'var(--bg-card)', titleColor: 'var(--text-primary)', bodyColor: 'var(--text-secondary)' }
         },
         scales: {
-            x: { ticks: { color: 'var(--text-muted)', font: { size: 10 } }, grid: { color: '#ffffff08' } },
-            y: { ticks: { color: 'var(--text-muted)' }, grid: { color: '#ffffff08' } }
+            x: { ticks: { color: 'var(--text-muted)', font: { size: 10 } }, grid: { color: 'var(--chart-grid)' } },
+            y: { ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--chart-grid)' } }
         }
     };
 
@@ -250,20 +251,20 @@ export default function ResearchDashboardPage() {
     });
 
     const scorecards = [
-        { label: 'ผลงานตีพิมพ์รวม', value: Number(overview.totalPublications || 0).toLocaleString('th-TH'), icon: FileText, color: '#006838' },
-        { label: 'งบวิจัยรวม (ล้าน฿)', value: Number(overview.totalFunding || 0).toFixed(1), icon: DollarSign, color: '#2E86AB' },
-        { label: 'สิทธิบัตร', value: Number(overview.totalPatents ?? patentTotal ?? 0).toLocaleString('th-TH'), icon: Award, color: '#C5A028' },
-        { label: 'Citations', value: Number(overview.totalCitations || 0).toLocaleString('th-TH'), icon: BookOpen, color: '#A23B72' },
-        { label: 'h-Index', value: overview.hIndex ?? '-', icon: TrendingUp, color: '#7B68EE' },
-        { label: 'โครงการดำเนินการ', value: overview.activeProjects ?? '-', icon: Globe2, color: '#F18F01' },
+        { label: 'ผลงานตีพิมพ์รวม', value: Number(overview.totalPublications || 0).toLocaleString('th-TH'), icon: FileText, color: 'var(--accent-success-deep)' },
+        { label: 'งบวิจัยรวม (ล้าน฿)', value: Number(overview.totalFunding || 0).toFixed(1), icon: DollarSign, color: 'var(--accent-info)' },
+        { label: 'สิทธิบัตร', value: Number(overview.totalPatents ?? patentTotal ?? 0).toLocaleString('th-TH'), icon: Award, color: 'var(--accent-gold)' },
+        { label: 'Citations', value: Number(overview.totalCitations || 0).toLocaleString('th-TH'), icon: BookOpen, color: 'var(--accent-pink)' },
+        { label: 'h-Index', value: overview.hIndex ?? '-', icon: TrendingUp, color: 'var(--accent-purple)' },
+        { label: 'โครงการดำเนินการ', value: overview.activeProjects ?? '-', icon: Globe2, color: 'var(--accent-orange)' },
     ];
 
     return (
         <div style={{ padding: '0 4px' }}>
             <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
-                    <Microscope size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))' }}>
+                    <Microscope size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h1>การวิจัยและนวัตกรรม</h1>
@@ -278,10 +279,11 @@ export default function ResearchDashboardPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24, alignItems: 'stretch' }}>
                 {scorecards.map((sc, i) => {
                     const Icon = sc.icon;
+                    const accentColor = legacyColorToVar(sc.color);
                     return (
                         <div key={i} style={{ ...cardStyle, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12, minHeight: 92, height: '100%' }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 10, background: `${sc.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <Icon size={20} color={sc.color} />
+                            <div style={{ width: 40, height: 40, borderRadius: 10, background: themeAlpha(sc.color, 13), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <Icon size={20} color={accentColor} />
                             </div>
                             <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>{sc.value}</div>
@@ -358,7 +360,7 @@ export default function ResearchDashboardPage() {
                                 <div key={row.dept || row.label} className={`smart-mini-bar-row smart-status-${row.valueStatus}`}>
                                     <span>{row.label}</span>
                                     <div className="smart-mini-bar-track">
-                                        <div style={{ width: percentOf(row.value, Math.max(1, patentTotal)), background: row.isFallback ? '#94a3b8' : '#f59e0b' }} />
+                                        <div style={{ width: percentOf(row.value, Math.max(1, patentTotal)), background: row.isFallback ? 'var(--text-subtle)' : 'var(--accent-warning)' }} />
                                     </div>
                                     <strong>{Number(row.value || 0).toLocaleString('th-TH')}</strong>
                                 </div>
@@ -384,8 +386,8 @@ export default function ResearchDashboardPage() {
                                         <td style={tdStyle}>
                                             <span style={{
                                                 padding: '3px 10px', borderRadius: 20, fontSize: '0.82rem', fontWeight: 600,
-                                                background: p.status === 'ได้รับแล้ว' ? '#00683822' : '#C5A02822',
-                                                color: p.status === 'ได้รับแล้ว' ? '#00a651' : '#C5A028',
+                                                background: p.status === 'ได้รับแล้ว' ? 'color-mix(in srgb, var(--accent-success-deep) 13%, transparent)' : 'color-mix(in srgb, var(--accent-gold) 13%, transparent)',
+                                                color: p.status === 'ได้รับแล้ว' ? 'var(--accent-success)' : 'var(--accent-gold)',
                                             }}>{p.status}</span>
                                         </td>
                                     </tr>

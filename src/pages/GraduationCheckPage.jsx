@@ -56,8 +56,8 @@ export default function GraduationCheckPage() {
             </Link>
 
             <div className="section-header graduation-check-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #A23B72, #7B2D8E)' }}>
-                    <CheckCircle size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))' }}>
+                    <CheckCircle size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h2>ตรวจสอบเงื่อนไขการสำเร็จการศึกษา</h2>
@@ -72,7 +72,7 @@ export default function GraduationCheckPage() {
                 <article className="graduation-status-card">
                     <div className="graduation-status-head">
                         <span><Award size={15} /> เกรดเฉลี่ยสะสม (GPAX)</span>
-                        <CheckCircle size={20} color="#22c55e" />
+                        <CheckCircle size={20} color="var(--accent-success)" />
                     </div>
                     <strong className="graduation-status-value success">{Number(gpaData.current || 0).toFixed(2)}</strong>
                     <p>เกณฑ์ขั้นต่ำ {Number(gpaData.required || 0).toFixed(2)} · {gpaData.source}</p>
@@ -85,7 +85,7 @@ export default function GraduationCheckPage() {
                     </div>
                     <strong className="graduation-status-value info">{creditData.current}/{creditData.required}</strong>
                     <div className="graduation-progress-track">
-                        <span style={{ width: `${creditPercent}%`, background: '#2E86AB' }} />
+                        <span style={{ width: `${creditPercent}%`, background: 'var(--accent-info)' }} />
                     </div>
                     <div className="graduation-mini-list">
                         {creditData.details.map(item => (
@@ -105,7 +105,7 @@ export default function GraduationCheckPage() {
                     </div>
                     <strong className="graduation-status-value warning">{activityRequirement.completedHours}/{activityRequirement.targetHours}</strong>
                     <div className="graduation-progress-track">
-                        <span style={{ width: `${activityPercent}%`, background: '#E91E63' }} />
+                        <span style={{ width: `${activityPercent}%`, background: 'var(--accent-pink)' }} />
                     </div>
                     <p>ยังขาด {missingHours} ชั่วโมง เพื่อครบเกณฑ์ {activityRequirement.programLabel} · {activityRequirement.source}</p>
                 </article>
@@ -118,7 +118,7 @@ export default function GraduationCheckPage() {
                             <div className="chart-card-title">สถานะชั่วโมงกิจกรรมที่ใช้ตรวจจบ</div>
                             <div className="chart-card-subtitle">หน้านี้แสดงเฉพาะความคืบหน้า ส่วนปฏิทินกิจกรรมย้ายไปอยู่หน้า “กิจกรรมคณะวิทยาศาสตร์”</div>
                         </div>
-                        <GraduationCap size={24} color="#00a651" />
+                        <GraduationCap size={24} color="var(--accent-success)" />
                     </div>
 
                     <div className="graduation-activity-summary">
@@ -161,7 +161,7 @@ export default function GraduationCheckPage() {
                             <div className="chart-card-title">กิจกรรมที่เติมชั่วโมงได้เร็วสุด</div>
                             <div className="chart-card-subtitle">คัดจากกิจกรรมคณะวิทยาศาสตร์ที่กำลังจะจัด</div>
                         </div>
-                        <Star size={22} color="#f59e0b" />
+                        <Star size={22} color="var(--accent-warning)" />
                     </div>
 
                     <div className="graduation-recommend-list">

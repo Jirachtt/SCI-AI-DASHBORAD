@@ -61,12 +61,12 @@ export const graduationByMajor = Object.entries(majorMap).map(([major, data]) =>
 
 // GPA Distribution ของผู้มีสิทธิ์รับปริญญา
 export const gpaDistribution = [
-    { range: '1.00-1.74', count: year4Students.filter(s => s.gpa >= 1.00 && s.gpa < 1.75).length, color: '#ef4444' },
-    { range: '1.75-1.99', count: year4Students.filter(s => s.gpa >= 1.75 && s.gpa < 2.00).length, color: '#f97316' },
-    { range: '2.00-2.49', count: year4Students.filter(s => s.gpa >= 2.00 && s.gpa < 2.50).length, color: '#eab308' },
-    { range: '2.50-2.99', count: year4Students.filter(s => s.gpa >= 2.50 && s.gpa < 3.00).length, color: '#22c55e' },
-    { range: '3.00-3.49', count: year4Students.filter(s => s.gpa >= 3.00 && s.gpa < 3.50).length, color: '#3b82f6' },
-    { range: '3.50-4.00', count: year4Students.filter(s => s.gpa >= 3.50 && s.gpa <= 4.00).length, color: '#8b5cf6' },
+    { range: '1.00-1.74', count: year4Students.filter(s => s.gpa >= 1.00 && s.gpa < 1.75).length, color: 'var(--accent-danger)' },
+    { range: '1.75-1.99', count: year4Students.filter(s => s.gpa >= 1.75 && s.gpa < 2.00).length, color: 'var(--accent-orange)' },
+    { range: '2.00-2.49', count: year4Students.filter(s => s.gpa >= 2.00 && s.gpa < 2.50).length, color: 'var(--accent-gold)' },
+    { range: '2.50-2.99', count: year4Students.filter(s => s.gpa >= 2.50 && s.gpa < 3.00).length, color: 'var(--accent-success)' },
+    { range: '3.00-3.49', count: year4Students.filter(s => s.gpa >= 3.00 && s.gpa < 3.50).length, color: 'var(--accent-blue)' },
+    { range: '3.50-4.00', count: year4Students.filter(s => s.gpa >= 3.50 && s.gpa <= 4.00).length, color: 'var(--accent-purple)' },
 ];
 
 // เกียรตินิยม

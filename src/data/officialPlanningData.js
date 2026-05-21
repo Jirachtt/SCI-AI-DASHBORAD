@@ -185,25 +185,25 @@ export const officialTuitionData = {
             "label": "ค่าธรรมเนียมใหม่",
             "value": 43.6,
             "amount": 6990000,
-            "color": "#006838"
+            "color": "var(--accent-success-deep)"
         },
         {
             "label": "ค่าลงทะเบียนรายวิชาพื้นฐาน",
             "value": 41.3,
             "amount": 6625610,
-            "color": "#2E86AB"
+            "color": "var(--accent-info)"
         },
         {
             "label": "ค่าบำรุงพิเศษ",
             "value": 9.9,
             "amount": 1589437.9999999998,
-            "color": "#C5A028"
+            "color": "var(--accent-gold)"
         },
         {
             "label": "ค่าลงทะเบียนก่อน 67",
             "value": 5.3,
             "amount": 844047,
-            "color": "#A23B72"
+            "color": "var(--accent-pink)"
         }
     ],
     "semesterHistory": [

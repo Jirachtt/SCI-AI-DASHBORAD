@@ -37,7 +37,7 @@ export default function ChartDrilldownModal({ detail, onClose }) {
 
     const rows = Array.isArray(detail.rows) ? detail.rows : [];
     const columns = detail.columns || inferColumns(rows);
-    const accent = detail.accentColor || '#00a651';
+    const accent = detail.accentColor || 'var(--accent-success)';
     const visibleRows = rows.slice(0, detail.maxRows || 500);
     const hasHiddenRows = rows.length > visibleRows.length;
 

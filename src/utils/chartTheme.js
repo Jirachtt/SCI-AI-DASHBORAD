@@ -2,18 +2,9 @@ export const DASHBOARD_FONT_FAMILY = "'Noto Sans Thai', system-ui, -apple-system
 const MIN_CHART_FONT_SIZE = 12;
 const DEFAULT_CHART_FONT_SIZE = 13;
 
-export const LIGHT_CHART_PALETTE = [
-    '#1457d9', '#007a48', '#d97706', '#6d28d9', '#be123c', '#0284c7',
-    '#0f766e', '#c2410c', '#4338ca', '#a21caf', '#334155', '#16a34a',
-];
-
-export const DARK_CHART_PALETTE = [
-    '#7fb3ff', '#5eead4', '#facc15', '#c4b5fd', '#fb7185', '#38bdf8',
-    '#34d399', '#fb923c', '#a78bfa', '#f472b6', '#e2e8f0', '#86efac',
-];
-
-const LIGHT_CHART_SURFACE = '#ffffff';
-const DARK_CHART_SURFACE = '#0f172a';
+const CHART_COLOR_COUNT = 12;
+export const LIGHT_CHART_PALETTE = Array.from({ length: CHART_COLOR_COUNT }, (_, index) => `var(--chart-${index + 1})`);
+export const DARK_CHART_PALETTE = LIGHT_CHART_PALETTE;
 
 function withDashboardFont(font = {}, fallbackWeight) {
     const next = { family: DASHBOARD_FONT_FAMILY };
@@ -33,24 +24,48 @@ function activeThemeName() {
     return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 }
 
+function cssVarValue(name, fallback) {
+    if (typeof document === 'undefined') return fallback;
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+}
+
+function resolveCssColor(value) {
+    if (typeof value !== 'string' || typeof document === 'undefined') return value;
+    const color = value.trim();
+    const match = color.match(/^var\(\s*(--[\w-]+)(?:\s*,\s*([^)]+))?\s*\)$/);
+    if (!match) return color;
+    return cssVarValue(match[1], match[2]?.trim() || color);
+}
+
+function readChartPalette(theme = activeThemeName()) {
+    const fallback = theme === 'dark' ? DARK_CHART_PALETTE : LIGHT_CHART_PALETTE;
+    if (typeof document === 'undefined') return fallback;
+    return Array.from({ length: CHART_COLOR_COUNT }, (_, index) => {
+        const token = `--chart-${index + 1}`;
+        return cssVarValue(token, fallback[index % fallback.length]);
+    });
+}
+
 export function getChartPalette(theme = activeThemeName()) {
-    return theme === 'dark' ? DARK_CHART_PALETTE : LIGHT_CHART_PALETTE;
+    return readChartPalette(theme);
 }
 
 export function getCurrentChartTheme(theme = activeThemeName()) {
     const isLight = theme !== 'dark';
+    const palette = getChartPalette(theme);
     return {
         theme: isLight ? 'light' : 'dark',
-        palette: getChartPalette(theme),
-        surface: isLight ? LIGHT_CHART_SURFACE : DARK_CHART_SURFACE,
-        text: isLight ? '#07111f' : '#ffffff',
-        muted: isLight ? '#334155' : '#f8fafc',
-        grid: isLight ? 'rgba(15, 23, 42, 0.055)' : 'rgba(226, 232, 240, 0.105)',
-        axis: isLight ? 'rgba(15, 23, 42, 0.16)' : 'rgba(226, 232, 240, 0.24)',
-        tooltipBg: isLight ? 'rgba(255, 255, 255, 0.985)' : 'rgba(7, 12, 25, 0.97)',
-        tooltipTitle: isLight ? '#07111f' : '#ffffff',
-        tooltipBody: isLight ? '#243447' : '#f8fafc',
-        tooltipBorder: isLight ? 'rgba(0, 104, 56, 0.20)' : 'rgba(120, 166, 255, 0.35)',
+        palette,
+        surface: cssVarValue('--chart-surface', 'var(--bg-card)'),
+        text: cssVarValue('--chart-text', 'var(--text-primary)'),
+        muted: cssVarValue('--chart-muted', 'var(--text-muted)'),
+        grid: cssVarValue('--chart-grid', 'var(--border-color)'),
+        axis: cssVarValue('--chart-axis', 'var(--border-color)'),
+        tooltipBg: cssVarValue('--chart-tooltip-bg', 'var(--bg-card)'),
+        tooltipTitle: cssVarValue('--chart-tooltip-text', 'var(--text-primary)'),
+        tooltipBody: cssVarValue('--chart-muted', 'var(--text-muted)'),
+        tooltipBorder: cssVarValue('--accent-border-soft', 'var(--border-color)'),
     };
 }
 
@@ -98,8 +113,8 @@ function parseRgbColor(value) {
 
 function parseColor(value) {
     if (typeof value !== 'string') return null;
-    const color = value.trim();
-    if (!color || color.startsWith('var(') || color.startsWith('linear-gradient')) return null;
+    const color = resolveCssColor(value).trim();
+    if (!color || color.startsWith('linear-gradient') || color.startsWith('color-mix(')) return null;
     return color.startsWith('#') ? parseHexColor(color) : parseRgbColor(color);
 }
 
@@ -164,9 +179,13 @@ function isLowContrastColor(value, themeConfig, minRatio) {
 
 function isUnsafeColor(value, themeConfig, minRatio = 2.2) {
     if (!value || typeof value !== 'string') return true;
-    const color = value.trim().toLowerCase();
+    const color = resolveCssColor(value).trim().toLowerCase();
     if (!color || color === 'transparent') return true;
     return isNearBlackColor(color) || isLowContrastColor(color, themeConfig, minRatio);
+}
+
+function isThemeTokenColor(value) {
+    return typeof value === 'string' && value.trim().startsWith('var(');
 }
 
 function adaptColorValue(value, fallbackHex, themeConfig, alpha = 0.82, count = 0, minRatio = 2.2) {
@@ -175,15 +194,19 @@ function adaptColorValue(value, fallbackHex, themeConfig, alpha = 0.82, count = 
         const source = value.length > 0 ? value : Array.from({ length: count }, () => null);
         return source.map((color, index) => {
             const paletteColor = themeConfig.palette[index % themeConfig.palette.length] || fallbackHex;
-            return isUnsafeColor(color, themeConfig, minRatio)
-                ? rgbaFromHex(paletteColor, alpha)
-                : rgbaFromColor(color, paletteColor, alpha);
+            if (isThemeTokenColor(color) && !isUnsafeColor(color, themeConfig, minRatio)) {
+                return rgbaFromColor(color, paletteColor, alpha);
+            }
+            return rgbaFromHex(paletteColor, alpha);
         });
     }
     if (count > 0 && !value) {
         return Array.from({ length: count }, (_, index) => rgbaFromHex(themeConfig.palette[index % themeConfig.palette.length], alpha));
     }
-    return isUnsafeColor(value, themeConfig, minRatio) ? fallback : rgbaFromColor(value, fallbackHex, alpha);
+    if (isThemeTokenColor(value) && !isUnsafeColor(value, themeConfig, minRatio)) {
+        return rgbaFromColor(value, fallbackHex, alpha);
+    }
+    return fallback;
 }
 
 function baseChartType(chart) {

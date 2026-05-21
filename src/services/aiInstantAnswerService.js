@@ -24,7 +24,7 @@ import {
     formatMaejoFaqSources,
 } from '../data/maejoStudentFaqData';
 
-const CHART_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
+const CHART_COLORS = ['var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-success)', 'var(--accent-orange)', 'var(--accent-danger)', 'var(--accent-cyan)'];
 
 function normalizeText(value) {
     return String(value || '').toLowerCase().trim();
@@ -734,8 +734,8 @@ function buildFeaturedCourseAnswer(courseAnalytics, question) {
                 datasets: [{
                     label: 'คะแนนความน่าสนใจ',
                     data: rows.map(row => Number(row.interestScore || 0)),
-                    backgroundColor: '#059669cc',
-                    borderColor: '#059669',
+                    backgroundColor: 'color-mix(in srgb, var(--accent-success) 80%, transparent)',
+                    borderColor: 'var(--accent-success)',
                     borderWidth: 1,
                     borderRadius: 6,
                 }],
@@ -917,8 +917,8 @@ function buildTcasAnswer(question) {
             datasets: [{
                 label: 'เป้ารับปี 2570',
                 data: (tcasPlanningData.intakeTarget2570 || []).map(row => Number(row.target2570 || 0)),
-                backgroundColor: '#059669cc',
-                borderColor: '#059669',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 80%, transparent)',
+                borderColor: 'var(--accent-success)',
                 borderWidth: 1,
                 borderRadius: 6,
             }],

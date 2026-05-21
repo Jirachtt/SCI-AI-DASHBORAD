@@ -1,4 +1,4 @@
-import { useTheme } from '../contexts/ThemeContext';
+import { legacyColorToVar } from '../utils/themeTokens';
 
 function toNumber(value) {
     const numeric = Number(value);
@@ -10,53 +10,16 @@ function defaultFormatValue(value) {
 }
 
 const metricPalette = [
-    { accent: '#2563eb', soft: '#eff6ff', track: '#dbeafe', badge: '#dbeafe' },
-    { accent: '#7c3aed', soft: '#f5f3ff', track: '#ede9fe', badge: '#ede9fe' },
-    { accent: '#f97316', soft: '#fff7ed', track: '#ffedd5', badge: '#ffedd5' },
-    { accent: '#0d9488', soft: '#f0fdfa', track: '#ccfbf1', badge: '#ccfbf1' },
-    { accent: '#db2777', soft: '#fdf2f8', track: '#fce7f3', badge: '#fce7f3' },
+    { accent: 'var(--chart-1)' },
+    { accent: 'var(--chart-2)' },
+    { accent: 'var(--chart-3)' },
+    { accent: 'var(--chart-4)' },
+    { accent: 'var(--chart-5)' },
 ];
 
-const darkMetricPalette = ['#60a5fa', '#a78bfa', '#fb923c', '#34d399', '#f472b6'];
-
-const darkLevelColors = [
-    { test: /ตรี|bachelor/i, color: '#60a5fa' },
-    { test: /โท|master/i, color: '#a78bfa' },
-    { test: /เอก|doctoral|phd/i, color: '#fb923c' },
-    { test: /ประกาศ|cert/i, color: '#34d399' },
-];
-
-const lightToDarkColorMap = new Map([
-    ['#2563eb', '#60a5fa'],
-    ['#1457d9', '#60a5fa'],
-    ['#7c3aed', '#a78bfa'],
-    ['#6d28d9', '#a78bfa'],
-    ['#ea580c', '#fb923c'],
-    ['#f97316', '#fb923c'],
-    ['#059669', '#34d399'],
-    ['#0d9488', '#2dd4bf'],
-    ['#db2777', '#f472b6'],
-]);
-
-function normalizeHexColor(value) {
-    const hex = String(value || '').trim().toLowerCase();
-    if (!/^#[0-9a-f]{3}$|^#[0-9a-f]{6}$/i.test(hex)) return null;
-    if (hex.length === 4) {
-        return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
-    }
-    return hex;
-}
-
-function segmentAccent(item, theme) {
-    const fallback = item.color || item.palette.accent;
-    if (theme !== 'dark') return fallback;
-
-    const label = String(item.label || '');
-    const levelMatch = darkLevelColors.find(entry => entry.test.test(label));
-    if (levelMatch) return levelMatch.color;
-
-    const normalized = normalizeHexColor(fallback);
-    return lightToDarkColorMap.get(normalized) || darkMetricPalette[item.index % darkMetricPalette.length] || fallback;
+function segmentAccent(item) {
+    const fallbackToken = `--chart-${(item.index % 12) + 1}`;
+    return item.color ? legacyColorToVar(item.color, fallbackToken) : item.palette.accent;
 }
 
 function pointOnCircle(cx, cy, radius, angleInDegrees) {
@@ -110,7 +73,6 @@ export default function CompositionBreakdown({
     onItemClick,
     ariaLabel = 'composition breakdown',
 }) {
-    const { theme } = useTheme();
     const normalizedItems = (Array.isArray(items) ? items : [])
         .map((item, index) => ({
             ...item,
@@ -135,7 +97,7 @@ export default function CompositionBreakdown({
                     <circle className="composition-pie-bg" cx="110" cy="110" r="101" />
                     {segments.map(item => {
                         const pct = (item.value / chartTotal) * 100;
-                        const accent = segmentAccent(item, theme);
+                        const accent = segmentAccent(item);
                         const title = `${item.label}: ${formatValue(item.value)} (${pct.toFixed(1)}%)`;
                         return (
                             <path
@@ -167,7 +129,7 @@ export default function CompositionBreakdown({
                 {segments.map(item => {
                     const pct = (item.value / chartTotal) * 100;
                     const RowTag = onItemClick ? 'button' : 'div';
-                    const accent = segmentAccent(item, theme);
+                    const accent = segmentAccent(item);
                     const title = `${item.label}: ${formatValue(item.value)} (${pct.toFixed(1)}%)`;
 
                     return (

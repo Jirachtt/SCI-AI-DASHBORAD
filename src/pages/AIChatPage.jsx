@@ -45,14 +45,15 @@ import {
     stripRawStructuredAIResponseText,
 } from '../utils/aiChartResponse';
 import { buildMjuConnectedContextForAI } from '../services/mjuConnectedDataService';
+import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
 const AI_CHART_TOOLTIP_STYLE = {
-    backgroundColor: 'rgba(248, 247, 255, 0.98)',
-    titleColor: '#11135f',
-    bodyColor: '#343766',
-    borderColor: 'rgba(91, 95, 239, 0.28)',
+    backgroundColor: 'var(--chart-tooltip-bg)',
+    titleColor: 'var(--chart-text)',
+    bodyColor: 'var(--chart-muted)',
+    borderColor: 'color-mix(in srgb, var(--accent-purple) 28%, transparent)',
     borderWidth: 1,
     cornerRadius: 12,
     padding: 12,
@@ -86,44 +87,44 @@ const DATASETS = {
     universityBudgetRevenue: {
         label: 'รายรับมหาวิทยาลัย', unit: 'ล้านบาท', scope: 'มหาวิทยาลัย',
         getData: () => getForecastSeries('universityBudgetRevenue'),
-        color: '#00a651', keywords: ['รายรับ', 'revenue'],
+        color: 'var(--accent-success)', keywords: ['รายรับ', 'revenue'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
     },
     universityBudgetExpense: {
         label: 'รายจ่ายมหาวิทยาลัย', unit: 'ล้านบาท', scope: 'มหาวิทยาลัย',
         getData: () => getForecastSeries('universityBudgetExpense'),
-        color: '#E91E63', keywords: ['รายจ่าย', 'expense', 'ค่าใช้จ่าย'],
+        color: 'var(--accent-pink)', keywords: ['รายจ่าย', 'expense', 'ค่าใช้จ่าย'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
     },
     universityBudget: {
         label: 'งบประมาณมหาวิทยาลัย (รายรับ)', unit: 'ล้านบาท', scope: 'มหาวิทยาลัย',
         getData: () => getForecastSeries('universityBudget'),
-        color: '#00a651', keywords: ['งบประมาณ', 'budget', 'งบ'],
+        color: 'var(--accent-success)', keywords: ['งบประมาณ', 'budget', 'งบ'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด']
     },
     scienceBudgetRevenue: {
         label: 'รายรับคณะวิทยาศาสตร์', unit: 'ล้านบาท', scope: 'คณะวิทยาศาสตร์',
         getData: () => getForecastSeries('scienceBudgetRevenue'),
-        color: '#006838', keywords: ['รายรับ', 'revenue', 'งบประมาณ', 'budget', 'งบ'],
+        color: 'var(--accent-success-deep)', keywords: ['รายรับ', 'revenue', 'งบประมาณ', 'budget', 'งบ'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์']
     },
     scienceBudgetExpense: {
         label: 'รายจ่ายคณะวิทยาศาสตร์', unit: 'ล้านบาท', scope: 'คณะวิทยาศาสตร์',
         getData: () => getForecastSeries('scienceBudgetExpense'),
-        color: '#A23B72', keywords: ['รายจ่าย', 'expense', 'ค่าใช้จ่าย'],
+        color: 'var(--accent-pink)', keywords: ['รายจ่าย', 'expense', 'ค่าใช้จ่าย'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์']
     },
     universityStudents: {
         label: 'จำนวนนักศึกษาในระบบ', unit: 'คน', scope: 'ข้อมูลนักศึกษาในเว็บ',
         getData: () => getForecastSeries('universityStudents'),
-        color: '#7B68EE', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวนนักศึกษา'],
+        color: 'var(--accent-purple)', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวนนักศึกษา'],
         scopeKeywords: ['มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
         yAxisID: 'y',
     },
     scienceStudents: {
         label: 'จำนวนนิสิตคณะวิทยาศาสตร์', unit: 'คน', scope: 'คณะวิทยาศาสตร์',
         getData: () => getForecastSeries('scienceStudents'),
-        color: '#006838', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวนนักศึกษา'],
+        color: 'var(--accent-success-deep)', keywords: ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต', 'จำนวนนักศึกษา'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์'],
         yAxisID: 'y',
     },
@@ -131,21 +132,21 @@ const DATASETS = {
     scienceGPA: {
         label: 'เกรดเฉลี่ย (GPA) คณะวิทยาศาสตร์', unit: '', scope: 'คณะวิทยาศาสตร์',
         getData: () => getForecastSeries('scienceGPA'),
-        color: '#C5A028', keywords: ['เกรด', 'gpa', 'เกรดเฉลี่ย', 'ผลการเรียน', 'grade'],
+        color: 'var(--accent-gold)', keywords: ['เกรด', 'gpa', 'เกรดเฉลี่ย', 'ผลการเรียน', 'grade'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์', 'มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
         yAxisID: 'y1',
     },
     scienceGraduationRate: {
         label: 'อัตราสำเร็จการศึกษา คณะวิทยาศาสตร์', unit: '%', scope: 'คณะวิทยาศาสตร์',
         getData: () => getForecastSeries('scienceGraduationRate'),
-        color: '#A23B72', keywords: ['อัตราสำเร็จ', 'สำเร็จการศึกษา', 'graduation', 'จบการศึกษา', 'อัตราจบ'],
+        color: 'var(--accent-pink)', keywords: ['อัตราสำเร็จ', 'สำเร็จการศึกษา', 'graduation', 'จบการศึกษา', 'อัตราจบ'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์', 'มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
         yAxisID: 'y1',
     },
     scienceGraduated: {
         label: 'จำนวนผู้สำเร็จการศึกษา คณะวิทยาศาสตร์', unit: 'คน', scope: 'คณะวิทยาศาสตร์',
         getData: () => getForecastSeries('scienceGraduated'),
-        color: '#2E86AB', keywords: ['ผู้สำเร็จ', 'จบ', 'graduated', 'สำเร็จการศึกษา', 'จำนวนผู้สำเร็จ'],
+        color: 'var(--accent-info)', keywords: ['ผู้สำเร็จ', 'จบ', 'graduated', 'สำเร็จการศึกษา', 'จำนวนผู้สำเร็จ'],
         scopeKeywords: ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์', 'มหาวิทยาลัย', 'มจ', 'mju', 'ทั้งหมด'],
         yAxisID: 'y',
     },
@@ -297,23 +298,24 @@ function generateForecastResponse(parsed) {
         }
 
         const yAxisID = needsDualAxis ? (ds.yAxisID || 'y') : 'y';
+        const accentColor = legacyColorToVar(ds.color);
 
         allDatasets.push({
             label: `${ds.label} (ข้อมูลจริง)`, data: actualValues,
-            borderColor: ds.color, backgroundColor: ds.color + '25',
+            borderColor: accentColor, backgroundColor: themeAlpha(ds.color, 15),
             fill: parsed.chartType === 'line', tension: 0.4,
-            pointBackgroundColor: ds.color, pointBorderColor: '#fff',
+            pointBackgroundColor: accentColor, pointBorderColor: 'var(--text-on-accent)',
             pointBorderWidth: 2, pointRadius: 6, pointHoverRadius: 9,
             borderWidth: 2.5,
             borderRadius: parsed.chartType === 'bar' ? 8 : 0,
             yAxisID,
             // Premium shadow effect for bars
-            ...(parsed.chartType === 'bar' ? { hoverBackgroundColor: ds.color + '90' } : {}),
+            ...(parsed.chartType === 'bar' ? { hoverBackgroundColor: themeAlpha(ds.color, 56) } : {}),
         });
         allDatasets.push({
             label: `${ds.label} (พยากรณ์)`, data: forecastValues,
-            borderColor: ds.color + 'bb', borderDash: [8, 4], backgroundColor: ds.color + '18',
-            tension: 0.4, pointBackgroundColor: ds.color + 'cc', pointBorderColor: '#fff',
+            borderColor: accentColor, borderDash: [8, 4], backgroundColor: themeAlpha(ds.color, 9),
+            tension: 0.4, pointBackgroundColor: accentColor, pointBorderColor: 'var(--text-on-accent)',
             pointBorderWidth: 2, pointRadius: 6, pointHoverRadius: 9,
             pointStyle: 'triangle', borderWidth: 2,
             borderRadius: parsed.chartType === 'bar' ? 8 : 0,
@@ -331,19 +333,19 @@ function generateForecastResponse(parsed) {
 
     // Build scales config — support dual Y-axis
     const scalesConfig = {
-        x: { ticks: { color: '#9ca3af', font: { size: 11, weight: '500' } }, grid: { display: false } },
+        x: { ticks: { color: 'var(--chart-muted)', font: { size: 11, weight: '500' } }, grid: { display: false } },
         y: {
-            ticks: { color: '#9ca3af', font: { size: 11 } },
-            grid: { color: 'rgba(255,255,255,0.04)', lineWidth: 0.5 },
-            title: needsDualAxis ? { display: true, text: 'จำนวน (คน)', color: '#9ca3af', font: { size: 11, weight: '600' } } : {},
+            ticks: { color: 'var(--chart-muted)', font: { size: 11 } },
+            grid: { color: 'var(--chart-grid)', lineWidth: 0.5 },
+            title: needsDualAxis ? { display: true, text: 'จำนวน (คน)', color: 'var(--chart-muted)', font: { size: 11, weight: '600' } } : {},
         },
     };
     if (needsDualAxis) {
         scalesConfig.y1 = {
             position: 'right',
-            ticks: { color: '#C5A028', font: { size: 11 } },
+            ticks: { color: 'var(--accent-gold)', font: { size: 11 } },
             grid: { drawOnChartArea: false },
-            title: { display: true, text: 'เกรดเฉลี่ย / %', color: '#C5A028', font: { size: 11, weight: '600' } },
+            title: { display: true, text: 'เกรดเฉลี่ย / %', color: 'var(--accent-gold)', font: { size: 11, weight: '600' } },
         };
     }
 
@@ -356,7 +358,7 @@ function generateForecastResponse(parsed) {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { color: '#9ca3af', padding: 14, font: { size: 11, weight: '500' }, usePointStyle: true, pointStyleWidth: 10 }
+                    labels: { color: 'var(--chart-muted)', padding: 14, font: { size: 11, weight: '500' }, usePointStyle: true, pointStyleWidth: 10 }
                 },
                 tooltip: {
                     ...AI_CHART_TOOLTIP_STYLE,
@@ -564,8 +566,8 @@ function buildStudentCountGpaByMajorChart(question = '') {
                     type: 'bar',
                     label: 'จำนวนนักศึกษา',
                     data: rows.map(row => row.count),
-                    backgroundColor: 'rgba(0, 166, 81, 0.75)',
-                    borderColor: '#00a651',
+                    backgroundColor: 'color-mix(in srgb, var(--accent-success) 75%, transparent)',
+                    borderColor: 'var(--accent-success)',
                     borderWidth: 0,
                     borderRadius: 8,
                     yAxisID: 'y',
@@ -575,8 +577,8 @@ function buildStudentCountGpaByMajorChart(question = '') {
                     type: 'bar',
                     label: 'GPA เฉลี่ย',
                     data: rows.map(row => row.avgGpa),
-                    backgroundColor: 'rgba(123, 104, 238, 0.72)',
-                    borderColor: '#7B68EE',
+                    backgroundColor: 'color-mix(in srgb, var(--accent-purple) 72%, transparent)',
+                    borderColor: 'var(--accent-purple)',
                     borderWidth: 0,
                     borderRadius: 8,
                     yAxisID: 'y1',
@@ -648,8 +650,8 @@ function buildStudentMajorCountChartResponse(question = '') {
                     {
                         label: 'จำนวนนิสิต (คน)',
                         data: rows.map(row => row.count),
-                        backgroundColor: 'rgba(37, 99, 235, 0.78)',
-                        borderColor: '#2563eb',
+                        backgroundColor: 'color-mix(in srgb, var(--accent-blue) 78%, transparent)',
+                        borderColor: 'var(--accent-blue)',
                         borderWidth: 0,
                         borderRadius: 8,
                     },
@@ -746,8 +748,8 @@ function buildStudentClassYearChartResponse(question = '') {
                     {
                         label: 'จำนวนนักศึกษา',
                         data: rows.map(row => row.count),
-                        backgroundColor: 'rgba(0, 166, 81, 0.75)',
-                        borderColor: '#00a651',
+                        backgroundColor: 'color-mix(in srgb, var(--accent-success) 75%, transparent)',
+                        borderColor: 'var(--accent-success)',
                         borderWidth: 0,
                         borderRadius: 8,
                     },
@@ -1237,17 +1239,17 @@ export function parseAIResponse(text, sourceQuestion = '') {
             // Apply neon theme to radar/polar charts
             if (isRadar && rawJson.data?.labels?.length >= 3) {
                 const neonColors = [
-                    { border: '#06b6d4', fill: 'rgba(6, 182, 212, 0.25)' },
-                    { border: '#ec4899', fill: 'rgba(236, 72, 153, 0.25)' },
-                    { border: '#22c55e', fill: 'rgba(34, 197, 94, 0.25)' },
-                    { border: '#f59e0b', fill: 'rgba(245, 158, 11, 0.25)' }
+                    { border: 'var(--accent-cyan)', fill: 'color-mix(in srgb, var(--accent-cyan) 25%, transparent)' },
+                    { border: 'var(--accent-pink)', fill: 'color-mix(in srgb, var(--accent-pink) 25%, transparent)' },
+                    { border: 'var(--accent-success)', fill: 'color-mix(in srgb, var(--accent-success) 25%, transparent)' },
+                    { border: 'var(--accent-warning)', fill: 'color-mix(in srgb, var(--accent-warning) 25%, transparent)' }
                 ];
                 rawJson.data.datasets.forEach((ds, i) => {
                     const colorSet = neonColors[i % neonColors.length];
                     ds.borderColor = colorSet.border;
                     ds.backgroundColor = colorSet.fill;
                     ds.pointBackgroundColor = colorSet.border;
-                    ds.pointBorderColor = '#fff';
+                    ds.pointBorderColor = 'var(--text-on-accent)';
                     ds.pointBorderWidth = 2;
                     ds.pointRadius = 4;
                     ds.pointHoverRadius = 6;
@@ -1260,7 +1262,7 @@ export function parseAIResponse(text, sourceQuestion = '') {
             normalizeCategoricalLineChart(rawJson);
 
             // Ensure datasets have decent default colors if missing
-            const defaultColors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
+            const defaultColors = ['var(--accent-purple)', 'var(--accent-success)', 'var(--accent-warning)', 'var(--accent-danger)', 'var(--accent-blue)', 'var(--accent-cyan)', 'var(--accent-purple)', 'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-orange)', 'var(--accent-purple)', 'var(--text-subtle)'];
             const isScatter = rawJson.chartType === 'scatter';
             const isBubble = rawJson.chartType === 'bubble';
             const isPointChart = isScatter || isBubble;
@@ -1282,7 +1284,7 @@ export function parseAIResponse(text, sourceQuestion = '') {
                         if (ds.tension == null) ds.tension = 0.4;
                         if (ds.pointRadius == null) ds.pointRadius = 5;
                         if (ds.pointHoverRadius == null) ds.pointHoverRadius = 8;
-                        if (ds.pointBorderColor == null) ds.pointBorderColor = '#fff';
+                        if (ds.pointBorderColor == null) ds.pointBorderColor = 'var(--text-on-accent)';
                         if (ds.pointBorderWidth == null) ds.pointBorderWidth = 2;
                         if (ds.borderWidth == null) ds.borderWidth = 2.5;
                         if (ds.fill == null) ds.fill = rawJson.chartType === 'line';
@@ -1303,7 +1305,7 @@ export function parseAIResponse(text, sourceQuestion = '') {
                     // Pie/doughnut enhancement
                     if ((rawJson.chartType === 'pie' || rawJson.chartType === 'doughnut') && Array.isArray(ds.backgroundColor)) {
                         ds.borderWidth = ds.borderWidth || 2;
-                        ds.borderColor = ds.borderColor || 'rgba(15, 20, 35, 0.8)';
+                        ds.borderColor = ds.borderColor || 'var(--chart-surface)';
                         ds.hoverOffset = 6;
                         ds.spacing = 1;
                     }
@@ -1316,9 +1318,9 @@ export function parseAIResponse(text, sourceQuestion = '') {
             if (isRadar) {
                 defaultScales = {
                     r: {
-                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                        pointLabels: { color: '#e5e7eb', font: { size: 11, weight: 'bold' } },
+                        angleLines: { color: 'var(--chart-grid)' },
+                        grid: { color: 'var(--chart-grid)' },
+                        pointLabels: { color: 'var(--chart-muted)', font: { size: 11, weight: 'bold' } },
                         ticks: { display: false, min: 0, max: 100 }
                     }
                 };
@@ -1326,13 +1328,13 @@ export function parseAIResponse(text, sourceQuestion = '') {
                 defaultScales = {};
             } else if (isPointChart) {
                 defaultScales = {
-                    x: { type: 'linear', position: 'bottom', ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' }, title: rawJson.options?.scales?.x?.title || { display: false } },
-                    y: { ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' }, title: rawJson.options?.scales?.y?.title || { display: false } }
+                    x: { type: 'linear', position: 'bottom', ticks: { color: 'var(--chart-muted)', font: { size: 11 } }, grid: { color: 'var(--chart-grid)' }, title: rawJson.options?.scales?.x?.title || { display: false } },
+                    y: { ticks: { color: 'var(--chart-muted)', font: { size: 11 }, callback: (v) => v.toLocaleString() }, grid: { color: 'var(--chart-grid)' }, title: rawJson.options?.scales?.y?.title || { display: false } }
                 };
             } else {
                 defaultScales = {
-                    x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { display: false } },
-                    y: { ticks: { color: '#9ca3af', font: { size: 11 }, callback: (v) => v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    x: { ticks: { color: 'var(--chart-muted)', font: { size: 11 } }, grid: { display: false } },
+                    y: { ticks: { color: 'var(--chart-muted)', font: { size: 11 }, callback: (v) => v.toLocaleString() }, grid: { color: 'var(--chart-grid)' } }
                 };
             }
 
@@ -1392,7 +1394,7 @@ export function parseAIResponse(text, sourceQuestion = '') {
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: { color: '#9ca3af', padding: 14, font: { size: 11, weight: '500' }, usePointStyle: true, pointStyleWidth: 10 }
+                            labels: { color: 'var(--chart-muted)', padding: 14, font: { size: 11, weight: '500' }, usePointStyle: true, pointStyleWidth: 10 }
                         },
                         tooltip: {
                             ...AI_CHART_TOOLTIP_STYLE,
@@ -1577,8 +1579,8 @@ function looksLikeDatasetDump(s) {
 
 // `hbar` is a UI-only sentinel meaning "bar with indexAxis='y'". It maps
 // back to chartType='bar' when handed to Chart.js.
-const LIGHT_CHART_PALETTE = ['#2563eb', '#16a34a', '#f97316', '#9333ea', '#dc2626', '#0891b2', '#ca8a04', '#be185d', '#4f46e5', '#0f766e', '#b45309', '#64748b'];
-const DARK_CHART_PALETTE = ['#60a5fa', '#4ade80', '#fb923c', '#c084fc', '#f87171', '#22d3ee', '#facc15', '#f472b6', '#a5b4fc', '#5eead4', '#fdba74', '#cbd5e1'];
+const LIGHT_CHART_PALETTE = ['var(--accent-blue)', 'var(--accent-success)', 'var(--accent-orange)', 'var(--accent-purple)', 'var(--accent-danger)', 'var(--accent-cyan)', 'var(--accent-gold)', 'var(--accent-pink)', 'var(--accent-purple)', 'var(--accent-teal)', 'var(--accent-orange)', 'var(--text-subtle)'];
+const DARK_CHART_PALETTE = ['var(--accent-blue)', 'var(--accent-success)', 'var(--accent-orange)', 'var(--accent-purple)', 'var(--accent-danger)', 'var(--accent-cyan)', 'var(--accent-gold)', 'var(--accent-pink)', 'var(--accent-purple)', 'var(--accent-teal)', 'var(--accent-orange)', 'var(--text-subtle)'];
 const DEFAULT_BAR_ALPHA = 0.72;
 const DEFAULT_HOVER_ALPHA = 0.88;
 
@@ -1682,7 +1684,7 @@ function sanitizeChartDatasetColors(chart) {
         if (effectiveType === 'line' || effectiveType === 'scatter' || effectiveType === 'bubble') {
             ds.pointBackgroundColor = safeChartColor(ds.pointBackgroundColor || ds.borderColor, fallback, DEFAULT_BAR_ALPHA);
             ds.pointHoverBackgroundColor = hoverChartColor(ds.pointBackgroundColor, fallback);
-            ds.pointBorderColor = safeChartColor(ds.pointBorderColor || '#ffffff', '#ffffff', 1);
+            ds.pointBorderColor = safeChartColor(ds.pointBorderColor || 'var(--text-on-accent)', 'var(--text-on-accent)', 1);
         }
     });
 
@@ -1790,19 +1792,19 @@ function normalizeStudentGpaComboChart(chart) {
     countDs.type = 'bar';
     countDs.yAxisID = 'y';
     countDs.order = 2;
-    countDs.backgroundColor = countDs.backgroundColor || 'rgba(0, 166, 81, 0.75)';
-    countDs.borderColor = countDs.borderColor || '#00a651';
+    countDs.backgroundColor = countDs.backgroundColor || 'color-mix(in srgb, var(--accent-success) 75%, transparent)';
+    countDs.borderColor = countDs.borderColor || 'var(--accent-success)';
     countDs.borderWidth = 0;
     countDs.borderRadius = countDs.borderRadius || 8;
 
     gpaDs.type = useLineForGpa ? 'line' : 'bar';
     gpaDs.yAxisID = 'y1';
     gpaDs.order = 1;
-    gpaDs.borderColor = gpaDs.borderColor || '#7B68EE';
-    gpaDs.backgroundColor = gpaDs.backgroundColor || (useLineForGpa ? 'rgba(123, 104, 238, 0.18)' : 'rgba(123, 104, 238, 0.72)');
+    gpaDs.borderColor = gpaDs.borderColor || 'var(--accent-purple)';
+    gpaDs.backgroundColor = gpaDs.backgroundColor || (useLineForGpa ? 'color-mix(in srgb, var(--accent-purple) 18%, transparent)' : 'color-mix(in srgb, var(--accent-purple) 72%, transparent)');
     if (useLineForGpa) {
-        gpaDs.pointBackgroundColor = gpaDs.pointBackgroundColor || '#7B68EE';
-        gpaDs.pointBorderColor = gpaDs.pointBorderColor || '#fff';
+        gpaDs.pointBackgroundColor = gpaDs.pointBackgroundColor || 'var(--accent-purple)';
+        gpaDs.pointBorderColor = gpaDs.pointBorderColor || 'var(--text-on-accent)';
         gpaDs.pointBorderWidth = gpaDs.pointBorderWidth || 2;
         gpaDs.pointRadius = gpaDs.pointRadius || 5;
         gpaDs.pointHoverRadius = gpaDs.pointHoverRadius || 8;
@@ -1822,8 +1824,8 @@ function normalizeStudentGpaComboChart(chart) {
             position: 'left',
             beginAtZero: true,
             title: { display: true, text: 'จำนวนนักศึกษา (คน)' },
-            ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => v.toLocaleString() },
-            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: 'var(--chart-muted)', font: { size: 11 }, callback: v => v.toLocaleString() },
+            grid: { color: 'var(--chart-grid)' },
         },
         y1: {
             type: 'linear',
@@ -1831,7 +1833,7 @@ function normalizeStudentGpaComboChart(chart) {
             min: 0,
             max: 4,
             title: { display: true, text: 'GPA เฉลี่ย' },
-            ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 1 },
+            ticks: { color: 'var(--chart-muted)', font: { size: 11 }, stepSize: 1 },
             grid: { drawOnChartArea: false },
         },
     };
@@ -1851,8 +1853,8 @@ function normalizeGpaRateComparisonChart(chart) {
     rateDs.type = 'bar';
     rateDs.yAxisID = 'y';
     rateDs.order = 2;
-    rateDs.backgroundColor = rateDs.backgroundColor || 'rgba(123, 104, 238, 0.65)';
-    rateDs.borderColor = rateDs.borderColor || '#7B68EE';
+    rateDs.backgroundColor = rateDs.backgroundColor || 'color-mix(in srgb, var(--accent-purple) 65%, transparent)';
+    rateDs.borderColor = rateDs.borderColor || 'var(--accent-purple)';
     rateDs.borderWidth = 0;
     rateDs.borderRadius = rateDs.borderRadius || 8;
     resetLineOnlyProps(rateDs);
@@ -1860,8 +1862,8 @@ function normalizeGpaRateComparisonChart(chart) {
     gpaDs.type = 'bar';
     gpaDs.yAxisID = 'y1';
     gpaDs.order = 1;
-    gpaDs.backgroundColor = gpaDs.backgroundColor || 'rgba(0, 166, 81, 0.72)';
-    gpaDs.borderColor = gpaDs.borderColor || '#00a651';
+    gpaDs.backgroundColor = gpaDs.backgroundColor || 'color-mix(in srgb, var(--accent-success) 72%, transparent)';
+    gpaDs.borderColor = gpaDs.borderColor || 'var(--accent-success)';
     gpaDs.borderWidth = 0;
     gpaDs.borderRadius = gpaDs.borderRadius || 8;
     resetLineOnlyProps(gpaDs);
@@ -1872,7 +1874,7 @@ function normalizeGpaRateComparisonChart(chart) {
             ...(chart.options.scales?.x || {}),
             ticks: {
                 ...(chart.options.scales?.x?.ticks || {}),
-                color: '#9ca3af',
+                color: 'var(--chart-muted)',
                 font: { size: 10 },
                 maxRotation: 45,
                 minRotation: 25,
@@ -1886,8 +1888,8 @@ function normalizeGpaRateComparisonChart(chart) {
             min: 0,
             max: 100,
             title: { display: true, text: 'อัตราสำเร็จการศึกษา (%)' },
-            ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => `${v}%` },
-            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: 'var(--chart-muted)', font: { size: 11 }, callback: v => `${v}%` },
+            grid: { color: 'var(--chart-grid)' },
         },
         y1: {
             type: 'linear',
@@ -1895,7 +1897,7 @@ function normalizeGpaRateComparisonChart(chart) {
             min: 0,
             max: 4,
             title: { display: true, text: 'GPA เฉลี่ย' },
-            ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 1 },
+            ticks: { color: 'var(--chart-muted)', font: { size: 11 }, stepSize: 1 },
             grid: { drawOnChartArea: false },
         },
     };
@@ -1952,8 +1954,8 @@ function buildStudentGpaScatterChart(originalChart) {
             datasets: [{
                 label: 'GPA เฉลี่ย (ขนาดจุด = จำนวนนักศึกษา)',
                 data: points,
-                backgroundColor: 'rgba(0, 166, 81, 0.72)',
-                borderColor: '#00a651',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 72%, transparent)',
+                borderColor: 'var(--accent-success)',
                 borderWidth: 2,
                 pointHoverRadius: 10,
                 hoverBorderWidth: 3,
@@ -1970,22 +1972,22 @@ function buildStudentGpaScatterChart(originalChart) {
                     max: Math.max(1.5, labels.length + 0.5),
                     title: { display: true, text: 'คณะ/สาขา' },
                     ticks: {
-                        color: '#9ca3af',
+                        color: 'var(--chart-muted)',
                         font: { size: 10 },
                         stepSize: 1,
                         maxRotation: 35,
                         minRotation: 20,
                         callback: value => labels[Number(value) - 1] || '',
                     },
-                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    grid: { color: 'var(--chart-grid)' },
                 },
                 y: {
                     type: 'linear',
                     min: 2,
                     max: 4,
                     title: { display: true, text: 'GPA เฉลี่ย' },
-                    ticks: { color: '#9ca3af', font: { size: 11 }, stepSize: 0.25 },
-                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: 'var(--chart-muted)', font: { size: 11 }, stepSize: 0.25 },
+                    grid: { color: 'var(--chart-grid)' },
                 },
             },
             plugins: {
@@ -2030,8 +2032,8 @@ function buildGpaRateScatterChart(originalChart) {
             datasets: [{
                 label: 'อัตราสำเร็จการศึกษา vs GPA เฉลี่ย',
                 data: points,
-                backgroundColor: 'rgba(0, 166, 81, 0.72)',
-                borderColor: '#00a651',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 72%, transparent)',
+                borderColor: 'var(--accent-success)',
                 pointRadius: 7,
                 pointHoverRadius: 10,
             }],
@@ -2046,16 +2048,16 @@ function buildGpaRateScatterChart(originalChart) {
                     min: 0,
                     max: 100,
                     title: { display: true, text: 'อัตราสำเร็จการศึกษา (%)' },
-                    ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => `${v}%` },
-                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: 'var(--chart-muted)', font: { size: 11 }, callback: v => `${v}%` },
+                    grid: { color: 'var(--chart-grid)' },
                 },
                 y: {
                     type: 'linear',
                     min: 0,
                     max: 4,
                     title: { display: true, text: 'GPA เฉลี่ย' },
-                    ticks: { color: '#9ca3af', font: { size: 11 } },
-                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: 'var(--chart-muted)', font: { size: 11 } },
+                    grid: { color: 'var(--chart-grid)' },
                 },
             },
             plugins: {
@@ -2139,7 +2141,7 @@ function deriveChartConfig(originalChart, uiTargetType) {
                 if (!Array.isArray(ds.backgroundColor)) {
                     ds.backgroundColor = Array.from({ length: n }, (_, i) => palette[i % palette.length]);
                 }
-                ds.borderColor = '#ffffff';
+                ds.borderColor = 'var(--text-on-accent)';
                 ds.borderWidth = 2;
                 delete ds.borderRadius;
                 delete ds.tension;
@@ -2147,7 +2149,7 @@ function deriveChartConfig(originalChart, uiTargetType) {
                 ds.borderColor = ds.borderColor || palette[idx % palette.length];
                 ds.backgroundColor = (ds.borderColor || palette[idx % palette.length]) + '33';
                 ds.pointBackgroundColor = ds.borderColor || palette[idx % palette.length];
-                ds.pointBorderColor = '#fff';
+                ds.pointBorderColor = 'var(--text-on-accent)';
                 ds.borderWidth = 2;
                 ds.pointRadius = 4;
                 delete ds.borderRadius;
@@ -2181,9 +2183,9 @@ function deriveChartConfig(originalChart, uiTargetType) {
     } else if (targetType === 'radar') {
         options.scales = {
             r: {
-                angleLines: { color: 'rgba(127,127,127,0.18)' },
-                grid: { color: 'rgba(127,127,127,0.18)' },
-                pointLabels: { color: '#9ca3af', font: { size: 11, weight: 'bold' } },
+                angleLines: { color: 'color-mix(in srgb, var(--text-subtle) 18%, transparent)' },
+                grid: { color: 'color-mix(in srgb, var(--text-subtle) 18%, transparent)' },
+                pointLabels: { color: 'var(--chart-muted)', font: { size: 11, weight: 'bold' } },
                 ticks: { display: false, beginAtZero: true }
             }
         };
@@ -2369,7 +2371,7 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
                     return <em key={j} style={{ fontSize: '0.9em', color: 'var(--text-muted)' }}>{part.slice(1, -1)}</em>;
                 }
                 if (part.startsWith('`') && part.endsWith('`')) {
-                    return <code key={j} style={{ background: 'rgba(0,230,118,0.15)', color: '#00e676', padding: '2px 6px', borderRadius: 4, fontSize: '0.88em' }}>{part.slice(1, -1)}</code>;
+                    return <code key={j} style={{ background: 'color-mix(in srgb, var(--accent-success) 15%, transparent)', color: 'var(--accent-success)', padding: '2px 6px', borderRadius: 4, fontSize: '0.88em' }}>{part.slice(1, -1)}</code>;
                 }
                 return part;
             });
@@ -2395,7 +2397,7 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
 
     return (
         <div className="ai-page-msg ai-page-msg-bot">
-            <div className="ai-page-msg-avatar"><Sparkles size={18} style={{ color: '#00e676' }} /></div>
+            <div className="ai-page-msg-avatar"><Sparkles size={18} style={{ color: 'var(--accent-success)' }} /></div>
             <div className="ai-page-msg-content">
                 <div className="ai-page-msg-bubble bot">{formatText(msg.text)}</div>
                 <div className="ai-answer-action-row">
@@ -2495,12 +2497,12 @@ export function generateChartFromFile(parsed, fileName) {
             responsive: true, maintainAspectRatio: false,
             indexAxis: useHorizontal ? 'y' : 'x',
             plugins: {
-                legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 8, font: { size: 11 } } },
-                title: { display: true, text: `📁 ${fileName}`, color: '#fff', font: { size: 14 } },
+                legend: { position: 'bottom', labels: { color: 'var(--chart-muted)', padding: 8, font: { size: 11 } } },
+                title: { display: true, text: `📁 ${fileName}`, color: 'var(--text-on-accent)', font: { size: 14 } },
             },
             scales: {
-                x: { ticks: { color: '#9ca3af', maxRotation: useHorizontal ? 0 : 45 }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true },
+                x: { ticks: { color: 'var(--chart-muted)', maxRotation: useHorizontal ? 0 : 45 }, grid: { color: 'var(--chart-grid)' } },
+                y: { ticks: { color: 'var(--chart-muted)' }, grid: { color: 'var(--chart-grid)' }, beginAtZero: true },
             },
         },
     };
@@ -2534,11 +2536,11 @@ const ROLE_DISPLAY = {
 };
 
 const QUICK_ACTION_GROUPS = [
-    { id: 'student', title: 'วิเคราะห์นักศึกษา', desc: 'จำนวน, GPA, ชั้นปี', icon: GraduationCap, color: '#2563eb' },
-    { id: 'lookup', title: 'ค้นหา/เฝ้าระวัง', desc: 'รายชื่อและกลุ่มเสี่ยง', icon: Search, color: '#7c3aed' },
-    { id: 'forecast', title: 'พยากรณ์', desc: 'แนวโน้มและกราฟ', icon: ChartLine, color: '#0f766e' },
-    { id: 'planning', title: 'แผนและรับสมัคร', desc: 'TCAS / แผนรับ', icon: FileSpreadsheet, color: '#b45309' },
-    { id: 'analysis', title: 'วิเคราะห์เชิงลึก', desc: 'รายวิชาและไฟล์', icon: BarChart3, color: '#be123c' },
+    { id: 'student', title: 'วิเคราะห์นักศึกษา', desc: 'จำนวน, GPA, ชั้นปี', icon: GraduationCap, color: 'var(--accent-blue)' },
+    { id: 'lookup', title: 'ค้นหา/เฝ้าระวัง', desc: 'รายชื่อและกลุ่มเสี่ยง', icon: Search, color: 'var(--accent-purple)' },
+    { id: 'forecast', title: 'พยากรณ์', desc: 'แนวโน้มและกราฟ', icon: ChartLine, color: 'var(--accent-teal)' },
+    { id: 'planning', title: 'แผนและรับสมัคร', desc: 'TCAS / แผนรับ', icon: FileSpreadsheet, color: 'var(--accent-orange)' },
+    { id: 'analysis', title: 'วิเคราะห์เชิงลึก', desc: 'รายวิชาและไฟล์', icon: BarChart3, color: 'var(--accent-rose)' },
 ];
 
 const DECISION_PROMPTS = [
@@ -2683,13 +2685,13 @@ export default function AIChatPage() {
         ? `${lastAIMetadata.sourceCount || 0} context • ${lastAIMetadata.latencyMs || 0}ms`
         : 'รอคำถามล่าสุด';
     const aiStatusCards = [
-        { icon: Database, label: 'ข้อมูลนักศึกษา', value: allStudentsForStatus.length.toLocaleString('th-TH'), detail: liveSourceLabel, color: '#0f766e' },
-        { icon: Layers3, label: 'ชุดข้อมูล Dashboard', value: dashboardDatasetCount.toLocaleString('th-TH'), detail: 'อ่านเฉพาะเรื่องที่ถาม', color: '#2563eb' },
-        { icon: ShieldCheck, label: 'สิทธิ์คำตอบ', value: roleLabel, detail: 'อิงตาม role ในระบบ', color: '#7c3aed' },
-        { icon: Gauge, label: 'AI Context', value: selectedDatasetLabel, detail: selectedDatasetDetail, color: '#0891b2' },
-        { icon: FileSpreadsheet, label: 'ไฟล์วิเคราะห์', value: uploadedFileLabel, detail: uploadedFileData ? 'พร้อมนำไปรวมบริบท' : 'CSV / Excel', color: '#b45309' },
-        { icon: Bot, label: 'Model ล่าสุด', value: aiRuntimeStatus.lastModelLabel, detail: aiRuntimeStatus.mode === 'auto' ? 'ต่ำไปสูงอัตโนมัติ' : 'manual override', color: '#4f46e5' },
-        { icon: Gauge, label: 'Token คงเหลือ', value: tokenBudgetLabel, detail: tokenBudgetReady ? `${tokenBudget.remainingTokens.toLocaleString('th-TH')} tokens` : 'กำลังซิงก์ server', color: '#0891b2' },
+        { icon: Database, label: 'ข้อมูลนักศึกษา', value: allStudentsForStatus.length.toLocaleString('th-TH'), detail: liveSourceLabel, color: 'var(--accent-teal)' },
+        { icon: Layers3, label: 'ชุดข้อมูล Dashboard', value: dashboardDatasetCount.toLocaleString('th-TH'), detail: 'อ่านเฉพาะเรื่องที่ถาม', color: 'var(--accent-blue)' },
+        { icon: ShieldCheck, label: 'สิทธิ์คำตอบ', value: roleLabel, detail: 'อิงตาม role ในระบบ', color: 'var(--accent-purple)' },
+        { icon: Gauge, label: 'AI Context', value: selectedDatasetLabel, detail: selectedDatasetDetail, color: 'var(--accent-cyan)' },
+        { icon: FileSpreadsheet, label: 'ไฟล์วิเคราะห์', value: uploadedFileLabel, detail: uploadedFileData ? 'พร้อมนำไปรวมบริบท' : 'CSV / Excel', color: 'var(--accent-orange)' },
+        { icon: Bot, label: 'Model ล่าสุด', value: aiRuntimeStatus.lastModelLabel, detail: aiRuntimeStatus.mode === 'auto' ? 'ต่ำไปสูงอัตโนมัติ' : 'manual override', color: 'var(--accent-purple)' },
+        { icon: Gauge, label: 'Token คงเหลือ', value: tokenBudgetLabel, detail: tokenBudgetReady ? `${tokenBudget.remainingTokens.toLocaleString('th-TH')} tokens` : 'กำลังซิงก์ server', color: 'var(--accent-cyan)' },
     ];
     const answerVerification = lastAIMetadata?.answerVerification;
     const contextSlimming = lastAIMetadata?.contextSlimming || {};
@@ -3262,12 +3264,12 @@ export default function AIChatPage() {
     };
 
     const featureCards = [
-        { icon: Bot, title: 'ถาม-ตอบ AI', desc: 'ตอบทุกเรื่องแม่โจ้: ประวัติ, คณะ, หลักสูตร, รับสมัคร, วิจัย', color: '#10b981', gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' },
-        { icon: ChartLine, title: 'พยากรณ์ข้อมูล', desc: 'สร้างกราฟพยากรณ์งบประมาณ/จำนวนนิสิต', color: '#06b6d4', gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)' },
-        { icon: Search, title: 'ค้นหานักศึกษา', desc: 'ค้นหาตามรหัส, ชื่อ, สาขา, ชั้นปี, GPA', color: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' },
-        { icon: Paperclip, title: 'อัปโหลดไฟล์', desc: 'แนบ CSV/Excel (.xlsx) เพื่อวิเคราะห์และสร้างกราฟอัตโนมัติ', color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' },
-        { icon: AudioLines, title: 'สั่งงานด้วยเสียง', desc: 'กดปุ่มไมค์แล้วพูดคำสั่งเป็นภาษาไทย', color: '#ec4899', gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)' },
-        { icon: Maximize2, title: 'ขยาย/ซูมกราฟ', desc: 'คลิก "ขยาย" เพื่อดูกราฟเต็มจอพร้อมซูม', color: '#f43f5e', gradient: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)' },
+        { icon: Bot, title: 'ถาม-ตอบ AI', desc: 'ตอบทุกเรื่องแม่โจ้: ประวัติ, คณะ, หลักสูตร, รับสมัคร, วิจัย', color: 'var(--accent-success)', gradient: 'linear-gradient(135deg, var(--accent-success) 0%, var(--accent-success) 100%)' },
+        { icon: ChartLine, title: 'พยากรณ์ข้อมูล', desc: 'สร้างกราฟพยากรณ์งบประมาณ/จำนวนนิสิต', color: 'var(--accent-cyan)', gradient: 'linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-cyan) 100%)' },
+        { icon: Search, title: 'ค้นหานักศึกษา', desc: 'ค้นหาตามรหัส, ชื่อ, สาขา, ชั้นปี, GPA', color: 'var(--accent-purple)', gradient: 'linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-purple) 100%)' },
+        { icon: Paperclip, title: 'อัปโหลดไฟล์', desc: 'แนบ CSV/Excel (.xlsx) เพื่อวิเคราะห์และสร้างกราฟอัตโนมัติ', color: 'var(--accent-warning)', gradient: 'linear-gradient(135deg, var(--accent-warning) 0%, var(--accent-orange) 100%)' },
+        { icon: AudioLines, title: 'สั่งงานด้วยเสียง', desc: 'กดปุ่มไมค์แล้วพูดคำสั่งเป็นภาษาไทย', color: 'var(--accent-pink)', gradient: 'linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-pink) 100%)' },
+        { icon: Maximize2, title: 'ขยาย/ซูมกราฟ', desc: 'คลิก "ขยาย" เพื่อดูกราฟเต็มจอพร้อมซูม', color: 'var(--accent-danger)', gradient: 'linear-gradient(135deg, var(--accent-danger) 0%, var(--accent-rose) 100%)' },
     ];
 
     const handleQuickMenuAction = (query) => {
@@ -3638,7 +3640,7 @@ export default function AIChatPage() {
                         ))}
                         {typing && (
                             <div className="ai-page-msg ai-page-msg-bot">
-                                <div className="ai-page-msg-avatar"><Sparkles size={18} style={{ color: '#00e676' }} /></div>
+                                <div className="ai-page-msg-avatar"><Sparkles size={18} style={{ color: 'var(--accent-success)' }} /></div>
                                 <div className="ai-page-msg-content">
                                     <div className="ai-page-typing">
                                         <div className="ai-page-typing-dots" aria-hidden="true">
@@ -3746,9 +3748,10 @@ export default function AIChatPage() {
                     <div className="ai-chat-page-feature-list">
                         {featureCards.map((card, i) => {
                             const Icon = card.icon;
+                            const accentColor = legacyColorToVar(card.color);
                             return (
                                 <div key={i} className="ai-chat-page-feature-card">
-                                    <div className="ai-chat-page-feature-icon" style={{ background: card.color + '18', color: card.color, boxShadow: `0 2px 8px ${card.color}15` }}>
+                                    <div className="ai-chat-page-feature-icon" style={{ background: themeAlpha(card.color, 9), color: accentColor, boxShadow: `0 2px 8px ${themeAlpha(card.color, 8)}` }}>
                                         <Icon size={18} />
                                     </div>
                                     <div>
@@ -3993,7 +3996,7 @@ export function ExpandedChartModal({ chart, onClose }) {
             legend: {
                 position: 'bottom',
                 labels: {
-                    color: '#9ca3af',
+                    color: 'var(--chart-muted)',
                     padding: 18,
                     font: { size: 12, weight: '500' },
                     usePointStyle: true,
@@ -4015,7 +4018,7 @@ export function ExpandedChartModal({ chart, onClose }) {
         <div className="ai-page-chart-modal-overlay" onClick={onClose}>
             <div className="ai-page-chart-modal" onClick={e => e.stopPropagation()}>
                 <div className="ai-page-chart-modal-header">
-                    <h3><ZoomIn size={20} style={{ color: '#00e676' }} /> กราฟขยาย</h3>
+                    <h3><ZoomIn size={20} style={{ color: 'var(--accent-success)' }} /> กราฟขยาย</h3>
                     <div className="ai-page-chart-modal-actions">
                         <button
                             className="ai-page-chart-modal-reset"

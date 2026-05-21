@@ -8,7 +8,7 @@ const ACCESS_LEVELS = {
         label: 'Admin',
         level: 1,
         dataRows: 100000,
-        color: '#0F766E',
+        color: 'var(--accent-teal)',
         sections: [
             'dashboard',
             'admin_panel',
@@ -19,7 +19,7 @@ const ACCESS_LEVELS = {
         label: 'คณบดี',
         level: 1,
         dataRows: 1000000,
-        color: '#C5A028',
+        color: 'var(--accent-gold)',
         sections: [
             'dashboard', 'tuition', 'tuition_detail',
             'financial', 'financial_detail', 'financial_faculty', 'student_life',
@@ -37,7 +37,7 @@ const ACCESS_LEVELS = {
         label: 'ประธานหลักสูตร',
         level: 2,
         dataRows: 500000,
-        color: '#2E86AB',
+        color: 'var(--accent-info)',
         sections: [
             'dashboard', 'tuition', 'tuition_detail',
             'financial', 'student_life', 'student_life_detail', 'reports',
@@ -54,7 +54,7 @@ const ACCESS_LEVELS = {
         label: 'ผู้บริหาร',
         level: 2,
         dataRows: 750000,
-        color: '#7C3AED',
+        color: 'var(--accent-purple)',
         sections: [
             'dashboard', 'tuition', 'tuition_detail',
             'financial', 'financial_detail', 'financial_faculty', 'student_life',
@@ -72,7 +72,7 @@ const ACCESS_LEVELS = {
         label: 'อาจารย์',
         level: 3,
         dataRows: 200000,
-        color: '#0E7490',
+        color: 'var(--accent-cyan)',
         sections: [
             'dashboard', 'student_life', 'student_life_detail',
             'graduation_check', 'student_stats',
@@ -86,7 +86,7 @@ const ACCESS_LEVELS = {
         label: 'Staff',
         level: 3,
         dataRows: 300000,
-        color: '#006838',
+        color: 'var(--accent-success-deep)',
         sections: [
             'dashboard', 'financial',
             'student_stats', 'graduation_stats', 'budget_forecast',
@@ -100,14 +100,14 @@ const ACCESS_LEVELS = {
         label: 'ทั่วไป',
         level: 4,
         dataRows: 100000,
-        color: '#7B68EE',
+        color: 'var(--accent-purple)',
         sections: GENERAL_SECTIONS
     },
     student: {
         label: 'นักศึกษา',
         level: 4,
         dataRows: 100000,
-        color: '#E91E63',
+        color: 'var(--accent-pink)',
         sections: [
             'dashboard', 'tuition', 'student_life',
             'graduation_check', 'student_stats',
@@ -121,14 +121,14 @@ const ACCESS_LEVELS = {
         label: 'รอการอนุมัติ (Staff)',
         level: 4,
         dataRows: 100000,
-        color: '#F59E0B',
+        color: 'var(--accent-warning)',
         sections: GENERAL_SECTIONS
     },
     pending_chair: {
         label: 'รอการอนุมัติ (Chair)',
         level: 4,
         dataRows: 100000,
-        color: '#F59E0B',
+        color: 'var(--accent-warning)',
         sections: GENERAL_SECTIONS
     }
 };
@@ -145,7 +145,7 @@ export function getRoleInfo(role) {
 
 export function getRoleBadgeColor(role) {
     const info = ACCESS_LEVELS[role];
-    return info ? info.color : '#888';
+    return info ? info.color : 'var(--text-subtle)';
 }
 
 export function getDataRowLimit(role) {

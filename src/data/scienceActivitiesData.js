@@ -23,10 +23,10 @@ export const SCIENCE_ACTIVITY_REQUIREMENT = {
     completedEvents: 12,
     lastUpdated: '2026-05-01',
     categoryTargets: [
-        { name: 'กิจกรรมคณะวิทยาศาสตร์', currentEvents: 6, requiredEvents: 8, currentHours: 32, requiredHours: 40, color: '#059669' },
-        { name: 'วิชาการ/ทักษะวิทยาศาสตร์', currentEvents: 3, requiredEvents: 4, currentHours: 13, requiredHours: 18, color: '#2563eb' },
-        { name: 'จิตอาสาและบริการชุมชน', currentEvents: 2, requiredEvents: 3, currentHours: 10, requiredHours: 14, color: '#d97706' },
-        { name: 'กีฬา/ศิลปวัฒนธรรม', currentEvents: 1, requiredEvents: 1, currentHours: 5, requiredHours: 8, color: '#db2777' },
+        { name: 'กิจกรรมคณะวิทยาศาสตร์', currentEvents: 6, requiredEvents: 8, currentHours: 32, requiredHours: 40, color: 'var(--accent-success)' },
+        { name: 'วิชาการ/ทักษะวิทยาศาสตร์', currentEvents: 3, requiredEvents: 4, currentHours: 13, requiredHours: 18, color: 'var(--accent-blue)' },
+        { name: 'จิตอาสาและบริการชุมชน', currentEvents: 2, requiredEvents: 3, currentHours: 10, requiredHours: 14, color: 'var(--accent-orange)' },
+        { name: 'กีฬา/ศิลปวัฒนธรรม', currentEvents: 1, requiredEvents: 1, currentHours: 5, requiredHours: 8, color: 'var(--accent-pink)' },
     ],
 };
 

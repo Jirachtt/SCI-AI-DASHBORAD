@@ -26,6 +26,7 @@ import {
     percentOf,
     summarizeSmartRows,
 } from '../utils/smartChartData';
+import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
 
@@ -94,12 +95,12 @@ export default function GraduationStatsPage() {
 
     // Summary cards data
     const summaryCards = [
-        { label: 'ผู้มีสิทธิ์รับปริญญา', value: stats.totalCandidates, sub: 'ป.ตรี ชั้นปีที่ 4', icon: GraduationCap, color: '#7B68EE', bg: 'rgba(123,104,238,0.12)' },
-        { label: 'คาดว่าสำเร็จ', value: stats.expectedGraduates, sub: `${((stats.expectedGraduates / stats.totalCandidates) * 100).toFixed(1)}%`, icon: CheckCircle, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
-        { label: 'รอพินิจ', value: stats.pending, sub: `${((stats.pending / stats.totalCandidates) * 100).toFixed(1)}%`, icon: Clock, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-        { label: 'ไม่ผ่านเกณฑ์', value: stats.notPassed, sub: 'GPA < 1.75', icon: XCircle, color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-        { label: 'GPA เฉลี่ย', value: stats.avgGPA, sub: 'ของผู้มีสิทธิ์ทั้งหมด', icon: Award, color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-        { label: 'บัณฑิตศึกษา', value: stats.gradStudentsCandidates, sub: 'ป.โท + ป.เอก', icon: Users, color: '#06b6d4', bg: 'rgba(6,182,212,0.12)' },
+        { label: 'ผู้มีสิทธิ์รับปริญญา', value: stats.totalCandidates, sub: 'ป.ตรี ชั้นปีที่ 4', icon: GraduationCap, color: 'var(--accent-purple)', bg: 'color-mix(in srgb, var(--accent-purple) 12%, transparent)' },
+        { label: 'คาดว่าสำเร็จ', value: stats.expectedGraduates, sub: `${((stats.expectedGraduates / stats.totalCandidates) * 100).toFixed(1)}%`, icon: CheckCircle, color: 'var(--accent-success)', bg: 'color-mix(in srgb, var(--accent-success) 12%, transparent)' },
+        { label: 'รอพินิจ', value: stats.pending, sub: `${((stats.pending / stats.totalCandidates) * 100).toFixed(1)}%`, icon: Clock, color: 'var(--accent-warning)', bg: 'color-mix(in srgb, var(--accent-warning) 12%, transparent)' },
+        { label: 'ไม่ผ่านเกณฑ์', value: stats.notPassed, sub: 'GPA < 1.75', icon: XCircle, color: 'var(--accent-danger)', bg: 'color-mix(in srgb, var(--accent-danger) 12%, transparent)' },
+        { label: 'GPA เฉลี่ย', value: stats.avgGPA, sub: 'ของผู้มีสิทธิ์ทั้งหมด', icon: Award, color: 'var(--accent-blue)', bg: 'color-mix(in srgb, var(--accent-blue) 12%, transparent)' },
+        { label: 'บัณฑิตศึกษา', value: stats.gradStudentsCandidates, sub: 'ป.โท + ป.เอก', icon: Users, color: 'var(--accent-cyan)', bg: 'color-mix(in srgb, var(--accent-cyan) 12%, transparent)' },
     ];
 
     // Graduation history line chart
@@ -109,16 +110,16 @@ export default function GraduationStatsPage() {
             {
                 label: 'ผู้มีสิทธิ์',
                 data: graduationHistoryData.map(h => h.candidates),
-                borderColor: '#7B68EE',
-                backgroundColor: 'rgba(123,104,238,0.1)',
+                borderColor: 'var(--accent-purple)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-purple) 10%, transparent)',
                 fill: true,
                 tension: 0.4,
             },
             {
                 label: 'สำเร็จการศึกษา',
                 data: graduationHistoryData.map(h => h.graduated),
-                borderColor: '#22c55e',
-                backgroundColor: 'rgba(34,197,94,0.1)',
+                borderColor: 'var(--accent-success)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 10%, transparent)',
                 fill: true,
                 tension: 0.4,
             }
@@ -148,12 +149,12 @@ export default function GraduationStatsPage() {
         datasets: [{
             label: 'อัตราสำเร็จ (%)',
             data: graduationHistoryData.map(h => h.rate),
-            borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245,158,11,0.15)',
+            borderColor: 'var(--accent-warning)',
+            backgroundColor: 'color-mix(in srgb, var(--accent-warning) 15%, transparent)',
             fill: true,
             tension: 0.4,
             pointRadius: 5,
-            pointBackgroundColor: '#f59e0b',
+            pointBackgroundColor: 'var(--accent-warning)',
         }]
     };
 
@@ -181,17 +182,17 @@ export default function GraduationStatsPage() {
             {
                 label: 'คาดว่าสำเร็จ',
                 data: graduationByMajorRows.map(m => m.expected),
-                backgroundColor: 'rgba(34,197,94,0.7)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 70%, transparent)',
             },
             {
                 label: 'รอพินิจ',
                 data: graduationByMajorRows.map(m => m.pending),
-                backgroundColor: 'rgba(245,158,11,0.7)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-warning) 70%, transparent)',
             },
             {
                 label: 'ไม่ผ่านเกณฑ์',
                 data: graduationByMajorRows.map(m => m.notPassed),
-                backgroundColor: 'rgba(239,68,68,0.7)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-danger) 70%, transparent)',
             },
         ]
     };
@@ -243,8 +244,8 @@ export default function GraduationStatsPage() {
         datasets: [{
             label: 'จำนวน (คน)',
             data: gpaDistributionRows.map(g => g.count),
-            backgroundColor: gpaDistributionRows.map(g => g.color + 'cc'),
-            borderColor: gpaDistributionRows.map(g => g.color),
+            backgroundColor: gpaDistributionRows.map(g => themeAlpha(g.color, 80)),
+            borderColor: gpaDistributionRows.map(g => legacyColorToVar(g.color)),
             borderWidth: 1,
             borderRadius: 6,
         }]
@@ -272,7 +273,7 @@ export default function GraduationStatsPage() {
         labels: ['เกียรตินิยมอันดับ 1', 'เกียรตินิยมอันดับ 2', 'ปกติ', 'ต่ำกว่าเกณฑ์'],
         datasets: [{
             data: [honorsSummary.firstClass, honorsSummary.secondClass, honorsSummary.normal, honorsSummary.belowStandard],
-            backgroundColor: ['#8b5cf6', '#3b82f6', '#22c55e', '#ef4444'],
+            backgroundColor: ['var(--accent-purple)', 'var(--accent-blue)', 'var(--accent-success)', 'var(--accent-danger)'],
             borderWidth: 0,
             cutout: '55%',
         }]
@@ -298,9 +299,9 @@ export default function GraduationStatsPage() {
     };
 
     const statusRows = buildSmartRows([
-        { label: 'คาดว่าสำเร็จ', value: stats.expectedGraduates, color: '#22c55e', description: 'GPA ผ่านเกณฑ์และอยู่ชั้นปีที่มีสิทธิ์' },
-        { label: 'รอพินิจ', value: stats.pending, color: '#f59e0b', description: 'GPA 1.75-1.99 หรือมีสถานะรอพินิจ' },
-        { label: 'ไม่ผ่านเกณฑ์', value: stats.notPassed, color: '#ef4444', description: 'GPA ต่ำกว่า 1.75' },
+        { label: 'คาดว่าสำเร็จ', value: stats.expectedGraduates, color: 'var(--accent-success)', description: 'GPA ผ่านเกณฑ์และอยู่ชั้นปีที่มีสิทธิ์' },
+        { label: 'รอพินิจ', value: stats.pending, color: 'var(--accent-warning)', description: 'GPA 1.75-1.99 หรือมีสถานะรอพินิจ' },
+        { label: 'ไม่ผ่านเกณฑ์', value: stats.notPassed, color: 'var(--accent-danger)', description: 'GPA ต่ำกว่า 1.75' },
     ], { meta: { isLive: true, sourceType: 'calculated' } });
     const statusSummary = summarizeSmartRows(statusRows);
     const statusTotal = Number(stats.totalCandidates) || statusSummary.total || 0;
@@ -417,8 +418,8 @@ export default function GraduationStatsPage() {
             <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             {/* Header */}
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #7B68EE, #5B4FCF)' }}>
-                    <GraduationCap size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-purple))' }}>
+                    <GraduationCap size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h1>สถิติการสำเร็จการศึกษา</h1>
@@ -466,7 +467,7 @@ export default function GraduationStatsPage() {
                 {/* Smart Status Summary */}
                 <div style={cardStyle}>
                     <div style={headerStyle}>
-                        <CheckCircle size={18} color="#22c55e" />
+                        <CheckCircle size={18} color="var(--accent-success)" />
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>สถานะการสำเร็จ (ปัจจุบัน)</span>
                     </div>
                     <div className="smart-status-grid">
@@ -512,7 +513,7 @@ export default function GraduationStatsPage() {
                 {/* Graduation History Line */}
                 <div style={cardStyle}>
                     <div style={headerStyle}>
-                        <TrendingUp size={18} color="#7B68EE" />
+                        <TrendingUp size={18} color="var(--accent-purple)" />
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>แนวโน้มการสำเร็จการศึกษา (ย้อนหลัง 5 ปี)</span>
                     </div>
                     <div style={{ height: 280 }}>
@@ -526,7 +527,7 @@ export default function GraduationStatsPage() {
                 {/* By Major */}
                 <div style={cardStyle}>
                     <div style={headerStyle}>
-                        <Users size={18} color="#3b82f6" />
+                        <Users size={18} color="var(--accent-blue)" />
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>แยกตามสาขาวิชา</span>
                     </div>
                     <div style={{ height: Math.max(320, graduationByMajorRows.length * 42) }}>
@@ -537,7 +538,7 @@ export default function GraduationStatsPage() {
                 {/* GPA Distribution */}
                 <div style={cardStyle}>
                     <div style={headerStyle}>
-                        <Award size={18} color="#f59e0b" />
+                        <Award size={18} color="var(--accent-warning)" />
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>การกระจายตัวของ GPA</span>
                     </div>
                     <div style={{ height: 280 }}>
@@ -551,7 +552,7 @@ export default function GraduationStatsPage() {
                 {/* Graduation Rate */}
                 <div style={cardStyle}>
                     <div style={headerStyle}>
-                        <TrendingUp size={18} color="#f59e0b" />
+                        <TrendingUp size={18} color="var(--accent-warning)" />
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>อัตราสำเร็จการศึกษา (%)</span>
                     </div>
                     <div style={{ height: 260 }}>
@@ -562,7 +563,7 @@ export default function GraduationStatsPage() {
                 {/* Honors */}
                 <div style={cardStyle}>
                     <div style={headerStyle}>
-                        <Award size={18} color="#8b5cf6" />
+                        <Award size={18} color="var(--accent-purple)" />
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>เกียรตินิยม</span>
                     </div>
                     <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -574,7 +575,7 @@ export default function GraduationStatsPage() {
             {/* Major Stats Table */}
             <div style={{ ...cardStyle, marginBottom: 18 }}>
                 <div style={headerStyle}>
-                    <GraduationCap size={18} color="#06b6d4" />
+                    <GraduationCap size={18} color="var(--accent-cyan)" />
                     <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>สรุปตามสาขาวิชา</span>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
@@ -591,14 +592,14 @@ export default function GraduationStatsPage() {
                                 <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                     <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 500 }}>{m.major}</td>
                                     <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', textAlign: 'center' }}>{m.total}</td>
-                                    <td style={{ padding: '10px 12px', color: '#22c55e', textAlign: 'center', fontWeight: 600 }}>{m.expected}</td>
-                                    <td style={{ padding: '10px 12px', color: '#f59e0b', textAlign: 'center' }}>{m.pending}</td>
-                                    <td style={{ padding: '10px 12px', color: '#ef4444', textAlign: 'center' }}>{m.notPassed}</td>
+                                    <td style={{ padding: '10px 12px', color: 'var(--accent-success)', textAlign: 'center', fontWeight: 600 }}>{m.expected}</td>
+                                    <td style={{ padding: '10px 12px', color: 'var(--accent-warning)', textAlign: 'center' }}>{m.pending}</td>
+                                    <td style={{ padding: '10px 12px', color: 'var(--accent-danger)', textAlign: 'center' }}>{m.notPassed}</td>
                                     <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', textAlign: 'center' }}>{m.avgGPA}</td>
                                     <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                                         <span style={{
-                                            background: m.rate >= 90 ? 'rgba(34,197,94,0.15)' : m.rate >= 70 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
-                                            color: m.rate >= 90 ? '#22c55e' : m.rate >= 70 ? '#f59e0b' : '#ef4444',
+                                            background: m.rate >= 90 ? 'color-mix(in srgb, var(--accent-success) 15%, transparent)' : m.rate >= 70 ? 'color-mix(in srgb, var(--accent-warning) 15%, transparent)' : 'color-mix(in srgb, var(--accent-danger) 15%, transparent)',
+                                            color: m.rate >= 90 ? 'var(--accent-success)' : m.rate >= 70 ? 'var(--accent-warning)' : 'var(--accent-danger)',
                                             padding: '3px 10px',
                                             borderRadius: 20,
                                             fontSize: '0.8rem',
@@ -616,7 +617,7 @@ export default function GraduationStatsPage() {
             <div style={cardStyle}>
                 <div style={{ ...headerStyle, flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Users size={18} color="#7B68EE" />
+                        <Users size={18} color="var(--accent-purple)" />
                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                             รายชื่อผู้มีสิทธิ์รับปริญญา ({filteredCandidates.length} คน)
                         </span>
@@ -694,18 +695,18 @@ export default function GraduationStatsPage() {
                                     <td style={{ padding: '9px 10px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{s.id}</td>
                                     <td style={{ padding: '9px 10px', color: 'var(--text-primary)', fontWeight: 500 }}>{s.prefix}{s.name}</td>
                                     <td style={{ padding: '9px 10px', color: 'var(--text-muted)' }}>{s.major}</td>
-                                    <td style={{ padding: '9px 10px', color: s.gpa >= 3.50 ? '#8b5cf6' : s.gpa >= 3.00 ? '#3b82f6' : s.gpa >= 2.00 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{s.gpa.toFixed(2)}</td>
+                                    <td style={{ padding: '9px 10px', color: s.gpa >= 3.50 ? 'var(--accent-purple)' : s.gpa >= 3.00 ? 'var(--accent-blue)' : s.gpa >= 2.00 ? 'var(--accent-success)' : 'var(--accent-danger)', fontWeight: 600 }}>{s.gpa.toFixed(2)}</td>
                                     <td style={{ padding: '9px 10px' }}>
                                         <span style={{
                                             fontSize: '0.75rem',
                                             padding: '2px 8px',
                                             borderRadius: 12,
-                                            background: s.honors === 'เกียรตินิยมอันดับ 1' ? 'rgba(139,92,246,0.15)' :
-                                                        s.honors === 'เกียรตินิยมอันดับ 2' ? 'rgba(59,130,246,0.15)' :
-                                                        s.honors === 'ปกติ' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.15)',
-                                            color: s.honors === 'เกียรตินิยมอันดับ 1' ? '#8b5cf6' :
-                                                   s.honors === 'เกียรตินิยมอันดับ 2' ? '#3b82f6' :
-                                                   s.honors === 'ปกติ' ? '#22c55e' : '#ef4444',
+                                            background: s.honors === 'เกียรตินิยมอันดับ 1' ? 'color-mix(in srgb, var(--accent-purple) 15%, transparent)' :
+                                                        s.honors === 'เกียรตินิยมอันดับ 2' ? 'color-mix(in srgb, var(--accent-blue) 15%, transparent)' :
+                                                        s.honors === 'ปกติ' ? 'color-mix(in srgb, var(--accent-success) 10%, transparent)' : 'color-mix(in srgb, var(--accent-danger) 15%, transparent)',
+                                            color: s.honors === 'เกียรตินิยมอันดับ 1' ? 'var(--accent-purple)' :
+                                                   s.honors === 'เกียรตินิยมอันดับ 2' ? 'var(--accent-blue)' :
+                                                   s.honors === 'ปกติ' ? 'var(--accent-success)' : 'var(--accent-danger)',
                                         }}>{s.honors}</span>
                                     </td>
                                     <td style={{ padding: '9px 10px' }}>
@@ -714,10 +715,10 @@ export default function GraduationStatsPage() {
                                             padding: '2px 8px',
                                             borderRadius: 12,
                                             fontWeight: 600,
-                                            background: s.graduationStatus === 'คาดว่าสำเร็จ' ? 'rgba(34,197,94,0.15)' :
-                                                        s.graduationStatus === 'รอพินิจ' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
-                                            color: s.graduationStatus === 'คาดว่าสำเร็จ' ? '#22c55e' :
-                                                   s.graduationStatus === 'รอพินิจ' ? '#f59e0b' : '#ef4444',
+                                            background: s.graduationStatus === 'คาดว่าสำเร็จ' ? 'color-mix(in srgb, var(--accent-success) 15%, transparent)' :
+                                                        s.graduationStatus === 'รอพินิจ' ? 'color-mix(in srgb, var(--accent-warning) 15%, transparent)' : 'color-mix(in srgb, var(--accent-danger) 15%, transparent)',
+                                            color: s.graduationStatus === 'คาดว่าสำเร็จ' ? 'var(--accent-success)' :
+                                                   s.graduationStatus === 'รอพินิจ' ? 'var(--accent-warning)' : 'var(--accent-danger)',
                                         }}>{s.graduationStatus}</span>
                                     </td>
                                 </tr>

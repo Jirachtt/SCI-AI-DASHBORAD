@@ -395,7 +395,7 @@ export default function AdminPanelPage() {
             {/* Stats */}
             <div className="admin-stats-grid">
                 <div className="admin-stat-card">
-                    <div className="admin-stat-icon" style={{ background: 'rgba(123,104,238,0.15)', color: '#7B68EE' }}>
+                    <div className="admin-stat-icon" style={{ background: 'color-mix(in srgb, var(--accent-purple) 15%, transparent)', color: 'var(--accent-purple)' }}>
                         <Users size={22} />
                     </div>
                     <div>
@@ -404,18 +404,18 @@ export default function AdminPanelPage() {
                     </div>
                 </div>
                 <div className={`admin-stat-card ${stats.pending > 0 ? 'pulse' : ''}`}>
-                    <div className="admin-stat-icon" style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B' }}>
+                    <div className="admin-stat-icon" style={{ background: 'color-mix(in srgb, var(--accent-warning) 15%, transparent)', color: 'var(--accent-warning)' }}>
                         <Clock size={22} />
                     </div>
                     <div>
                         <p className="admin-stat-label">รออนุมัติ</p>
-                        <h2 className="admin-stat-value" style={{ color: stats.pending > 0 ? '#F59E0B' : undefined }}>
+                        <h2 className="admin-stat-value" style={{ color: stats.pending > 0 ? 'var(--accent-warning)' : undefined }}>
                             {stats.pending}
                         </h2>
                     </div>
                 </div>
                 <div className="admin-stat-card">
-                    <div className="admin-stat-icon" style={{ background: 'rgba(124,58,237,0.15)', color: '#7C3AED' }}>
+                    <div className="admin-stat-icon" style={{ background: 'color-mix(in srgb, var(--accent-purple) 15%, transparent)', color: 'var(--accent-purple)' }}>
                         <ShieldCheck size={22} />
                     </div>
                     <div>
@@ -424,7 +424,7 @@ export default function AdminPanelPage() {
                     </div>
                 </div>
                 <div className="admin-stat-card">
-                    <div className="admin-stat-icon" style={{ background: 'rgba(14,116,144,0.15)', color: '#0E7490' }}>
+                    <div className="admin-stat-icon" style={{ background: 'color-mix(in srgb, var(--accent-cyan) 15%, transparent)', color: 'var(--accent-cyan)' }}>
                         <IdCard size={22} />
                     </div>
                     <div>
@@ -433,7 +433,7 @@ export default function AdminPanelPage() {
                     </div>
                 </div>
                 <div className="admin-stat-card">
-                    <div className="admin-stat-icon" style={{ background: 'rgba(0,104,56,0.15)', color: '#00a651' }}>
+                    <div className="admin-stat-icon" style={{ background: 'color-mix(in srgb, var(--accent-success-deep) 15%, transparent)', color: 'var(--accent-success)' }}>
                         <Briefcase size={22} />
                     </div>
                     <div>
@@ -442,7 +442,7 @@ export default function AdminPanelPage() {
                     </div>
                 </div>
                 <div className="admin-stat-card">
-                    <div className="admin-stat-icon" style={{ background: 'rgba(46,134,171,0.15)', color: '#2E86AB' }}>
+                    <div className="admin-stat-icon" style={{ background: 'color-mix(in srgb, var(--accent-info) 15%, transparent)', color: 'var(--accent-info)' }}>
                         <Building size={22} />
                     </div>
                     <div>
@@ -451,21 +451,21 @@ export default function AdminPanelPage() {
                     </div>
                 </div>
                 <div className={`admin-stat-card ${stats.expiring > 0 ? 'pulse' : ''}`}>
-                    <div className="admin-stat-icon" style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B' }}>
+                    <div className="admin-stat-icon" style={{ background: 'color-mix(in srgb, var(--accent-warning) 15%, transparent)', color: 'var(--accent-warning)' }}>
                         <CalendarDays size={22} />
                     </div>
                     <div>
                         <p className="admin-stat-label">Role ใกล้หมดอายุ</p>
-                        <h2 className="admin-stat-value" style={{ color: stats.expiring > 0 ? '#F59E0B' : undefined }}>{stats.expiring}</h2>
+                        <h2 className="admin-stat-value" style={{ color: stats.expiring > 0 ? 'var(--accent-warning)' : undefined }}>{stats.expiring}</h2>
                     </div>
                 </div>
                 <div className={`admin-stat-card ${stats.expired > 0 ? 'pulse' : ''}`}>
-                    <div className="admin-stat-icon" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+                    <div className="admin-stat-icon" style={{ background: 'color-mix(in srgb, var(--accent-danger) 15%, transparent)', color: 'var(--accent-danger)' }}>
                         <AlertTriangle size={22} />
                     </div>
                     <div>
                         <p className="admin-stat-label">Role หมดอายุ</p>
-                        <h2 className="admin-stat-value" style={{ color: stats.expired > 0 ? '#ef4444' : undefined }}>{stats.expired}</h2>
+                        <h2 className="admin-stat-value" style={{ color: stats.expired > 0 ? 'var(--accent-danger)' : undefined }}>{stats.expired}</h2>
                     </div>
                 </div>
             </div>
@@ -504,7 +504,7 @@ export default function AdminPanelPage() {
                         </div>
                     ) : pendingUsers.length === 0 ? (
                         <div className="admin-empty-state">
-                            <CheckCircle size={48} color="#00a651" />
+                            <CheckCircle size={48} color="var(--accent-success)" />
                             <h3>ไม่มีคำขอที่รออนุมัติ</h3>
                             <p>คำขอใหม่จะปรากฏที่นี่เมื่อมีผู้ใช้สมัครในสิทธิ์ Staff หรือ Chair</p>
                         </div>

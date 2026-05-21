@@ -1200,7 +1200,7 @@ ${buildStudentStatsContextForAI().split('\n').find(line => line.startsWith('ต�
 
 Output format: MUST use \`\`\`json_chart\`\`\` (NEVER \`\`\`json\`\`\`):
 \`\`\`json_chart
-{"chartType":"bar","data":{"labels":["A","B"],"datasets":[{"label":"X","data":[10,20],"backgroundColor":["#00a651","#7B68EE"]}]}}
+{"chartType":"bar","data":{"labels":["A","B"],"datasets":[{"label":"X","data":[10,20],"backgroundColor":["var(--accent-success)","var(--accent-purple)"]}]}}
 \`\`\`
 
 ### Chart Selection Matrix:
@@ -1227,30 +1227,30 @@ Output format: MUST use \`\`\`json_chart\`\`\` (NEVER \`\`\`json\`\`\`):
 
 ### Scatter Chart Format (NO labels array):
 \`\`\`json_chart
-{"chartType":"scatter","data":{"datasets":[{"label":"GPA vs Hours","data":[{"x":15,"y":3.25},{"x":20,"y":3.41}],"backgroundColor":"rgba(0,166,81,0.6)","pointRadius":8}]},"options":{"scales":{"x":{"title":{"display":true,"text":"X Axis Label"}},"y":{"title":{"display":true,"text":"Y Axis Label"}}}}}
+{"chartType":"scatter","data":{"datasets":[{"label":"GPA vs Hours","data":[{"x":15,"y":3.25},{"x":20,"y":3.41}],"backgroundColor":"color-mix(in srgb, var(--accent-success) 60%, transparent)","pointRadius":8}]},"options":{"scales":{"x":{"title":{"display":true,"text":"X Axis Label"}},"y":{"title":{"display":true,"text":"Y Axis Label"}}}}}
 \`\`\`
 
 ### Bubble Chart Format (NO labels array, r = radius):
 \`\`\`json_chart
-{"chartType":"bubble","data":{"datasets":[{"label":"Departments","data":[{"x":52,"y":48,"r":15,"label":"Dept A"},{"x":30,"y":20,"r":8,"label":"Dept B"}],"backgroundColor":"rgba(0,166,81,0.6)"}]}}
+{"chartType":"bubble","data":{"datasets":[{"label":"Departments","data":[{"x":52,"y":48,"r":15,"label":"Dept A"},{"x":30,"y":20,"r":8,"label":"Dept B"}],"backgroundColor":"color-mix(in srgb, var(--accent-success) 60%, transparent)"}]}}
 \`\`\`
 
 ### DUAL-AXIS Bar + Line Format (TIME SERIES ONLY):
 Use this only when x-axis labels are years/months/dates. The bar dataset sits on the LEFT y-axis ("y"). The line dataset has \`type:"line"\` and \`yAxisID:"y1"\` pointing to the RIGHT y-axis ("y1"). Both share the same x-axis labels.
 \`\`\`json_chart
-{"chartType":"bar","data":{"labels":["สาขา1","สาขา2","สาขา3"],"datasets":[{"type":"bar","label":"จำนวนนักศึกษา","data":[120,95,80],"backgroundColor":"#00a651","yAxisID":"y","order":2},{"type":"line","label":"GPA เฉลี่ย","data":[3.25,3.10,2.95],"borderColor":"#7B68EE","backgroundColor":"rgba(123,104,238,0.2)","yAxisID":"y1","tension":0.4,"pointRadius":5,"order":1}]},"options":{"scales":{"y":{"type":"linear","position":"left","title":{"display":true,"text":"จำนวนนักศึกษา (คน)"},"beginAtZero":true},"y1":{"type":"linear","position":"right","title":{"display":true,"text":"GPA เฉลี่ย"},"min":0,"max":4,"grid":{"drawOnChartArea":false}}}}}
+{"chartType":"bar","data":{"labels":["สาขา1","สาขา2","สาขา3"],"datasets":[{"type":"bar","label":"จำนวนนักศึกษา","data":[120,95,80],"backgroundColor":"var(--accent-success)","yAxisID":"y","order":2},{"type":"line","label":"GPA เฉลี่ย","data":[3.25,3.10,2.95],"borderColor":"var(--accent-purple)","backgroundColor":"color-mix(in srgb, var(--accent-purple) 20%, transparent)","yAxisID":"y1","tension":0.4,"pointRadius":5,"order":1}]},"options":{"scales":{"y":{"type":"linear","position":"left","title":{"display":true,"text":"จำนวนนักศึกษา (คน)"},"beginAtZero":true},"y1":{"type":"linear","position":"right","title":{"display":true,"text":"GPA เฉลี่ย"},"min":0,"max":4,"grid":{"drawOnChartArea":false}}}}}
 \`\`\`
 
 ### DUAL-AXIS Grouped Bar Format (CATEGORY COMPARISON, NO LINE):
 Use this for category labels such as faculties/majors/departments when comparing different units, e.g. GPA vs graduation rate. Do NOT set \`indexAxis:"y"\`.
 \`\`\`json_chart
-{"chartType":"bar","data":{"labels":["คณะ A","คณะ B","คณะ C"],"datasets":[{"type":"bar","label":"อัตราสำเร็จการศึกษา (%)","data":[91.2,88.5,94.1],"backgroundColor":"rgba(123,104,238,0.65)","yAxisID":"y","order":2},{"type":"bar","label":"GPA เฉลี่ย","data":[3.18,3.05,3.35],"backgroundColor":"rgba(0,166,81,0.72)","yAxisID":"y1","order":1}]},"options":{"scales":{"y":{"type":"linear","position":"left","title":{"display":true,"text":"อัตราสำเร็จการศึกษา (%)"},"min":0,"max":100},"y1":{"type":"linear","position":"right","title":{"display":true,"text":"GPA เฉลี่ย"},"min":0,"max":4,"grid":{"drawOnChartArea":false}}}}}
+{"chartType":"bar","data":{"labels":["คณะ A","คณะ B","คณะ C"],"datasets":[{"type":"bar","label":"อัตราสำเร็จการศึกษา (%)","data":[91.2,88.5,94.1],"backgroundColor":"color-mix(in srgb, var(--accent-purple) 65%, transparent)","yAxisID":"y","order":2},{"type":"bar","label":"GPA เฉลี่ย","data":[3.18,3.05,3.35],"backgroundColor":"color-mix(in srgb, var(--accent-success) 72%, transparent)","yAxisID":"y1","order":1}]},"options":{"scales":{"y":{"type":"linear","position":"left","title":{"display":true,"text":"อัตราสำเร็จการศึกษา (%)"},"min":0,"max":100},"y1":{"type":"linear","position":"right","title":{"display":true,"text":"GPA เฉลี่ย"},"min":0,"max":4,"grid":{"drawOnChartArea":false}}}}}
 \`\`\`
 
 ### HORIZONTAL Bar Format (USE WHEN category labels are long Thai text like major/department names):
 When labels average >8 Thai characters OR >6 categories, use \`indexAxis:"y"\` so names read horizontally without rotation/truncation.
 \`\`\`json_chart
-{"chartType":"bar","data":{"labels":["เทคโนโลยีสารสนเทศ","เคมีอุตสาหกรรมและเทคโนโลยีสิ่งทอ","วัสดุศาสตร์"],"datasets":[{"label":"จำนวนนักศึกษา","data":[120,95,80],"backgroundColor":["#00a651","#7B68EE","#2E86AB"]}]},"options":{"indexAxis":"y","scales":{"x":{"beginAtZero":true,"title":{"display":true,"text":"จำนวน (คน)"}}}}}
+{"chartType":"bar","data":{"labels":["เทคโนโลยีสารสนเทศ","เคมีอุตสาหกรรมและเทคโนโลยีสิ่งทอ","วัสดุศาสตร์"],"datasets":[{"label":"จำนวนนักศึกษา","data":[120,95,80],"backgroundColor":["var(--accent-success)","var(--accent-purple)","var(--accent-info)"]}]},"options":{"indexAxis":"y","scales":{"x":{"beginAtZero":true,"title":{"display":true,"text":"จำนวน (คน)"}}}}}
 \`\`\`
 
 ### CRITICAL CHART RULES (เพื่อความอ่านง่าย — ห้ามผิด):
@@ -1295,7 +1295,7 @@ Examples:
 • "OKR progress" → strategic.okr → bar (progress %)
 
 ### Chart Styling:
-Colors: #00a651(เขียว) #7B68EE(ม่วง) #E91E63(ชมพู) #C5A028(ทอง) #2E86AB(น้ำเงิน) #FF6B6B(แดง) #006838(เขียวเข้ม) #A23B72(บานเย็น) #00e5ff(ฟ้า) #f97316(ส้ม)
+Colors: var(--accent-success)(เขียว) var(--accent-purple)(ม่วง) var(--accent-pink)(ชมพู) var(--accent-gold)(ทอง) var(--accent-info)(น้ำเงิน) var(--accent-danger)(แดง) var(--accent-success-deep)(เขียวเข้ม) var(--accent-pink)(บานเย็น) var(--accent-cyan)(ฟ้า) var(--accent-orange)(ส้ม)
 Bar charts: borderRadius=6
 Line charts: tension=0.4, pointRadius=5
 Scatter charts: pointRadius=8, pointHoverRadius=10, always include axis titles in options.scales.x.title and options.scales.y.title
@@ -1875,8 +1875,8 @@ function maejoTrustedFallbackContext() {
 function chartPaletteInstruction(theme = 'light') {
     const dark = theme === 'dark';
     const palette = dark
-        ? ['#7dd3fc', '#c4b5fd', '#34d399', '#fbbf24', '#fb7185', '#22d3ee']
-        : ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2'];
+        ? ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)']
+        : ['var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-success)', 'var(--accent-orange)', 'var(--accent-danger)', 'var(--accent-cyan)'];
     return `Theme-aware chart palette: current theme=${theme}. Use high-contrast dataset colors only: ${palette.join(', ')}. Avoid black, near-black, low-contrast gray, or dark green chart fills/hover colors.`;
 }
 

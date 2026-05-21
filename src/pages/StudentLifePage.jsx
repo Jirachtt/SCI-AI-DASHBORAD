@@ -26,6 +26,7 @@ import {
     sumScienceActivityHours,
 } from '../data/scienceActivitiesData';
 import { getMjuLinkedUserAcademicProfile } from '../services/mjuLinkedUserDataService';
+import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 
 const STATUS_META = {
     open: { label: 'เปิดลงทะเบียน', className: 'open' },
@@ -36,11 +37,11 @@ const STATUS_META = {
 };
 
 const TYPE_COLORS = {
-    รับน้อง: '#00a651',
-    ศิลปวัฒนธรรม: '#db2777',
-    วิชาการ: '#2563eb',
-    จิตอาสา: '#d97706',
-    กีฬา: '#7c3aed',
+    รับน้อง: 'var(--accent-success)',
+    ศิลปวัฒนธรรม: 'var(--accent-pink)',
+    วิชาการ: 'var(--accent-blue)',
+    จิตอาสา: 'var(--accent-orange)',
+    กีฬา: 'var(--accent-purple)',
 };
 
 function eventMonthKey(event) {
@@ -92,7 +93,7 @@ export default function StudentLifePage() {
 
     const typeSummary = Object.entries(events.reduce((acc, event) => {
         const key = event.type || 'อื่นๆ';
-        acc[key] = acc[key] || { type: key, count: 0, hours: 0, color: TYPE_COLORS[key] || '#64748b' };
+        acc[key] = acc[key] || { type: key, count: 0, hours: 0, color: TYPE_COLORS[key] || 'var(--text-subtle)' };
         acc[key].count += 1;
         acc[key].hours += Number(event.hours || 0);
         return acc;
@@ -100,10 +101,10 @@ export default function StudentLifePage() {
     const maxTypeHours = Math.max(...typeSummary.map(item => item.hours), 1);
 
     const kpis = [
-        { label: 'กิจกรรมเดือนนี้', value: thisMonthEvents.length, detail: summary.currentMonthLabel, icon: CalendarDays, color: '#00a651' },
-        { label: 'กิจกรรมเดือนหน้า', value: nextMonthEvents.length, detail: summary.nextMonthLabel, icon: Sparkles, color: '#7c3aed' },
-        { label: 'ชั่วโมงที่เปิดให้เก็บ', value: sumScienceActivityHours(upcomingEvents), detail: 'รับชั่วโมงคณะวิทยาศาสตร์', icon: Clock, color: '#2563eb' },
-        { label: 'ยังขาดเพื่อครบเกณฑ์', value: missingHours, detail: `${completedHours}/${targetHours} ชั่วโมง`, icon: GraduationCap, color: missingHours > 0 ? '#d97706' : '#059669' },
+        { label: 'กิจกรรมเดือนนี้', value: thisMonthEvents.length, detail: summary.currentMonthLabel, icon: CalendarDays, color: 'var(--accent-success)' },
+        { label: 'กิจกรรมเดือนหน้า', value: nextMonthEvents.length, detail: summary.nextMonthLabel, icon: Sparkles, color: 'var(--accent-purple)' },
+        { label: 'ชั่วโมงที่เปิดให้เก็บ', value: sumScienceActivityHours(upcomingEvents), detail: 'รับชั่วโมงคณะวิทยาศาสตร์', icon: Clock, color: 'var(--accent-blue)' },
+        { label: 'ยังขาดเพื่อครบเกณฑ์', value: missingHours, detail: `${completedHours}/${targetHours} ชั่วโมง`, icon: GraduationCap, color: missingHours > 0 ? 'var(--accent-orange)' : 'var(--accent-success)' },
     ];
 
     if (!accessAllowed) return <AccessDenied />;
@@ -115,8 +116,8 @@ export default function StudentLifePage() {
             </Link>
 
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #00a651, #2E86AB)' }}>
-                    <CalendarDays size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success), var(--accent-info))' }}>
+                    <CalendarDays size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h2>กิจกรรมคณะวิทยาศาสตร์</h2>
@@ -146,13 +147,14 @@ export default function StudentLifePage() {
             <div className="science-activity-kpi-grid">
                 {kpis.map((item) => {
                     const Icon = item.icon;
+                    const accentColor = legacyColorToVar(item.color);
                     return (
                         <article key={item.label} className="science-activity-kpi-card">
-                            <div className="science-activity-kpi-icon" style={{ color: item.color, background: `${item.color}18` }}>
+                            <div className="science-activity-kpi-icon" style={{ color: accentColor, background: themeAlpha(item.color, 9) }}>
                                 <Icon size={20} />
                             </div>
                             <div>
-                                <strong style={{ color: item.color }}>{item.value.toLocaleString('th-TH')}</strong>
+                                <strong style={{ color: accentColor }}>{item.value.toLocaleString('th-TH')}</strong>
                                 <span>{item.label}</span>
                                 <small>{item.detail}</small>
                             </div>
@@ -194,7 +196,7 @@ export default function StudentLifePage() {
                             </div>
                         ) : filteredEvents.map(event => {
                             const status = eventStatusMeta(event);
-                            const typeColor = TYPE_COLORS[event.type] || '#64748b';
+                            const typeColor = TYPE_COLORS[event.type] || 'var(--text-subtle)';
                             const capacity = capacityPercent(event);
                             return (
                                 <article key={event.id} className="science-activity-event-card">

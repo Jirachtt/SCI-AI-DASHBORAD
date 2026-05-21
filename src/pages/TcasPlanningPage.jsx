@@ -101,14 +101,14 @@ export default function TcasPlanningPage() {
                 type: 'bar',
                 label: 'รายงานตัว',
                 data: data.fiveYearTrend.map(item => item.enrolled),
-                backgroundColor: 'rgba(0, 166, 81, 0.72)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 72%, transparent)',
                 borderRadius: 6,
             },
             {
                 type: 'bar',
                 label: 'คงอยู่',
                 data: data.fiveYearTrend.map(item => item.retained),
-                backgroundColor: 'rgba(46, 134, 171, 0.72)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-info) 72%, transparent)',
                 borderRadius: 6,
             },
             {
@@ -116,8 +116,8 @@ export default function TcasPlanningPage() {
                 yAxisID: 'y1',
                 data: data.fiveYearTrend.map(item => item.enrolled ? (item.withdrawn / item.enrolled) * 100 : null),
                 label: 'Attrition rate',
-                borderColor: '#ef4444',
-                backgroundColor: 'rgba(239, 68, 68, 0.14)',
+                borderColor: 'var(--accent-danger)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-danger) 14%, transparent)',
                 tension: 0.35,
                 fill: false,
                 pointRadius: 4,
@@ -130,7 +130,7 @@ export default function TcasPlanningPage() {
         datasets: [{
             label: 'จำนวนรับรอบ 3 Admission 2569',
             data: round3PlanRows.map(item => item.plan),
-            backgroundColor: round3PlanRows.map((_, idx) => ['#00a651', '#2E86AB', '#7B68EE', '#C5A028', '#E91E63'][idx % 5]),
+            backgroundColor: round3PlanRows.map((_, idx) => ['var(--accent-success)', 'var(--accent-info)', 'var(--accent-purple)', 'var(--accent-gold)', 'var(--accent-pink)'][idx % 5]),
             borderRadius: 6,
         }],
     };
@@ -141,16 +141,16 @@ export default function TcasPlanningPage() {
             {
                 label: 'แผนรับ',
                 data: roundChartItems.map(item => item.plan),
-                backgroundColor: 'rgba(123, 104, 238, 0.74)',
-                borderColor: '#7B68EE',
+                backgroundColor: 'color-mix(in srgb, var(--accent-purple) 74%, transparent)',
+                borderColor: 'var(--accent-purple)',
                 borderWidth: 1,
                 borderRadius: 6,
             },
             {
                 label: 'รายงานตัว',
                 data: roundChartItems.map(item => item.enrolled),
-                backgroundColor: 'rgba(0, 166, 81, 0.68)',
-                borderColor: '#00a651',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 68%, transparent)',
+                borderColor: 'var(--accent-success)',
                 borderWidth: 1,
                 borderRadius: 6,
             },
@@ -197,10 +197,10 @@ export default function TcasPlanningPage() {
                 suggestedMax: 15,
                 grid: { drawOnChartArea: false },
                 ticks: {
-                    color: '#ef4444',
+                    color: 'var(--accent-danger)',
                     callback: value => `${value}%`,
                 },
-                title: { display: true, text: 'Attrition rate', color: '#ef4444' },
+                title: { display: true, text: 'Attrition rate', color: 'var(--accent-danger)' },
             },
         },
     };
@@ -244,8 +244,8 @@ export default function TcasPlanningPage() {
             </Link>
 
             <div className="section-header tcas-page-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
-                    <ClipboardList size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))' }}>
+                    <ClipboardList size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h2>แผนรับนักศึกษา TCAS</h2>
@@ -370,7 +370,7 @@ export default function TcasPlanningPage() {
                             <div className="chart-card-title">Impact Simulator</div>
                             <div className="chart-card-subtitle">ตอบคำถาม: เข้า 100 คน ออกกี่คน กระทบค่าเทอมเท่าไร</div>
                         </div>
-                        <Calculator size={22} color="#00a651" />
+                        <Calculator size={22} color="var(--accent-success)" />
                     </div>
                     <label>
                         นักศึกษาเข้า

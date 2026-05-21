@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollText, RefreshCw, Upload, Info, FileSpreadsheet } from 'lucide-react';
 import { listRecentAuditLogs } from '../services/auditLogService';
+import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 
 const ACTION_LABEL = {
-    upload_students: { label: 'อัพโหลดรายชื่อนักศึกษา', Icon: Upload, color: '#00a651' },
+    upload_students: { label: 'อัพโหลดรายชื่อนักศึกษา', Icon: Upload, color: 'var(--accent-success)' },
 };
 
 function formatDate(d) {
@@ -80,7 +81,7 @@ export default function AdminAuditLog() {
                         </thead>
                         <tbody>
                             {logs.map(log => {
-                                const meta = ACTION_LABEL[log.action] || { label: log.action, Icon: Info, color: '#7B68EE' };
+                                const meta = ACTION_LABEL[log.action] || { label: log.action, Icon: Info, color: 'var(--accent-purple)' };
                                 const M = meta.Icon;
                                 const dup = log.meta?.skippedDuplicates;
                                 return (
@@ -90,7 +91,7 @@ export default function AdminAuditLog() {
                                             <span style={{
                                                 display: 'inline-flex', alignItems: 'center', gap: 6,
                                                 padding: '3px 10px', borderRadius: 999,
-                                                background: `${meta.color}20`, color: meta.color,
+                                                background: themeAlpha(meta.color, 12), color: legacyColorToVar(meta.color),
                                                 fontSize: '0.8rem', fontWeight: 600
                                             }}>
                                                 <M size={12} /> {meta.label}

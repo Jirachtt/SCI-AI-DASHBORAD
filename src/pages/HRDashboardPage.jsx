@@ -13,6 +13,7 @@ import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { normalizeThaiText, withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
+import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
@@ -38,11 +39,11 @@ function expandWeighted(items, labelKey = 'label') {
 }
 
 const EDUCATION_DEFS = [
-    { key: 'doctoral', label: 'ปริญญาเอก', shortLabel: 'ป.เอก', color: '#0f766e', pattern: /เอก|doctoral|doctor|phd/i },
-    { key: 'master', label: 'ปริญญาโท', shortLabel: 'ป.โท', color: '#0e7490', pattern: /โท|master|msc/i },
-    { key: 'bachelor', label: 'ปริญญาตรี', shortLabel: 'ป.ตรี', color: '#b45309', pattern: /ตรี|bachelor|bsc/i },
-    { key: 'vocational', label: 'ปวส.', shortLabel: 'ปวส.', color: '#be185d', pattern: /ปวส|ประกาศนียบัตรวิชาชีพชั้นสูง|higher vocational|diploma/i },
-    { key: 'primary', label: 'ประถมศึกษา', shortLabel: 'ประถม', color: '#ea580c', pattern: /ประถม|primary/i },
+    { key: 'doctoral', label: 'ปริญญาเอก', shortLabel: 'ป.เอก', color: 'var(--accent-teal)', pattern: /เอก|doctoral|doctor|phd/i },
+    { key: 'master', label: 'ปริญญาโท', shortLabel: 'ป.โท', color: 'var(--accent-cyan)', pattern: /โท|master|msc/i },
+    { key: 'bachelor', label: 'ปริญญาตรี', shortLabel: 'ป.ตรี', color: 'var(--accent-orange)', pattern: /ตรี|bachelor|bsc/i },
+    { key: 'vocational', label: 'ปวส.', shortLabel: 'ปวส.', color: 'var(--accent-pink)', pattern: /ปวส|ประกาศนียบัตรวิชาชีพชั้นสูง|higher vocational|diploma/i },
+    { key: 'primary', label: 'ประถมศึกษา', shortLabel: 'ประถม', color: 'var(--accent-orange)', pattern: /ประถม|primary/i },
 ];
 
 const EDUCATION_YEAR_SOURCE_KEYS = [
@@ -64,7 +65,7 @@ function educationMetaFor(value, index = 0) {
         key: `other-${index}`,
         label: text || 'ไม่ระบุ',
         shortLabel: text || 'อื่นๆ',
-        color: ['#64748b', '#7c3aed', '#0891b2', '#ca8a04'][index % 4],
+        color: ['var(--text-subtle)', 'var(--accent-purple)', 'var(--accent-cyan)', 'var(--accent-gold)'][index % 4],
     };
 }
 
@@ -259,16 +260,16 @@ export default function HRDashboardPage() {
             {
                 label: 'สายวิชาการ',
                 data: sci.byDepartment.map(d => d.academic),
-                backgroundColor: 'rgba(34, 197, 94, 0.7)',
-                borderColor: '#22c55e',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 70%, transparent)',
+                borderColor: 'var(--accent-success)',
                 borderWidth: 1,
                 borderRadius: 6,
             },
             {
                 label: 'สายสนับสนุน',
                 data: sci.byDepartment.map(d => d.support),
-                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                borderColor: '#3b82f6',
+                backgroundColor: 'color-mix(in srgb, var(--accent-blue) 70%, transparent)',
+                borderColor: 'var(--accent-blue)',
                 borderWidth: 1,
                 borderRadius: 6,
             }
@@ -276,7 +277,7 @@ export default function HRDashboardPage() {
     };
 
     // Academic positions doughnut
-    const gradPalette = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
+    const gradPalette = ['var(--accent-purple)', 'var(--accent-success)', 'var(--accent-warning)', 'var(--accent-danger)', 'var(--accent-blue)', 'var(--accent-cyan)', 'var(--accent-purple)', 'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-orange)', 'var(--accent-purple)', 'var(--text-subtle)'];
     const positionData = {
         labels: sci.academicPositions.map(p => p.position),
         datasets: [{
@@ -291,7 +292,7 @@ export default function HRDashboardPage() {
         labels: sci.byGender.map(g => g.gender),
         datasets: [{
             data: sci.byGender.map(g => g.count),
-            backgroundColor: ['#3b82f6', '#ec4899'],
+            backgroundColor: ['var(--accent-blue)', 'var(--accent-pink)'],
             borderWidth: 0,
         }]
     };
@@ -303,8 +304,8 @@ export default function HRDashboardPage() {
             {
                 label: 'สายวิชาการ',
                 data: sci.trend.map(t => t.academic),
-                borderColor: '#22c55e',
-                backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                borderColor: 'var(--accent-success)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 12%, transparent)',
                 fill: true,
                 tension: 0.4,
                 borderDash: sci.trend.map(t => t.type === 'forecast' ? [5, 5] : []),
@@ -312,8 +313,8 @@ export default function HRDashboardPage() {
             {
                 label: 'สายสนับสนุน',
                 data: sci.trend.map(t => t.support),
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                borderColor: 'var(--accent-blue)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-blue) 12%, transparent)',
                 fill: true,
                 tension: 0.4,
             }
@@ -327,24 +328,24 @@ export default function HRDashboardPage() {
             {
                 label: 'รศ. ใหม่',
                 data: sci.promotionTrend.map(p => p.newAssocProf),
-                backgroundColor: 'rgba(139, 92, 246, 0.7)',
-                borderColor: '#8b5cf6',
+                backgroundColor: 'color-mix(in srgb, var(--accent-purple) 70%, transparent)',
+                borderColor: 'var(--accent-purple)',
                 borderWidth: 1,
                 borderRadius: 6,
             },
             {
                 label: 'ผศ. ใหม่',
                 data: sci.promotionTrend.map(p => p.newAssistProf),
-                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                borderColor: '#3b82f6',
+                backgroundColor: 'color-mix(in srgb, var(--accent-blue) 70%, transparent)',
+                borderColor: 'var(--accent-blue)',
                 borderWidth: 1,
                 borderRadius: 6,
             },
             {
                 label: 'ศ. ใหม่',
                 data: sci.promotionTrend.map(p => p.newProf),
-                backgroundColor: 'rgba(245, 158, 11, 0.7)',
-                borderColor: '#f59e0b',
+                backgroundColor: 'color-mix(in srgb, var(--accent-warning) 70%, transparent)',
+                borderColor: 'var(--accent-warning)',
                 borderWidth: 1,
                 borderRadius: 6,
             }
@@ -367,12 +368,12 @@ export default function HRDashboardPage() {
         datasets: [{
             label: 'อัตราส่วนนักศึกษา:อาจารย์',
             data: sci.studentFacultyRatio.map(r => r.ratio),
-            borderColor: '#8b5cf6',
-            backgroundColor: 'rgba(139, 92, 246, 0.12)',
+            borderColor: 'var(--accent-purple)',
+            backgroundColor: 'color-mix(in srgb, var(--accent-purple) 12%, transparent)',
             fill: true,
             tension: 0.4,
             pointRadius: 5,
-            pointBackgroundColor: sci.studentFacultyRatio.map(r => r.type === 'forecast' ? '#f97316' : '#8b5cf6'),
+            pointBackgroundColor: sci.studentFacultyRatio.map(r => r.type === 'forecast' ? 'var(--accent-orange)' : 'var(--accent-purple)'),
         }]
     };
 
@@ -388,8 +389,8 @@ export default function HRDashboardPage() {
             }
         },
         scales: {
-            x: { ticks: { color: 'var(--text-muted)', font: { size: 10 } }, grid: { color: '#ffffff08' } },
-            y: { ticks: { color: 'var(--text-muted)' }, grid: { color: '#ffffff08' } }
+            x: { ticks: { color: 'var(--text-muted)', font: { size: 10 } }, grid: { color: 'var(--chart-grid)' } },
+            y: { ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--chart-grid)' } }
         }
     };
 
@@ -566,20 +567,20 @@ export default function HRDashboardPage() {
     );
 
     const scorecards = [
-        { label: 'บุคลากรทั้งหมด', value: sci.total, icon: Users, color: '#006838', suffix: 'คน' },
-        { label: 'สายวิชาการ', value: sci.academic, icon: GraduationCap, color: '#2E86AB', suffix: 'คน' },
-        { label: 'สายสนับสนุน', value: sci.support, icon: UserCheck, color: '#C5A028', suffix: 'คน' },
-        { label: 'ปริญญาเอก', value: educationCount(normalizeEducationRows(sci.byEducation), 'doctoral'), icon: Award, color: '#0f766e', suffix: 'คน' },
-        { label: 'รศ.+ ผศ.', value: sci.academicPositions[1].count + sci.academicPositions[2].count, icon: TrendingUp, color: '#7B68EE', suffix: 'คน' },
-        { label: 'เกษียณใน 5 ปี', value: sci.diversity.retirementIn5Years, icon: Building2, color: '#E91E63', suffix: 'คน' },
+        { label: 'บุคลากรทั้งหมด', value: sci.total, icon: Users, color: 'var(--accent-success-deep)', suffix: 'คน' },
+        { label: 'สายวิชาการ', value: sci.academic, icon: GraduationCap, color: 'var(--accent-info)', suffix: 'คน' },
+        { label: 'สายสนับสนุน', value: sci.support, icon: UserCheck, color: 'var(--accent-gold)', suffix: 'คน' },
+        { label: 'ปริญญาเอก', value: educationCount(normalizeEducationRows(sci.byEducation), 'doctoral'), icon: Award, color: 'var(--accent-teal)', suffix: 'คน' },
+        { label: 'รศ.+ ผศ.', value: sci.academicPositions[1].count + sci.academicPositions[2].count, icon: TrendingUp, color: 'var(--accent-purple)', suffix: 'คน' },
+        { label: 'เกษียณใน 5 ปี', value: sci.diversity.retirementIn5Years, icon: Building2, color: 'var(--accent-pink)', suffix: 'คน' },
     ];
 
     return (
         <div style={{ padding: '0 4px' }}>
             <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #2E86AB, #1a5276)' }}>
-                    <Users size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-info), var(--accent-info))' }}>
+                    <Users size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h1>บุคลากรและโครงสร้างองค์กร</h1>
@@ -594,10 +595,11 @@ export default function HRDashboardPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24, alignItems: 'stretch' }}>
                 {scorecards.map((sc, i) => {
                     const Icon = sc.icon;
+                    const accentColor = legacyColorToVar(sc.color);
                     return (
                         <div key={i} style={{ ...cardStyle, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12, minHeight: 92, height: '100%' }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 10, background: `${sc.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <Icon size={20} color={sc.color} />
+                            <div style={{ width: 40, height: 40, borderRadius: 10, background: themeAlpha(sc.color, 13), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <Icon size={20} color={accentColor} />
                             </div>
                             <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>{sc.value.toLocaleString()}</div>
@@ -702,8 +704,8 @@ export default function HRDashboardPage() {
                                 key={ed.key}
                                 style={{
                                     minHeight: 132,
-                                    background: `linear-gradient(180deg, ${ed.color}16, ${ed.color}08)`,
-                                    border: `1px solid ${ed.color}2f`,
+                                    background: `linear-gradient(180deg, ${themeAlpha(ed.color, 9)}, ${themeAlpha(ed.color, 3)})`,
+                                    border: `1px solid ${themeAlpha(ed.color, 18)}`,
                                     borderRadius: 14,
                                     padding: '16px 12px',
                                     textAlign: 'left',
@@ -737,8 +739,8 @@ export default function HRDashboardPage() {
                                 </tr>
                             ))}
                             <tr>
-                                <td style={{ padding: '8px 12px', color: '#E91E63', fontSize: '1rem' }}>เกษียณภายใน 5 ปี</td>
-                                <td style={{ padding: '8px 12px', color: '#E91E63', fontSize: '1rem', fontWeight: 600, textAlign: 'right' }}>{sci.diversity.retirementIn5Years} คน</td>
+                                <td style={{ padding: '8px 12px', color: 'var(--accent-pink)', fontSize: '1rem' }}>เกษียณภายใน 5 ปี</td>
+                                <td style={{ padding: '8px 12px', color: 'var(--accent-pink)', fontSize: '1rem', fontWeight: 600, textAlign: 'right' }}>{sci.diversity.retirementIn5Years} คน</td>
                             </tr>
                         </tbody>
                     </table>

@@ -53,16 +53,16 @@ class ErrorBoundary extends Component {
           display: 'grid',
           placeItems: 'center',
           padding: 24,
-          background: 'linear-gradient(135deg, #f7f7ff 0%, #eef7ff 48%, #fdf6ff 100%)',
-          color: '#111827',
+          background: 'linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 48%, var(--bg-card) 100%)',
+          color: 'var(--text-primary)',
           fontFamily: '"Noto Sans Thai", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         }}>
           <div style={{
             width: 'min(560px, 100%)',
-            border: '1px solid rgba(99, 102, 241, 0.18)',
+            border: '1px solid color-mix(in srgb, var(--accent-purple) 18%, transparent)',
             borderRadius: 20,
-            boxShadow: '0 24px 70px rgba(79, 70, 229, 0.16)',
-            background: 'rgba(255, 255, 255, 0.86)',
+            boxShadow: '0 24px 70px color-mix(in srgb, var(--accent-purple) 16%, transparent)',
+            background: 'var(--bg-glass)',
             padding: 28,
             backdropFilter: 'blur(18px)',
           }}>
@@ -72,17 +72,17 @@ class ErrorBoundary extends Component {
               borderRadius: 16,
               display: 'grid',
               placeItems: 'center',
-              color: '#4f46e5',
-              background: 'linear-gradient(135deg, #eef2ff, #e0f2fe)',
+              color: 'var(--accent-purple)',
+              background: 'linear-gradient(135deg, var(--accent-purple-soft), var(--accent-info-soft))',
               fontWeight: 800,
               marginBottom: 18,
             }}>
               SCI
             </div>
-            <h1 style={{ margin: '0 0 10px', fontSize: 26, lineHeight: 1.25, color: '#0f172a' }}>
+            <h1 style={{ margin: '0 0 10px', fontSize: 26, lineHeight: 1.25, color: 'var(--text-primary)' }}>
               {title}
             </h1>
-            <p style={{ margin: '0 0 20px', color: '#475569', lineHeight: 1.75, fontSize: 15 }}>
+            <p style={{ margin: '0 0 20px', color: 'var(--text-muted)', lineHeight: 1.75, fontSize: 15 }}>
               {message}
             </p>
             {!this.state.isRecovering && (
@@ -92,19 +92,19 @@ class ErrorBoundary extends Component {
                 style={{
                   border: 0,
                   borderRadius: 12,
-                  background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                  color: '#ffffff',
+                  background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-purple))',
+                  color: 'var(--text-on-accent)',
                   cursor: 'pointer',
                   fontWeight: 700,
                   padding: '12px 18px',
-                  boxShadow: '0 14px 30px rgba(79, 70, 229, 0.24)',
+                  boxShadow: '0 14px 30px color-mix(in srgb, var(--accent-purple) 24%, transparent)',
                 }}
               >
                 โหลดหน้าใหม่
               </button>
             )}
             {!isChunkError && this.state.error && (
-              <details style={{ marginTop: 18, color: '#64748b', fontSize: 12, whiteSpace: 'pre-wrap' }}>
+              <details style={{ marginTop: 18, color: 'var(--text-subtle)', fontSize: 12, whiteSpace: 'pre-wrap' }}>
                 {this.state.error.toString()}
                 <br />
                 {this.state.errorInfo && this.state.errorInfo.componentStack}

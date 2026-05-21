@@ -31,7 +31,7 @@ export default function FinancialPage() {
         labels: financialData.facultyBudget.categories.map(c => c.name),
         datasets: [{
             data: financialData.facultyBudget.categories.map(c => c.amount),
-            backgroundColor: ['#22c55e', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899'],
+            backgroundColor: ['var(--accent-success)', 'var(--accent-warning)', 'var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-pink)'],
             borderWidth: 0,
         }]
     } : null;
@@ -46,7 +46,7 @@ export default function FinancialPage() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12, font: { size: 11 } } },
+            legend: { position: 'bottom', labels: { color: 'var(--chart-muted)', padding: 12, font: { size: 11 } } },
             tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${(ctx.parsed / 1000000).toFixed(1)}M บาท` } }
         }
     }, budgetDoughnutData, setDrillDetail, (point) => {
@@ -82,8 +82,8 @@ export default function FinancialPage() {
             </Link>
 
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #C5A028, #9a7d1e)' }}>
-                    <DollarSign size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))' }}>
+                    <DollarSign size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h2>การเงินและงานทะเบียน</h2>

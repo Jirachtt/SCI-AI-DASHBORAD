@@ -14,7 +14,7 @@ import {
     getSharedDashboardDatasetSync,
 } from './sharedDashboardDataService';
 
-const PALETTE = ['#059669', '#2563eb', '#7c3aed', '#d97706', '#dc2626', '#0891b2'];
+const PALETTE = ['var(--accent-success)', 'var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-orange)', 'var(--accent-danger)', 'var(--accent-cyan)'];
 const CHART_PATTERN = /กราฟ|chart|plot|แผนภูมิ|แผนภาพ|visual|เปรียบเทียบ|แนวโน้ม|trend|กระจาย|distribution/i;
 
 function q(value) {
@@ -137,8 +137,8 @@ function buildTcasChartAnswer(question, userContext) {
         ? [{
             label: 'แผนรับ TCAS รอบ 3 ปี 2569',
             data: labels.map(label => round3ByMajor.get(label) || 0),
-            backgroundColor: '#2563ebcc',
-            borderColor: '#2563eb',
+            backgroundColor: 'color-mix(in srgb, var(--accent-blue) 80%, transparent)',
+            borderColor: 'var(--accent-blue)',
             borderWidth: 0,
             borderRadius: 8,
         }]
@@ -146,16 +146,16 @@ function buildTcasChartAnswer(question, userContext) {
             {
                 label: 'รอบ 3 ปี 2569',
                 data: labels.map(label => round3ByMajor.get(label) || 0),
-                backgroundColor: '#2563ebbb',
-                borderColor: '#2563eb',
+                backgroundColor: 'color-mix(in srgb, var(--accent-blue) 73%, transparent)',
+                borderColor: 'var(--accent-blue)',
                 borderWidth: 0,
                 borderRadius: 8,
             },
             {
                 label: 'เป้ารับปี 2570',
                 data: labels.map(label => targetByMajor.get(label) || 0),
-                backgroundColor: '#059669bb',
-                borderColor: '#059669',
+                backgroundColor: 'color-mix(in srgb, var(--accent-success) 73%, transparent)',
+                borderColor: 'var(--accent-success)',
                 borderWidth: 0,
                 borderRadius: 8,
             },
@@ -238,8 +238,8 @@ function buildCourseChartAnswer(question, userContext) {
                         type: 'bar',
                         label: 'GPA เฉลี่ย',
                         data: sorted.map(row => row.avgGpa),
-                        backgroundColor: '#7c3aedbb',
-                        borderColor: '#7c3aed',
+                        backgroundColor: 'color-mix(in srgb, var(--accent-purple) 73%, transparent)',
+                        borderColor: 'var(--accent-purple)',
                         borderWidth: 0,
                         borderRadius: 8,
                         yAxisID: 'y',
@@ -248,8 +248,8 @@ function buildCourseChartAnswer(question, userContext) {
                         type: 'line',
                         label: fail ? 'F (%)' : 'C/D/F (%)',
                         data: sorted.map(row => fail ? row.failRate : row.lowGradeRate),
-                        borderColor: '#dc2626',
-                        backgroundColor: '#dc262622',
+                        borderColor: 'var(--accent-danger)',
+                        backgroundColor: 'color-mix(in srgb, var(--accent-danger) 13%, transparent)',
                         borderWidth: 3,
                         pointRadius: 4,
                         tension: 0.35,
@@ -434,15 +434,15 @@ function buildStudentGraduationCompareAnswer(question, userContext) {
                         data: labels.map(year => {
                             return trendByYear.get(year) || 0;
                         }),
-                        backgroundColor: '#2563ebbb',
-                        borderColor: '#2563eb',
+                        backgroundColor: 'color-mix(in srgb, var(--accent-blue) 73%, transparent)',
+                        borderColor: 'var(--accent-blue)',
                         borderRadius: 8,
                     },
                     {
                         label: 'ผู้สำเร็จการศึกษา',
                         data: labels.map(year => gradByYear.get(year) || 0),
-                        backgroundColor: '#059669bb',
-                        borderColor: '#059669',
+                        backgroundColor: 'color-mix(in srgb, var(--accent-success) 73%, transparent)',
+                        borderColor: 'var(--accent-success)',
                         borderRadius: 8,
                     },
                 ],
@@ -480,8 +480,8 @@ function buildDashboardFacultyCompareAnswer(question, userContext) {
             type: 'bar',
             label: 'จำนวนนักศึกษา',
             data: rows.map(row => number(row.totalStudents ?? row.total)),
-            backgroundColor: '#2563ebbb',
-            borderColor: '#2563eb',
+            backgroundColor: 'color-mix(in srgb, var(--accent-blue) 73%, transparent)',
+            borderColor: 'var(--accent-blue)',
             borderRadius: 8,
             yAxisID: 'y',
         },
@@ -491,8 +491,8 @@ function buildDashboardFacultyCompareAnswer(question, userContext) {
             type: 'line',
             label: 'GPA เฉลี่ย',
             data: rows.map(row => number(row.avgGPA ?? row.avgGpa)),
-            borderColor: '#7c3aed',
-            backgroundColor: '#7c3aed22',
+            borderColor: 'var(--accent-purple)',
+            backgroundColor: 'color-mix(in srgb, var(--accent-purple) 13%, transparent)',
             tension: 0.35,
             yAxisID: 'y1',
         });
@@ -547,8 +547,8 @@ function buildScienceMajorStudentChartAnswer(question, userContext) {
             type: 'bar',
             label: 'จำนวนนักศึกษา',
             data: rows.map(row => row.total),
-            backgroundColor: '#059669bb',
-            borderColor: '#059669',
+            backgroundColor: 'color-mix(in srgb, var(--accent-success) 73%, transparent)',
+            borderColor: 'var(--accent-success)',
             borderRadius: 8,
             yAxisID: 'y',
         },
@@ -558,8 +558,8 @@ function buildScienceMajorStudentChartAnswer(question, userContext) {
             type: 'line',
             label: 'GPA เฉลี่ย',
             data: rows.map(row => number(row.avgGPA)),
-            borderColor: '#7c3aed',
-            backgroundColor: '#7c3aed22',
+            borderColor: 'var(--accent-purple)',
+            backgroundColor: 'color-mix(in srgb, var(--accent-purple) 13%, transparent)',
             tension: 0.35,
             yAxisID: 'y1',
         });

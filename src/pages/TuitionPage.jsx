@@ -18,14 +18,14 @@ import useDashboardDataset from '../hooks/useDashboardDataset';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, themeAdaptorPlugin);
 
 const TUITION_BREAKDOWN_COLORS = [
-    '#0f766e',
-    '#b45309',
-    '#2563eb',
-    '#be123c',
-    '#6d28d9',
-    '#374151',
-    '#0e7490',
-    '#9f1239',
+    'var(--accent-teal)',
+    'var(--accent-orange)',
+    'var(--accent-blue)',
+    'var(--accent-rose)',
+    'var(--accent-purple)',
+    'var(--text-secondary)',
+    'var(--accent-cyan)',
+    'var(--accent-rose)',
 ];
 
 export default function TuitionPage() {
@@ -46,11 +46,11 @@ export default function TuitionPage() {
             label: 'ค่าเทอม (บาท/เทอม)',
             data: tuitionData.byFaculty.map(f => f.fee),
             backgroundColor: tuitionData.byFaculty.map((_, i) => {
-                const colors = ['rgba(123, 104, 238, 0.7)', 'rgba(34, 197, 94, 0.7)', 'rgba(245, 158, 11, 0.7)', 'rgba(239, 68, 68, 0.7)', 'rgba(59, 130, 246, 0.7)', 'rgba(6, 182, 212, 0.7)', 'rgba(236, 72, 153, 0.7)', 'rgba(139, 92, 246, 0.7)', 'rgba(20, 184, 166, 0.7)', 'rgba(249, 115, 22, 0.7)', 'rgba(168, 85, 247, 0.7)', 'rgba(100, 116, 139, 0.7)'];
+                const colors = ['color-mix(in srgb, var(--accent-purple) 70%, transparent)', 'color-mix(in srgb, var(--accent-success) 70%, transparent)', 'color-mix(in srgb, var(--accent-warning) 70%, transparent)', 'color-mix(in srgb, var(--accent-danger) 70%, transparent)', 'color-mix(in srgb, var(--accent-blue) 70%, transparent)', 'color-mix(in srgb, var(--accent-cyan) 70%, transparent)', 'color-mix(in srgb, var(--accent-pink) 70%, transparent)', 'color-mix(in srgb, var(--accent-purple) 70%, transparent)', 'color-mix(in srgb, var(--accent-teal) 70%, transparent)', 'color-mix(in srgb, var(--accent-orange) 70%, transparent)', 'color-mix(in srgb, var(--accent-purple) 70%, transparent)', 'color-mix(in srgb, var(--text-subtle) 70%, transparent)'];
                 return colors[i % colors.length];
             }),
             borderColor: tuitionData.byFaculty.map((_, i) => {
-                const colors = ['#7B68EE', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#06b6d4', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#a855f7', '#64748b'];
+                const colors = ['var(--accent-purple)', 'var(--accent-success)', 'var(--accent-warning)', 'var(--accent-danger)', 'var(--accent-blue)', 'var(--accent-cyan)', 'var(--accent-pink)', 'var(--accent-purple)', 'var(--accent-teal)', 'var(--accent-orange)', 'var(--accent-purple)', 'var(--text-subtle)'];
                 return colors[i % colors.length];
             }),
             borderWidth: 1,
@@ -71,15 +71,15 @@ export default function TuitionPage() {
         },
         scales: {
             x: {
-                ticks: { color: '#9ca3af', font: { size: 11 } },
+                ticks: { color: 'var(--chart-muted)', font: { size: 11 } },
                 grid: { display: false }
             },
             y: {
                 ticks: {
-                    color: '#9ca3af',
+                    color: 'var(--chart-muted)',
                     callback: (v) => v.toLocaleString()
                 },
-                grid: { color: 'rgba(255,255,255,0.05)' }
+                grid: { color: 'var(--chart-grid)' }
             }
         }
     };
@@ -101,7 +101,7 @@ export default function TuitionPage() {
         plugins: {
             legend: {
                 position: 'bottom',
-                labels: { color: '#9ca3af', padding: 16, font: { size: 12 } }
+                labels: { color: 'var(--chart-muted)', padding: 16, font: { size: 12 } }
             },
             tooltip: {
                 callbacks: {
@@ -175,8 +175,8 @@ export default function TuitionPage() {
             </Link>
 
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
-                    <CreditCard size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))' }}>
+                    <CreditCard size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h2>ค่าธรรมเนียมการศึกษา</h2>

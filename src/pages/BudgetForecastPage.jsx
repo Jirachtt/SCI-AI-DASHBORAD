@@ -51,27 +51,27 @@ export default function BudgetForecastPage() {
                 type: 'bar',
                 label: 'ใช้จ่ายจริง',
                 data: yearly.map(y => y.expense),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.35)'),
-                borderColor: '#22c55e',
+                backgroundColor: yearly.map(y => y.type === 'actual' ? 'color-mix(in srgb, var(--accent-success) 70%, transparent)' : 'color-mix(in srgb, var(--accent-success) 35%, transparent)'),
+                borderColor: 'var(--accent-success)',
                 borderWidth: 1.5, borderRadius: 6, order: 2,
             },
             {
                 type: 'bar',
                 label: 'ได้รับจัดสรร',
                 data: yearly.map(y => y.revenue),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'rgba(59, 130, 246, 0.7)' : 'rgba(59, 130, 246, 0.35)'),
-                borderColor: '#3b82f6',
+                backgroundColor: yearly.map(y => y.type === 'actual' ? 'color-mix(in srgb, var(--accent-blue) 70%, transparent)' : 'color-mix(in srgb, var(--accent-blue) 35%, transparent)'),
+                borderColor: 'var(--accent-blue)',
                 borderWidth: 1.5, borderRadius: 6, order: 2,
             },
             {
                 type: 'line',
                 label: 'คงเหลือ',
                 data: yearly.map(y => y.surplus),
-                borderColor: '#f59e0b',
-                backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                borderColor: 'var(--accent-warning)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-warning) 12%, transparent)',
                 borderWidth: 2.5,
                 fill: true, tension: 0.4,
-                pointBackgroundColor: yearly.map(y => y.type === 'actual' ? '#f59e0b' : '#fbbf24'),
+                pointBackgroundColor: yearly.map(y => y.type === 'actual' ? 'var(--accent-warning)' : 'var(--accent-warning)'),
                 pointBorderColor: 'var(--bg-card)',
                 pointBorderWidth: 2,
                 pointRadius: 6, pointHoverRadius: 8,
@@ -117,7 +117,7 @@ export default function BudgetForecastPage() {
                 position: 'right',
                 ticks: { color: 'var(--text-muted)', font: { size: 12 }, callback: (v) => v.toLocaleString() },
                 grid: { display: false },
-                title: { display: true, text: 'คงเหลือ', color: '#f59e0b', font: { size: 12, weight: '600' } }
+                title: { display: true, text: 'คงเหลือ', color: 'var(--accent-warning)', font: { size: 12, weight: '600' } }
             }
         }
     };
@@ -184,39 +184,39 @@ export default function BudgetForecastPage() {
         {
             Icon: Wallet, label: `งบประมาณปี ${latestYear.year}`,
             value: `฿${(latestYear.revenue).toLocaleString()}`, sub: `↗ ${revenueGrowth > 0 ? '+' : ''}${revenueGrowth}% จากปีก่อน`,
-            gradient: 'linear-gradient(135deg, #2E86AB, #1a6a8c)',
+            gradient: 'linear-gradient(135deg, var(--accent-info), var(--accent-info))',
             valueColor: 'var(--text-primary)',
         },
         {
             Icon: TrendingDown, label: 'ใช้จ่ายจริง (ถึงปัจจุบัน)',
             value: `฿${latestYear.expense.toLocaleString()}`, sub: `${usagePercent}% ของงบประมาณ · ${expenseGrowth > 0 ? '+' : ''}${expenseGrowth}% จากปีก่อน`,
-            gradient: 'linear-gradient(135deg, #E91E63, #c2185b)',
+            gradient: 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))',
             valueColor: 'var(--text-primary)',
         },
         {
             Icon: DollarSign, label: 'คงเหลือ',
             value: `฿${latestYear.surplus.toLocaleString()}`, sub: 'เพียงพอสำหรับไตรมาสที่เหลือ',
-            gradient: 'linear-gradient(135deg, #006838, #004d29)',
-            valueColor: '#4CAF50',
+            gradient: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success-deep))',
+            valueColor: 'var(--accent-success)',
         },
         {
             Icon: TrendingUp, label: `พยากรณ์รายรับ ${yearly[yearly.length - 1].year}`,
             value: `฿${yearly[yearly.length - 1].revenue.toLocaleString()}`,
             sub: 'คาดการณ์ Linear Regression',
-            gradient: 'linear-gradient(135deg, #C5A028, #9a7d1e)',
-            valueColor: '#C5A028',
+            gradient: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))',
+            valueColor: 'var(--accent-gold)',
         },
     ];
 
-    const statusColor = (type) => type === 'actual' ? '#4CAF50' : '#C5A028';
+    const statusColor = (type) => type === 'actual' ? 'var(--accent-success)' : 'var(--accent-gold)';
 
     return (
         <div className="dashboard-content">
             <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
             {/* ── Header ── */}
             <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #C5A028, #9a7d1e)' }}>
-                    <BarChart3 size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))' }}>
+                    <BarChart3 size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h1>งบประมาณคณะวิทยาศาสตร์</h1>
@@ -284,13 +284,13 @@ export default function BudgetForecastPage() {
                                         background: idx % 2 === 0 ? 'transparent' : 'var(--bg-secondary)',
                                     }}>
                                         <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: '0.95rem' }}>{y.year}</td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#2E86AB', fontWeight: 600, fontSize: '0.95rem' }}>
+                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--accent-info)', fontWeight: 600, fontSize: '0.95rem' }}>
                                             ฿{(y.revenue * 1_000_000).toLocaleString()}
                                         </td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#E91E63', fontWeight: 600, fontSize: '0.95rem' }}>
+                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--accent-pink)', fontWeight: 600, fontSize: '0.95rem' }}>
                                             ฿{(y.expense * 1_000_000).toLocaleString()}
                                         </td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#4CAF50', fontWeight: 700, fontSize: '0.95rem' }}>
+                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--accent-success)', fontWeight: 700, fontSize: '0.95rem' }}>
                                             ฿{(y.surplus * 1_000_000).toLocaleString()}
                                         </td>
                                         <td style={{ padding: '12px 16px', textAlign: 'center' }}>
@@ -301,7 +301,7 @@ export default function BudgetForecastPage() {
                                                 }}>
                                                     <div style={{
                                                         width: `${Math.min(100, pct)}%`, height: '100%', borderRadius: 4,
-                                                        background: pct > 80 ? '#ef4444' : pct > 60 ? '#f59e0b' : '#4CAF50',
+                                                        background: pct > 80 ? 'var(--accent-danger)' : pct > 60 ? 'var(--accent-warning)' : 'var(--accent-success)',
                                                     }} />
                                                 </div>
                                                 <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>{pct}%</span>
@@ -335,14 +335,14 @@ export default function BudgetForecastPage() {
                     <div style={{ padding: '14px 0' }}>
                         {latestYear.revenueBreakdown.map((item, i) => {
                             const pct = ((item.amount / latestYear.revenue) * 100).toFixed(1);
-                            const colors = ['#006838', '#2E86AB', '#C5A028', '#A23B72'];
+                            const colors = ['var(--accent-success-deep)', 'var(--accent-info)', 'var(--accent-gold)', 'var(--accent-pink)'];
                             return (
                                 <div key={i} style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '14px' }}>
                                     <div style={{ width: 5, height: 40, borderRadius: 2, background: colors[i % colors.length], flexShrink: 0 }} />
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                                             <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{item.name}</span>
-                                            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#4CAF50' }}>{item.amount.toFixed(1)} ล้าน</span>
+                                            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-success)' }}>{item.amount.toFixed(1)} ล้าน</span>
                                         </div>
                                         <div style={{ height: 8, borderRadius: 4, background: 'var(--border-color)', overflow: 'hidden' }}>
                                             <div style={{ width: `${pct}%`, height: '100%', borderRadius: 4, background: colors[i % colors.length], transition: 'width 0.6s ease' }} />
@@ -363,14 +363,14 @@ export default function BudgetForecastPage() {
                     <div style={{ padding: '14px 0' }}>
                         {latestYear.expenseBreakdown.map((item, i) => {
                             const pct = ((item.amount / latestYear.expense) * 100).toFixed(1);
-                            const colors = ['#ef4444', '#f59e0b', '#3b82f6', '#a855f7'];
+                            const colors = ['var(--accent-danger)', 'var(--accent-warning)', 'var(--accent-blue)', 'var(--accent-purple)'];
                             return (
                                 <div key={i} style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '14px' }}>
                                     <div style={{ width: 5, height: 40, borderRadius: 2, background: colors[i % colors.length], flexShrink: 0 }} />
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                                             <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{item.name}</span>
-                                            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#E91E63' }}>{item.amount.toFixed(1)} ล้าน</span>
+                                            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-pink)' }}>{item.amount.toFixed(1)} ล้าน</span>
                                         </div>
                                         <div style={{ height: 8, borderRadius: 4, background: 'var(--border-color)', overflow: 'hidden' }}>
                                             <div style={{ width: `${pct}%`, height: '100%', borderRadius: 4, background: colors[i % colors.length], transition: 'width 0.6s ease' }} />
@@ -387,15 +387,15 @@ export default function BudgetForecastPage() {
             {/* ── Forecast Note ── */}
             <div style={{
                 ...card, display: 'flex', alignItems: 'flex-start', gap: '14px',
-                borderColor: 'rgba(197, 160, 40, 0.4)', background: 'rgba(197, 160, 40, 0.1)',
+                borderColor: 'color-mix(in srgb, var(--accent-gold) 40%, transparent)', background: 'color-mix(in srgb, var(--accent-gold) 10%, transparent)',
             }}>
-                <Sparkles size={18} style={{ color: '#C5A028', flexShrink: 0, marginTop: 2 }} />
+                <Sparkles size={18} style={{ color: 'var(--accent-gold)', flexShrink: 0, marginTop: 2 }} />
                 <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.6 }}>
-                    <strong style={{ color: '#C5A028' }}>หมายเหตุ:</strong> {summary.forecastNote}
+                    <strong style={{ color: 'var(--accent-gold)' }}>หมายเหตุ:</strong> {summary.forecastNote}
                     <br />
-                    อัตราเติบโตรายรับเฉลี่ย <strong style={{ color: '#2E86AB' }}>{summary.avgGrowthRevenue}%</strong>/ปี
+                    อัตราเติบโตรายรับเฉลี่ย <strong style={{ color: 'var(--accent-info)' }}>{summary.avgGrowthRevenue}%</strong>/ปี
                     {' • '}
-                    อัตราเติบโตรายจ่ายเฉลี่ย <strong style={{ color: '#E91E63' }}>{summary.avgGrowthExpense}%</strong>/ปี
+                    อัตราเติบโตรายจ่ายเฉลี่ย <strong style={{ color: 'var(--accent-pink)' }}>{summary.avgGrowthExpense}%</strong>/ปี
                 </div>
             </div>
         </div>

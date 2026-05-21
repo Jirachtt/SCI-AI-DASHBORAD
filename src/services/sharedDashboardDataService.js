@@ -18,10 +18,10 @@ const SCIENCE_FACULTY_NAME = 'คณะวิทยาศาสตร์';
 const LINKED_STUDENT_DATASETS = new Set(['dashboard_summary', 'student_stats', 'graduation']);
 
 const LEVEL_DEFS = [
-    { key: 'bachelor', label: 'ปริญญาตรี', color: '#2563eb', icon: 'BSc', pattern: /ตรี|bachelor|bsc/i },
-    { key: 'master', label: 'ปริญญาโท', color: '#7c3aed', icon: 'MSc', pattern: /โท|master|msc/i },
-    { key: 'doctoral', label: 'ปริญญาเอก', color: '#ea580c', icon: 'PhD', pattern: /เอก|doctoral|phd/i },
-    { key: 'certificate', label: 'ประกาศนียบัตร', color: '#059669', icon: 'Cert', pattern: /ประกาศ|cert/i },
+    { key: 'bachelor', label: 'ปริญญาตรี', color: 'var(--accent-blue)', icon: 'BSc', pattern: /ตรี|bachelor|bsc/i },
+    { key: 'master', label: 'ปริญญาโท', color: 'var(--accent-purple)', icon: 'MSc', pattern: /โท|master|msc/i },
+    { key: 'doctoral', label: 'ปริญญาเอก', color: 'var(--accent-orange)', icon: 'PhD', pattern: /เอก|doctoral|phd/i },
+    { key: 'certificate', label: 'ประกาศนียบัตร', color: 'var(--accent-success)', icon: 'Cert', pattern: /ประกาศ|cert/i },
 ];
 
 function clone(value) {
@@ -515,12 +515,12 @@ function honorsLabel(student) {
 
 function buildGraduationGpaDistribution(rows = []) {
     const ranges = [
-        { range: '1.00-1.74', min: 1, max: 1.74, color: '#ef4444' },
-        { range: '1.75-1.99', min: 1.75, max: 1.99, color: '#f97316' },
-        { range: '2.00-2.49', min: 2, max: 2.49, color: '#eab308' },
-        { range: '2.50-2.99', min: 2.5, max: 2.99, color: '#22c55e' },
-        { range: '3.00-3.49', min: 3, max: 3.49, color: '#3b82f6' },
-        { range: '3.50-4.00', min: 3.5, max: 4, color: '#8b5cf6' },
+        { range: '1.00-1.74', min: 1, max: 1.74, color: 'var(--accent-danger)' },
+        { range: '1.75-1.99', min: 1.75, max: 1.99, color: 'var(--accent-orange)' },
+        { range: '2.00-2.49', min: 2, max: 2.49, color: 'var(--accent-gold)' },
+        { range: '2.50-2.99', min: 2.5, max: 2.99, color: 'var(--accent-success)' },
+        { range: '3.00-3.49', min: 3, max: 3.49, color: 'var(--accent-blue)' },
+        { range: '3.50-4.00', min: 3.5, max: 4, color: 'var(--accent-purple)' },
     ];
     return ranges.map(range => ({
         range: range.range,

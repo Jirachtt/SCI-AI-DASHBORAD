@@ -10,6 +10,7 @@ import {
 import ExportPDFButton from '../components/ExportPDFButton';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
+import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 
 const topics = [
     {
@@ -18,8 +19,8 @@ const topics = [
         subtitle: 'HR & Faculty Profile',
         description: 'จำนวนบุคลากร ตำแหน่งทางวิชาการ ความหลากหลาย อัตราส่วนนักศึกษา:อาจารย์',
         Icon: Users,
-        bgColor: 'linear-gradient(135deg, #2E86AB, #1a5276)',
-        accent: '#2E86AB',
+        bgColor: 'linear-gradient(135deg, var(--accent-info), var(--accent-info))',
+        accent: 'var(--accent-info)',
         path: '/dashboard/hr',
         section: 'hr_overview',
         stats: '113 คน (คณะวิทย์)'
@@ -30,8 +31,8 @@ const topics = [
         subtitle: 'Student Lifecycle & Outcomes',
         description: 'สถิตินิสิตปัจจุบัน TCAS รายวิชา-เกรด สำเร็จการศึกษา และกิจกรรมคณะวิทยาศาสตร์',
         Icon: GraduationCap,
-        bgColor: 'linear-gradient(135deg, #7B68EE, #5B4FCF)',
-        accent: '#7B68EE',
+        bgColor: 'linear-gradient(135deg, var(--accent-purple), var(--accent-purple))',
+        accent: 'var(--accent-purple)',
         path: '/dashboard/student-stats',
         section: 'student_stats',
         stats: '19,821 คน (อ้างอิง MJU)'
@@ -42,8 +43,8 @@ const topics = [
         subtitle: 'Research & Innovation',
         description: 'ผลงานตีพิมพ์ งบวิจัย สิทธิบัตร นวัตกรรม Benchmarking กับมหาวิทยาลัยอื่น',
         Icon: Microscope,
-        bgColor: 'linear-gradient(135deg, #006838, #00a651)',
-        accent: '#00a651',
+        bgColor: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))',
+        accent: 'var(--accent-success)',
         path: '/dashboard/research',
         section: 'research_overview',
         stats: '1,284 publications'
@@ -54,8 +55,8 @@ const topics = [
         subtitle: 'Financial Viability',
         description: 'รายรับ-รายจ่าย ค่าธรรมเนียม งบประมาณคณะ พยากรณ์งบประมาณ AI',
         Icon: Wallet,
-        bgColor: 'linear-gradient(135deg, #C5A028, #9a7d1e)',
-        accent: '#C5A028',
+        bgColor: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))',
+        accent: 'var(--accent-gold)',
         path: '/dashboard/financial',
         section: 'financial',
         stats: '~1,920 ล้านบาท/ปี'
@@ -66,8 +67,8 @@ const topics = [
         subtitle: 'Strategic & OKR Monitoring',
         description: 'เป้าหมายยุทธศาสตร์ OKR Monitoring ประสิทธิภาพ 5 ด้าน',
         Icon: Target,
-        bgColor: 'linear-gradient(135deg, #A23B72, #7B2D8E)',
-        accent: '#A23B72',
+        bgColor: 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))',
+        accent: 'var(--accent-pink)',
         path: '/dashboard/strategic',
         section: 'strategic_overview',
         stats: 'OKR Progress'
@@ -96,10 +97,10 @@ export default function DashboardHome() {
                     name: 'คณะวิทยาศาสตร์',
                     total: Number(row.total || 0) || Number(row.bachelor || 0) + Number(row.master || 0) + Number(row.doctoral || 0) + Number(row.certificate || 0),
                     byLevel: [
-                        { label: 'ปริญญาตรี', value: row.bachelor || 0, color: '#2563eb' },
-                        { label: 'ปริญญาโท', value: row.master || 0, color: '#7c3aed' },
-                        { label: 'ปริญญาเอก', value: row.doctoral || 0, color: '#ea580c' },
-                        { label: 'ประกาศนียบัตร', value: row.certificate || 0, color: '#059669' },
+                        { label: 'ปริญญาตรี', value: row.bachelor || 0, color: 'var(--accent-blue)' },
+                        { label: 'ปริญญาโท', value: row.master || 0, color: 'var(--accent-purple)' },
+                        { label: 'ปริญญาเอก', value: row.doctoral || 0, color: 'var(--accent-orange)' },
+                        { label: 'ประกาศนียบัตร', value: row.certificate || 0, color: 'var(--accent-success)' },
                     ],
                 };
             })()
@@ -110,7 +111,7 @@ export default function DashboardHome() {
         .map(item => ({
             label: item.label || item.level,
             value: Number(item.value ?? item.count ?? 0),
-            color: item.color || '#00a651',
+            color: item.color || 'var(--accent-success)',
         }))
         .filter(item => item.value > 0)
         .map(item => ({ ...item, value: item.value.toLocaleString('th-TH') }));
@@ -131,50 +132,50 @@ export default function DashboardHome() {
         {
             key: 'students', value: scienceStudentTotal.toLocaleString('th-TH'), label: 'นักศึกษาคณะวิทยาศาสตร์',
             pct: totalStudents ? ((scienceStudentTotal / totalStudents) * 100).toFixed(1) : '0.0',
-            color: '#006838',
+            color: 'var(--accent-success-deep)',
             details: scienceLevelDetails.length > 0 ? scienceLevelDetails : [
-                { label: 'ปริญญาตรี', value: '1,429', color: '#2563eb' },
-                { label: 'ปริญญาโท', value: '17', color: '#7c3aed' },
-                { label: 'ปริญญาเอก', value: '5', color: '#ea580c' },
+                { label: 'ปริญญาตรี', value: '1,429', color: 'var(--accent-blue)' },
+                { label: 'ปริญญาโท', value: '17', color: 'var(--accent-purple)' },
+                { label: 'ปริญญาเอก', value: '5', color: 'var(--accent-orange)' },
             ]
         },
         {
             key: 'courses', value: sci.totalCourses, label: 'รายวิชาคณะวิทยาศาสตร์',
             pct: ((sci.totalCourses / dashboardSummary.totalCourses) * 100).toFixed(1),
-            color: '#2E86AB',
+            color: 'var(--accent-info)',
             details: [
-                { label: 'วิชาบรรยาย', value: '98', color: '#2E86AB' },
-                { label: 'วิชาปฏิบัติการ', value: '42', color: '#00a651' },
-                { label: 'วิชาสัมมนา/วิจัย', value: '16', color: '#C5A028' },
+                { label: 'วิชาบรรยาย', value: '98', color: 'var(--accent-info)' },
+                { label: 'วิชาปฏิบัติการ', value: '42', color: 'var(--accent-success)' },
+                { label: 'วิชาสัมมนา/วิจัย', value: '16', color: 'var(--accent-gold)' },
             ]
         },
         {
             key: 'gpa', value: sci.avgGPA, label: 'GPA คณะวิทยาศาสตร์',
-            pct: null, color: '#C5A028',
+            pct: null, color: 'var(--accent-gold)',
             comparison: { label: 'สูงกว่ามหาวิทยาลัย', diff: '+0.06' },
             details: [
-                { label: 'เกรดเฉลี่ย ป.ตรี', value: '3.15', color: '#00a651' },
-                { label: 'เกรดเฉลี่ย ป.โท', value: '3.42', color: '#2E86AB' },
-                { label: 'เกรดเฉลี่ย ป.เอก', value: '3.68', color: '#A23B72' },
+                { label: 'เกรดเฉลี่ย ป.ตรี', value: '3.15', color: 'var(--accent-success)' },
+                { label: 'เกรดเฉลี่ย ป.โท', value: '3.42', color: 'var(--accent-info)' },
+                { label: 'เกรดเฉลี่ย ป.เอก', value: '3.68', color: 'var(--accent-pink)' },
             ]
         },
         {
             key: 'graduation', value: sci.graduationRate + '%', label: 'อัตราสำเร็จ คณะวิทยาศาสตร์',
-            pct: null, color: '#A23B72',
+            pct: null, color: 'var(--accent-pink)',
             comparison: { label: 'สูงกว่ามหาวิทยาลัย', diff: '+1.7%' },
             details: [
-                { label: 'สำเร็จ ป.ตรี', value: '90.8%', color: '#00a651' },
-                { label: 'สำเร็จ ป.โท', value: '94.2%', color: '#2E86AB' },
-                { label: 'สำเร็จ ป.เอก', value: '88.5%', color: '#A23B72' },
+                { label: 'สำเร็จ ป.ตรี', value: '90.8%', color: 'var(--accent-success)' },
+                { label: 'สำเร็จ ป.โท', value: '94.2%', color: 'var(--accent-info)' },
+                { label: 'สำเร็จ ป.เอก', value: '88.5%', color: 'var(--accent-pink)' },
             ]
         }
     ];
 
     const statCards = [
-        { icon: <GraduationCap size={22} />, gradient: 'linear-gradient(135deg, #006838, #00a651)', value: totalStudents.toLocaleString('th-TH'), label: 'นักศึกษาทั้งหมด', trend: '+3.2%' },
-        { icon: <BookOpen size={22} />, gradient: 'linear-gradient(135deg, #2E86AB, #1a5276)', value: dashboardSummary.totalCourses, label: 'รายวิชาเปิดสอน', trend: null },
-        { icon: <TrendingUp size={22} />, gradient: 'linear-gradient(135deg, #C5A028, #9a7d1e)', value: dashboardSummary.avgGPA, label: 'เกรดเฉลี่ยรวม (GPA)', trend: null },
-        { icon: <Users size={22} />, gradient: 'linear-gradient(135deg, #A23B72, #7B2D8E)', value: dashboardSummary.graduationRate + '%', label: 'อัตราสำเร็จการศึกษา', trend: '+1.5%' }
+        { icon: <GraduationCap size={22} />, gradient: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))', value: totalStudents.toLocaleString('th-TH'), label: 'นักศึกษาทั้งหมด', trend: '+3.2%' },
+        { icon: <BookOpen size={22} />, gradient: 'linear-gradient(135deg, var(--accent-info), var(--accent-info))', value: dashboardSummary.totalCourses, label: 'รายวิชาเปิดสอน', trend: null },
+        { icon: <TrendingUp size={22} />, gradient: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))', value: dashboardSummary.avgGPA, label: 'เกรดเฉลี่ยรวม (GPA)', trend: null },
+        { icon: <Users size={22} />, gradient: 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))', value: dashboardSummary.graduationRate + '%', label: 'อัตราสำเร็จการศึกษา', trend: '+1.5%' }
     ];
 
     const actualStudentTrendRows = (studentStatsData?.trend || []).filter(row => row.type !== 'forecast');
@@ -193,10 +194,10 @@ export default function DashboardHome() {
 
     // Forecast data with lucide icons instead of emojis
     const forecasts = [
-        { label: `นักศึกษาปี ${nextStudentForecast?.year || 'ถัดไป'}`, actual: (latestStudentTrend?.total || totalStudents).toLocaleString('th-TH'), forecast: forecastStudentTotal.toLocaleString('th-TH'), trend: forecastStudentTrend, color: '#006838', FcIcon: GraduationCap },
-        { label: `งบคณะวิทย์ปี ${forecastScienceBudget?.year || 'ถัดไป'} (ล้าน฿)`, actual: `${Number(latestScienceBudget?.revenue || 0).toLocaleString('th-TH')}`, forecast: `${Number(forecastScienceBudget?.revenue || 0).toLocaleString('th-TH')}`, trend: scienceBudgetTrend, color: '#C5A028', FcIcon: Wallet },
-        { label: 'ผลงาน Scopus ปี 2569', actual: '78', forecast: '92', trend: '+17.9%', color: '#2E86AB', FcIcon: FileBarChart2 },
-        { label: 'อัตราสำเร็จการศึกษา', actual: '89.5%', forecast: '92.1%', trend: '+2.6%', color: '#A23B72', FcIcon: TrendingUp },
+        { label: `นักศึกษาปี ${nextStudentForecast?.year || 'ถัดไป'}`, actual: (latestStudentTrend?.total || totalStudents).toLocaleString('th-TH'), forecast: forecastStudentTotal.toLocaleString('th-TH'), trend: forecastStudentTrend, color: 'var(--accent-success-deep)', FcIcon: GraduationCap },
+        { label: `งบคณะวิทย์ปี ${forecastScienceBudget?.year || 'ถัดไป'} (ล้าน฿)`, actual: `${Number(latestScienceBudget?.revenue || 0).toLocaleString('th-TH')}`, forecast: `${Number(forecastScienceBudget?.revenue || 0).toLocaleString('th-TH')}`, trend: scienceBudgetTrend, color: 'var(--accent-gold)', FcIcon: Wallet },
+        { label: 'ผลงาน Scopus ปี 2569', actual: '78', forecast: '92', trend: '+17.9%', color: 'var(--accent-info)', FcIcon: FileBarChart2 },
+        { label: 'อัตราสำเร็จการศึกษา', actual: '89.5%', forecast: '92.1%', trend: '+2.6%', color: 'var(--accent-pink)', FcIcon: TrendingUp },
     ];
     const topicCards = topics.map(topic => {
         if (topic.id === 'student-stats') {
@@ -225,13 +226,13 @@ export default function DashboardHome() {
         <div>
             {/* Welcome Section */}
             <div className="section-header dashboard-home-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
-                    <Sparkles size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))' }}>
+                    <Sparkles size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h2 style={{
                         fontSize: '1.7rem', fontWeight: 800, marginBottom: 8, letterSpacing: 0,
-                        background: 'linear-gradient(135deg, var(--text-primary) 30%, #00a651)',
+                        background: 'linear-gradient(135deg, var(--text-primary) 30%, var(--accent-success))',
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                     }}>
                         สวัสดี, {user?.name}
@@ -269,7 +270,7 @@ export default function DashboardHome() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                         <div>
                             <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <LineChart size={18} color="#00a651" /> Predictive Analytics
+                                <LineChart size={18} color="var(--accent-success)" /> Predictive Analytics
                             </h3>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: 4 }}>
                                 Linear Regression จากข้อมูลย้อนหลัง 4 ปี — พยากรณ์ล่วงหน้า 2 ปี
@@ -282,6 +283,7 @@ export default function DashboardHome() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, alignItems: 'stretch' }}>
                         {forecasts.map((fc, i) => {
                             const FcIcon = fc.FcIcon;
+                            const accentColor = legacyColorToVar(fc.color);
                             return (
                                 <div key={i} style={{
                                     background: 'var(--bg-secondary)',
@@ -290,16 +292,16 @@ export default function DashboardHome() {
                                     transition: 'transform 0.2s, border-color 0.2s, box-shadow 0.2s',
                                     display: 'flex', flexDirection: 'column', height: '100%',
                                 }}
-                                    onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = `${fc.color}44`; }}
+                                    onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = accentColor; }}
                                     onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = ''; }}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                                        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${fc.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <FcIcon size={18} color={fc.color} />
+                                        <div style={{ width: 36, height: 36, borderRadius: 10, background: themeAlpha(fc.color, 8), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <FcIcon size={18} color={accentColor} />
                                         </div>
                                         <span style={{
                                             fontSize: '1.02rem', fontWeight: 600, padding: '3px 10px', borderRadius: 20,
-                                            background: `${fc.color}15`, color: fc.color,
+                                            background: themeAlpha(fc.color, 8), color: accentColor,
                                             display: 'flex', alignItems: 'center', gap: 3,
                                         }}>
                                             <ArrowUpRight size={12} />{fc.trend}
@@ -313,7 +315,7 @@ export default function DashboardHome() {
                                         </div>
                                         <div style={{ width: 1, height: 28, background: 'var(--border-color)' }} />
                                         <div>
-                                            <span style={{ fontSize: '1rem', color: fc.color }}>Forecast</span>
+                                            <span style={{ fontSize: '1rem', color: accentColor }}>Forecast</span>
                                             <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>{fc.forecast}</div>
                                         </div>
                                     </div>
@@ -360,18 +362,18 @@ export default function DashboardHome() {
                         style={{
                             display: 'inline-flex', alignItems: 'center', gap: 8,
                             background: showInsights
-                                ? 'linear-gradient(135deg, rgba(0,166,81,0.12), rgba(0,230,118,0.08))'
+                                ? 'linear-gradient(135deg, color-mix(in srgb, var(--accent-success) 12%, transparent), color-mix(in srgb, var(--accent-success) 8%, transparent))'
                                 : 'var(--bg-card)',
                             border: showInsights
-                                ? '1px solid rgba(0,166,81,0.25)'
+                                ? '1px solid color-mix(in srgb, var(--accent-success) 25%, transparent)'
                                 : '1px solid var(--border-color)',
-                            color: showInsights ? '#00a651' : 'var(--text-secondary)',
+                            color: showInsights ? 'var(--accent-success)' : 'var(--text-secondary)',
                             padding: '9px 20px', borderRadius: 12, cursor: 'pointer',
                             fontSize: '0.9rem', fontWeight: 600,
                             transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
                             boxShadow: showInsights
-                                ? '0 4px 16px rgba(0,166,81,0.15), inset 0 1px 0 rgba(255,255,255,0.05)'
-                                : '0 1px 3px rgba(0,0,0,0.06)',
+                                ? '0 4px 16px color-mix(in srgb, var(--accent-success) 15%, transparent), inset 0 1px 0 var(--chart-grid)'
+                                : '0 1px 3px color-mix(in srgb, var(--text-primary) 6%, transparent)',
                         }}
                     >
                         <Sparkles size={15} style={{
@@ -381,9 +383,9 @@ export default function DashboardHome() {
                         Daily Insights
                         <span style={{
                             background: showInsights
-                                ? 'linear-gradient(135deg, #00a651, #00c853)'
-                                : '#00a651',
-                            color: '#fff', fontSize: '0.68rem',
+                                ? 'linear-gradient(135deg, var(--accent-success), var(--accent-success))'
+                                : 'var(--accent-success)',
+                            color: 'var(--text-on-accent)', fontSize: '0.68rem',
                             padding: '2px 8px', borderRadius: 10, fontWeight: 700,
                             transition: 'all 0.3s',
                         }}>{insights.length}</span>
@@ -407,13 +409,13 @@ export default function DashboardHome() {
                             border: '1px solid var(--border-color)',
                             borderRadius: 16,
                             overflow: 'hidden',
-                            boxShadow: '0 4px 24px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,166,81,0.04)',
+                            boxShadow: '0 4px 24px color-mix(in srgb, var(--text-primary) 8%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent-success) 4%, transparent)',
                             position: 'relative',
                         }}>
                             {/* Green accent bar */}
                             <div style={{
                                 position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
-                                background: 'linear-gradient(180deg, #00a651, #00c853, #00e676)',
+                                background: 'linear-gradient(180deg, var(--accent-success), var(--accent-success), var(--accent-success))',
                                 borderRadius: '3px 0 0 3px',
                             }} />
 
@@ -426,10 +428,10 @@ export default function DashboardHome() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <div style={{
                                         width: 30, height: 30, borderRadius: 8,
-                                        background: 'linear-gradient(135deg, rgba(0,166,81,0.15), rgba(0,230,118,0.08))',
+                                        background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-success) 15%, transparent), color-mix(in srgb, var(--accent-success) 8%, transparent))',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     }}>
-                                        <Sparkles size={15} color="#00a651" />
+                                        <Sparkles size={15} color="var(--accent-success)" />
                                     </div>
                                     <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                                         AI-Generated Insights
@@ -459,8 +461,8 @@ export default function DashboardHome() {
                                             : 'none',
                                     }}
                                         onMouseOver={e => {
-                                            e.currentTarget.style.borderColor = 'rgba(0,166,81,0.25)';
-                                            e.currentTarget.style.background = 'rgba(0,166,81,0.03)';
+                                            e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent-success) 25%, transparent)';
+                                            e.currentTarget.style.background = 'color-mix(in srgb, var(--accent-success) 3%, transparent)';
                                             e.currentTarget.style.transform = 'translateX(4px)';
                                         }}
                                         onMouseOut={e => {
@@ -471,11 +473,11 @@ export default function DashboardHome() {
                                     >
                                         <div style={{
                                             width: 22, height: 22, borderRadius: 6,
-                                            background: 'linear-gradient(135deg, rgba(0,166,81,0.15), rgba(0,230,118,0.08))',
+                                            background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-success) 15%, transparent), color-mix(in srgb, var(--accent-success) 8%, transparent))',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             flexShrink: 0, marginTop: 2,
                                         }}>
-                                            <TrendingUp size={12} color="#00a651" />
+                                            <TrendingUp size={12} color="var(--accent-success)" />
                                         </div>
                                         <span style={{
                                             color: 'var(--text-secondary)', fontSize: '0.85rem',
@@ -492,18 +494,18 @@ export default function DashboardHome() {
             {/* Quick Stats Toolbar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <BarChart3 size={18} color="#9ca3af" /> ภาพรวมสถิติ
+                    <BarChart3 size={18} color="var(--chart-muted)" /> ภาพรวมสถิติ
                 </h3>
                 <button
                     onClick={() => setIsEditMode(!isEditMode)}
                     style={{
                         display: 'flex', alignItems: 'center', gap: 6,
-                        background: isEditMode ? '#00a651' : 'var(--bg-card)',
+                        background: isEditMode ? 'var(--accent-success)' : 'var(--bg-card)',
                         border: '1px solid var(--border-color)',
                         color: isEditMode ? 'white' : 'var(--text-muted)',
                         padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
                         fontSize: '0.98rem', transition: 'all 0.2s',
-                        boxShadow: isEditMode ? '0 4px 12px rgba(0, 166, 81, 0.3)' : 'none'
+                        boxShadow: isEditMode ? '0 4px 12px color-mix(in srgb, var(--accent-success) 30%, transparent)' : 'none'
                     }}
                 >
                     <Settings2 size={15} /> {isEditMode ? 'บันทึก' : 'จัดเรียง'}
@@ -533,9 +535,9 @@ export default function DashboardHome() {
                             style={{
                                 display: 'flex', flexDirection: 'column',
                                 cursor: isEditMode ? 'grab' : 'default',
-                                border: isEditMode ? '2px dashed rgba(0, 166, 81, 0.4)' : '2px dashed transparent',
+                                border: isEditMode ? '2px dashed color-mix(in srgb, var(--accent-success) 40%, transparent)' : '2px dashed transparent',
                                 borderRadius: 18, transition: 'border 0.3s',
-                                boxShadow: isEditMode ? '0 0 15px rgba(0, 166, 81, 0.15)' : 'none'
+                                boxShadow: isEditMode ? '0 0 15px color-mix(in srgb, var(--accent-success) 15%, transparent)' : 'none'
                             }}
                         >
                             <div className="stat-card animate-in" style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: 'none', position: 'relative', zIndex: 2 }}>
@@ -555,16 +557,16 @@ export default function DashboardHome() {
                                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: sciData.color }} />
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{ width: 28, height: 28, borderRadius: 7, background: `${sciData.color}20`, color: sciData.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div style={{ width: 28, height: 28, borderRadius: 7, background: themeAlpha(sciData.color, 12), color: legacyColorToVar(sciData.color), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <Microscope size={14} />
                                         </div>
                                         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{sciData.label}</span>
                                     </div>
-                                    <div style={{ fontSize: 20, fontWeight: 700, color: sciData.color }}>{sciData.value}</div>
+                                    <div style={{ fontSize: 20, fontWeight: 700, color: legacyColorToVar(sciData.color) }}>{sciData.value}</div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     {sciData.details.map((d, j) => (
-                                        <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '10px 8px', textAlign: 'center', border: '1px solid var(--border-color)', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)' }}>
+                                        <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '10px 8px', textAlign: 'center', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
                                             <div style={{ fontSize: 18, fontWeight: 700, color: d.color }}>{d.value}</div>
                                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{d.label}</div>
                                         </div>
@@ -578,7 +580,7 @@ export default function DashboardHome() {
 
             {/* Topic Cards — 5 Data Domains */}
             <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 20, marginTop: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <FileBarChart2 size={18} color="#9ca3af" /> หมวดข้อมูลหลัก 5 ด้าน
+                <FileBarChart2 size={18} color="var(--chart-muted)" /> หมวดข้อมูลหลัก 5 ด้าน
             </h3>
             <div className="topic-cards-grid">
                 {topicCards.map((topic) => {
@@ -597,7 +599,7 @@ export default function DashboardHome() {
                             }}
                         >
                             <div className="topic-card-icon" style={{ background: topic.bgColor }}>
-                                <TopicIcon size={22} color="#fff" />
+                                <TopicIcon size={22} color="var(--text-on-accent)" />
                             </div>
                             <h3>{topic.title}</h3>
                             <div className="topic-card-subtitle">{topic.subtitle}</div>

@@ -30,11 +30,11 @@ const fallbackTuitionData = {
         { name: 'พัฒนาการท่องเที่ยว', fee: 16500 }
     ],
     breakdown: [
-        { label: 'ค่าหน่วยกิต', value: 40, color: '#006838' },
-        { label: 'ค่าบำรุงมหาวิทยาลัย', value: 25, color: '#C5A028' },
-        { label: 'ค่า Lab/ปฏิบัติการ', value: 15, color: '#2E86AB' },
-        { label: 'ค่าธรรมเนียมอื่นๆ', value: 10, color: '#A23B72' },
-        { label: 'ค่าประกัน/กิจกรรม', value: 10, color: '#F18F01' }
+        { label: 'ค่าหน่วยกิต', value: 40, color: 'var(--accent-success-deep)' },
+        { label: 'ค่าบำรุงมหาวิทยาลัย', value: 25, color: 'var(--accent-gold)' },
+        { label: 'ค่า Lab/ปฏิบัติการ', value: 15, color: 'var(--accent-info)' },
+        { label: 'ค่าธรรมเนียมอื่นๆ', value: 10, color: 'var(--accent-pink)' },
+        { label: 'ค่าประกัน/กิจกรรม', value: 10, color: 'var(--accent-orange)' }
     ],
     semesterHistory: [
         { semester: '1/2567', paid: 18500, status: 'จ่ายแล้ว' },
@@ -172,10 +172,10 @@ export const studentStatsData = {
     current: {
         total: 16392,
         byLevel: [
-            { level: 'ปริญญาตรี', count: 15693, color: '#006838', icon: 'BSc' },
-            { level: 'ปริญญาโท', count: 417, color: '#2E86AB', icon: 'MSc' },
-            { level: 'ปริญญาเอก', count: 209, color: '#A23B72', icon: 'PhD' },
-            { level: 'ประกาศนียบัตร', count: 73, color: '#C5A028', icon: 'Cert' }
+            { level: 'ปริญญาตรี', count: 15693, color: 'var(--accent-success-deep)', icon: 'BSc' },
+            { level: 'ปริญญาโท', count: 417, color: 'var(--accent-info)', icon: 'MSc' },
+            { level: 'ปริญญาเอก', count: 209, color: 'var(--accent-pink)', icon: 'PhD' },
+            { level: 'ประกาศนียบัตร', count: 73, color: 'var(--accent-gold)', icon: 'Cert' }
         ]
     },
     // ตัวเลขรวมต่อคณะ = ของจริงจาก dashboard.mju.ac.th
@@ -241,10 +241,10 @@ export const studentStatsData = {
         name: 'คณะวิทยาศาสตร์',
         total: 1390,
         byLevel: [
-            { level: 'ปริญญาตรี', count: 1369, color: '#006838', icon: 'BSc' },
-            { level: 'ปริญญาโท', count: 16, color: '#2E86AB', icon: 'MSc' },
-            { level: 'ปริญญาเอก', count: 5, color: '#A23B72', icon: 'PhD' },
-            { level: 'ประกาศนียบัตร', count: 0, color: '#C5A028', icon: 'Cert' }
+            { level: 'ปริญญาตรี', count: 1369, color: 'var(--accent-success-deep)', icon: 'BSc' },
+            { level: 'ปริญญาโท', count: 16, color: 'var(--accent-info)', icon: 'MSc' },
+            { level: 'ปริญญาเอก', count: 5, color: 'var(--accent-pink)', icon: 'PhD' },
+            { level: 'ประกาศนียบัตร', count: 0, color: 'var(--accent-gold)', icon: 'Cert' }
         ],
         // จำนวนนิสิตแยกตามรหัสปีเข้า — รวม 1,390 ตามยอด MJU Dashboard ล่าสุด
         byEnrollmentYear: [
@@ -285,11 +285,11 @@ export const studentStatsData = {
             academicStaff: 113,
             ratio: 12.3,
             comparison: [
-                { name: 'คณะวิทยาศาสตร์ มจ.', ratio: 12.4, color: '#006838' },
-                { name: 'เกณฑ์ สกอ. (วิทย์)', ratio: 20.0, color: '#C5A028' },
-                { name: 'เฉลี่ยมหาวิทยาลัย', ratio: 18.5, color: '#2E86AB' },
-                { name: 'จุฬาฯ (วิทย์)', ratio: 12.0, color: '#7B68EE' },
-                { name: 'มข. (วิทย์)', ratio: 16.0, color: '#E91E63' },
+                { name: 'คณะวิทยาศาสตร์ มจ.', ratio: 12.4, color: 'var(--accent-success-deep)' },
+                { name: 'เกณฑ์ สกอ. (วิทย์)', ratio: 20.0, color: 'var(--accent-gold)' },
+                { name: 'เฉลี่ยมหาวิทยาลัย', ratio: 18.5, color: 'var(--accent-info)' },
+                { name: 'จุฬาฯ (วิทย์)', ratio: 12.0, color: 'var(--accent-purple)' },
+                { name: 'มข. (วิทย์)', ratio: 16.0, color: 'var(--accent-pink)' },
             ],
             trend: [
                 { year: '2564', ratio: 13.2 },

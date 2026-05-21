@@ -35,7 +35,7 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, themeAdaptorPlugin);
 
-const gradePalette = ['#00a651', '#2E86AB', '#7B68EE', '#C5A028', '#f59e0b', '#ef4444', '#64748b'];
+const gradePalette = ['var(--accent-success)', 'var(--accent-info)', 'var(--accent-purple)', 'var(--accent-gold)', 'var(--accent-warning)', 'var(--accent-danger)', 'var(--text-subtle)'];
 
 export default function CourseAnalyticsPage() {
     const { user } = useAuth();
@@ -94,8 +94,8 @@ export default function CourseAnalyticsPage() {
             </Link>
 
             <div className="section-header course-page-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #2E86AB, #7B68EE)' }}>
-                    <BookOpen size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-info), var(--accent-purple))' }}>
+                    <BookOpen size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h2>รายวิชา เกรด และจุดเด่นสาขา</h2>
@@ -228,7 +228,7 @@ export default function CourseAnalyticsPage() {
                             <div className="chart-card-title">กราฟการกระจายเกรดรายวิชา</div>
                             <div className="chart-card-subtitle">{selectedGrade.code} · {selectedGrade.title} · {selectedGrade.semester}</div>
                         </div>
-                        <BarChart3 size={22} color="#00a651" />
+                        <BarChart3 size={22} color="var(--accent-success)" />
                     </div>
                     <div className="course-grade-chart">
                         <Bar data={gradeChartData} options={gradeChartOptions} />
@@ -246,7 +246,7 @@ export default function CourseAnalyticsPage() {
                             <div className="chart-card-title">จุดเด่นของแต่ละสาขา</div>
                             <div className="chart-card-subtitle">ใช้ตอบโจทย์ด้านบุคลากร/หลักสูตร ว่าแต่ละสาขาเชี่ยวชาญอะไร</div>
                         </div>
-                        <Microscope size={22} color="#7B68EE" />
+                        <Microscope size={22} color="var(--accent-purple)" />
                     </div>
                     <div className="course-strength-grid">
                         {data.branchStrengths.map((branch, index) => (

@@ -49,12 +49,12 @@ export const researchData = {
 
     // แหล่งทุนวิจัยหลัก (ล้านบาท รวม 28.3 ตาม MJU Dashboard 2568)
     fundingSources: [
-        { source: 'สำนักงานการวิจัยแห่งชาติ (วช.)', amount: 6.0, color: '#006838' },
-        { source: 'กองทุนส่งเสริมวิทยาศาสตร์ฯ', amount: 4.4, color: '#2E86AB' },
-        { source: 'สกสว./สกว.', amount: 4.1, color: '#C5A028' },
-        { source: 'มหาวิทยาลัยแม่โจ้ (ทุนภายใน)', amount: 5.2, color: '#A23B72' },
-        { source: 'ภาคเอกชน/อุตสาหกรรม', amount: 4.9, color: '#F18F01' },
-        { source: 'แหล่งทุนต่างประเทศ', amount: 3.7, color: '#7B68EE' }
+        { source: 'สำนักงานการวิจัยแห่งชาติ (วช.)', amount: 6.0, color: 'var(--accent-success-deep)' },
+        { source: 'กองทุนส่งเสริมวิทยาศาสตร์ฯ', amount: 4.4, color: 'var(--accent-info)' },
+        { source: 'สกสว./สกว.', amount: 4.1, color: 'var(--accent-gold)' },
+        { source: 'มหาวิทยาลัยแม่โจ้ (ทุนภายใน)', amount: 5.2, color: 'var(--accent-pink)' },
+        { source: 'ภาคเอกชน/อุตสาหกรรม', amount: 4.9, color: 'var(--accent-orange)' },
+        { source: 'แหล่งทุนต่างประเทศ', amount: 3.7, color: 'var(--accent-purple)' }
     ],
 
     // สิทธิบัตรและนวัตกรรม

@@ -8,10 +8,10 @@ export const hrData = {
         academic: 1245,
         support: 1602,
         byType: [
-            { type: 'พนักงานมหาวิทยาลัย', count: 2105, color: '#006838' },
-            { type: 'ข้าราชการ', count: 342, color: '#C5A028' },
-            { type: 'พนักงานราชการ', count: 198, color: '#2E86AB' },
-            { type: 'ลูกจ้างชั่วคราว', count: 202, color: '#A23B72' }
+            { type: 'พนักงานมหาวิทยาลัย', count: 2105, color: 'var(--accent-success-deep)' },
+            { type: 'ข้าราชการ', count: 342, color: 'var(--accent-gold)' },
+            { type: 'พนักงานราชการ', count: 198, color: 'var(--accent-info)' },
+            { type: 'ลูกจ้างชั่วคราว', count: 202, color: 'var(--accent-pink)' }
         ],
         byGender: [
             { gender: 'ชาย', count: 1285 },
@@ -27,27 +27,27 @@ export const hrData = {
         academic: 104,
         support: 69,
         byGender: [
-            { gender: 'ชาย', count: 64, color: '#2E86AB' },
-            { gender: 'หญิง', count: 109, color: '#E91E63' }
+            { gender: 'ชาย', count: 64, color: 'var(--accent-info)' },
+            { gender: 'หญิง', count: 109, color: 'var(--accent-pink)' }
         ],
         byType: [
-            { type: 'พนักงานมหาวิทยาลัย', count: 145, color: '#006838' },
-            { type: 'พนักงานส่วนงาน', count: 14, color: '#2E86AB' },
-            { type: 'ข้าราชการ', count: 14, color: '#C5A028' }
+            { type: 'พนักงานมหาวิทยาลัย', count: 145, color: 'var(--accent-success-deep)' },
+            { type: 'พนักงานส่วนงาน', count: 14, color: 'var(--accent-info)' },
+            { type: 'ข้าราชการ', count: 14, color: 'var(--accent-gold)' }
         ],
 
         // ตำแหน่งทางวิชาการ
         academicPositions: [
-            { position: 'ศาสตราจารย์', count: 0, color: '#FFD700', icon: 'Prof' },
-            { position: 'รองศาสตราจารย์', count: 18, color: '#C5A028', icon: 'Assoc' },
-            { position: 'ผู้ช่วยศาสตราจารย์', count: 27, color: '#2E86AB', icon: 'Asst' },
-            { position: 'อาจารย์', count: 59, color: '#006838', icon: 'Lect' }
+            { position: 'ศาสตราจารย์', count: 0, color: 'var(--accent-gold)', icon: 'Prof' },
+            { position: 'รองศาสตราจารย์', count: 18, color: 'var(--accent-gold)', icon: 'Assoc' },
+            { position: 'ผู้ช่วยศาสตราจารย์', count: 27, color: 'var(--accent-info)', icon: 'Asst' },
+            { position: 'อาจารย์', count: 59, color: 'var(--accent-success-deep)', icon: 'Lect' }
         ],
 
         // วุฒิการศึกษา
         byEducation: [
-            { level: 'ปริญญาเอก', count: 87, color: '#A23B72', icon: 'PhD' },
-            { level: 'ปริญญาโท', count: 17, color: '#2E86AB', icon: 'MSc' }
+            { level: 'ปริญญาเอก', count: 87, color: 'var(--accent-pink)', icon: 'PhD' },
+            { level: 'ปริญญาโท', count: 17, color: 'var(--accent-info)', icon: 'MSc' }
         ],
 
         // 7 ภาควิชาจริงของคณะวิทยาศาสตร์ มจ. — รวม academic 104 / support 69 / total 173
@@ -87,10 +87,10 @@ export const hrData = {
                 { label: 'ต่างชาติ', count: 8 }
             ],
             ageGroup: [
-                { group: '25-35 ปี', count: 28, color: '#00a651' },
-                { group: '36-45 ปี', count: 54, color: '#2E86AB' },
-                { group: '46-55 ปี', count: 64, color: '#C5A028' },
-                { group: '56-65 ปี', count: 27, color: '#A23B72' }
+                { group: '25-35 ปี', count: 28, color: 'var(--accent-success)' },
+                { group: '36-45 ปี', count: 54, color: 'var(--accent-info)' },
+                { group: '46-55 ปี', count: 64, color: 'var(--accent-gold)' },
+                { group: '56-65 ปี', count: 27, color: 'var(--accent-pink)' }
             ],
             retirementIn5Years: 18
         },

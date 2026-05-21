@@ -13,6 +13,7 @@ import {
     graduationRules,
     honorsRules,
 } from '../data/academicRulesData';
+import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 
 export default function AcademicRulesPage() {
     const { user } = useAuth();
@@ -20,6 +21,8 @@ export default function AcademicRulesPage() {
 
     const firstClass = honorsRules.thresholds[0];
     const secondClass = honorsRules.thresholds[1];
+    const firstClassColor = legacyColorToVar(firstClass.color, '--accent-gold');
+    const secondClassColor = legacyColorToVar(secondClass.color, '--accent-info');
 
     return (
         <div className="academic-rules-page">
@@ -28,8 +31,8 @@ export default function AcademicRulesPage() {
             </Link>
 
             <div className="section-header academic-rules-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, #006838, #00a651)' }}>
-                    <ScrollText size={22} color="#fff" />
+                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))' }}>
+                    <ScrollText size={22} color="var(--text-on-accent)" />
                 </div>
                 <div>
                     <h2>กฎระเบียบและเกียรตินิยม</h2>
@@ -55,25 +58,25 @@ export default function AcademicRulesPage() {
             <div className="stats-grid academic-rules-stats">
                 <div className="stat-card animate-in">
                     <div className="stat-card-header">
-                        <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg,#C5A028,#f59e0b)' }}>
+                        <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg,var(--accent-gold),var(--accent-warning))' }}>
                             <Award />
                         </div>
                     </div>
-                    <div className="stat-card-value" style={{ color: firstClass.color }}>{firstClass.gpa}</div>
+                    <div className="stat-card-value" style={{ color: firstClassColor }}>{firstClass.gpa}</div>
                     <div className="stat-card-label">{firstClass.rank}</div>
                 </div>
                 <div className="stat-card animate-in">
                     <div className="stat-card-header">
-                        <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg,#2E86AB,#06b6d4)' }}>
+                        <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg,var(--accent-info),var(--accent-cyan))' }}>
                             <Award />
                         </div>
                     </div>
-                    <div className="stat-card-value" style={{ color: secondClass.color }}>{secondClass.gpa}</div>
+                    <div className="stat-card-value" style={{ color: secondClassColor }}>{secondClass.gpa}</div>
                     <div className="stat-card-label">{secondClass.rank}</div>
                 </div>
                 <div className="stat-card animate-in">
                     <div className="stat-card-header">
-                        <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg,#006838,#00a651)' }}>
+                        <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg,var(--accent-success-deep),var(--accent-success))' }}>
                             <BookOpen />
                         </div>
                     </div>
@@ -82,7 +85,7 @@ export default function AcademicRulesPage() {
                 </div>
                 <div className="stat-card animate-in">
                     <div className="stat-card-header">
-                        <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg,#ef4444,#f97316)' }}>
+                        <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg,var(--accent-danger),var(--accent-orange))' }}>
                             <XCircle />
                         </div>
                     </div>
@@ -98,12 +101,12 @@ export default function AcademicRulesPage() {
                             <div className="chart-card-title">ทำอย่างไรถึงได้เกียรตินิยม</div>
                             <div className="chart-card-subtitle">{honorsRules.appliesTo}</div>
                         </div>
-                        <GraduationCap size={24} color="#00a651" />
+                        <GraduationCap size={24} color="var(--accent-success)" />
                     </div>
                     <div className="honors-rank-row">
                         {honorsRules.thresholds.map(rule => (
-                            <div key={rule.rank} className="honors-rank-card" style={{ borderColor: `${rule.color}55` }}>
-                                <span style={{ color: rule.color }}>{rule.rank}</span>
+                            <div key={rule.rank} className="honors-rank-card" style={{ borderColor: themeAlpha(rule.color, 33) }}>
+                                <span style={{ color: legacyColorToVar(rule.color, '--accent-gold') }}>{rule.rank}</span>
                                 <strong>{rule.gpa}</strong>
                             </div>
                         ))}
@@ -120,7 +123,7 @@ export default function AcademicRulesPage() {
                             <div className="chart-card-title">เช็กลิสต์คุณสมบัติ</div>
                             <div className="chart-card-subtitle">ต้องครบก่อนเสนอชื่อรับปริญญาเกียรตินิยม</div>
                         </div>
-                        <CheckCircle2 size={24} color="#22c55e" />
+                        <CheckCircle2 size={24} color="var(--accent-success)" />
                     </div>
                     <ul className="academic-rules-list positive">
                         {honorsRules.mustHave.map(item => (
@@ -135,7 +138,7 @@ export default function AcademicRulesPage() {
                             <div className="chart-card-title">ลักษณะต้องห้าม</div>
                             <div className="chart-card-subtitle">หากเข้าเงื่อนไขนี้จะเสียสิทธิ์เกียรตินิยม</div>
                         </div>
-                        <XCircle size={24} color="#ef4444" />
+                        <XCircle size={24} color="var(--accent-danger)" />
                     </div>
                     <ul className="academic-rules-list danger">
                         {honorsRules.disqualifiers.map(item => (
@@ -153,7 +156,7 @@ export default function AcademicRulesPage() {
                                 <div className="chart-card-title">{rule.title}</div>
                                 <div className="chart-card-subtitle">สรุปจากข้อบังคับ ป.ตรี พ.ศ. 2569</div>
                             </div>
-                            <FileText size={22} color="#7B68EE" />
+                            <FileText size={22} color="var(--accent-purple)" />
                         </div>
                         <ul className="academic-rules-list neutral">
                             {rule.items.map(item => (
