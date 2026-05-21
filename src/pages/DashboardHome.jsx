@@ -502,7 +502,7 @@ export default function DashboardHome() {
                         display: 'flex', alignItems: 'center', gap: 6,
                         background: isEditMode ? 'var(--accent-success)' : 'var(--bg-card)',
                         border: '1px solid var(--border-color)',
-                        color: isEditMode ? 'white' : 'var(--text-muted)',
+                        color: isEditMode ? 'var(--text-on-accent)' : 'var(--text-muted)',
                         padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
                         fontSize: '0.98rem', transition: 'all 0.2s',
                         boxShadow: isEditMode ? '0 4px 12px color-mix(in srgb, var(--accent-success) 30%, transparent)' : 'none'
