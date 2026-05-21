@@ -17988,6 +17988,410 @@ button:disabled,
   color: #fb7185;
 }
 
+/* System layout stability layer. */
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 0;
+}
+
+body {
+  overflow-x: clip;
+}
+
+@supports not (overflow: clip) {
+  body {
+    overflow-x: hidden;
+  }
+}
+
+.app-layout {
+  width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+}
+
+.main-content {
+  min-width: 0;
+  width: calc(100% - var(--sidebar-width));
+}
+
+.page-content,
+.page-transition {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.dashboard-typography :where(
+  .section-header,
+  .stat-card,
+  .chart-card,
+  .topic-card,
+  .data-table-container,
+  .filter-bar,
+  .ai-page-chart-container,
+  .admin-users-table-wrapper,
+  .admin-pending-card,
+  .auto-sync-card,
+  .modal-content,
+  .admin-modal,
+  .settings-popover,
+  .ai-chat-panel
+) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboard-typography :where(
+  .section-header > *,
+  .chart-card > *,
+  .stat-card > *,
+  .topic-card > *,
+  .chart-card-header > *,
+  .data-table-header > *,
+  .filter-bar > *,
+  .section-header-actions > *
+) {
+  min-width: 0;
+}
+
+.section-header,
+.chart-card-header,
+.data-table-header,
+.filter-bar,
+.section-header-actions {
+  flex-wrap: wrap;
+}
+
+.section-header > div:not(.section-header-icon):not(.section-header-actions),
+.chart-card-title,
+.chart-card-subtitle,
+.data-table-title,
+.data-table-subtitle,
+.stat-card-label,
+.topic-card h3,
+.topic-card p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.header-left,
+.header-right,
+.header-title,
+.header-intel-pills {
+  min-width: 0;
+}
+
+.header-title h1,
+.header-title p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-right {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+}
+
+.header-intel-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.header-status-pill {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.charts-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+}
+
+.stats-grid,
+.admin-stats-grid,
+.topic-cards-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+
+.dashboard-typography :where(
+  .academic-rules-grid,
+  .academic-rules-rule-grid,
+  .admin-ai-usage-grid,
+  .admin-data-mapping-grid,
+  .admin-data-meta-grid,
+  .admin-data-quality-grid,
+  .admin-pending-grid,
+  .ai-chat-page-quick-grid,
+  .ai-command-status-grid,
+  .ai-observability-grid,
+  .ai-system-status-grid,
+  .auto-sync-grid,
+  .course-kpi-grid,
+  .course-layout,
+  .course-semester-grid,
+  .course-strength-grid,
+  .data-accuracy-dataset-grid,
+  .data-accuracy-grid,
+  .data-accuracy-score-grid,
+  .graduation-status-grid,
+  .intake-trend-layout,
+  .science-activity-kpi-grid,
+  .science-activity-layout,
+  .smart-status-grid,
+  .tcas-kpi-grid,
+  .tcas-layout,
+  .tcas-outlook-grid
+) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.chart-card,
+.chart-container,
+.ai-page-chart-container,
+.chat-chart-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.chart-container {
+  height: clamp(220px, 34vw, 320px);
+  min-height: 220px;
+}
+
+.chart-card canvas,
+.chart-container canvas {
+  max-width: 100% !important;
+}
+
+.data-table-container {
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-users-table-wrapper,
+.chart-drilldown-table-wrap,
+.data-accuracy-table-wrapper {
+  max-width: 100%;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.data-table {
+  width: 100%;
+  min-width: max-content;
+}
+
+.data-table th,
+.data-table td {
+  overflow-wrap: normal;
+}
+
+.section-header-actions,
+.filter-bar,
+.chart-toolbar,
+.ai-page-chart-toolbar {
+  max-width: 100%;
+}
+
+.section-header-actions > *,
+.filter-bar > *,
+.chart-toolbar > *,
+.ai-page-chart-toolbar > * {
+  flex: 0 0 auto;
+}
+
+.modal-content,
+.admin-modal,
+.chart-drilldown-modal,
+.ai-page-chart-modal {
+  max-width: min(96vw, 1120px) !important;
+  max-height: calc(100dvh - 24px) !important;
+}
+
+.settings-popover {
+  max-width: calc(100vw - 24px);
+  overflow: auto;
+}
+
+.ai-chat-panel {
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+}
+
+@media (max-width: 1024px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-typography :where(
+    .academic-rules-grid,
+    .academic-rules-rule-grid,
+    .admin-ai-usage-grid,
+    .admin-data-mapping-grid,
+    .admin-data-meta-grid,
+    .admin-data-quality-grid,
+    .admin-pending-grid,
+    .ai-chat-page-quick-grid,
+    .ai-command-status-grid,
+    .ai-observability-grid,
+    .ai-system-status-grid,
+    .auto-sync-grid,
+    .course-kpi-grid,
+    .course-layout,
+    .course-semester-grid,
+    .course-strength-grid,
+    .data-accuracy-dataset-grid,
+    .data-accuracy-grid,
+    .data-accuracy-score-grid,
+    .graduation-status-grid,
+    .intake-trend-layout,
+    .science-activity-kpi-grid,
+    .science-activity-layout,
+    .smart-status-grid,
+    .tcas-kpi-grid,
+    .tcas-layout,
+    .tcas-outlook-grid
+  ) {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)) !important;
+  }
+
+  .header-intel-pills {
+    max-width: min(460px, 52vw);
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .main-header {
+    align-items: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .header-left {
+    flex: 1 1 min(100%, 320px);
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-intel-pills {
+    max-width: calc(100% - 54px);
+  }
+
+  .page-content {
+    padding-inline: 12px;
+  }
+
+  .section-header-icon {
+    flex: 0 0 42px;
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .charts-grid,
+  .stats-grid,
+  .admin-stats-grid,
+  .topic-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-typography :where(
+    .academic-rules-grid,
+    .academic-rules-rule-grid,
+    .admin-ai-usage-grid,
+    .admin-data-mapping-grid,
+    .admin-data-meta-grid,
+    .admin-data-quality-grid,
+    .admin-pending-grid,
+    .ai-chat-page-quick-grid,
+    .ai-command-status-grid,
+    .ai-observability-grid,
+    .ai-system-status-grid,
+    .auto-sync-grid,
+    .course-kpi-grid,
+    .course-layout,
+    .course-semester-grid,
+    .course-strength-grid,
+    .data-accuracy-dataset-grid,
+    .data-accuracy-grid,
+    .data-accuracy-score-grid,
+    .graduation-status-grid,
+    .intake-trend-layout,
+    .science-activity-kpi-grid,
+    .science-activity-layout,
+    .smart-status-grid,
+    .tcas-kpi-grid,
+    .tcas-layout,
+    .tcas-outlook-grid
+  ) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .chart-card-header,
+  .data-table-header {
+    align-items: flex-start;
+  }
+
+  .data-table {
+    min-width: 720px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-header {
+    padding-inline: 10px;
+  }
+
+  .header-intel-pills {
+    max-width: 100%;
+  }
+
+  .header-status-pill {
+    min-height: 34px;
+    font-size: 0.72rem;
+  }
+
+  .chart-card,
+  .stat-card,
+  .data-table-container,
+  .filter-bar {
+    padding-inline: 12px !important;
+  }
+
+  .chart-container {
+    height: 240px;
+    min-height: 220px;
+  }
+
+  .data-table {
+    min-width: 640px;
+  }
+
+  .modal-content,
+  .admin-modal,
+  .chart-drilldown-modal,
+  .ai-page-chart-modal {
+    max-width: calc(100vw - 12px) !important;
+    max-height: calc(100dvh - 12px) !important;
+  }
+}
+
 .ai-answer-action-row {
   display: flex;
   flex-wrap: wrap;
