@@ -84,7 +84,7 @@ export default function CompositionBreakdown({
     }
 
     return (
-        <div className="composition-breakdown composition-pie-panel bg-white rounded-2xl shadow-sm" role="group" aria-label={ariaLabel}>
+        <div className="composition-breakdown composition-pie-panel" role="group" aria-label={ariaLabel}>
             <div className="composition-pie-wrap">
                 <svg className="composition-pie" viewBox="0 0 220 220" role="img">
                     <circle className="composition-pie-bg" cx="110" cy="110" r="101" />

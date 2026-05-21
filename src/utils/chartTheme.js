@@ -540,7 +540,7 @@ export const themeAdaptorPlugin = {
 
         sanitizeChartDatasetColors(chart, themeConfig.theme);
         applyPremiumChartMotion(chart, options, chartType, isSliceChart, args);
-        options.font = withDashboardFont(options.font, '600');
+        options.font = withDashboardFont(options.font, '500');
         options.interaction = isSliceChart
             ? { ...(options.interaction || {}), mode: 'nearest', intersect: true }
             : { mode: 'index', intersect: false, ...(options.interaction || {}) };
@@ -580,7 +580,7 @@ export const themeAdaptorPlugin = {
             const scale = scales[key];
             if (scale.ticks) {
                 scale.ticks.color = themeConfig.muted;
-                scale.ticks.font = withDashboardFont(scale.ticks.font, '600');
+                scale.ticks.font = withDashboardFont(scale.ticks.font, '500');
             }
             if (scale.grid && scale.grid.display !== false) {
                 scale.grid.color = themeConfig.grid;
@@ -594,11 +594,11 @@ export const themeAdaptorPlugin = {
             }
             if (scale.pointLabels) {
                 scale.pointLabels.color = themeConfig.text;
-                scale.pointLabels.font = withDashboardFont(scale.pointLabels.font, '700');
+                scale.pointLabels.font = withDashboardFont(scale.pointLabels.font, '600');
             }
             if (scale.title && scale.title.display) {
                 scale.title.color = themeConfig.text;
-                scale.title.font = withDashboardFont(scale.title.font, '700');
+                scale.title.font = withDashboardFont(scale.title.font, '600');
             }
         }
 
@@ -613,8 +613,8 @@ export const themeAdaptorPlugin = {
             tooltip.borderWidth = 1;
             if (!tooltip.cornerRadius) tooltip.cornerRadius = 14;
             if (!tooltip.padding) tooltip.padding = 14;
-            tooltip.titleFont = withDashboardFont(tooltip.titleFont, '700');
-            tooltip.bodyFont = withDashboardFont(tooltip.bodyFont, '600');
+            tooltip.titleFont = withDashboardFont(tooltip.titleFont, '600');
+            tooltip.bodyFont = withDashboardFont(tooltip.bodyFont, '500');
             if (tooltip.displayColors == null) tooltip.displayColors = true;
             if (tooltip.boxPadding == null) tooltip.boxPadding = 7;
             tooltip.caretPadding = tooltip.caretPadding ?? 12;
@@ -627,7 +627,7 @@ export const themeAdaptorPlugin = {
         const legend = options.plugins?.legend;
         if (legend?.labels) {
             legend.labels.color = themeConfig.text;
-            legend.labels.font = withDashboardFont(legend.labels.font, '700');
+            legend.labels.font = withDashboardFont(legend.labels.font, '600');
             legend.labels.usePointStyle = legend.labels.usePointStyle ?? true;
             legend.labels.pointStyle = legend.labels.pointStyle || 'roundedRect';
             legend.labels.boxWidth = legend.labels.boxWidth ?? 10;
@@ -638,13 +638,13 @@ export const themeAdaptorPlugin = {
         const title = options.plugins?.title;
         if (title) {
             title.color = themeConfig.text;
-            title.font = withDashboardFont(title.font, '700');
+            title.font = withDashboardFont(title.font, '600');
         }
 
         const subtitle = options.plugins?.subtitle;
         if (subtitle) {
             subtitle.color = themeConfig.muted;
-            subtitle.font = withDashboardFont(subtitle.font, '600');
+            subtitle.font = withDashboardFont(subtitle.font, '500');
         }
     },
     afterUpdate(chart) {

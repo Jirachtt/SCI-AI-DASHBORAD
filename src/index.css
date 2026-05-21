@@ -12437,7 +12437,7 @@ body {
   --bg-sidebar: #06110f;
 
   --text-primary: #ffffff;
-  --text-secondary: #ffffff;
+  --text-secondary: #dbe7f5;
   --text-muted: #f8fafc;
   --text-subtle: #f8fafc;
 
@@ -17297,7 +17297,7 @@ body,
   --surface-border-strong: var(--exec-border-strong-dark);
   --surface-highlight: rgba(94, 234, 212, 0.075);
   --text-primary: #ffffff;
-  --text-secondary: #ffffff;
+  --text-secondary: #dbe7f5;
   --text-muted: var(--exec-muted-dark);
   --text-subtle: #dbe7f5;
   --focus-ring: rgba(94, 234, 212, 0.42);
@@ -17902,6 +17902,90 @@ button:disabled,
   .header-status-pill:not(.header-status-live) {
     display: none;
   }
+}
+
+/* Dashboard chart readability: keep hierarchy calm and let surfaces follow theme tokens. */
+.dashboard-typography :where(.chart-card-title, .data-table-title) {
+  font-weight: 650 !important;
+}
+
+.dashboard-typography :where(.chart-card-subtitle, .stat-card-label, .data-table td, .smart-chart-note) {
+  font-weight: 400 !important;
+}
+
+.composition-pie-panel {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--chart-1) 9%, transparent), transparent 34%),
+    color-mix(in srgb, var(--surface-card, var(--bg-card)) 96%, transparent) !important;
+  border-color: var(--surface-border, var(--border-color)) !important;
+  box-shadow: var(--shadow-card, 0 1px 2px rgba(15, 23, 42, 0.08)) !important;
+  color: var(--text-primary);
+}
+
+.composition-pie-slice {
+  stroke: color-mix(in srgb, var(--surface-card, var(--bg-card)) 92%, var(--bg-primary)) !important;
+}
+
+.composition-pie-center {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.composition-pie-center strong {
+  font-weight: 700;
+}
+
+.composition-pie-legend-row {
+  background: color-mix(in srgb, var(--segment-color) 6%, var(--surface-card, var(--bg-card))) !important;
+  border-color: color-mix(in srgb, var(--segment-color) 16%, var(--surface-border, var(--border-color))) !important;
+}
+
+.composition-pie-legend-copy span {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.composition-pie-legend-copy strong {
+  font-weight: 700;
+}
+
+.composition-pie-legend-row em {
+  background: color-mix(in srgb, var(--segment-color) 11%, var(--bg-secondary)) !important;
+  font-weight: 650;
+}
+
+.intake-trend-card {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--chart-1) 7%, transparent), transparent 30%),
+    color-mix(in srgb, var(--surface-card, var(--bg-card)) 96%, transparent) !important;
+}
+
+.intake-year-card {
+  background: color-mix(in srgb, var(--bg-secondary) 72%, var(--surface-card, var(--bg-card))) !important;
+  border-color: var(--surface-border, var(--border-color)) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+
+.intake-year-card-main span {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.intake-year-card-main strong {
+  color: var(--chart-1);
+  font-weight: 700;
+}
+
+.intake-growth {
+  font-weight: 650;
+}
+
+[data-theme="dark"] .intake-growth.up {
+  color: #5eead4;
+}
+
+[data-theme="dark"] .intake-growth.down {
+  color: #fb7185;
 }
 
 .ai-answer-action-row {

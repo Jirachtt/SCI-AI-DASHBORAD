@@ -936,7 +936,7 @@ export default function StudentStatsPage() {
                 </div>
 
                 {/* New Student Intake */}
-                <div className="chart-card intake-trend-card bg-white rounded-2xl shadow-sm p-6 animate-in">
+                <div className="chart-card intake-trend-card animate-in">
                     <div className="chart-card-header">
                         <div>
                             <div className="chart-card-title">จำนวนนักศึกษาใหม่ (Intake) คณะวิทยาศาสตร์</div>
@@ -952,7 +952,7 @@ export default function StudentStatsPage() {
                                 const prev = i > 0 ? intakeTrendRows[i - 1].total : null;
                                 const growth = prev ? (((intake.total - prev) / prev) * 100).toFixed(1) : null;
                                 return (
-                                    <div key={intake.year} className="intake-year-card rounded-2xl bg-slate-50 p-3 shadow-sm">
+                                    <div key={intake.year} className="intake-year-card">
                                         <div className="intake-year-card-main">
                                             <span>ปี {intake.year}</span>
                                             <strong>{Number(intake.total || 0).toLocaleString('th-TH')}</strong>
