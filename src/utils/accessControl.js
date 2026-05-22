@@ -22,6 +22,7 @@ const ACCESS_LEVELS = {
         color: 'var(--accent-gold)',
         sections: [
             'dashboard', 'tuition', 'tuition_detail',
+            'admin_panel',
             'financial', 'financial_detail', 'financial_faculty', 'student_life',
             'student_life_detail', 'faculty_budget', 'staff_management', 'reports',
             'budget_planning', 'student_list', 'graduation_check',
@@ -155,7 +156,10 @@ export function getDataRowLimit(role) {
 
 export function canManageUsers(userOrRole) {
     const role = typeof userOrRole === 'string' ? userOrRole : userOrRole?.role;
-    return role === 'admin';
+    if (typeof userOrRole === 'object' && (userOrRole?.canManageUsers === true || userOrRole?.systemAdmin === true)) {
+        return true;
+    }
+    return role === 'admin' || role === 'dean';
 }
 
 export function isPendingRole(role) {

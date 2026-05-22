@@ -2,87 +2,16 @@ import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { canAccess, canManageUsers, getRoleBadgeColor } from '../utils/accessControl';
+import { getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
 import { getAIModelRuntimeStatus, getAITokenBudgetSnapshot, refreshAITokenBudgetSnapshot } from '../services/geminiService';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
+import { LogOut, Clock, Bot, Settings, UserRound, Palette, Activity, X } from 'lucide-react';
+import MjuConnectedPagePanel from './MjuConnectedPagePanel';
 import {
-    Home, CreditCard, DollarSign, LogOut, Lock, FileText,
-    GraduationCap, CheckCircle, BarChart3,
-    Microscope, Target, UserCheck, BookOpen, Award,
-    UserCog, Clock, Bell, Bot, Settings,
-    ChevronRight, UserRound, Palette, Activity, ScrollText, CalendarDays,
-    ClipboardList, X
-} from 'lucide-react';
-
-const FEATURED_AI_CHAT = {
-    path: '/dashboard/ai-chat',
-    label: 'แชทกับ AI',
-    subtitle: 'ผู้ช่วยอัจฉริยะของคณะ',
-    section: 'ai_chat',
-};
-
-const menuGroups = [
-    {
-        id: 'home',
-        label: 'OVERVIEW',
-        items: [
-            { path: '/dashboard', label: 'ภาพรวม (Overview)', icon: Home, section: 'dashboard' },
-            { path: '/dashboard/alerts', label: 'ศูนย์แจ้งเตือน', icon: Bell, section: 'alert_center' },
-        ]
-    },
-    {
-        id: 'hr',
-        label: 'บุคลากร · HR',
-        items: [
-            { path: '/dashboard/hr', label: 'ภาพรวมบุคลากร', icon: UserCheck, section: 'hr_overview' },
-        ]
-    },
-    {
-        id: 'student',
-        label: 'นักศึกษา · STUDENT',
-        items: [
-            { path: '/dashboard/student-stats', label: 'สถิตินิสิตปัจจุบัน', icon: BarChart3, section: 'student_stats' },
-            { path: '/dashboard/tcas', label: 'แผนรับ TCAS', icon: ClipboardList, section: 'tcas_admissions' },
-            { path: '/dashboard/course-analytics', label: 'รายวิชา/เกรด', icon: BookOpen, section: 'course_analytics' },
-            { path: '/dashboard/students', label: 'รายชื่อนักศึกษา', icon: GraduationCap, section: 'student_list' },
-            { path: '/dashboard/graduation', label: 'ตรวจสอบการจบ', icon: CheckCircle, section: 'graduation_check' },
-            { path: '/dashboard/student-life', label: 'กิจกรรมคณะวิทยาศาสตร์', icon: CalendarDays, section: 'student_life' },
-            { path: '/dashboard/graduation-stats', label: 'สถิติสำเร็จการศึกษา', icon: Award, section: 'graduation_stats' },
-            { path: '/dashboard/academic-rules', label: 'กฎระเบียบ/เกียรตินิยม', icon: ScrollText, section: 'academic_rules' },
-        ]
-    },
-    {
-        id: 'research',
-        label: 'การวิจัย · RESEARCH',
-        items: [
-            { path: '/dashboard/research', label: 'ภาพรวมงานวิจัย', icon: BookOpen, section: 'research_overview' },
-        ]
-    },
-    {
-        id: 'finance',
-        label: 'การเงิน · FINANCE',
-        items: [
-            { path: '/dashboard/financial', label: 'รายรับ-รายจ่าย', icon: DollarSign, section: 'financial' },
-            { path: '/dashboard/tuition', label: 'ค่าธรรมเนียมการศึกษา', icon: CreditCard, section: 'tuition' },
-            { path: '/dashboard/budget', label: 'พยากรณ์งบประมาณ', icon: FileText, section: 'budget_forecast' },
-        ]
-    },
-    {
-        id: 'strategic',
-        label: 'ยุทธศาสตร์ · OKR',
-        items: [
-            { path: '/dashboard/strategic', label: 'เป้าหมายยุทธศาสตร์', icon: Target, section: 'strategic_overview' },
-        ]
-    },
-    {
-        id: 'admin',
-        label: 'จัดการระบบ · ADMIN',
-        items: [
-            { path: '/dashboard/admin', label: 'จัดการผู้ใช้/สิทธิ์', icon: UserCog, section: 'admin_panel' },
-        ]
-    }
-];
+    getFeaturedNavigationItem,
+    getVisibleNavigationCategories,
+} from '../config/navigationConfig';
 
 export default function Sidebar({ isOpen, onClose }) {
     const { user, logout } = useAuth();
@@ -132,9 +61,10 @@ export default function Sidebar({ isOpen, onClose }) {
     }, [settingsOpen]);
 
     const badgeColor = getRoleBadgeColor(user?.role);
-    const hasSectionAccess = (section) => section === 'admin_panel'
-        ? canManageUsers(user)
-        : canAccess(user?.role, section);
+    const featuredItem = getFeaturedNavigationItem();
+    const canViewFeatured = Boolean(featuredItem && getVisibleNavigationCategories(user, { includeFeatured: true })
+        .some(group => group.items.some(item => item.id === featuredItem.id)));
+    const visibleMenuGroups = getVisibleNavigationCategories(user);
     const tokenSyncing = !tokenBudget.isServerBacked && tokenBudget.status !== 'ready';
     const tokenRemainingLabel = tokenSyncing ? 'กำลังซิงก์' : tokenBudget.remainingTokens.toLocaleString();
     const tokenUsedLabel = tokenSyncing ? 'รอข้อมูลจาก server' : `ใช้ไป ${tokenBudget.usedTokens.toLocaleString()} tokens`;
@@ -155,72 +85,74 @@ export default function Sidebar({ isOpen, onClose }) {
             </div>
 
             <nav className="sidebar-nav">
-                {(() => {
-                    const hasAccess = canAccess(user?.role, FEATURED_AI_CHAT.section);
-                    const warm = () => { if (hasAccess) prefetchRoute(FEATURED_AI_CHAT.path); };
+                {featuredItem && canViewFeatured && (() => {
+                    const FeaturedIcon = featuredItem.icon || Bot;
+                    const warm = () => { if (featuredItem.path) prefetchRoute(featuredItem.path); };
                     return (
                         <NavLink
-                            to={hasAccess ? FEATURED_AI_CHAT.path : '#'}
+                            to={featuredItem.path}
                             className={({ isActive }) =>
-                                `nav-featured ${isActive && hasAccess ? 'active' : ''} ${!hasAccess ? 'locked' : ''}`
+                                `nav-featured ${isActive ? 'active' : ''}`
                             }
-                            onClick={(e) => { if (!hasAccess) e.preventDefault(); onClose(); }}
+                            onClick={onClose}
                             onMouseEnter={warm}
                             onFocus={warm}
                             onTouchStart={warm}
                         >
                             <span className="nav-featured-icon">
-                                <Bot size={22} strokeWidth={2.2} />
+                                <FeaturedIcon size={22} strokeWidth={2.2} />
                             </span>
                             <span className="nav-featured-body">
-                                <span className="nav-featured-title">{FEATURED_AI_CHAT.label}</span>
-                                <span className="nav-featured-sub">{FEATURED_AI_CHAT.subtitle}</span>
+                                <span className="nav-featured-title">{featuredItem.label}</span>
+                                <span className="nav-featured-sub">{featuredItem.subtitle}</span>
                             </span>
-                            {hasAccess
-                                ? <span className="nav-featured-badge">หลัก</span>
-                                : <Lock className="lock-icon" size={14} />}
+                            {featuredItem.badge && <span className="nav-featured-badge">{featuredItem.badge}</span>}
                         </NavLink>
                     );
                 })()}
 
-                {menuGroups.map((group) => {
-                    const hasAnyAccess = group.items.some(item => hasSectionAccess(item.section));
-                    if (group.id === 'admin' && !hasAnyAccess) return null;
-                    if (!hasAnyAccess && group.id !== 'home') {
-                        // Still render label for visual structure; items will show lock icons
-                    }
-
-                    return (
-                        <div key={group.id} className="nav-section">
-                            <div className="nav-section-label">{group.label}</div>
-                            <div className="nav-section-items">
-                                {group.items.map(item => {
-                                    const Icon = item.icon;
-                                    const hasAccess = hasSectionAccess(item.section);
-                                    const warm = () => { if (hasAccess) prefetchRoute(item.path); };
+                {visibleMenuGroups.map((group) => (
+                    <div key={group.id} className="nav-section">
+                        <div className="nav-section-label">{group.label}</div>
+                        <div className="nav-section-items">
+                            {group.items.map(item => {
+                                const Icon = item.icon;
+                                if (item.action === 'settings') {
                                     return (
-                                        <NavLink
-                                            key={item.path}
-                                            to={hasAccess ? item.path : '#'}
-                                            end={item.path === '/dashboard'}
-                                            className={({ isActive }) =>
-                                                `nav-item ${isActive && hasAccess ? 'active' : ''} ${!hasAccess ? 'locked' : ''}`
-                                            }
-                                            onClick={(e) => { if (!hasAccess) e.preventDefault(); onClose(); }}
-                                            onMouseEnter={warm}
-                                            onFocus={warm}
-                                            onTouchStart={warm}
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            className={`nav-item nav-item-button ${settingsOpen ? 'active' : ''}`}
+                                            onClick={() => setSettingsOpen(true)}
                                         >
                                             <Icon size={18} />
                                             <span>{item.label}</span>
-                                            {!hasAccess && <Lock className="lock-icon" size={14} />}
-                                        </NavLink>
+                                        </button>
                                     );
-                                })}
-                            </div>
+                                }
+
+                                const warm = () => { if (item.path) prefetchRoute(item.path); };
+                                return (
+                                    <NavLink
+                                        key={item.path}
+                                        to={item.path}
+                                        end={item.exactMatch}
+                                        className={({ isActive }) =>
+                                            `nav-item ${isActive ? 'active' : ''}`
+                                        }
+                                        onClick={onClose}
+                                        onMouseEnter={warm}
+                                        onFocus={warm}
+                                        onTouchStart={warm}
+                                    >
+                                        <Icon size={18} />
+                                        <span>{item.label}</span>
+                                    </NavLink>
+                                );
+                            })}
                         </div>
-                    );
-                })}
+                    </div>
+                ))}
             </nav>
 
             <div className="sidebar-footer">
@@ -244,17 +176,6 @@ export default function Sidebar({ isOpen, onClose }) {
                         )}
                     </div>
                 </div>
-                <button
-                    type="button"
-                    className={`sidebar-settings-button ${settingsOpen ? 'active' : ''}`}
-                    onClick={() => setSettingsOpen(open => !open)}
-                    aria-expanded={settingsOpen}
-                    aria-label={settingsOpen ? 'ปิด Settings' : 'เปิด Settings'}
-                >
-                    <Settings size={16} />
-                    <span>Settings</span>
-                    <ChevronRight size={15} />
-                </button>
                 <div className="sidebar-status-row">
                     <span className="sidebar-status-dot" />
                     <span className="sidebar-status-text">ออนไลน์</span>
@@ -310,6 +231,10 @@ export default function Sidebar({ isOpen, onClose }) {
                                 </span>
                                 <span className="settings-theme-pill">{theme === 'dark' ? 'Dark' : 'Light'}</span>
                             </button>
+                        </div>
+
+                        <div className="settings-popover-section">
+                            <MjuConnectedPagePanel user={user} compact />
                         </div>
 
                         <div className="settings-popover-section">

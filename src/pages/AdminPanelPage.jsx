@@ -6,7 +6,7 @@ import { collection, doc, getDocs, orderBy, query, updateDoc } from 'firebase/fi
 import {
     Shield, Users, Clock, Briefcase, Building, Check, X, Search, Filter,
     RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
-    ScrollText, ShieldCheck
+    ScrollText, ShieldCheck, Database, Activity
 } from 'lucide-react';
 import { canManageUsers, getRoleBadgeColor, getRoleInfo, isPendingRole } from '../utils/accessControl';
 import {
@@ -20,6 +20,10 @@ import {
     toRoleDateInput
 } from '../utils/roleValidity';
 import AdminAuditLog from '../components/AdminAuditLog';
+import AdminAIUsagePanel from '../components/AdminAIUsagePanel';
+import AdminAutoSyncPanel from '../components/AdminAutoSyncPanel';
+import AdminDataAccuracyPanel from '../components/AdminDataAccuracyPanel';
+import AdminDataUpload from '../components/AdminDataUpload';
 import ExportPDFButton from '../components/ExportPDFButton';
 
 const MANAGEABLE_ROLES = ['executive', 'dean', 'chair', 'instructor', 'staff', 'student', 'general'];
@@ -492,6 +496,30 @@ export default function AdminPanelPage() {
                 >
                     <ScrollText size={16} /> ประวัติการเปลี่ยนแปลง
                 </button>
+                <button
+                    className={`admin-tab ${activeTab === 'data' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('data')}
+                >
+                    <Database size={16} /> ข้อมูลระบบ
+                </button>
+                <button
+                    className={`admin-tab ${activeTab === 'sync' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('sync')}
+                >
+                    <RefreshCw size={16} /> Auto Sync
+                </button>
+                <button
+                    className={`admin-tab ${activeTab === 'accuracy' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('accuracy')}
+                >
+                    <ShieldCheck size={16} /> Data Accuracy
+                </button>
+                <button
+                    className={`admin-tab ${activeTab === 'aiUsage' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('aiUsage')}
+                >
+                    <Activity size={16} /> AI Usage
+                </button>
             </div>
 
             {/* Pending tab */}
@@ -729,6 +757,34 @@ export default function AdminPanelPage() {
             {activeTab === 'audit' && (
                 <div className="admin-tab-panel">
                     <AdminAuditLog />
+                </div>
+            )}
+
+            {/* System data tab */}
+            {activeTab === 'data' && (
+                <div className="admin-tab-panel">
+                    <AdminDataUpload onToast={showToast} />
+                </div>
+            )}
+
+            {/* Auto Sync tab */}
+            {activeTab === 'sync' && (
+                <div className="admin-tab-panel">
+                    <AdminAutoSyncPanel onToast={showToast} />
+                </div>
+            )}
+
+            {/* Data Accuracy tab */}
+            {activeTab === 'accuracy' && (
+                <div className="admin-tab-panel">
+                    <AdminDataAccuracyPanel onToast={showToast} />
+                </div>
+            )}
+
+            {/* AI Usage tab */}
+            {activeTab === 'aiUsage' && (
+                <div className="admin-tab-panel">
+                    <AdminAIUsagePanel onToast={showToast} />
                 </div>
             )}
 

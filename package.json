@@ -12,8 +12,9 @@
     "eval:executive": "node scripts/validate-ai-executive-eval-set.mjs",
     "eval:e2e": "node scripts/run-ai-e2e-eval.mjs",
     "audit:roles": "node scripts/validate-role-access-matrix.mjs",
+    "audit:navigation": "node scripts/validate-navigation-config.mjs",
     "smoke:vercel": "node scripts/smoke-vercel-production.mjs",
-    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:roles && npm run smoke:presentation"
+    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:roles && npm run audit:navigation && npm run smoke:presentation"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
