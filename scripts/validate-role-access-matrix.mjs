@@ -17,6 +17,27 @@ function can(role, section) {
 
 const nonAdminRoles = ['executive', 'chair', 'instructor', 'staff', 'student', 'general', 'pending_staff', 'pending_chair'];
 
+expect('admin can open all protected data sections', [
+  'dashboard',
+  'admin_panel',
+  'student_list',
+  'student_stats',
+  'financial',
+  'budget_forecast',
+  'hr_overview',
+  'research_overview',
+  'strategic_overview',
+  'alert_center',
+  'tcas_admissions',
+  'course_analytics',
+  'graduation_check',
+  'graduation_stats',
+  'student_life',
+  'academic_rules',
+  'ai_chat',
+].every(section => can('admin', section)));
+expect('admin can manage users by default', canManageUsers(user('admin')));
+
 expect('dean can open admin panel', can('dean', 'admin_panel'));
 expect('dean can manage users by default', canManageUsers(user('dean')));
 
@@ -107,7 +128,8 @@ expect('pending roles fall back to general access', [
   'ai_chat',
 ].every(section => can('pending_staff', section) && can('pending_chair', section)));
 
-expect('dean and executive are AI unrestricted for presentation leadership use', isAIUnrestrictedRole('dean') && isAIUnrestrictedRole('executive'));
+expect('admin, dean and executive are AI unrestricted for presentation leadership use',
+  isAIUnrestrictedRole('admin') && isAIUnrestrictedRole('dean') && isAIUnrestrictedRole('executive'));
 expect('chair/staff/instructor/student/general are not AI unrestricted', [
   'chair',
   'staff',

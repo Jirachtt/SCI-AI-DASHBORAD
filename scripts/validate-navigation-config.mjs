@@ -44,6 +44,7 @@ for (const item of getNavigationRouteItems()) {
 const adminItems = visibleItemIds('admin');
 expect('admin sees admin panel', adminItems.has('admin_panel'));
 expect('admin sees dashboard', adminItems.has('dashboard'));
+expect('admin sees every route-backed navigation item', getNavigationRouteItems().every(item => adminItems.has(item.id)));
 
 const deanItems = visibleItemIds('dean');
 expect('dean sees AI chat', deanItems.has('ai_chat'));

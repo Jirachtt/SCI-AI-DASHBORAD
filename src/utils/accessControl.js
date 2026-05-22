@@ -2,6 +2,19 @@
 // Defines which sections each role can access
 
 const GENERAL_SECTIONS = ['dashboard', 'tuition', 'ai_chat', 'academic_rules'];
+const FULL_DATA_SECTIONS = [
+    'dashboard', 'tuition', 'tuition_detail',
+    'admin_panel',
+    'financial', 'financial_detail', 'financial_faculty', 'student_life',
+    'student_life_detail', 'faculty_budget', 'staff_management', 'reports',
+    'budget_planning', 'student_list', 'graduation_check',
+    'student_stats', 'budget_forecast',
+    'tcas_admissions', 'course_analytics',
+    'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
+    'graduation_stats',
+    'alert_center',
+    'academic_rules'
+];
 
 const ACCESS_LEVELS = {
     admin: {
@@ -9,30 +22,14 @@ const ACCESS_LEVELS = {
         level: 1,
         dataRows: 100000,
         color: 'var(--accent-teal)',
-        sections: [
-            'dashboard',
-            'admin_panel',
-            'academic_rules'
-        ]
+        sections: FULL_DATA_SECTIONS
     },
     dean: {
         label: 'คณบดี',
         level: 1,
         dataRows: 1000000,
         color: 'var(--accent-gold)',
-        sections: [
-            'dashboard', 'tuition', 'tuition_detail',
-            'admin_panel',
-            'financial', 'financial_detail', 'financial_faculty', 'student_life',
-            'student_life_detail', 'faculty_budget', 'staff_management', 'reports',
-            'budget_planning', 'student_list', 'graduation_check',
-            'student_stats', 'budget_forecast',
-            'tcas_admissions', 'course_analytics',
-            'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
-            'graduation_stats',
-            'alert_center',
-            'academic_rules'
-        ]
+        sections: FULL_DATA_SECTIONS
     },
     chair: {
         label: 'ประธานหลักสูตร',
