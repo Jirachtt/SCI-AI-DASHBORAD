@@ -9,6 +9,7 @@ import {
     onDashboardLiveDataChange,
     refreshDashboardDatasetFromSource,
 } from '../services/dashboardLiveDataService';
+import { featureCompletionDataSummary } from '../data/featureCompletionFallbackData';
 
 function formatDate(value) {
     if (!value) return 'ยังไม่ sync';
@@ -51,6 +52,15 @@ export default function AdminAutoSyncPanel({ onToast }) {
         () => DASHBOARD_DATASETS.filter(item => getDatasetTrustStatus(item, metas[item.id]).isReady).length,
         [metas]
     );
+    const sourceSummary = useMemo(() => {
+        const official = featureCompletionDataSummary.filter(item =>
+            ['real_or_synced', 'file_extract', 'approved_reference'].includes(item.status)
+        );
+        const waiting = featureCompletionDataSummary.filter(item =>
+            !['real_or_synced', 'file_extract', 'approved_reference'].includes(item.status)
+        );
+        return { official, waiting };
+    }, []);
 
     const handleSync = useCallback(async (id) => {
         setSyncingId(id);
@@ -95,6 +105,49 @@ export default function AdminAutoSyncPanel({ onToast }) {
                 <div className="admin-data-meta-row auto-sync-note">
                     <AlertTriangle size={15} />
                     ถ้าเป็นข้อมูลภายในที่ต้องใช้สิทธิ์ ต้องตั้งค่า endpoint/API token ฝั่ง Vercel หรือ Cloud Function เท่านั้น ห้ามใส่ secret ไว้ในหน้าเว็บ
+                </div>
+            </div>
+
+            <div className="admin-data-status-card" style={{ marginTop: 16 }}>
+                <div className="admin-data-status-header">
+                    <div className="admin-data-status-icon data-accuracy-icon">
+                        <ShieldCheck size={22} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <h3>สรุปแหล่งข้อมูลที่ใช้ในระบบ</h3>
+                        <p>รวมสถานะข้อมูลจริง/ไฟล์อ้างอิง/ข้อมูลที่ยังรอ API ไว้ในหน้านี้ เพื่อให้หน้าผู้ใช้ทั่วไปสะอาดและดูเป็น dashboard สำหรับพรีเซน</p>
+                    </div>
+                    <span className="admin-data-badge live">
+                        {sourceSummary.official.length}/{featureCompletionDataSummary.length} usable
+                    </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginTop: 14 }}>
+                    <div style={{ border: '1px solid var(--border-color)', borderRadius: 14, padding: 14, background: 'var(--bg-card)' }}>
+                        <h4 style={{ margin: '0 0 10px', color: 'var(--text-primary)', fontSize: '0.98rem' }}>ข้อมูลที่ใช้เป็นหลักได้ตอนนี้</h4>
+                        <div style={{ display: 'grid', gap: 8 }}>
+                            {sourceSummary.official.map(item => (
+                                <div key={item.feature} style={{ padding: 10, borderRadius: 10, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                                    <div style={{ fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.35 }}>{item.feature}</div>
+                                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 4 }}>{item.displayStatus}</div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>{item.currentSource}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div style={{ border: '1px solid var(--border-color)', borderRadius: 14, padding: 14, background: 'var(--bg-card)' }}>
+                        <h4 style={{ margin: '0 0 10px', color: 'var(--text-primary)', fontSize: '0.98rem' }}>ข้อมูลที่ยังต้องเชื่อมต่อเพิ่ม</h4>
+                        <div style={{ display: 'grid', gap: 8 }}>
+                            {sourceSummary.waiting.map(item => (
+                                <div key={item.feature} style={{ padding: 10, borderRadius: 10, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                                    <div style={{ fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.35 }}>{item.feature}</div>
+                                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 4 }}>{item.displayStatus}</div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>{item.owner}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
 

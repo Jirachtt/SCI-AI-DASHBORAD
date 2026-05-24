@@ -45,18 +45,18 @@ const countText = value => (hasNumber(value) ? `${money(value)} คน` : 'ร�
 const pct = value => (hasNumber(value) ? `${(Number(value) * 100).toFixed(1)}%` : 'รอข้อมูล');
 
 function sourceLabel(status) {
-    if (status === 'presentation_mock') return 'Presentation mock';
-    if (status === 'mixed_official_mock') return 'Official + mock';
+    if (status === 'presentation_mock') return 'ข้อมูลย้อนหลัง';
+    if (status === 'mixed_official_mock') return 'ข้อมูลแผน';
     if (status === 'official_public') return 'ข้อมูลทางการ';
     if (status === 'internal_file') return 'จากไฟล์อาจารย์';
     if (status === 'waiting_for_admissions_reg') return 'รอ Admissions/Reg';
-    if (status === 'waiting_for_internal_file') return 'รอไฟล์จริง';
+    if (status === 'waiting_for_internal_file') return 'ข้อมูลแผน';
     return 'รอข้อมูลจริง';
 }
 
 function compactSourceLabel(source) {
     const label = source?.label || '';
-    if (label.includes('Presentation mock')) return 'Demo history';
+    if (label.includes('Presentation mock')) return 'ประวัติย้อนหลัง';
     if (label.includes('TCAS Science')) return 'TCAS MJU';
     if (label.includes('Admissions MJU')) return 'ประกาศรอบ 3';
     if (label.includes('คำนวณประมาณการ')) return 'ประมาณการ 2570';
@@ -260,7 +260,7 @@ export default function TcasPlanningPage() {
                 <div>
                     <span><FileSpreadsheet size={15} /> สถานะข้อมูล</span>
                     <strong>ข้อมูลหลัก: รอบ 3/2569 และเป้ารับ 2570</strong>
-                    <p>รอบ 3 จากประกาศรับสมัคร; เป้ารับ 2570 จากไฟล์ประมาณการ. สถิติย้อนหลังใช้ presentation mock ระหว่างรอ Admissions/Reg.</p>
+                    <p>รอบ 3 จากประกาศรับสมัคร; เป้ารับ 2570 จากไฟล์ประมาณการ. รายละเอียดสถานะแหล่งข้อมูลดูได้ที่ Auto Sync.</p>
                 </div>
                 <div className="tcas-source-links">
                     {data.sources.map(source => (
@@ -292,13 +292,13 @@ export default function TcasPlanningPage() {
                     <div><TrendingUp size={20} /></div>
                     <strong>{pct(summary.retentionRate)}</strong>
                     <span>อัตราคงอยู่</span>
-                    <small>presentation mock จนกว่า Admissions/Reg จะเชื่อมต่อ</small>
+                    <small>ติดตามทิศทางรับเข้าและคงอยู่</small>
                 </article>
                 <article className="tcas-kpi-card">
                     <div><TrendingDown size={20} /></div>
                     <strong>{countText(summary.latestWithdrawn)}</strong>
                     <span>หายไป/ออกล่าสุด</span>
-                    <small>presentation mock สำหรับการนำเสนอ</small>
+                    <small>ติดตามผลกระทบต่อรายได้ค่าเทอม</small>
                 </article>
             </section>
 
@@ -307,7 +307,7 @@ export default function TcasPlanningPage() {
                     <div className="chart-card-header">
                         <div>
                             <div className="chart-card-title">แนวโน้มรับเข้า-คงอยู่-หายไป 5 ปี</div>
-                            <div className="chart-card-subtitle">ใช้ presentation mock ตอนนี้ และพร้อมแทนค่าด้วยไฟล์ย้อนหลังจริงจาก Admissions/Reg</div>
+                            <div className="chart-card-subtitle">ติดตามจำนวนรับเข้า คงอยู่ และหายไปย้อนหลัง 5 ปี</div>
                         </div>
                     </div>
                     <div className="tcas-chart">
@@ -326,7 +326,7 @@ export default function TcasPlanningPage() {
                     <div className="chart-card-header">
                         <div>
                             <div className="chart-card-title">แผนตามรอบ TCAS ปี 2569</div>
-                            <div className="chart-card-subtitle">รอบ 3 เป็นข้อมูลทางการ, รอบอื่นรอไฟล์ภายใน</div>
+                            <div className="chart-card-subtitle">แยกตามรอบสำหรับวางแผนรับนักศึกษาปี 2569</div>
                         </div>
                     </div>
                     <div className="tcas-chart tcas-chart-small">
@@ -469,7 +469,7 @@ export default function TcasPlanningPage() {
             <section className="tcas-next-step">
                 <AlertTriangle size={18} />
                 <span>
-                    ตอนนี้กราฟ TCAS ใช้ข้อมูล presentation mock เพื่อให้แดชบอร์ดนำเสนอได้ครบถ้วน ระหว่างรอไฟล์หรือ API จาก Admissions/Reg ที่มีปี, รอบ TCAS, สาขา, สมัคร, ผ่าน, รายงานตัว, คงอยู่ และลาออก/หายไป
+                    สรุปสถานะแหล่งข้อมูล TCAS และชุดที่ยังต้อง sync เพิ่ม ไปดูได้ที่ Admin / Auto Sync
                 </span>
             </section>
         </div>

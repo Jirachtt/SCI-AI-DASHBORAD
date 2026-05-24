@@ -8,12 +8,16 @@ import {
     Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
-import { Users, UserCheck, Award, TrendingUp, Building2, GraduationCap } from 'lucide-react';
+import { Users, UserCheck, Award, TrendingUp, Building2, GraduationCap, DollarSign } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { normalizeThaiText, withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
+import {
+    executiveCompensationDemo,
+    getExecutiveCompensationSummary,
+} from '../data/featureCompletionFallbackData';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, Filler, themeAdaptorPlugin);
 
@@ -574,6 +578,7 @@ export default function HRDashboardPage() {
         { label: 'รศ.+ ผศ.', value: sci.academicPositions[1].count + sci.academicPositions[2].count, icon: TrendingUp, color: 'var(--accent-purple)', suffix: 'คน' },
         { label: 'เกษียณใน 5 ปี', value: sci.diversity.retirementIn5Years, icon: Building2, color: 'var(--accent-pink)', suffix: 'คน' },
     ];
+    const compensationSummary = getExecutiveCompensationSummary(executiveCompensationDemo);
 
     return (
         <div style={{ padding: '0 4px' }}>
@@ -608,6 +613,66 @@ export default function HRDashboardPage() {
                         </div>
                     );
                 })}
+            </div>
+
+            <div style={{ ...cardStyle, marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 42, height: 42, borderRadius: 12, background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-orange))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <DollarSign size={21} color="var(--text-on-accent)" />
+                        </div>
+                        <div>
+                            <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', margin: 0 }}>ค่าตอบแทนผู้บริหารและรายการหักเงิน</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', margin: '4px 0 0' }}>สรุปตามตำแหน่งเพื่อวิเคราะห์ภาระงบบุคลากรและรายการหักเงิน</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 14 }}>
+                    <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{compensationSummary.positions}</div>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>ตำแหน่งใน demo</div>
+                    </div>
+                    <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent-success)' }}>{compensationSummary.totalGross.toLocaleString('th-TH')}</div>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>รายรับรวมต่อเดือน (บาท)</div>
+                    </div>
+                    <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent-orange)' }}>{compensationSummary.totalDeductions.toLocaleString('th-TH')}</div>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>รายการหักรวม (บาท)</div>
+                    </div>
+                    <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent-info)' }}>{compensationSummary.netEstimate.toLocaleString('th-TH')}</div>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>ประมาณการสุทธิ (บาท)</div>
+                    </div>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>ตำแหน่ง</th>
+                                <th>ขอบเขต</th>
+                                <th style={{ textAlign: 'right' }}>ฐานเงินเดือน</th>
+                                <th style={{ textAlign: 'right' }}>เงินประจำตำแหน่ง</th>
+                                <th style={{ textAlign: 'right' }}>หักรวม</th>
+                                <th style={{ textAlign: 'right' }}>สุทธิประมาณการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {executiveCompensationDemo.map(row => (
+                                <tr key={row.position}>
+                                    <td style={{ fontWeight: 700 }}>{row.position}</td>
+                                    <td>{row.scope}</td>
+                                    <td style={{ textAlign: 'right' }}>{row.monthlyBase.toLocaleString('th-TH')}</td>
+                                    <td style={{ textAlign: 'right' }}>{row.positionAllowance.toLocaleString('th-TH')}</td>
+                                    <td style={{ textAlign: 'right', color: 'var(--accent-orange)', fontWeight: 700 }}>{row.totalDeductions.toLocaleString('th-TH')}</td>
+                                    <td style={{ textAlign: 'right', fontWeight: 800 }}>{row.netEstimate.toLocaleString('th-TH')}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Row 1: Department bar + Position doughnut */}

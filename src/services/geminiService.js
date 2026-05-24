@@ -49,6 +49,15 @@ import { formatAIContextBundleForPrompt } from './aiContextRegistry';
 import { buildMjuConnectedContextForAI } from './mjuConnectedDataService';
 import { getAllAlerts } from '../utils/alerts';
 import { verifyAIAnswerAgainstContext } from '../utils/aiAnswerVerifier';
+import {
+    executiveCompensationDemo,
+    getExecutiveCompensationSummary,
+    buildStudentPaymentLedgerDemo,
+    summarizeStudentPaymentLedgerDemo,
+    studentAwardRecordsDemo,
+    populationForecastReference,
+    FEATURE_COMPLETION_FALLBACK_NOTE,
+} from '../data/featureCompletionFallbackData';
 
 const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
 const AI_USAGE_ENDPOINT = import.meta.env.VITE_AI_USAGE_ENDPOINT || '/api/ai-usage';
@@ -1609,7 +1618,13 @@ function researchContext(options = {}) {
 
 function hrContext(options = {}) {
     const live = liveDatasetContext('hr', 'บุคลากร', options);
-    if (!live.data) return live.missing;
+    const compensationContext = `\nExecutive compensation and deduction fallback (sourceTrust=generated_mock, not official payroll):\n${JSON.stringify({
+        summary: getExecutiveCompensationSummary(),
+        rows: executiveCompensationDemo,
+        rule: 'Use only as demo workflow. Do not claim this is real salary data. Real payroll requires authorized HR/Payroll export or API.',
+        note: FEATURE_COMPLETION_FALLBACK_NOTE,
+    })}`;
+    if (!live.data) return `${live.missing}${compensationContext}`;
     const source = live.data;
     const hrData = {
         ...source,
@@ -1623,7 +1638,7 @@ function hrContext(options = {}) {
         byDepartment: hrData.byDepartment,
         byPosition: hrData.byPosition,
         trends: hrData.trends,
-    })}`;
+    })}${compensationContext}`;
 }
 
 function strategicContext(options = {}) {
@@ -1668,9 +1683,25 @@ function academicRulesContext() {
 
 function tuitionContext(options = {}) {
     const live = liveDatasetContext('tuition', 'ค่าเล่าเรียน', options);
-    if (!live.data) return live.missing;
+    const paymentLedger = buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 60 });
+    const paymentContext = `\nStudent payment ledger fallback (sourceTrust=generated_mock, not official finance data):\n${JSON.stringify({
+        summary: summarizeStudentPaymentLedgerDemo(paymentLedger),
+        rows: paymentLedger.slice(0, 20),
+        rule: 'Use only to demonstrate tuition/late-payment workflow. Real overdue/paid-at dates require MJU Reg/Finance export or API.',
+        note: FEATURE_COMPLETION_FALLBACK_NOTE,
+    })}`;
+    if (!live.data) return `${live.missing}${paymentContext}`;
     const tuitionData = live.data;
-    return `ค่าเล่าเรียน (${live.sourceLabel}):\n${JSON.stringify(tuitionData)}`;
+    return `ค่าเล่าเรียน (${live.sourceLabel}):\n${JSON.stringify(tuitionData)}${paymentContext}`;
+}
+
+function studentAwardsAndPopulationContext() {
+    return `Student awards and population forecast fallback context (sourceTrust=generated_mock):\n${JSON.stringify({
+        awards: studentAwardRecordsDemo,
+        populationForecast: populationForecastReference,
+        rule: 'Use as demo/reference only. Say clearly that awards and population scenario are waiting for official Student Affairs and population feeds before production use.',
+        note: FEATURE_COMPLETION_FALLBACK_NOTE,
+    })}`;
 }
 
 function studentLifeContext(options = {}) {
@@ -1762,6 +1793,37 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
         .filter(c => !(c.id === 'students' && isTcasPlanningQuery && !isStudentRecordQuery))
         .map(c => ({ ...c, score: c.keywords.test(q) ? 10 : 0 }))
         .filter(c => c.score > 0);
+
+    if (/รางวัล|award|ประชากร|population|พยากรณ์.*นักศึกษา|เงินเดือน|salary|หักเงิน|deduction|ค้างชำระ|จ่ายล่าช้า|paid\s*date/i.test(q)) {
+        const fallbackParts = [];
+        if (canAIUseAnyInternalSection(role, ['student_stats'])) {
+            fallbackParts.push(studentAwardsAndPopulationContext());
+        }
+        if (canAIUseAnyInternalSection(role, ['hr_overview'])) {
+            fallbackParts.push(`Executive compensation fallback:\n${JSON.stringify({
+                summary: getExecutiveCompensationSummary(),
+                rows: executiveCompensationDemo,
+                sourceTrust: 'generated_mock',
+                note: FEATURE_COMPLETION_FALLBACK_NOTE,
+            })}`);
+        }
+        if (canAIUseAnyInternalSection(role, ['tuition', 'financial'])) {
+            const ledger = buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 40 });
+            fallbackParts.push(`Student payment ledger fallback:\n${JSON.stringify({
+                summary: summarizeStudentPaymentLedgerDemo(ledger),
+                rows: ledger.slice(0, 16),
+                sourceTrust: 'generated_mock',
+                note: FEATURE_COMPLETION_FALLBACK_NOTE,
+            })}`);
+        }
+        if (fallbackParts.length) {
+            scored.push({
+                id: 'feature_completion_fallback',
+                score: 9,
+                text: () => fallbackParts.join('\n\n'),
+            });
+        }
+    }
 
     if (scored.length === 0 && domainAllowed(role, 'dashboard')) {
         scored.push({

@@ -35,6 +35,14 @@ import {
 } from '../services/sharedDashboardDataService';
 import { getAllAlerts } from './alerts';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
+import {
+    executiveCompensationDemo,
+    getExecutiveCompensationSummary,
+    buildStudentPaymentLedgerDemo,
+    summarizeStudentPaymentLedgerDemo,
+    studentAwardRecordsDemo,
+    populationForecastReference,
+} from '../data/featureCompletionFallbackData';
 
 const SHEET_NAME_LIMIT = 31;
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -362,6 +370,8 @@ function buildStudentStatsSheets() {
     addSheet(sheets, 'Science Gender', rowsFromObject(science.byGender, 'คณะวิทยาศาสตร์ตามเพศ'));
     addSheet(sheets, 'Science Ratio', rowsFromRecords(science.studentFacultyRatio?.comparison, { section: 'อัตราส่วนนักศึกษาต่ออาจารย์' }));
     addSheet(sheets, 'Student Rows', compactStudentRows(students, { section: 'รายชื่อนักศึกษาที่ระบบใช้คำนวณ' }));
+    addSheet(sheets, 'Student Awards Demo', rowsFromRecords(studentAwardRecordsDemo, { section: 'นักศึกษาที่ได้รับรางวัล (demo)' }));
+    addSheet(sheets, 'Population Forecast Demo', rowsFromRecords(populationForecastReference.scenario, { section: 'พยากรณ์ประชากรประเทศ (demo)' }));
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['student_stats', 'dashboard_summary']));
     return sheets;
 }
@@ -424,6 +434,8 @@ function buildHrSheets() {
     addSheet(sheets, 'Diversity Nationality', rowsFromRecords(science.diversity?.nationality, { section: 'ความหลากหลายสัญชาติ' }));
     addSheet(sheets, 'Diversity Age', rowsFromRecords(science.diversity?.ageGroup, { section: 'ช่วงอายุ' }));
     addSheet(sheets, 'Student Faculty Ratio', rowsFromRecords(science.studentFacultyRatio, { section: 'อัตราส่วนนักศึกษาต่ออาจารย์' }));
+    addSheet(sheets, 'Executive Pay Demo', rowsFromRecords(executiveCompensationDemo, { section: 'ค่าตอบแทนผู้บริหาร (demo)' }));
+    addSheet(sheets, 'Executive Pay Summary', rowsFromObject(getExecutiveCompensationSummary(), 'สรุปค่าตอบแทนผู้บริหาร (demo)'));
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['hr']));
     return sheets;
 }
@@ -446,6 +458,7 @@ function buildResearchSheets() {
 function buildFinancialSheets() {
     const sheets = {};
     const data = getDataset('financial', financialData) || {};
+    const paymentLedgerDemo = buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 80 });
     addSheet(sheets, 'Tuition Status', rowsFromRecords(data.tuitionStatus, { section: 'สถานะค่าเทอม' }));
     addSheet(sheets, 'Payment History', rowsFromRecords(data.paymentHistory, { section: 'ประวัติการชำระเงิน' }));
     addSheet(sheets, 'Scholarship', rowsFromRecords(data.scholarship, { section: 'ทุนการศึกษา' }));
@@ -454,6 +467,8 @@ function buildFinancialSheets() {
     addSheet(sheets, 'Official Top Majors', rowsFromRecords(data.officialEstimate?.topMajors, { section: 'รายหลักสูตรตามประมาณการ' }));
     addSheet(sheets, 'Faculty Budget Summary', rowsFromObject(data.facultyBudget, 'งบประมาณคณะ'));
     addSheet(sheets, 'Faculty Budget Categories', rowsFromRecords(data.facultyBudget?.categories, { section: 'หมวดงบประมาณคณะ' }));
+    addSheet(sheets, 'Payment Ledger Demo', rowsFromRecords(paymentLedgerDemo, { section: 'ค่าธรรมเนียมรายคน (demo)' }));
+    addSheet(sheets, 'Payment Summary Demo', rowsFromObject(summarizeStudentPaymentLedgerDemo(paymentLedgerDemo), 'สรุปสถานะค่าธรรมเนียมรายคน (demo)'));
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['financial']));
     return sheets;
 }

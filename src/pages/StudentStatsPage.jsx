@@ -18,6 +18,10 @@ import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import { SCIENCE_MAJORS } from '../data/studentListData';
 import { legacyColorToVar, themeAlpha, themeGradient } from '../utils/themeTokens';
+import {
+    studentAwardRecordsDemo,
+    populationForecastReference,
+} from '../data/featureCompletionFallbackData';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, Filler, BarElement, themeAdaptorPlugin);
 
@@ -1106,6 +1110,78 @@ export default function StudentStatsPage() {
                                     {((scienceFaculty.byNationality[0].count / scienceFaculty.total) * 100).toFixed(1)}%
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="charts-grid" style={{ marginTop: 24 }}>
+                    <div className="chart-card animate-in">
+                        <div className="chart-card-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-orange))' }}>
+                                    <Award size={18} color="var(--text-on-accent)" />
+                                </div>
+                                <div>
+                                    <div className="chart-card-title">นักศึกษาที่ได้รับรางวัล</div>
+                                    <div className="chart-card-subtitle">แสดงประเภท รางวัล ระดับ และแหล่งอ้างอิงของผลงานนักศึกษา</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="data-table-container" style={{ marginTop: 0 }}>
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ปี</th>
+                                        <th>นักศึกษา</th>
+                                        <th>สาขา</th>
+                                        <th>รางวัล</th>
+                                        <th>ประเภท</th>
+                                        <th>ระดับ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {studentAwardRecordsDemo.map(row => (
+                                        <tr key={row.studentCode}>
+                                            <td>{row.year}</td>
+                                            <td>{row.displayName}</td>
+                                            <td>{row.major}</td>
+                                            <td>{row.award}</td>
+                                            <td>{row.category}</td>
+                                            <td>{row.level}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="chart-card animate-in">
+                        <div className="chart-card-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg, var(--accent-info), var(--accent-purple))' }}>
+                                    <BarChart3 size={18} color="var(--text-on-accent)" />
+                                </div>
+                                <div>
+                                    <div className="chart-card-title">พยากรณ์ตามประชากรประเทศ</div>
+                                    <div className="chart-card-subtitle">ใช้เป็นกรอบวางแผนรับเข้าและประเมินความเสี่ยงระยะกลาง</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gap: 10 }}>
+                            {populationForecastReference.scenario.map(row => (
+                                <div key={row.year} style={{ padding: 12, borderRadius: 12, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+                                        <strong style={{ color: 'var(--text-primary)' }}>ปี {row.year}</strong>
+                                        <span className={`status-badge ${row.riskLevel === 'high' ? 'rejected' : 'warning'}`}>
+                                            {row.riskLevel === 'high' ? 'เสี่ยงสูง' : 'เฝ้าระวัง'}
+                                        </span>
+                                    </div>
+                                    <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                                        <span>ดัชนีประชากรวัยเรียน {row.youthPopulationIndex}</span>
+                                        <span>ดัชนีความต้องการคณะวิทย์ {row.expectedScienceDemandIndex}</span>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

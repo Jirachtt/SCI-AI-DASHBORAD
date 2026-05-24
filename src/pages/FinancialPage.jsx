@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { ArrowLeft, DollarSign } from 'lucide-react';
+import { ArrowLeft, DollarSign, ReceiptText } from 'lucide-react';
 import { Doughnut } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
@@ -14,6 +14,11 @@ import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
+import { getStudentListSync } from '../services/studentDataService';
+import {
+    buildStudentPaymentLedgerDemo,
+    summarizeStudentPaymentLedgerDemo,
+} from '../data/featureCompletionFallbackData';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, themeAdaptorPlugin);
 
@@ -21,6 +26,8 @@ export default function FinancialPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
     const { data: financialData } = useDashboardDataset('financial');
+    const paymentLedgerDemo = useMemo(() => buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 48 }), []);
+    const paymentLedgerSummary = useMemo(() => summarizeStudentPaymentLedgerDemo(paymentLedgerDemo), [paymentLedgerDemo]);
 
     if (!canAccess(user?.role, 'financial')) return <AccessDenied />;
 
@@ -159,7 +166,7 @@ export default function FinancialPage() {
                     <div className="info-item">
                         <span className="info-item-label">หมายเหตุ</span>
                         <span className="info-item-value" style={{ fontSize: '0.85rem' }}>
-                            ยังไม่ใช่ข้อมูลค้างชำระรายบุคคล ต้องรอไฟล์ Reg/Finance รายคนหรือ API ก่อนจึงจะระบุผู้ค้างชำระและวันที่ชำระจริงได้
+                            สรุปสถานะแหล่งข้อมูลรายคนและรายการที่ต้องเชื่อมต่อเพิ่ม ดูได้ที่ Admin / Auto Sync
                         </span>
                     </div>
                 </div>
@@ -184,6 +191,74 @@ export default function FinancialPage() {
                     </div>
                 </div>
             )}
+
+            <div className="chart-card animate-in" style={{ marginTop: 24 }}>
+                <div className="chart-card-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div className="stat-card-icon" style={{ background: 'linear-gradient(135deg, var(--accent-orange), var(--accent-gold))' }}>
+                            <ReceiptText size={18} color="var(--text-on-accent)" />
+                        </div>
+                        <div>
+                            <div className="chart-card-title">ทะเบียนค่าธรรมเนียมรายคน</div>
+                            <div className="chart-card-subtitle">ติดตามค้างชำระ จ่ายล่าช้า วันที่กำหนดชำระ และวันที่ชำระจริง</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="stats-grid" style={{ marginBottom: 16 }}>
+                    <div className="stat-card">
+                        <div className="stat-card-value">{paymentLedgerSummary.totalRows.toLocaleString('th-TH')}</div>
+                        <div className="stat-card-label">รายการใน demo ledger</div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-card-value" style={{ color: 'var(--danger)' }}>{paymentLedgerSummary.overdue.toLocaleString('th-TH')}</div>
+                        <div className="stat-card-label">ค้างชำระ</div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-card-value" style={{ color: 'var(--warning)' }}>{paymentLedgerSummary.late.toLocaleString('th-TH')}</div>
+                        <div className="stat-card-label">จ่ายล่าช้า</div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-card-value">{paymentLedgerSummary.totalRemaining.toLocaleString('th-TH')}</div>
+                        <div className="stat-card-label">ยอดคงค้าง demo (บาท)</div>
+                    </div>
+                </div>
+
+                <div className="data-table-container" style={{ marginTop: 0 }}>
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>รหัส</th>
+                                <th>สาขา</th>
+                                <th>ชั้นปี</th>
+                                <th>ภาคเรียน</th>
+                                <th>สถานะ</th>
+                                <th>กำหนดชำระ</th>
+                                <th>วันที่ชำระจริง</th>
+                                <th style={{ textAlign: 'right' }}>คงค้าง</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paymentLedgerDemo.slice(0, 12).map(row => (
+                                <tr key={row.studentId}>
+                                    <td>{row.studentId}</td>
+                                    <td>{row.major}</td>
+                                    <td>ปี {row.year}</td>
+                                    <td>{row.semester}</td>
+                                    <td>
+                                        <span className={`status-badge ${row.status === 'paid' ? 'approved' : row.status === 'late' ? 'warning' : 'rejected'}`}>
+                                            {row.statusLabel}
+                                        </span>
+                                    </td>
+                                    <td>{row.dueDate}</td>
+                                    <td>{row.paidAt || '-'}</td>
+                                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{row.remaining.toLocaleString('th-TH')}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
             {/* Charts */}
             {showFacultyBudget && budgetDoughnutData && (
