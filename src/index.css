@@ -18644,6 +18644,37 @@ body {
   }
 }
 
+/* Sidebar account card: avoid harsh black hover/idle states in dark mode. */
+.sidebar .sidebar-user {
+  background:
+    linear-gradient(145deg, rgba(23, 34, 55, 0.94), rgba(11, 18, 32, 0.96)) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  box-shadow:
+    0 18px 42px -34px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.sidebar .sidebar-user:hover {
+  background:
+    linear-gradient(145deg, rgba(27, 40, 64, 0.98), rgba(14, 23, 40, 0.98)) !important;
+  border-color: color-mix(in srgb, var(--accent-success) 28%, rgba(148, 163, 184, 0.18)) !important;
+  box-shadow:
+    0 20px 48px -34px rgba(0, 0, 0, 0.86),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="light"] .sidebar .sidebar-user {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  box-shadow: 0 14px 34px -28px rgba(15, 23, 42, 0.28) !important;
+}
+
+[data-theme="light"] .sidebar .sidebar-user:hover {
+  background: rgba(248, 250, 252, 0.96) !important;
+  border-color: rgba(0, 104, 56, 0.18) !important;
+}
+
 /* Theme contrast guard: prevent gradient/fill rules from hiding dashboard text. */
 .page-content.dashboard-typography,
 .dashboard-typography {

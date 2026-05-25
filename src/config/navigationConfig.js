@@ -1,5 +1,4 @@
 import {
-  Activity,
   Award,
   BarChart3,
   Bell,
@@ -186,13 +185,6 @@ export const NAVIGATION_CATEGORIES = [
         label: 'Settings',
         icon: Settings,
         permissionKey: 'authenticated',
-        action: 'settings',
-      },
-      {
-        id: 'ai_runtime',
-        label: 'AI token / model',
-        icon: Activity,
-        permissionKey: 'ai_chat',
         action: 'settings',
       },
     ],
