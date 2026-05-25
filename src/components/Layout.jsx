@@ -2,10 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AIChat from './AIChat';
-import DataSourceStatusPill from './DataSourceStatusPill';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Activity, Menu, Sun, Moon } from 'lucide-react';
+import { Menu, Sun, Moon } from 'lucide-react';
 import { ensureStudentList } from '../services/studentDataService';
 import { ensureDashboardLiveData, startDashboardAutoSync } from '../services/dashboardLiveDataService';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
@@ -102,13 +101,6 @@ export default function Layout() {
                         </div>
                     </div>
                     <div className="header-right">
-                        <div className="header-intel-pills" aria-label="System status">
-                            <span className="header-status-pill header-status-live">
-                                <Activity size={14} />
-                                Live Data
-                            </span>
-                            <DataSourceStatusPill />
-                        </div>
                         <button
                             className={`theme-toggle ${theme}`}
                             onClick={toggleTheme}

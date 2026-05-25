@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap, Users, AlertTriangle } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import { canAccess, canManageUsers } from '../utils/accessControl';
 
 /* ────────────── Student Data (live from Firestore, mock fallback) ────────────── */
 import { SCIENCE_MAJORS } from '../data/studentListData';
@@ -42,7 +43,8 @@ const ROWS_PER_PAGE = 20;
 /* ────────────── Component ────────────── */
 export default function StudentListPage() {
     const { user } = useAuth();
-    const canManage = user?.role === 'dean';
+    const canManage = canManageUsers(user);
+    const canViewStudentList = canManage || canAccess(user?.role, 'student_list');
 
     const [students, setStudents] = useState(() => getStudentListSync());
     const [dataSourceStatus, setDataSourceStatus] = useState(() => getStudentDataSourceStatus());
@@ -172,8 +174,8 @@ export default function StudentListPage() {
             ? 'ข้อมูลจริงจากฐานกลาง Firestore'
             : 'ข้อมูลจากไฟล์ที่อัปโหลดในเครื่องนี้';
 
-    /* ── PDPA Access Control: เฉพาะคณบดีเท่านั้น ── */
-    if (user?.role !== 'dean') {
+    /* ── PDPA Access Control: roles allowed by the central access matrix only ── */
+    if (!canViewStudentList) {
         return (
             <div className="dashboard-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
                 <div style={{ textAlign: 'center', maxWidth: 480 }}>
