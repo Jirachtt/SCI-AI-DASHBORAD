@@ -42,6 +42,7 @@ export default function StrategicDashboardPage() {
     const { user } = useAuth();
     const [activeOKR, setActiveOKR] = useState(0);
     const [drillDetail, setDrillDetail] = useState(null);
+    const [activeKpiFilter, setActiveKpiFilter] = useState('all');
     const { data: strategicData } = useDashboardDataset('strategic');
 
     if (!canAccess(user?.role, 'strategic_overview')) return <AccessDenied />;
@@ -55,10 +56,6 @@ export default function StrategicDashboardPage() {
         below: kpiReviewRows.filter(row => row.status === 'below').length,
     };
     const developmentPlanRows = Array.isArray(strategicData.developmentPlanRows) ? strategicData.developmentPlanRows : [];
-    const priorityKpis = kpiReviewRows
-        .filter(row => row.status === 'below' || row.status === 'near')
-        .sort((a, b) => (a.progress ?? 999) - (b.progress ?? 999))
-        .slice(0, 8);
     const unknownKpiCount = kpiReviewRows.filter(row => row.status === 'unknown').length;
     const sourceFiles = Array.isArray(strategicData.sourceFiles) ? strategicData.sourceFiles : [];
     const activeStrategyIssues = [...new Set(developmentPlanRows
@@ -71,10 +68,27 @@ export default function StrategicDashboardPage() {
         });
         return acc;
     }, { target2569: 0, target2570: 0, target2571: 0, target2572: 0 });
-    const fullKpiRows = [...kpiReviewRows].sort((a, b) => {
+    const sortedKpiRows = [...kpiReviewRows].sort((a, b) => {
         const statusRank = { below: 0, near: 1, unknown: 2, met: 3 };
         return (statusRank[a.status] ?? 4) - (statusRank[b.status] ?? 4);
     });
+    const kpiFilterOptions = [
+        { key: 'all', status: null, label: 'ทั้งหมด', count: kpiReviewSummary.totalKpis, className: 'approved' },
+        { key: 'below', status: 'below', label: 'ต้องเร่ง', count: kpiReviewSummary.below, className: 'rejected' },
+        { key: 'near', status: 'near', label: 'ใกล้เป้า', count: kpiReviewSummary.near, className: 'pending' },
+        { key: 'met', status: 'met', label: 'ถึงเป้า', count: kpiReviewSummary.met, className: 'paid' },
+        { key: 'unknown', status: 'unknown', label: 'รอข้อมูล', count: unknownKpiCount, className: '' },
+    ];
+    const activeKpiFilterOption = kpiFilterOptions.find(item => item.key === activeKpiFilter) || kpiFilterOptions[0];
+    const filterKpiRows = (rows) => activeKpiFilterOption.status
+        ? rows.filter(row => row.status === activeKpiFilterOption.status)
+        : rows;
+    const filteredKpiRows = filterKpiRows(sortedKpiRows);
+    const priorityKpis = filterKpiRows(
+        activeKpiFilter === 'all'
+            ? sortedKpiRows.filter(row => row.status === 'below' || row.status === 'near')
+            : sortedKpiRows
+    ).slice(0, activeKpiFilter === 'all' ? 8 : 12);
     const formatKpiValue = (value) => {
         if (value == null || value === '') return '-';
         if (typeof value === 'number') return Number.isInteger(value) ? value.toLocaleString('th-TH') : value.toLocaleString('th-TH', { maximumFractionDigits: 2 });
@@ -85,6 +99,43 @@ export default function StrategicDashboardPage() {
         if (status === 'near') return { label: 'ใกล้เป้า', color: 'var(--accent-orange)', bg: 'color-mix(in srgb, var(--accent-warning) 16%, transparent)' };
         if (status === 'below') return { label: 'ต้องเร่ง', color: 'var(--accent-danger)', bg: 'color-mix(in srgb, var(--accent-danger) 14%, transparent)' };
         return { label: 'รอข้อมูล', color: 'var(--text-muted)', bg: 'var(--bg-secondary)' };
+    };
+    const filterChipPalette = (option) => {
+        if (option.status) return statusStyle(option.status);
+        if (option.key === 'all') return {
+            label: option.label,
+            color: 'var(--accent-success)',
+            bg: 'color-mix(in srgb, var(--accent-success) 14%, transparent)',
+        };
+        return statusStyle('unknown');
+    };
+    const filterChipStyle = (isActive, option) => {
+        const palette = filterChipPalette(option);
+        return {
+            cursor: 'pointer',
+            border: isActive ? '1px solid var(--accent-success)' : '1px solid var(--border-color)',
+            background: palette.bg,
+            color: palette.color,
+            boxShadow: isActive ? '0 8px 18px -14px var(--accent-success)' : 'none',
+            fontWeight: isActive ? 800 : 700,
+            transform: 'translateZ(0)',
+        };
+    };
+    const renderKpiFilterChip = (option) => {
+        const isActive = activeKpiFilter === option.key;
+        return (
+            <button
+                key={option.key}
+                type="button"
+                className={`status-badge ${option.className || ''}`}
+                aria-pressed={isActive}
+                onClick={() => setActiveKpiFilter(option.key)}
+                style={filterChipStyle(isActive, option)}
+                title={`กรอง KPI: ${option.label}`}
+            >
+                {option.label} {option.count}
+            </button>
+        );
     };
 
     // Horizontal grouped bar chart (executive-friendly)
@@ -337,13 +388,11 @@ export default function StrategicDashboardPage() {
                             <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', margin: 0 }}>คำรับรองการปฏิบัติการ 2569</h3>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', margin: '4px 0 0' }}>
                                 ใช้ข้อมูลจากไฟล์ทบทวนคำรับรอง 69 และแสดงตัวชี้วัดที่ควรติดตามก่อน
+                                {activeKpiFilter !== 'all' ? ` · กรองเฉพาะ${activeKpiFilterOption.label} ${priorityKpis.length} รายการ` : ''}
                             </p>
                         </div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            <span className="status-badge approved">ทั้งหมด {kpiReviewSummary.totalKpis}</span>
-                            <span className="status-badge paid">ถึงเป้า {kpiReviewSummary.met}</span>
-                            <span className="status-badge pending">ใกล้เป้า {kpiReviewSummary.near}</span>
-                            <span className="status-badge rejected">ต้องเร่ง {kpiReviewSummary.below}</span>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                            {kpiFilterOptions.map(renderKpiFilterChip)}
                             <span className="status-badge">แผน {developmentPlanRows.length}</span>
                         </div>
                     </div>
@@ -381,26 +430,31 @@ export default function StrategicDashboardPage() {
                                         </tr>
                                     );
                                 })}
+                                {priorityKpis.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                                            ไม่มีตัวชี้วัดในตัวกรองนี้
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
                 </div>
             )}
 
-            {fullKpiRows.length > 0 && (
+            {sortedKpiRows.length > 0 && (
                 <div style={{ ...cardStyle, marginBottom: 16, padding: 0, overflow: 'hidden' }}>
                     <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
                         <div>
                             <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', margin: 0 }}>KPI คำรับรอง 2569 ทั้งหมด</h3>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', margin: '4px 0 0' }}>
                                 ดึงครบจากไฟล์ทบทวนคำรับรอง 69 แสดงทุกตัวชี้วัด พร้อมผลย้อนหลัง เป้าทบทวน และสถานะความเสี่ยง
+                                {activeKpiFilter !== 'all' ? ` · กำลังดู${activeKpiFilterOption.label} ${filteredKpiRows.length} รายการ` : ''}
                             </p>
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <span className="status-badge rejected">ต้องเร่ง {kpiReviewSummary.below}</span>
-                            <span className="status-badge pending">ใกล้เป้า {kpiReviewSummary.near}</span>
-                            <span className="status-badge paid">ถึงเป้า {kpiReviewSummary.met}</span>
-                            <span className="status-badge">รอข้อมูล {unknownKpiCount}</span>
+                            {kpiFilterOptions.map(renderKpiFilterChip)}
                         </div>
                     </div>
                     <div style={{ overflow: 'auto', maxHeight: 520 }}>
@@ -420,7 +474,7 @@ export default function StrategicDashboardPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {fullKpiRows.map((row, index) => {
+                                {filteredKpiRows.map((row, index) => {
                                     const status = statusStyle(row.status);
                                     return (
                                         <tr key={`${row.code || 'kpi'}-${index}`}>
@@ -453,6 +507,13 @@ export default function StrategicDashboardPage() {
                                         </tr>
                                     );
                                 })}
+                                {filteredKpiRows.length === 0 && (
+                                    <tr>
+                                        <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '28px' }}>
+                                            ไม่มีตัวชี้วัดในตัวกรองนี้
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
