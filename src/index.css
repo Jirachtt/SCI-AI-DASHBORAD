@@ -18762,3 +18762,48 @@ body {
 .dashboard-typography :where(.composition-pie-slice) {
   stroke: var(--chart-surface, var(--bg-card)) !important;
 }
+
+/* AI header icon stability: keep the assistant mark premium without hover flicker. */
+.ai-chat-page-header::before,
+.ai-chat-page-header-icon,
+.ai-chat-page-header-icon::before,
+.ai-chat-page-header-icon::after,
+.ai-chat-page-header-icon * {
+  animation: none !important;
+}
+
+.ai-chat-page-header-icon {
+  transform: translateZ(0);
+  will-change: auto;
+  contain: paint;
+  transition:
+    box-shadow 180ms var(--motion-smooth),
+    border-color 180ms var(--motion-smooth),
+    background-color 180ms var(--motion-smooth) !important;
+}
+
+@media (hover: hover) {
+  .ai-chat-page-header-icon:hover {
+    transform: translateZ(0) !important;
+    box-shadow:
+      0 14px 26px -20px color-mix(in srgb, var(--accent-success) 58%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--text-on-accent) 18%, transparent) !important;
+  }
+}
+
+/* AI composer focus: move the focus affordance to the outer pill, not a hard inner rectangle. */
+.ai-chat-page-input-area input,
+.ai-chat-input-area input {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ai-chat-page-input-area input:focus,
+.ai-chat-page-input-area input:focus-visible,
+.ai-chat-input-area input:focus,
+.ai-chat-input-area input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
