@@ -1,4 +1,4 @@
-import { isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
+import { isAnalyticalReasoningIntent, isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
 import { canAIUseAnyInternalSection, resolveAIRole } from '../utils/aiAccessPolicy';
 import { getAIContextBundle } from './aiContextRegistry';
 
@@ -33,7 +33,8 @@ export function createAIOrchestrationPlan(question, userContext = {}, options = 
     const hasDeniedContext = contextBundle.deniedContexts.length > 0;
     const hasAllowedContext = contextBundle.contexts.length > 0;
     const adviceMode = intent === 'executive_advice';
-    const shouldDisableCache = adviceMode || intent === 'uploaded_file';
+    const reasoningMode = isAnalyticalReasoningIntent(question);
+    const shouldDisableCache = adviceMode || reasoningMode || intent === 'uploaded_file';
     const shouldUseWebFallback =
         intent === 'maejo_public'
         || intent === 'student_faq'
@@ -46,6 +47,7 @@ export function createAIOrchestrationPlan(question, userContext = {}, options = 
         intent,
         role,
         adviceMode,
+        reasoningMode,
         shouldDisableCache,
         shouldUseWebFallback,
         hasDeniedContext,
@@ -57,7 +59,7 @@ export function createAIOrchestrationPlan(question, userContext = {}, options = 
         deniedDatasets: contextBundle.deniedContexts.map(item => item.id),
         sourceCount: contextBundle.contexts.length,
         requiresClarification: ['internal_lookup', 'chart', 'executive_advice'].includes(intent) && !hasAllowedContext,
-        usageMode: intent === 'chart' ? 'deterministic_chart_first' : 'local_first_rag',
+        usageMode: reasoningMode ? 'llm_reasoning_first' : intent === 'chart' ? 'deterministic_chart_first' : 'local_first_rag',
     };
 }
 
@@ -66,7 +68,7 @@ export function formatAIOrchestrationPlanForPrompt(plan) {
     return [
         `AI orchestration: intent=${plan.intent}, usageMode=${plan.usageMode}, role=${plan.role}`,
         `selectedDatasets=${(plan.selectedDatasets || []).join('|') || '-'}, deniedDatasets=${(plan.deniedDatasets || []).join('|') || '-'}`,
-        `cache=${plan.shouldDisableCache ? 'disabled' : 'allowed'}, webFallback=${plan.shouldUseWebFallback ? 'allowed_when_needed' : 'only_if_settings_allow'}`,
+        `reasoningMode=${plan.reasoningMode ? 'true' : 'false'}, cache=${plan.shouldDisableCache ? 'disabled' : 'allowed'}, webFallback=${plan.shouldUseWebFallback ? 'allowed_when_needed' : 'only_if_settings_allow'}`,
         plan.requiresClarification ? 'clarificationPolicy=if selected datasets are empty, state the missing data or ask a targeted follow-up instead of guessing' : '',
         plan.blockedReason ? `blockedSensitive=${plan.blockedReason}` : '',
     ].filter(Boolean).join('\n');

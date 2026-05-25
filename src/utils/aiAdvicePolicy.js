@@ -1,6 +1,9 @@
 const EXECUTIVE_RECOMMENDATION_PATTERN =
     /ควร|วางแผน|แนะนำ|ทำอะไรต่อ|ผู้บริหาร|คณบดี|ตัดสินใจ|เชิงบริหาร|แนวทาง|รับมือ|แก้ไข|ระวัง/i;
 
+const ANALYTICAL_REASONING_PATTERN =
+    /พยากรณ์|คาดการณ์|ประมาณการ|แนวโน้ม|วิเคราะห์|เพราะอะไร|ทำไม|อย่างไร|ควร|แนะนำ|เสี่ยง|ความเสี่ยง|เปรียบเทียบ|สรุปเชิงบริหาร|ตัดสินใจ|forecast|predict|projection|trend|analy[sz]e|analysis|why|how|recommend|risk|compare|scenario|confidence/i;
+
 const BLOCKED_SOURCE_PATTERN = /mock|demo|sample|generated/i;
 const REFERENCE_SOURCE_PATTERN = /fallback|static|reference/i;
 const TRUSTED_SOURCE_PATTERN = /official|api|mju|firestore|sync|dashboard|file|upload|csv|excel|xlsx|manual|linked_realtime/i;
@@ -8,6 +11,11 @@ const APPROVED_REFERENCE_DATASETS = new Set(['tcas_admissions']);
 
 export function isExecutiveRecommendationIntent(question) {
     return EXECUTIVE_RECOMMENDATION_PATTERN.test(String(question || '').toLowerCase());
+}
+
+export function isAnalyticalReasoningIntent(question) {
+    const text = String(question || '').toLowerCase();
+    return isExecutiveRecommendationIntent(text) || ANALYTICAL_REASONING_PATTERN.test(text);
 }
 
 export function isApprovedReferenceForExecutiveAdvice(meta = {}, options = {}) {

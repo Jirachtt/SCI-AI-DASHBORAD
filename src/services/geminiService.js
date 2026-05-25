@@ -32,6 +32,7 @@ import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand'
 import {
     executiveAdviceDatasetStatus,
     getExecutiveAdviceTrustLevel,
+    isAnalyticalReasoningIntent,
     isExecutiveRecommendationIntent,
     isTrustedForExecutiveAdvice,
 } from '../utils/aiAdvicePolicy';
@@ -45,7 +46,7 @@ import {
     createAIOrchestrationPlan,
     formatAIOrchestrationPlanForPrompt,
 } from './aiOrchestrator';
-import { formatAIContextBundleForPrompt } from './aiContextRegistry';
+import { formatAIContextBundleForPrompt, formatAIEvidencePackForPrompt } from './aiContextRegistry';
 import { buildMjuConnectedContextForAI } from './mjuConnectedDataService';
 import { getAllAlerts } from '../utils/alerts';
 import { verifyAIAnswerAgainstContext } from '../utils/aiAnswerVerifier';
@@ -1960,6 +1961,19 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
     const orchestrationPlan = createAIOrchestrationPlan(userMessage, userContext);
     const useMaejoWebMode = shouldUseWebSearch(userMessage);
     const rawLocalContexts = retrieveRelevantContexts(userMessage, userContext, settings);
+    const evidencePackText = formatAIEvidencePackForPrompt(orchestrationPlan.contextBundle, rawLocalContexts, {
+        limit: 8,
+    });
+    if (import.meta.env?.DEV) {
+        console.debug('[AI] evidence selection', {
+            intent: orchestrationPlan.intent,
+            usageMode: orchestrationPlan.usageMode,
+            reasoningMode: orchestrationPlan.reasoningMode,
+            selectedDatasets: orchestrationPlan.selectedDatasets,
+            deniedDatasets: orchestrationPlan.deniedDatasets,
+            sourceCount: orchestrationPlan.sourceCount,
+        });
+    }
     const slimmedLocal = slimRetrievedContexts(rawLocalContexts, {
         intent: orchestrationPlan.intent,
         settings,
@@ -1989,6 +2003,20 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
     const roleLabel = roleInfo?.label || userContext?.roleLabel || role;
     const accessNote = getAIAccessInstruction(role, useMaejoWebMode);
     const executiveRecommendationMode = isExecutiveRecommendationIntent(userMessage);
+    const reasoningMode = orchestrationPlan.reasoningMode || isAnalyticalReasoningIntent(userMessage);
+    const reasoningInstruction = reasoningMode
+        ? `REAL REASONING MODE:
+- This is an analytical/forecast/trend/risk/comparison/recommendation question. Do not answer from canned templates.
+- First use the EVIDENCE PACK and RETRIEVED CONTEXTS to decide which dataset is relevant, whether it is real/live, uploaded, static seed, or mock/sample.
+- Do not expose private chain-of-thought. Show only a concise method summary, assumptions, limits, and confidence.
+- Separate facts from the selected evidence and analytical recommendations.
+- If evidence is mock/sample/generated/static seed, say it is sample/seed context and do not present it as real official data.
+- If the user asks for real data but only mock/sample evidence exists, answer: "ตอนนี้ยังไม่มีข้อมูลจริงในระบบ แต่สามารถสาธิตวิธีวิเคราะห์จากข้อมูลตัวอย่างได้" and then provide a best-effort demo analysis with low confidence.
+- Forecast method rule: with 2 historical points use simple change/range estimate; with 3-5 points use trend plus scenario; with more than 5 points you may use regression/moving average; if volatility is high, prefer scenarios over a single number.
+- Forecast answers must include data used, selected method and reason, estimate/range, uncertainty, confidence, and what data would improve accuracy.
+- Validate numbers against the evidence pack. If a number is derived, state the formula or assumption briefly.
+- Standard analytical format: สรุปคำตอบสั้น → ข้อมูลที่ใช้ → วิธีวิเคราะห์โดยย่อ/สมมติฐาน → Insight หลัก → ข้อจำกัด/ความเชื่อมั่น → Next action → แหล่งข้อมูลที่ใช้.`
+        : '';
     const executiveRecommendationInstruction = executiveRecommendationMode
         ? `EXECUTIVE RECOMMENDATION MODE:
 - ผู้ใช้ถามเชิง "ควรวางแผน/แนะนำ/ตัดสินใจ" ให้ตอบเหมือน brief สำหรับคณบดีหรือผู้บริหาร
@@ -2026,6 +2054,8 @@ AI ORCHESTRATION / CONTEXT REGISTRY:
 ${formatAIOrchestrationPlanForPrompt(orchestrationPlan)}
 ${formatAIContextBundleForPrompt(orchestrationPlan.contextBundle)}
 
+${reasoningInstruction}
+
 ${executiveRecommendationInstruction}
 
 TOKEN SAVING RULES:
@@ -2051,6 +2081,9 @@ OUTPUT FORMAT:
 - ถ้าสร้างกราฟ ต้องใช้ block \`\`\`json_chart ... \`\`\`
 - กราฟจำนวนนักศึกษา + เกรด/GPA ต้องมี datasets อย่างน้อย 2 ชุด ได้แก่ "จำนวนนักศึกษา" และ "GPA เฉลี่ย"
 - ห้ามปล่อย raw JSON/dataset นอก block กราฟ
+
+EVIDENCE PACK:
+${evidencePackText}
 
 RETRIEVED CONTEXTS:
 ${contextText || 'ไม่มี context ที่เข้าถึงได้สำหรับคำถามนี้'}
@@ -2090,6 +2123,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
             ? 'analysis'
             : classifyQueryIntent(originalQuestion);
     const executiveRecommendationMode = orchestrationPlan.adviceMode || isExecutiveRecommendationIntent(originalQuestion);
+    const reasoningMode = orchestrationPlan.reasoningMode || isAnalyticalReasoningIntent(originalQuestion);
     updateAIUserMemory(options.user || {}, originalQuestion);
 
     // Detect chart/graph request keywords and append reminder
@@ -2131,7 +2165,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
         settings,
         useSearch,
     });
-    const disableCacheForPlan = options.disableCache || executiveRecommendationMode || orchestrationPlan.shouldDisableCache;
+    const disableCacheForPlan = options.disableCache || executiveRecommendationMode || reasoningMode || orchestrationPlan.shouldDisableCache;
     const cachedResponse = disableCacheForPlan ? null : readAIResponseCache(responseCacheKey, useSearch);
     if (cachedResponse) {
         conversationHistory.push({

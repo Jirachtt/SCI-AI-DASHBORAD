@@ -16,7 +16,7 @@ import {
     getSharedDashboardDatasetSync,
 } from './sharedDashboardDataService';
 import { buildAIAccessDeniedResult, canAIUseAnyInternalSection } from '../utils/aiAccessPolicy';
-import { isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
+import { isAnalyticalReasoningIntent, isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
 import { getStudentReconciliationSnapshot } from './dataAccuracyService';
 import { getDatasetQualityText } from '../utils/smartChartData';
 import {
@@ -942,7 +942,7 @@ function buildTcasAnswer(question) {
 }
 
 export function tryInstantAnswer(question, userContext = {}) {
-    if (isExecutiveRecommendationIntent(question)) return null;
+    if (isAnalyticalReasoningIntent(question) || isExecutiveRecommendationIntent(question)) return null;
 
     const builders = [
         { build: buildCourseDifficultyAnswer, sections: ['course_analytics'] },

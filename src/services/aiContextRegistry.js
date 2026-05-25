@@ -280,6 +280,79 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
     };
 }
 
+function inferEvidenceFlags(item = {}) {
+    const raw = [
+        item.sourceType,
+        item.trustLevel,
+        item.sourceLabel,
+        item.id,
+    ].filter(Boolean).join(' ').toLowerCase();
+    const isMock = /mock|demo|sample|generated/.test(raw);
+    const isStaticSeed = /static|seed|fallback|reference/.test(raw);
+    const isRealtime = Boolean(item.isLive)
+        || item.trustLevel === 'live_official'
+        || /firestore|api|sync|linked_realtime|dashboard/.test(raw);
+    return { isMock, isStaticSeed, isRealtime };
+}
+
+export function formatAIEvidencePackForPrompt(bundle, retrievedContexts = [], options = {}) {
+    const retrievedIds = new Set((retrievedContexts || [])
+        .map(context => context?.id)
+        .filter(Boolean));
+    let contexts = (bundle?.contexts || [])
+        .filter(item => !retrievedIds.size || retrievedIds.has(item.id) || retrievedIds.has(item.domain))
+        .slice(0, Number.isFinite(Number(options.limit)) ? Number(options.limit) : 8);
+    if (!contexts.length && bundle?.contexts?.length) {
+        contexts = bundle.contexts.slice(0, Number.isFinite(Number(options.limit)) ? Number(options.limit) : 8);
+    }
+
+    if (!contexts.length) {
+        return [
+            'AI evidence pack:',
+            '- selectedDatasets=-',
+            '- note=No accessible internal evidence matched this question. If answering, use public/official context only and state the limitation clearly.',
+        ].join('\n');
+    }
+
+    const lines = contexts.map((item, index) => {
+        const flags = inferEvidenceFlags(item);
+        const fields = (item.chartableFields || []).join('|') || '-';
+        const notes = [];
+        if (flags.isMock) notes.push('mock/sample/generator: do not present as real data');
+        if (flags.isStaticSeed) notes.push('static/fallback/reference: use only as best-effort context with caveat');
+        if (!item.hasData) notes.push('no loaded data snapshot');
+        if (!notes.length) notes.push('usable evidence within role permission');
+        return [
+            `Evidence ${index + 1}: dataset=${item.id}`,
+            `  label=${item.label || item.id}`,
+            `  scope=${item.scope || item.domain || '-'}`,
+            `  sourceType=${item.sourceType || 'fallback'}`,
+            `  sourceName=${item.sourceLabel || '-'}`,
+            `  trustLevel=${item.trustLevel || 'unknown'}`,
+            `  isMock=${flags.isMock}`,
+            `  isStaticSeed=${flags.isStaticSeed}`,
+            `  isRealtime=${flags.isRealtime}`,
+            `  lastUpdated=${item.lastUpdated || 'unknown'}`,
+            `  rowCount=${Number.isFinite(Number(item.rowCount)) ? Number(item.rowCount) : 0}`,
+            `  confidence=${item.confidence || 'unknown'}`,
+            `  fields=${fields}`,
+            `  dataQualityNotes=${notes.join('; ')}`,
+        ].join('\n');
+    });
+
+    const denied = (bundle?.deniedContexts || [])
+        .slice(0, 6)
+        .map(item => `${item.id}:${(item.sections || []).join('|') || '-'}`)
+        .join(', ');
+
+    return [
+        'AI evidence pack:',
+        `intentHint=${bundle?.intentHint || 'auto'}, role=${bundle?.role || 'unknown'}`,
+        ...lines,
+        denied ? `Denied evidence for this role: ${denied}` : '',
+    ].filter(Boolean).join('\n');
+}
+
 export function formatAIContextBundleForPrompt(bundle) {
     if (!bundle?.contexts?.length && !bundle?.deniedContexts?.length) {
         return 'AI context registry: no matched internal dataset; use local FAQ/public fallback if allowed.';

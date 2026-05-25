@@ -9,7 +9,7 @@ import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { AI_ASSISTANT_NAME, APP_NAME_TH } from '../config/appBrand';
 import { tryInstantAnswer } from '../services/aiInstantAnswerService';
 import { canAIUseAction } from '../utils/aiAccessPolicy';
-import { isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
+import { isAnalyticalReasoningIntent } from '../utils/aiAdvicePolicy';
 
 let aiChatPageModulePromise = null;
 
@@ -29,6 +29,13 @@ const FALLBACK_QUICK_ACTIONS = [
     { label: 'สรุป Dashboard', query: 'สรุปภาพรวม Dashboard ที่ฉันมีสิทธิ์ดู', icon: MessageCircle, requiredSections: ['dashboard'] },
     { label: 'ค่าธรรมเนียม', query: 'สรุปข้อมูลค่าธรรมเนียมที่ฉันมีสิทธิ์ดู', icon: MessageCircle, requiredSections: ['tuition'] },
     { label: 'กฎ/เกียรตินิยม', query: 'สรุปกฎระเบียบและเงื่อนไขเกียรตินิยม', icon: MessageCircle, requiredSections: ['academic_rules'] },
+];
+
+const POPUP_THINKING_STEPS = [
+    'กำลังเลือกชุดข้อมูลที่เกี่ยวข้อง',
+    'กำลังสร้าง evidence pack',
+    'กำลังวิเคราะห์แนวโน้ม',
+    'กำลังตรวจความสอดคล้องของคำตอบ',
 ];
 
 function FallbackChatMessage({ msg }) {
@@ -66,6 +73,7 @@ export default function AIChat() {
     const [uploadedFileData, setUploadedFileData] = useState(null);
     const [aiModule, setAiModule] = useState(null);
     const [aiModuleError, setAiModuleError] = useState('');
+    const [thinkingStepIndex, setThinkingStepIndex] = useState(0);
     const [, setStudentDataVersion] = useState(0);
 
     const ensureAiModule = useCallback(async () => {
@@ -111,6 +119,17 @@ export default function AIChat() {
     useEffect(() => {
         messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, typing]);
+
+    useEffect(() => {
+        if (!typing) {
+            setThinkingStepIndex(0);
+            return undefined;
+        }
+        const id = setInterval(() => {
+            setThinkingStepIndex(prev => (prev + 1) % POPUP_THINKING_STEPS.length);
+        }, 1200);
+        return () => clearInterval(id);
+    }, [typing]);
 
     const sendAI = useCallback(async (prompt, sendOptions = {}) => {
         const text = await sendMessageToGemini(prompt, {
@@ -199,7 +218,7 @@ export default function AIChat() {
             });
 
             try {
-                const aiText = await sendAI(buildPrompt(), { disableCache: isExecutiveRecommendationIntent(sourceQuestion) });
+                const aiText = await sendAI(buildPrompt(), { disableCache: isAnalyticalReasoningIntent(sourceQuestion) });
                 const parsedAI = tools.parseAIResponse(aiText, sourceQuestion);
                 setMessages(prev => prev.map(message =>
                     message._retryId === retryId
@@ -227,22 +246,22 @@ export default function AIChat() {
     };
 
     const runQuestion = async (question) => {
-        const adviceMode = isExecutiveRecommendationIntent(question);
-        const instantResult = adviceMode ? null : tryInstantAnswer(question, user);
+        const reasoningMode = isAnalyticalReasoningIntent(question);
+        const instantResult = reasoningMode ? null : tryInstantAnswer(question, user);
         if (instantResult) {
             setMessages(prev => [...prev, { role: 'bot', text: instantResult.text, chart: instantResult.chart }]);
             return;
         }
 
         const tools = await ensureAiModule();
-        const localResult = adviceMode ? null : tools.tryLocalResponse(question, user);
+        const localResult = reasoningMode ? null : tools.tryLocalResponse(question, user);
         if (localResult) {
             setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
             return;
         }
 
         const prompt = tools.buildAIChatPrompt(question, uploadedFileData, null, user);
-        const aiText = await sendAI(prompt, { disableCache: adviceMode });
+        const aiText = await sendAI(prompt, { disableCache: reasoningMode });
         const parsedAI = tools.parseAIResponse(aiText, question);
         setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
     };
@@ -502,6 +521,7 @@ export default function AIChat() {
                             {typing && (
                                 <div className="typing-indicator">
                                     <span /><span /><span />
+                                    <small>{POPUP_THINKING_STEPS[thinkingStepIndex]}</small>
                                 </div>
                             )}
                             <div ref={messagesEnd} />

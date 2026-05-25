@@ -39,7 +39,7 @@ import {
     canAIUseAllInternalSections,
     canAIUseInternalSection,
 } from '../utils/aiAccessPolicy';
-import { isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
+import { isAnalyticalReasoningIntent, isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
 import {
     coerceStructuredAIResponseMarkdown,
     stripRawStructuredAIResponseText,
@@ -63,10 +63,10 @@ const AI_CHART_TOOLTIP_STYLE = {
 };
 
 const AI_THINKING_STEPS = [
-    'เลือกโมเดลและสิทธิ์ข้อมูล',
-    'อ่านบริบทที่เกี่ยวข้อง',
-    'ตรวจแหล่งข้อมูลและตัวเลข',
-    'จัดรูปคำตอบและกราฟ',
+    'กำลังเลือกชุดข้อมูลที่เกี่ยวข้อง',
+    'กำลังสร้าง evidence pack',
+    'กำลังวิเคราะห์แนวโน้ม',
+    'กำลังตรวจความสอดคล้องของคำตอบ',
 ];
 
 // ==================== Linear Regression Forecasting ====================
@@ -1024,6 +1024,8 @@ function searchStudents(query) {
 // Everything else → Gemini AI (smarter, context-aware answers)
 export function tryLocalResponse(question, userContext = {}) {
     const q = question.toLowerCase();
+    if (isAnalyticalReasoningIntent(question)) return null;
+
     // Forecast has first priority so budget questions such as "พยากรณ์งบประมาณปี 70 71"
     // cannot be captured by course/grade chart heuristics.
     const forecastParsed = parseForecastRequest(question);
@@ -1151,6 +1153,7 @@ export function formatUploadedFileContextForAI(uploadedFileData) {
 // ==================== Parse AI Generated Chart ====================
 export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMergeSummary = null, userContext = {}) {
     const adviceMode = isExecutiveRecommendationIntent(question);
+    const reasoningMode = isAnalyticalReasoningIntent(question);
     const allStudents = adviceMode ? getTrustedStudentsForAdvice() : getTrustedStudentsForRows();
     const studentRosterTrust = getStudentRosterTrustStatus();
     const studentReconcile = getStudentReconciliationSnapshot();
@@ -1174,6 +1177,9 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
     }
     if (adviceMode) {
         context += '[EXECUTIVE ADVICE DATA POLICY]\nคำถามนี้เป็นคำถามเชิงคำแนะนำ/วางแผน ให้ใช้ข้อมูลในเว็บก่อนเสมอ โดย live_official ใช้ได้เต็ม และ approved_reference เช่น TCAS จากประกาศทางการ/ไฟล์ในระบบใช้ตอบเชิงทิศทางได้พร้อมบอกข้อจำกัด ห้ามใช้ mock/demo/sample/generated เป็นฐานคำแนะนำเชิงบริหาร ถ้าข้อมูลไม่พร้อมจริงให้แจ้ง dataset ที่ต้อง sync/อัปโหลดก่อน\n\n';
+    }
+    if (reasoningMode) {
+        context += '[LLM REASONING FIRST]\nคำถามนี้เป็นคำถามเชิงวิเคราะห์/พยากรณ์/แนวโน้ม/เปรียบเทียบ/ความเสี่ยง ให้ LLM วิเคราะห์จาก context ปัจจุบันก่อนเสมอ ห้ามตอบแบบ template สำเร็จรูป หากข้อมูลเป็น mock/sample/static seed ให้ระบุว่าเป็นข้อมูลตัวอย่างหรือข้อมูลตั้งต้น และถ้าเป็นการพยากรณ์ให้แสดงวิธีคิด สมมติฐาน ช่วงความไม่แน่นอน confidence และข้อมูลที่ยังต้องเชื่อมเพิ่ม\n\n';
     }
     if (isStudentQ && !canUseStudentStats) {
         context += '[ACCESS LIMITED]\nRole นี้ไม่มีสิทธิ์อ่านข้อมูลนักศึกษาภายในจากระบบ ห้ามแนบ/เดารายชื่อนักศึกษา GPA หรือสถิติภายใน ให้ตอบเฉพาะข้อมูลสาธารณะหรือแจ้งว่าต้องใช้สิทธิ์สูงกว่า\n\n';
@@ -3174,7 +3180,7 @@ export default function AIChatPage() {
             const aiPrompt = `ผู้ใช้อัปโหลดไฟล์ "${fileName}" และต้องการวิเคราะห์แบบ decision intelligence\n\n${formatUploadedFileContextForAI(parsed)}\n\nช่วยสรุป insight สำคัญ ความเสี่ยง/ข้อจำกัดของข้อมูล และข้อเสนอแนะที่อิงจาก schema/aggregate ของไฟล์เท่านั้น`;
 
             try {
-                const aiText = await sendAI(aiPrompt, undefined, { disableCache: isExecutiveRecommendationIntent(aiPrompt) });
+                const aiText = await sendAI(aiPrompt, undefined, { disableCache: isAnalyticalReasoningIntent(aiPrompt) });
                 const parsedAI = parseAIResponse(aiText, aiPrompt);
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -3256,7 +3262,7 @@ export default function AIChatPage() {
                 }, 1000);
             });
             try {
-                const aiText = await sendAI(buildMessage(), undefined, { disableCache: isExecutiveRecommendationIntent(sourceQuestion) });
+                const aiText = await sendAI(buildMessage(), undefined, { disableCache: isAnalyticalReasoningIntent(sourceQuestion) });
                 const parsedAI = parseAIResponse(aiText, sourceQuestion);
                 setMessages(prev => prev.map(m =>
                     m._retryId === retryId
@@ -3287,10 +3293,10 @@ export default function AIChatPage() {
         setTyping(true);
 
         let stream = null;
-        const adviceMode = isExecutiveRecommendationIntent(userMsg);
+        const reasoningMode = isAnalyticalReasoningIntent(userMsg);
         try {
             // Try local response first (forecast, student search)
-            const localResult = adviceMode ? null : tryLocalResponse(userMsg, user);
+            const localResult = reasoningMode ? null : tryLocalResponse(userMsg, user);
             if (localResult) {
                 setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
                 setTyping(false);
@@ -3298,7 +3304,7 @@ export default function AIChatPage() {
             }
             const buildMsg = () => buildAIChatPrompt(userMsg, uploadedFileData, dashboardMergeSummary, user);
             stream = createAIStreamUpdater(userMsg);
-            const aiText = await sendAI(buildMsg(), stream.update, { disableCache: adviceMode });
+            const aiText = await sendAI(buildMsg(), stream.update, { disableCache: reasoningMode });
             stream.finalize(aiText);
         } catch (error) {
             stream?.remove();
@@ -3331,17 +3337,17 @@ export default function AIChatPage() {
         setMessages(prev => [...prev, { role: 'user', text: query }]);
         setTyping(true);
         let stream = null;
-        const adviceMode = isExecutiveRecommendationIntent(query);
+        const reasoningMode = isAnalyticalReasoningIntent(query);
         try {
             // Try local response first (forecast, student search)
-            const localResult = adviceMode ? null : tryLocalResponse(query, user);
+            const localResult = reasoningMode ? null : tryLocalResponse(query, user);
             if (localResult) {
                 setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
                 setTyping(false);
                 return;
             }
             stream = createAIStreamUpdater(query);
-            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary, user), stream.update, { disableCache: adviceMode });
+            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary, user), stream.update, { disableCache: reasoningMode });
             stream.finalize(aiText);
         } catch (error) {
             stream?.remove();
@@ -3751,7 +3757,7 @@ export default function AIChatPage() {
                                         </div>
                                         <div className="ai-page-typing-text">
                                             <strong>{AI_THINKING_STEPS[thinkingStepIndex]}</strong>
-                                            <small>กำลังเตรียมคำตอบจากข้อมูลที่เกี่ยวข้อง</small>
+                                            <small>ใช้ LLM วิเคราะห์จาก evidence และตรวจ source ก่อนตอบ</small>
                                         </div>
                                     </div>
                                 </div>
