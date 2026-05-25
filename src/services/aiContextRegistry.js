@@ -178,6 +178,9 @@ function keywordScore(item, q) {
     return score;
 }
 
+const BUDGET_PRIORITY_PATTERN = /งบ|งบประมาณ|รายรับ|รายจ่าย|การเงิน|ค่าเทอม|ค่าธรรมเนียม|budget|finance|revenue|expense/i;
+const COURSE_EXPLICIT_PATTERN = /รายวิชา|วิชาไหน|เกรดรายวิชา|กระจายเกรด|course|grade distribution/i;
+
 export function datasetTrustSnapshot(id) {
     const meta = getSharedDashboardDatasetMetaSync(id);
     const data = getSharedDashboardDatasetSync(id);
@@ -207,6 +210,7 @@ export function datasetTrustSnapshot(id) {
 export function getAIContextBundle(question, roleOrUser, options = {}) {
     const q = String(question || '').toLowerCase();
     const role = resolveAIRole(roleOrUser);
+    const isBudgetFinanceQuery = BUDGET_PRIORITY_PATTERN.test(q) && !COURSE_EXPLICIT_PATTERN.test(q);
     const matched = [];
     const denied = [];
     const maxContexts = Number.isFinite(Number(options.maxContexts))
@@ -216,7 +220,11 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
             : 5;
 
     for (const item of AI_DATASET_REGISTRY) {
-        const score = options.includeAll ? 1 : keywordScore(item, q);
+        let score = options.includeAll ? 1 : keywordScore(item, q);
+        if (isBudgetFinanceQuery) {
+            if (item.domain === 'budget' || item.id === 'science_budget' || item.id === 'university_budget') score += 100;
+            if (item.id === 'course_analytics') score = 0;
+        }
         const keywordMatch = score > 0;
         if (!keywordMatch && !options.includeAll) continue;
         const access = datasetAccessStatus(item, role);

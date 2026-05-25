@@ -7,6 +7,7 @@ const STUDENT_FAQ_PATTERN = /เกียรตินิยม|ค่าเท�
 const MAEJO_PUBLIC_PATTERN = /แม่โจ้|maejo|mju|มหาวิทยาลัย|คณะ|หลักสูตร|รับสมัคร|สถานที่|วิทยาเขต|ประวัติ|ข่าว|หน่วยงาน/i;
 const INTERNAL_LOOKUP_PATTERN = /นักศึกษา|นิสิต|งบ|budget|kpi|okr|บุคลากร|วิจัย|สำเร็จการศึกษา|รายชื่อ|gpa|เกรด/i;
 const SENSITIVE_PATTERN = /รายชื่อ|รหัสนักศึกษา|gpa\s*รายคน|เกรดรายคน|ค้างชำระรายคน|เงินเดือน|หักเงิน|citizen|บัตรประชาชน|เลขบัตร/i;
+const BUDGET_PRIORITY_PATTERN = /งบ|งบประมาณ|รายรับ|รายจ่าย|การเงิน|budget|finance|revenue|expense/i;
 
 function hasUploadedFile(options = {}) {
     return Boolean(options.uploadedFileData?.rowCount || options.uploadedFileData?.rows?.length);
@@ -18,6 +19,7 @@ export function classifyAIQuestionIntent(question, options = {}) {
     if (isExecutiveRecommendationIntent(q)) return 'executive_advice';
     if (CHART_PATTERN.test(q)) return 'chart';
     if (SENSITIVE_PATTERN.test(q)) return 'blocked_sensitive';
+    if (BUDGET_PRIORITY_PATTERN.test(q)) return 'internal_lookup';
     if (STUDENT_FAQ_PATTERN.test(q)) return 'student_faq';
     if (INTERNAL_LOOKUP_PATTERN.test(q)) return 'internal_lookup';
     if (MAEJO_PUBLIC_PATTERN.test(q)) return 'maejo_public';

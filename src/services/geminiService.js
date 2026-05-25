@@ -1764,12 +1764,16 @@ function maejoStudentFaqContext(userMessage) {
     return getMaejoStudentFaqContext(userMessage, { limit: 5 });
 }
 
+const BUDGET_PRIORITY_PATTERN = /งบ|งบประมาณ|รายรับ|รายจ่าย|การเงิน|ค่าเทอม|ค่าธรรมเนียม|budget|finance|revenue|expense/i;
+const COURSE_EXPLICIT_PATTERN = /รายวิชา|วิชาไหน|เกรดรายวิชา|กระจายเกรด|course|grade distribution/i;
+
 function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) {
     const q = String(userMessage || '').toLowerCase();
     const role = resolveAIRole(userContext);
     const includeStudentRows = needsStudentDetail(userMessage) && canAIUseInternalSection(role, 'student_list');
     const adviceMode = isExecutiveRecommendationIntent(userMessage);
     const contextOptions = { adviceMode, question: userMessage };
+    const isBudgetFinanceQuery = BUDGET_PRIORITY_PATTERN.test(q) && !COURSE_EXPLICIT_PATTERN.test(q);
     const isTcasPlanningQuery = /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|portfolio|quota/.test(q);
     const isStudentRecordQuery = /gpa|เกรด|รายชื่อ|รหัส|student\s*id|ชั้นปี|พ้นสภาพ|รอพินิจ|คงอยู่|ลาออก|หายไป|จำนวนนักศึกษาปัจจุบัน/.test(q);
     const candidates = [
@@ -1791,7 +1795,14 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const scored = candidates
         .filter(c => domainAllowed(role, c.id) || canAIUseAnyInternalSection(role, c.sections))
         .filter(c => !(c.id === 'students' && isTcasPlanningQuery && !isStudentRecordQuery))
-        .map(c => ({ ...c, score: c.keywords.test(q) ? 10 : 0 }))
+        .map(c => {
+            let score = c.keywords.test(q) ? 10 : 0;
+            if (isBudgetFinanceQuery) {
+                if (c.id === 'budget') score += 100;
+                if (c.id === 'course_analytics' || c.id === 'maejo_student_faq') score = 0;
+            }
+            return { ...c, score };
+        })
         .filter(c => c.score > 0);
 
     if (/รางวัล|award|ประชากร|population|พยากรณ์.*นักศึกษา|เงินเดือน|salary|หักเงิน|deduction|ค้างชำระ|จ่ายล่าช้า|paid\s*date/i.test(q)) {

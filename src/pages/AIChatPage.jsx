@@ -165,6 +165,16 @@ const FORECAST_DATASET_SECTIONS = {
     scienceGraduated: ['graduation_stats'],
 };
 
+const BUDGET_FORECAST_KEYWORDS = [
+    'งบประมาณ', 'งบ', 'รายรับ', 'รายจ่าย', 'การเงิน', 'ค่าเทอม',
+    'budget', 'finance', 'revenue', 'expense',
+];
+
+function hasBudgetForecastSignal(text = '') {
+    const q = String(text || '').toLowerCase();
+    return BUDGET_FORECAST_KEYWORDS.some(keyword => q.includes(keyword));
+}
+
 function getForecastRequiredSections(parsed) {
     const datasets = Array.isArray(parsed?.datasets) ? parsed.datasets : [];
     return [...new Set(datasets.flatMap(key => FORECAST_DATASET_SECTIONS[key] || ['dashboard']))];
@@ -193,14 +203,34 @@ function parseForecastRequest(question) {
     const isScience = ['คณะวิทยาศาสตร์', 'วิทยาศาสตร์', 'science', 'คณะวิทย์'].some(k => q.includes(k));
     let matchedDatasets = [];
 
+    const hasBudget = hasBudgetForecastSignal(q);
+    const hasRevenue = ['รายรับ', 'revenue', 'income'].some(k => q.includes(k));
+    const hasExpense = ['รายจ่าย', 'expense', 'ค่าใช้จ่าย', 'cost'].some(k => q.includes(k));
+    // Budget/finance wins before GPA/course/student because "คณะวิทย์" can otherwise
+    // pull course contexts into finance questions.
+    if (hasBudget) {
+        if (isScience) {
+            matchedDatasets = hasRevenue && !hasExpense
+                ? ['scienceBudgetRevenue']
+                : hasExpense && !hasRevenue
+                    ? ['scienceBudgetExpense']
+                    : ['scienceBudgetRevenue', 'scienceBudgetExpense'];
+        } else {
+            matchedDatasets = hasRevenue && !hasExpense
+                ? ['universityBudgetRevenue']
+                : hasExpense && !hasRevenue
+                    ? ['universityBudgetExpense']
+                    : ['universityBudgetRevenue', 'universityBudgetExpense'];
+        }
+        return { years: years.sort(), chartType, datasets: [...new Set(matchedDatasets)], isScience };
+    }
+
     // Check for GPA / grade keywords
     const hasGPA = ['เกรด', 'gpa', 'เกรดเฉลี่ย', 'ผลการเรียน', 'grade'].some(k => q.includes(k));
     // Check for student keywords
     const hasStudent = ['นิสิต', 'นักศึกษา', 'student', 'จำนวนนิสิต'].some(k => q.includes(k));
     // Check for graduation keywords
     const hasGraduation = ['สำเร็จการศึกษา', 'อัตราสำเร็จ', 'จบการศึกษา', 'graduation', 'เรียนจบ'].some(k => q.includes(k));
-    // Check for budget keywords
-    const hasBudget = ['งบประมาณ', 'budget', 'งบ', 'รายรับ', 'รายจ่าย', 'revenue', 'expense'].some(k => q.includes(k));
 
     // Multi-topic matching: user asks "นักศึกษากับเกรด" -> match BOTH
     if (hasStudent && hasGPA) {
@@ -248,6 +278,70 @@ function parseForecastRequest(question) {
     return { years: years.sort(), chartType, datasets: matchedDatasets, isScience };
 }
 
+function isBudgetDatasetKey(dsKey = '') {
+    return /Budget|Revenue|Expense/i.test(String(dsKey || ''));
+}
+
+function formatForecastValue(value, unit = '') {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '-';
+    const digits = /ล้าน|บาท|%/.test(unit) ? 2 : (Math.abs(number) < 10 && unit !== 'คน' ? 2 : 0);
+    return `${number.toLocaleString('th-TH', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+    })}${unit ? ` ${unit}` : ''}`;
+}
+
+function buildBudgetScenarioForecast(dsKey, ds, dataPoints = [], targetYears = [], model = null) {
+    const cleanPoints = [...dataPoints]
+        .filter(point => Number.isFinite(Number(point.x)) && Number.isFinite(Number(point.y)))
+        .sort((a, b) => Number(a.x) - Number(b.x));
+    if (!cleanPoints.length) return '';
+
+    const latest = cleanPoints[cleanPoints.length - 1];
+    const latestYear = Number(latest.x);
+    const latestValue = Number(latest.y);
+    const isExpense = /Expense/i.test(dsKey) || /รายจ่าย|expense/i.test(ds?.label || '');
+
+    const rows = [...new Set(targetYears)]
+        .filter(year => Number(year) > latestYear)
+        .map(year => {
+            const gap = Math.max(1, Number(year) - latestYear);
+            const baseline = model ? Number(model.predict(Number(year))) : latestValue;
+            const conservative = isExpense
+                ? baseline * Math.pow(1.03, gap)
+                : baseline * Math.pow(0.98, gap);
+            const growth = isExpense
+                ? baseline * Math.pow(1.01, gap)
+                : baseline * Math.pow(1.03, gap);
+            return {
+                year,
+                conservative: Math.max(0, Math.round(conservative)),
+                baseline: Math.max(0, Math.round(baseline)),
+                growth: Math.max(0, Math.round(growth)),
+            };
+        });
+
+    if (!rows.length) return '';
+
+    const scenarioLines = rows.map(row =>
+        `ปี ${row.year}: Conservative ~${formatForecastValue(row.conservative, ds.unit)}, Baseline ~${formatForecastValue(row.baseline, ds.unit)}, Growth ~${formatForecastValue(row.growth, ds.unit)}`
+    ).join('\n');
+
+    const confidence = cleanPoints.length >= 4 ? 'กลาง' : cleanPoints.length >= 2 ? 'ต่ำ-กลาง' : 'ต่ำ';
+    const confidenceReason = cleanPoints.length >= 4
+        ? 'มีข้อมูลย้อนหลังหลายปีพอเห็นทิศทาง แต่ยังต้องยืนยันด้วยงบที่อนุมัติจริง'
+        : 'มีจุดข้อมูลจำกัด จึงใช้ฉากทัศน์จากค่าล่าสุดและสมมติฐานแบบระมัดระวัง';
+
+    return [
+        `\n**Scenario forecast สำหรับ ${ds.label}**`,
+        scenarioLines,
+        `**วิธีคิด/สมมติฐาน:** Baseline ใช้แนวโน้มจากข้อมูลล่าสุด${model ? 'ด้วย Linear Regression' : ''}; Conservative = ${isExpense ? 'รายจ่ายสูงกว่า baseline 3% ต่อปี' : 'รายรับต่ำกว่า baseline 2% ต่อปี'}; Growth = ${isExpense ? 'คุมรายจ่ายให้สูงกว่า baseline เพียง 1% ต่อปี' : 'รายรับสูงกว่า baseline 3% ต่อปี'}`,
+        `**ระดับความเชื่อมั่น:** ${confidence} — ${confidenceReason}`,
+        '**ข้อมูลที่ควรมีเพิ่มเพื่อยืนยัน:** งบอนุมัติจริงปีเป้าหมาย, จำนวนนักศึกษา/ค่าเทอมล่าสุด, เงินอุดหนุน, รายจ่ายบุคลากร และภาระผูกพันโครงการ',
+    ].join('\n');
+}
+
 // ==================== Generate Forecast Response ====================
 function generateForecastResponse(parsed) {
     if (!parsed || parsed.datasets.length === 0) {
@@ -270,7 +364,12 @@ function generateForecastResponse(parsed) {
         if (!ds) continue;
         const dataPoints = ds.getData();
         if (dataPoints.length < 3) {
-            results.push(`**${ds.label}**\nแหล่งข้อมูล: ${getForecastDataSourceNote(dsKey)}\nยังไม่สามารถพยากรณ์ได้ เพราะข้อมูลที่เว็บมีอยู่ตอนนี้ต้องมีอย่างน้อย 3 จุดข้อมูลสำหรับ Linear Regression`);
+            if (isBudgetDatasetKey(dsKey)) {
+                const scenario = buildBudgetScenarioForecast(dsKey, ds, dataPoints, parsed.years);
+                results.push(`**${ds.label}**\nแหล่งข้อมูล: ${getForecastDataSourceNote(dsKey)}\nยังไม่มีข้อมูลปีเป้าหมายโดยตรง และข้อมูลย้อนหลังยังไม่พอสำหรับ Linear Regression เต็มรูปแบบ แต่สามารถทำประมาณการแบบ scenario จากข้อมูลล่าสุดได้ดังนี้:\n${scenario}`);
+            } else {
+                results.push(`**${ds.label}**\nแหล่งข้อมูล: ${getForecastDataSourceNote(dsKey)}\nยังไม่สามารถพยากรณ์ได้ เพราะข้อมูลที่เว็บมีอยู่ตอนนี้ต้องมีอย่างน้อย 3 จุดข้อมูลสำหรับ Linear Regression`);
+            }
             continue;
         }
 
@@ -328,7 +427,10 @@ function generateForecastResponse(parsed) {
                 : model.predict(y).toLocaleString();
             return `   ปี ${y}: ~${val} ${ds.unit}`;
         }).join('\n');
-        results.push(`**${ds.label}**\nแหล่งข้อมูล: ${getForecastDataSourceNote(dsKey)}\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}`);
+        const scenarioText = isBudgetDatasetKey(dsKey)
+            ? `\n${buildBudgetScenarioForecast(dsKey, ds, dataPoints, parsed.years, model)}`
+            : '';
+        results.push(`**${ds.label}**\nแหล่งข้อมูล: ${getForecastDataSourceNote(dsKey)}\nข้อมูลจริง: ${existingYears[0]}-${existingYears[existingYears.length - 1]} (${existingYears.length} ปี)\nพยากรณ์ (Linear Regression):\n${forecastSummary}${scenarioText}`);
     }
 
     // Build scales config — support dual Y-axis
@@ -922,15 +1024,8 @@ function searchStudents(query) {
 // Everything else → Gemini AI (smarter, context-aware answers)
 export function tryLocalResponse(question, userContext = {}) {
     const q = question.toLowerCase();
-    if (isExecutiveRecommendationIntent(question)) return null;
-
-    const chartPlanResult = createPlannedChartAnswer(question, userContext);
-    if (chartPlanResult) return chartPlanResult;
-
-    const instantResult = tryInstantAnswer(question, userContext);
-    if (instantResult) return instantResult;
-
-    // 1. Explicit forecast requests ONLY when forecast keyword + known data topic
+    // Forecast has first priority so budget questions such as "พยากรณ์งบประมาณปี 70 71"
+    // cannot be captured by course/grade chart heuristics.
     const forecastParsed = parseForecastRequest(question);
     if (forecastParsed) {
         const requiredSections = getForecastRequiredSections(forecastParsed);
@@ -941,6 +1036,14 @@ export function tryLocalResponse(question, userContext = {}) {
         if (result) return result;
         // If no datasets matched, fall through to AI
     }
+
+    if (isExecutiveRecommendationIntent(question)) return null;
+
+    const chartPlanResult = createPlannedChartAnswer(question, userContext);
+    if (chartPlanResult) return chartPlanResult;
+
+    const instantResult = tryInstantAnswer(question, userContext);
+    if (instantResult) return instantResult;
 
     // 2. Deterministic aggregate chart for "student count + grade/GPA".
     // This data already exists in the web app, so do not rely on the model
