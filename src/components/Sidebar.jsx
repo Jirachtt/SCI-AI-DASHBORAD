@@ -7,7 +7,6 @@ import { prefetchRoute } from '../utils/routePrefetch';
 import { getAIModelRuntimeStatus, getAITokenBudgetSnapshot, refreshAITokenBudgetSnapshot } from '../services/geminiService';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
 import { LogOut, Clock, Bot, Settings, UserRound, Palette, Activity, X } from 'lucide-react';
-import MjuConnectedPagePanel from './MjuConnectedPagePanel';
 import {
     getFeaturedNavigationItem,
     getVisibleNavigationCategories,
@@ -231,10 +230,6 @@ export default function Sidebar({ isOpen, onClose }) {
                                 </span>
                                 <span className="settings-theme-pill">{theme === 'dark' ? 'Dark' : 'Light'}</span>
                             </button>
-                        </div>
-
-                        <div className="settings-popover-section">
-                            <MjuConnectedPagePanel user={user} compact />
                         </div>
 
                         <div className="settings-popover-section">
