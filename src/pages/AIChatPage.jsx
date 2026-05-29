@@ -21,6 +21,7 @@ import {
     getAIModelRuntimeStatus,
     getAIModelSettings,
     getAITokenBudgetSnapshot,
+    getAITokenUsageSessionSummary,
     refreshAITokenBudgetSnapshot,
 } from '../services/geminiService';
 import { getRoleTermCoverage } from '../utils/roleValidity';
@@ -46,6 +47,7 @@ import {
 } from '../utils/aiChartResponse';
 import { buildMjuConnectedContextForAI } from '../services/mjuConnectedDataService';
 import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
+import { usageKindLabel } from '../utils/aiTokenUsage';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -68,6 +70,17 @@ const AI_THINKING_STEPS = [
     'กำลังวิเคราะห์แนวโน้ม',
     'กำลังตรวจความสอดคล้องของคำตอบ',
 ];
+
+function formatTokenCount(value) {
+    if (value == null || Number.isNaN(Number(value))) return 'รอข้อมูล';
+    return Number(value).toLocaleString('th-TH');
+}
+
+function tokenUsageBadgeClass(usage) {
+    if (!usage) return 'idle';
+    if (usage.source === 'cache') return 'cache';
+    return usage.isEstimated ? 'estimated' : 'actual';
+}
 
 // ==================== Linear Regression Forecasting ====================
 function linearRegression(dataPoints) {
@@ -2490,6 +2503,7 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
 
     const chartData = chartOptionsForRender(renderedChart, chartType);
     const chartExportTitle = readableChartExportTitle(chartData);
+    const tokenUsage = msg.tokenUsage || null;
 
     // Deep clone chart for expand to prevent zoom state mutation
     const handleExpand = () => {
@@ -2509,6 +2523,16 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
             <div className="ai-page-msg-avatar"><Sparkles size={18} style={{ color: 'var(--accent-success)' }} /></div>
             <div className="ai-page-msg-content">
                 <div className="ai-page-msg-bubble bot">{formatText(msg.text)}</div>
+                {tokenUsage && (
+                    <div className="ai-message-token-footnote">
+                        <span className={`ai-token-badge ${tokenUsageBadgeClass(tokenUsage)}`}>
+                            {usageKindLabel(tokenUsage)}
+                        </span>
+                        <span>{formatTokenCount(tokenUsage.totalTokens)} tokens</span>
+                        <span>in {formatTokenCount(tokenUsage.inputTokens)} / out {formatTokenCount(tokenUsage.outputTokens)}</span>
+                        <span>{tokenUsage.model || tokenUsage.provider || 'AI'}</span>
+                    </div>
+                )}
                 <div className="ai-answer-action-row">
                     <button className="ai-answer-action-btn" type="button" onClick={handleCopy}>
                         <Copy size={13} /> คัดลอกคำตอบ
@@ -2763,6 +2787,7 @@ export default function AIChatPage() {
     const [systemInfoOpen, setSystemInfoOpen] = useState(false);
     const [aiRuntimeStatus, setAiRuntimeStatus] = useState(() => getAIModelRuntimeStatus());
     const [tokenBudget, setTokenBudget] = useState(() => getAITokenBudgetSnapshot());
+    const [tokenSession, setTokenSession] = useState(() => getAITokenUsageSessionSummary());
     const [lastAIMetadata, setLastAIMetadata] = useState(null);
     const sessionIdRef = useRef(null);
     const saveTimerRef = useRef(null);
@@ -2783,6 +2808,13 @@ export default function AIChatPage() {
     const tokenBudgetLabel = tokenBudgetReady
         ? `${tokenBudget.remainingPercent}%`
         : 'sync';
+    const lastTokenUsage = lastAIMetadata?.tokenUsage || tokenSession.last || null;
+    const lastTokenLabel = lastTokenUsage
+        ? `${formatTokenCount(lastTokenUsage.totalTokens)}`
+        : 'รอข้อมูล';
+    const lastTokenDetail = lastTokenUsage
+        ? `${usageKindLabel(lastTokenUsage)} • ${lastTokenUsage.model || 'AI'}`
+        : 'ยังไม่มี request ในรอบนี้';
     const roleTermCoverage = getRoleTermCoverage();
     const roleTermReadinessValue = roleTermCoverage.ready
         ? `${roleTermCoverage.count} roles`
@@ -2801,6 +2833,7 @@ export default function AIChatPage() {
         { icon: FileSpreadsheet, label: 'ไฟล์วิเคราะห์', value: uploadedFileLabel, detail: uploadedFileData ? 'พร้อมนำไปรวมบริบท' : 'CSV / Excel', color: 'var(--accent-orange)' },
         { icon: Bot, label: 'Model ล่าสุด', value: aiRuntimeStatus.lastModelLabel, detail: aiRuntimeStatus.mode === 'auto' ? 'ต่ำไปสูงอัตโนมัติ' : 'manual override', color: 'var(--accent-purple)' },
         { icon: Gauge, label: 'Token คงเหลือ', value: tokenBudgetLabel, detail: tokenBudgetReady ? `${tokenBudget.remainingTokens.toLocaleString('th-TH')} tokens` : 'กำลังซิงก์ server', color: 'var(--accent-cyan)' },
+        { icon: Gauge, label: 'Token รอบล่าสุด', value: lastTokenLabel, detail: lastTokenDetail, color: lastTokenUsage?.isEstimated ? 'var(--accent-warning)' : 'var(--accent-success)' },
     ];
     const answerVerification = lastAIMetadata?.answerVerification;
     const contextSlimming = lastAIMetadata?.contextSlimming || {};
@@ -2811,7 +2844,9 @@ export default function AIChatPage() {
         { label: 'Denied', value: lastAIMetadata?.deniedDatasets?.length ? lastAIMetadata.deniedDatasets.slice(0, 3).join(', ') : 'none', detail: 'role policy', state: lastAIMetadata?.deniedDatasets?.length ? 'warn' : 'ready' },
         { label: 'Verification', value: answerVerification?.status || 'waiting', detail: answerVerification?.warningCount ? `${answerVerification.warningCount} warning` : `${answerVerification?.answerNumberCount || 0} numbers`, state: verificationState },
         { label: 'Context budget', value: contextSlimming.usedChars ? `${contextSlimming.usedChars.toLocaleString('th-TH')} chars` : 'waiting', detail: contextSlimming.originalChars ? `from ${contextSlimming.originalChars.toLocaleString('th-TH')}` : 'selected per intent', state: contextSlimming.trimmedContextCount ? 'warn' : (lastAIMetadata ? 'ready' : 'idle') },
-        { label: 'Token estimate', value: lastAIMetadata?.tokenEstimate ? lastAIMetadata.tokenEstimate.toLocaleString('th-TH') : '-', detail: lastAIMetadata?.providerTokens ? `provider ${lastAIMetadata.providerTokens.toLocaleString('th-TH')}` : 'estimated', state: lastAIMetadata ? 'ready' : 'idle' },
+        { label: 'Token usage', value: lastTokenUsage ? `${formatTokenCount(lastTokenUsage.totalTokens)}` : '-', detail: lastTokenUsage ? `${usageKindLabel(lastTokenUsage)} • in ${formatTokenCount(lastTokenUsage.inputTokens)} / out ${formatTokenCount(lastTokenUsage.outputTokens)}` : 'waiting', state: lastTokenUsage?.isEstimated ? 'warn' : (lastTokenUsage ? 'ready' : 'idle') },
+        { label: 'Session total', value: tokenSession.requestCount ? `${formatTokenCount(tokenSession.totalTokens)}` : '-', detail: tokenSession.requestCount ? `${tokenSession.requestCount} req • avg ${formatTokenCount(tokenSession.averageTokens)}` : 'this browser session', state: tokenSession.estimatedCount ? 'warn' : (tokenSession.requestCount ? 'ready' : 'idle') },
+        { label: 'Token source', value: lastTokenUsage ? usageKindLabel(lastTokenUsage) : 'waiting', detail: lastTokenUsage?.source || 'provider metadata when available', state: lastTokenUsage?.isEstimated ? 'warn' : (lastTokenUsage ? 'ready' : 'idle') },
         { label: 'Latency', value: lastAIMetadata?.latencyMs ? `${lastAIMetadata.latencyMs}ms` : '-', detail: lastAIMetadata?.cached ? 'cache hit' : 'fresh response', state: lastAIMetadata ? 'ready' : 'idle' },
         { label: 'Model route', value: lastAIMetadata?.modelName || aiRuntimeStatus.lastModelLabel, detail: lastAIMetadata?.useSearch ? 'trusted web fallback' : 'local-first', state: 'ready' },
     ];
@@ -2887,15 +2922,18 @@ export default function AIChatPage() {
         const refreshRuntime = () => {
             setAiRuntimeStatus(getAIModelRuntimeStatus());
             setTokenBudget(getAITokenBudgetSnapshot());
+            setTokenSession(getAITokenUsageSessionSummary());
         };
         refreshRuntime();
         refreshAITokenBudgetSnapshot()
             .then(setTokenBudget)
             .catch(() => setTokenBudget(getAITokenBudgetSnapshot()));
         window.addEventListener('sci-ai-token-stats-updated', refreshRuntime);
+        window.addEventListener('sci-ai-token-usage-session-updated', refreshRuntime);
         window.addEventListener('sci-ai-usage-updated', refreshRuntime);
         return () => {
             window.removeEventListener('sci-ai-token-stats-updated', refreshRuntime);
+            window.removeEventListener('sci-ai-token-usage-session-updated', refreshRuntime);
             window.removeEventListener('sci-ai-usage-updated', refreshRuntime);
         };
     }, []);
@@ -3180,12 +3218,17 @@ export default function AIChatPage() {
             const aiPrompt = `ผู้ใช้อัปโหลดไฟล์ "${fileName}" และต้องการวิเคราะห์แบบ decision intelligence\n\n${formatUploadedFileContextForAI(parsed)}\n\nช่วยสรุป insight สำคัญ ความเสี่ยง/ข้อจำกัดของข้อมูล และข้อเสนอแนะที่อิงจาก schema/aggregate ของไฟล์เท่านั้น`;
 
             try {
-                const aiText = await sendAI(aiPrompt, undefined, { disableCache: isAnalyticalReasoningIntent(aiPrompt) });
+                let requestMeta = null;
+                const aiText = await sendAI(aiPrompt, undefined, {
+                    disableCache: isAnalyticalReasoningIntent(aiPrompt),
+                    onMetadata: (meta) => { requestMeta = meta; },
+                });
                 const parsedAI = parseAIResponse(aiText, aiPrompt);
                 setMessages(prev => [...prev, {
                     role: 'bot',
                     text: `**AI วิเคราะห์เพิ่มเติม:**\n\n${parsedAI.text}`,
-                    chart: parsedAI.chart
+                    chart: parsedAI.chart,
+                    tokenUsage: requestMeta?.tokenUsage,
                 }]);
             } catch (err) {
                 console.log('AI analysis skipped:', err.message);
@@ -3205,7 +3248,7 @@ export default function AIChatPage() {
     const createAIStreamUpdater = useCallback((sourceQuestion) => {
         const streamId = `ai_stream_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-        const renderStream = (fullText, isFinal = false) => {
+        const renderStream = (fullText, isFinal = false, metadata = null) => {
             const parsedAI = parseAIResponse(fullText || '', sourceQuestion);
             const nextMessage = {
                 role: 'bot',
@@ -3213,6 +3256,7 @@ export default function AIChatPage() {
                 chart: parsedAI.chart,
                 streaming: !isFinal,
                 _streamId: streamId,
+                tokenUsage: metadata?.tokenUsage || undefined,
             };
 
             setMessages(prev => {
@@ -3230,8 +3274,8 @@ export default function AIChatPage() {
                 }
                 renderStream(fullText, false);
             },
-            finalize(fullText) {
-                renderStream(fullText, true);
+            finalize(fullText, metadata = null) {
+                renderStream(fullText, true, metadata);
             },
             remove() {
                 setMessages(prev => prev.filter(m => m._streamId !== streamId));
@@ -3262,11 +3306,15 @@ export default function AIChatPage() {
                 }, 1000);
             });
             try {
-                const aiText = await sendAI(buildMessage(), undefined, { disableCache: isAnalyticalReasoningIntent(sourceQuestion) });
+                let requestMeta = null;
+                const aiText = await sendAI(buildMessage(), undefined, {
+                    disableCache: isAnalyticalReasoningIntent(sourceQuestion),
+                    onMetadata: (meta) => { requestMeta = meta; },
+                });
                 const parsedAI = parseAIResponse(aiText, sourceQuestion);
                 setMessages(prev => prev.map(m =>
                     m._retryId === retryId
-                        ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart }
+                        ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart, tokenUsage: requestMeta?.tokenUsage }
                         : m
                 ));
                 return;
@@ -3304,8 +3352,12 @@ export default function AIChatPage() {
             }
             const buildMsg = () => buildAIChatPrompt(userMsg, uploadedFileData, dashboardMergeSummary, user);
             stream = createAIStreamUpdater(userMsg);
-            const aiText = await sendAI(buildMsg(), stream.update, { disableCache: reasoningMode });
-            stream.finalize(aiText);
+            let requestMeta = null;
+            const aiText = await sendAI(buildMsg(), stream.update, {
+                disableCache: reasoningMode,
+                onMetadata: (meta) => { requestMeta = meta; },
+            });
+            stream.finalize(aiText, requestMeta);
         } catch (error) {
             stream?.remove();
             console.error('[AIChatPage] Gemini API error:', error);
@@ -3347,8 +3399,12 @@ export default function AIChatPage() {
                 return;
             }
             stream = createAIStreamUpdater(query);
-            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary, user), stream.update, { disableCache: reasoningMode });
-            stream.finalize(aiText);
+            let requestMeta = null;
+            const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary, user), stream.update, {
+                disableCache: reasoningMode,
+                onMetadata: (meta) => { requestMeta = meta; },
+            });
+            stream.finalize(aiText, requestMeta);
         } catch (error) {
             stream?.remove();
             console.error('[AIChatPage] Quick action error:', error);
@@ -3942,6 +3998,28 @@ export default function AIChatPage() {
                                         <small>{item.detail}</small>
                                     </div>
                                 ))}
+                            </div>
+                            <div className="ai-token-monitor-grid">
+                                <div className="ai-token-monitor-card">
+                                    <span>ใช้ในแชทนี้</span>
+                                    <strong>{formatTokenCount(tokenSession.totalTokens)}</strong>
+                                    <small>{tokenSession.requestCount} requests</small>
+                                </div>
+                                <div className="ai-token-monitor-card actual">
+                                    <span>Actual จาก provider</span>
+                                    <strong>{formatTokenCount(tokenSession.actualTokens)}</strong>
+                                    <small>{tokenSession.actualCount || 0} responses</small>
+                                </div>
+                                <div className="ai-token-monitor-card estimated">
+                                    <span>Estimated</span>
+                                    <strong>{formatTokenCount(tokenSession.estimatedTokens)}</strong>
+                                    <small>ใช้เมื่อ provider ไม่ส่ง usage</small>
+                                </div>
+                                <div className="ai-token-monitor-card">
+                                    <span>Context ที่ใช้เยอะสุด</span>
+                                    <strong>{tokenSession.topDataset?.dataset || '-'}</strong>
+                                    <small>{tokenSession.topDataset ? `${formatTokenCount(tokenSession.topDataset.tokens)} tokens` : 'รอข้อมูล'}</small>
+                                </div>
                             </div>
                             {answerVerification?.unsupportedNumbers?.length > 0 && (
                                 <div className="ai-observability-warning">

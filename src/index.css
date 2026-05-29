@@ -14295,6 +14295,51 @@ button,
   line-height: 1.45;
 }
 
+.ai-token-monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.ai-token-monitor-card {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-panel) 82%, transparent);
+}
+
+.ai-token-monitor-card.actual {
+  border-color: color-mix(in srgb, var(--accent-success) 28%, transparent);
+  background: color-mix(in srgb, var(--accent-success) 8%, var(--surface-panel));
+}
+
+.ai-token-monitor-card.estimated {
+  border-color: color-mix(in srgb, var(--accent-warning) 34%, transparent);
+  background: color-mix(in srgb, var(--accent-warning) 8%, var(--surface-panel));
+}
+
+.ai-token-monitor-card span,
+.ai-token-monitor-card small {
+  display: block;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-token-monitor-card strong {
+  display: block;
+  margin: 2px 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ai-system-prompt-list {
   display: grid;
   gap: 8px;
@@ -18248,6 +18293,7 @@ body {
   .ai-chat-page-quick-grid,
   .ai-command-status-grid,
   .ai-observability-grid,
+  .ai-token-monitor-grid,
   .ai-system-status-grid,
   .auto-sync-grid,
   .course-kpi-grid,
@@ -18362,6 +18408,7 @@ body {
     .ai-chat-page-quick-grid,
     .ai-command-status-grid,
     .ai-observability-grid,
+    .ai-token-monitor-grid,
     .ai-system-status-grid,
     .auto-sync-grid,
     .course-kpi-grid,
@@ -18441,6 +18488,7 @@ body {
     .ai-chat-page-quick-grid,
     .ai-command-status-grid,
     .ai-observability-grid,
+    .ai-token-monitor-grid,
     .ai-system-status-grid,
     .auto-sync-grid,
     .course-kpi-grid,
@@ -18516,6 +18564,49 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   margin: 8px 0 0;
+}
+
+.ai-message-token-footnote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.ai-token-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 8px;
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-panel) 86%, transparent);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.ai-token-badge.actual {
+  border-color: color-mix(in srgb, var(--accent-success) 34%, transparent);
+  background: color-mix(in srgb, var(--accent-success) 12%, transparent);
+  color: var(--accent-success);
+}
+
+.ai-token-badge.estimated {
+  border-color: color-mix(in srgb, var(--accent-warning) 38%, transparent);
+  background: color-mix(in srgb, var(--accent-warning) 12%, transparent);
+  color: var(--accent-warning);
+}
+
+.ai-token-badge.cache {
+  border-color: color-mix(in srgb, var(--accent-cyan) 34%, transparent);
+  background: color-mix(in srgb, var(--accent-cyan) 12%, transparent);
+  color: var(--accent-cyan);
 }
 
 .ai-answer-action-btn {

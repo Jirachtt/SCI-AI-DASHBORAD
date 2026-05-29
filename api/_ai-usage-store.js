@@ -75,6 +75,31 @@ function usageUser(payload = {}) {
   };
 }
 
+function safeList(value, max = 12) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(item => String(item || '').replace(/[^\w:./-]/g, '').slice(0, 80))
+    .filter(Boolean)
+    .slice(0, max);
+}
+
+function safeText(value, max = 120) {
+  return String(value || '').replace(/[^\w:./ -]/g, '').slice(0, max);
+}
+
+function sanitizeUsageMeta(payload = {}) {
+  return {
+    selectedIntent: safeText(payload.selectedIntent || payload.intent, 80),
+    selectedDatasets: safeList(payload.selectedDatasets || payload.datasets),
+    sourceCount: numberValue(payload.sourceCount),
+    contextCount: numberValue(payload.contextCount),
+    contextChars: numberValue(payload.contextChars),
+    chartRequest: Boolean(payload.chartRequest),
+    useSearch: Boolean(payload.useSearch),
+    sourceTypes: safeList(payload.sourceTypes, 8),
+  };
+}
+
 function numberValue(value) {
   const n = Number(value || 0);
   return Number.isFinite(n) ? n : 0;
@@ -207,7 +232,7 @@ export async function getAIUsageSnapshot({ clientHash = '', now = new Date(), li
   });
 }
 
-export async function reserveAIUsage({ req, model, inputTokens, limits = AI_USAGE_LIMITS, modelDefaults = {}, usagePayload = {} }) {
+export async function reserveAIUsage({ req, model, inputTokens, limits = AI_USAGE_LIMITS, modelDefaults = {}, usagePayload = {}, usageMeta = {} }) {
   const keys = usageKeys();
   const clientHash = clientHashFromRequest(req);
   const modelId = modelKey(model);
@@ -221,6 +246,7 @@ export async function reserveAIUsage({ req, model, inputTokens, limits = AI_USAG
   const reservationId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const nowIso = new Date().toISOString();
   const user = usageUser(usagePayload);
+  const safeUsageMeta = sanitizeUsageMeta(usageMeta);
 
   let result;
   await runTransaction([dailyPath, minutePath, clientPath], docs => {
@@ -299,6 +325,8 @@ export async function reserveAIUsage({ req, model, inputTokens, limits = AI_USAG
       clientPath,
       keys,
       user,
+      usageMeta: safeUsageMeta,
+      startedAtMs: Date.now(),
       snapshot: limitSnapshotFromDocs({
         daily: baseDaily,
         minute: baseMinute,
@@ -318,11 +346,12 @@ export async function reserveAIUsage({ req, model, inputTokens, limits = AI_USAG
   return result;
 }
 
-export async function completeAIUsage({ reservation, ok, totalTokens, outputTokens, providerMeasured = false }) {
+export async function completeAIUsage({ reservation, ok, totalTokens, outputTokens, providerMeasured = false, tokenUsage = null }) {
   if (!reservation?.dailyPath) return null;
   const nowIso = new Date().toISOString();
+  const eventPath = `ai_usage_events/${reservation.keys.dayKey}_${reservation.reservationId}`;
   let result;
-  await runTransaction([reservation.dailyPath], docs => {
+  await runTransaction([reservation.dailyPath, eventPath], docs => {
     const daily = {
       ...defaultDailyDoc(reservation.keys, AI_USAGE_LIMITS),
       ...(docs[reservation.dailyPath]?.data || {}),
@@ -339,6 +368,39 @@ export async function completeAIUsage({ reservation, ok, totalTokens, outputToke
       providerTokens: ok && providerMeasured ? finalTotalTokens : 0,
       estimatedTokens: ok && !providerMeasured ? finalTotalTokens : 0,
     });
+    const completedAtMs = Date.now();
+    const usage = tokenUsage || {};
+    const eventDoc = {
+      requestId: reservation.reservationId,
+      dayKey: reservation.keys.dayKey,
+      minuteKey: reservation.keys.minuteKey,
+      createdAt: nowIso,
+      completedAt: nowIso,
+      latencyMs: Math.max(0, completedAtMs - Number(reservation.startedAtMs || completedAtMs)),
+      success: Boolean(ok),
+      provider: usage.provider || 'gemini',
+      model: usage.model || reservation.model,
+      modelId: reservation.modelId,
+      source: usage.source || (providerMeasured ? 'provider_usage_metadata' : 'server_estimate'),
+      isEstimated: !providerMeasured,
+      inputTokens,
+      outputTokens: finalOutputTokens,
+      totalTokens: finalTotalTokens,
+      cachedTokens: numberValue(usage.cachedTokens),
+      reasoningTokens: numberValue(usage.reasoningTokens),
+      userRole: reservation.user?.role || 'unknown',
+      userId: reservation.user?.uid || '',
+      userEmailHash: reservation.user?.emailHash || '',
+      clientHash: reservation.clientHash || '',
+      selectedIntent: reservation.usageMeta?.selectedIntent || '',
+      selectedDatasets: reservation.usageMeta?.selectedDatasets || [],
+      sourceTypes: reservation.usageMeta?.sourceTypes || [],
+      sourceCount: numberValue(reservation.usageMeta?.sourceCount),
+      contextCount: numberValue(reservation.usageMeta?.contextCount),
+      contextChars: numberValue(reservation.usageMeta?.contextChars),
+      chartRequest: Boolean(reservation.usageMeta?.chartRequest),
+      useSearch: Boolean(reservation.usageMeta?.useSearch),
+    };
     const clamped = clampDailyDoc({
       ...next,
       updatedAt: nowIso,
@@ -352,7 +414,10 @@ export async function completeAIUsage({ reservation, ok, totalTokens, outputToke
       limits: AI_USAGE_LIMITS,
       keys: reservation.keys,
     });
-    return [updateWrite(reservation.dailyPath, clamped)];
+    return [
+      updateWrite(reservation.dailyPath, clamped),
+      updateWrite(eventPath, eventDoc),
+    ];
   });
   return result;
 }

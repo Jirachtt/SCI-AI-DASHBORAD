@@ -10,6 +10,7 @@ import { AI_ASSISTANT_NAME, APP_NAME_TH } from '../config/appBrand';
 import { tryInstantAnswer } from '../services/aiInstantAnswerService';
 import { canAIUseAction } from '../utils/aiAccessPolicy';
 import { isAnalyticalReasoningIntent } from '../utils/aiAdvicePolicy';
+import { usageKindLabel } from '../utils/aiTokenUsage';
 
 let aiChatPageModulePromise = null;
 
@@ -42,6 +43,14 @@ function FallbackChatMessage({ msg }) {
     return (
         <div className={`chat-message ${msg.role === 'user' ? 'user' : 'bot'}`}>
             <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+            {msg.tokenUsage && (
+                <div className="ai-message-token-footnote">
+                    <span className={`ai-token-badge ${msg.tokenUsage.source === 'cache' ? 'cache' : (msg.tokenUsage.isEstimated ? 'estimated' : 'actual')}`}>
+                        {usageKindLabel(msg.tokenUsage)}
+                    </span>
+                    <span>{Number(msg.tokenUsage.totalTokens || 0).toLocaleString('th-TH')} tokens</span>
+                </div>
+            )}
         </div>
     );
 }
@@ -218,7 +227,9 @@ export default function AIChat() {
             });
 
             try {
-                const aiText = await sendAI(buildPrompt(), { disableCache: isAnalyticalReasoningIntent(sourceQuestion) });
+                const aiText = await sendAI(buildPrompt(), {
+                    disableCache: isAnalyticalReasoningIntent(sourceQuestion),
+                });
                 const parsedAI = tools.parseAIResponse(aiText, sourceQuestion);
                 setMessages(prev => prev.map(message =>
                     message._retryId === retryId
@@ -261,9 +272,13 @@ export default function AIChat() {
         }
 
         const prompt = tools.buildAIChatPrompt(question, uploadedFileData, null, user);
-        const aiText = await sendAI(prompt, { disableCache: reasoningMode });
+        let requestMeta = null;
+        const aiText = await sendAI(prompt, {
+            disableCache: reasoningMode,
+            onMetadata: (meta) => { requestMeta = meta; },
+        });
         const parsedAI = tools.parseAIResponse(aiText, question);
-        setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart }]);
+        setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart, tokenUsage: requestMeta?.tokenUsage }]);
     };
 
     const submitQuestion = async (question) => {

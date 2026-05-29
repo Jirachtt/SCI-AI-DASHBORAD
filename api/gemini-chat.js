@@ -8,6 +8,7 @@ import {
   reserveAIUsage,
   usageHeaders,
 } from './_ai-usage-store.js';
+import { normalizeTokenUsage, tokenUsageHeaders } from './_token-usage.js';
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 35000);
@@ -107,27 +108,6 @@ function responseOutputTokens(body) {
     ?.map(part => part?.text || '')
     .join('\n') || '';
   return estimateTokens(text);
-}
-
-function providerTokenUsage(body, fallbackInputTokens = 0) {
-  const meta = body?.usageMetadata || {};
-  const total = Number(meta.totalTokenCount || 0);
-  const output = Number(meta.candidatesTokenCount || meta.outputTokenCount || 0);
-  if (Number.isFinite(total) && total > 0) {
-    return {
-      providerMeasured: true,
-      totalTokens: Math.floor(total),
-      outputTokens: Number.isFinite(output) && output > 0
-        ? Math.floor(output)
-        : Math.max(0, Math.floor(total) - Number(fallbackInputTokens || 0)),
-    };
-  }
-  const fallbackOutput = responseOutputTokens(body);
-  return {
-    providerMeasured: false,
-    totalTokens: Number(fallbackInputTokens || 0) + fallbackOutput,
-    outputTokens: fallbackOutput,
-  };
 }
 
 function cleanup(now = Date.now()) {
@@ -246,7 +226,7 @@ function recordStart({ req, model, inputTokens }) {
   return event;
 }
 
-function headersFor(model, usageSnapshot = null) {
+function headersFor(model, usageSnapshot = null, requestUsage = null) {
   const current = snapshot(model);
   const remainingPercent = Math.round((current.remaining.globalRpm / current.limits.globalRpm) * 100);
   const tokenPercent = Math.round((current.remaining.dailyTokenBudget / current.limits.dailyTokenBudget) * 100);
@@ -259,6 +239,7 @@ function headersFor(model, usageSnapshot = null) {
     'X-AI-Token-Remaining': current.remaining.dailyTokenBudget,
     'X-AI-Token-Remaining-Percent': tokenPercent,
     ...(usageSnapshot ? usageHeaders(usageSnapshot) : {}),
+    ...(requestUsage ? tokenUsageHeaders(requestUsage) : {}),
   };
 }
 
@@ -340,6 +321,7 @@ export default async function handler(req, res) {
       limits: LIMITS,
       modelDefaults: MODEL_DEFAULTS,
       usagePayload: payload?.usageUser || {},
+      usageMeta: payload?.usageMeta || {},
     });
   } catch (error) {
     if (isProductionUsageRequired()) {
@@ -393,6 +375,7 @@ export default async function handler(req, res) {
       for (const [header, value] of Object.entries({
         ...streamHeadersFor(model),
         ...(reservation?.snapshot ? usageHeaders(reservation.snapshot) : {}),
+        'X-AI-Request-Id': reservation?.reservationId || memoryEvent?.id || '',
       })) {
         if (value !== undefined && value !== null) res.setHeader(header, String(value));
       }
@@ -404,14 +387,23 @@ export default async function handler(req, res) {
         res.write(buffer);
       }
       const outputTokens = estimateTokens(rawStream);
+      const streamUsage = normalizeTokenUsage({}, {
+        provider: 'gemini',
+        model,
+        requestId: reservation?.reservationId || memoryEvent?.id || '',
+        fallbackInputTokens: inputTokens,
+        fallbackOutputTokens: outputTokens,
+        source: 'stream_server_estimate',
+      });
       if (memoryEvent) memoryEvent.outputTokens = outputTokens;
       if (reservation) {
         completeAIUsage({
           reservation,
           ok: true,
-          totalTokens: inputTokens + outputTokens,
+          totalTokens: streamUsage.totalTokens,
           outputTokens,
           providerMeasured: false,
+          tokenUsage: streamUsage,
         }).catch(err => console.warn('[AI usage] stream completion failed:', err?.message || err));
       }
       res.end();
@@ -419,9 +411,23 @@ export default async function handler(req, res) {
     }
 
     const body = await response.json().catch(() => ({}));
+    const requestId = reservation?.reservationId || memoryEvent?.id || '';
     const tokenUsage = response.ok
-      ? providerTokenUsage(body, inputTokens)
-      : { providerMeasured: false, totalTokens: 0, outputTokens: 0 };
+      ? normalizeTokenUsage(body?.usageMetadata || {}, {
+        provider: 'gemini',
+        model,
+        requestId,
+        fallbackInputTokens: inputTokens,
+        fallbackOutputTokens: responseOutputTokens(body),
+      })
+      : normalizeTokenUsage({}, {
+        provider: 'gemini',
+        model,
+        requestId,
+        fallbackInputTokens: 0,
+        fallbackOutputTokens: 0,
+        source: 'error_no_usage',
+      });
     if (memoryEvent) memoryEvent.outputTokens = tokenUsage.outputTokens;
     const completedSnapshot = reservation
       ? await completeAIUsage({
@@ -429,14 +435,15 @@ export default async function handler(req, res) {
         ok: response.ok,
         totalTokens: tokenUsage.totalTokens,
         outputTokens: tokenUsage.outputTokens,
-        providerMeasured: tokenUsage.providerMeasured,
+        providerMeasured: !tokenUsage.isEstimated,
+        tokenUsage,
       }).catch(err => {
         console.warn('[AI usage] completion failed:', err?.message || err);
         return reservation.snapshot;
       })
       : null;
 
-    sendJson(res, response.status, body, headersFor(model, completedSnapshot || reservation?.snapshot));
+    sendJson(res, response.status, body, headersFor(model, completedSnapshot || reservation?.snapshot, tokenUsage));
   } catch (err) {
     if (reservation) {
       completeAIUsage({

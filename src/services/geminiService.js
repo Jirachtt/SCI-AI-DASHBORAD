@@ -51,6 +51,11 @@ import { buildMjuConnectedContextForAI } from './mjuConnectedDataService';
 import { getAllAlerts } from '../utils/alerts';
 import { verifyAIAnswerAgainstContext } from '../utils/aiAnswerVerifier';
 import {
+    normalizeTokenUsage,
+    recordTokenUsageSession,
+    getTokenUsageSessionSummary,
+} from '../utils/aiTokenUsage';
+import {
     executiveCompensationDemo,
     getExecutiveCompensationSummary,
     buildStudentPaymentLedgerDemo,
@@ -254,6 +259,10 @@ function normalizeAIUsageSnapshot(value = {}) {
         requests: Number(value.requests || 0),
         completedRequests: Number(value.completedRequests || 0),
         failedRequests: Number(value.failedRequests || 0),
+        providerTokens: Math.max(0, Number(value.providerTokens || 0)),
+        estimatedTokens: Math.max(0, Number(value.estimatedTokens || 0)),
+        inputTokens: Math.max(0, Number(value.inputTokens || 0)),
+        outputTokens: Math.max(0, Number(value.outputTokens || 0)),
         remainingRequests: Number(value.remainingRequests || 0),
         resetAt: value.resetAt || null,
         resetLabel: value.resetLabel || '00:00 น.',
@@ -401,22 +410,48 @@ function estimateTokens(value) {
     return Math.ceil(String(value || '').length / 3.6);
 }
 
-function recordTokenStats({ model, intent, inputText, outputText, contextCount }) {
+function recordTokenStats({
+    model,
+    intent,
+    inputText,
+    outputText,
+    contextCount,
+    tokenUsage = null,
+    selectedDatasets = [],
+    latencyMs = null,
+}) {
     recordRateEvent(model);
     const stats = getAITokenStats();
-    const inputTokens = estimateTokens(inputText);
-    const outputTokens = estimateTokens(outputText);
+    const inputTokens = Number(tokenUsage?.inputTokens ?? estimateTokens(inputText));
+    const outputTokens = Number(tokenUsage?.outputTokens ?? estimateTokens(outputText));
+    const totalTokens = Number(tokenUsage?.totalTokens ?? (inputTokens + outputTokens));
+    const isEstimated = tokenUsage ? Boolean(tokenUsage.isEstimated) : true;
     const byModel = stats.byModel || {};
-    const modelStats = byModel[model] || { requests: 0, estimatedInputTokens: 0, estimatedOutputTokens: 0 };
+    const modelStats = byModel[model] || { requests: 0, estimatedInputTokens: 0, estimatedOutputTokens: 0, actualTokens: 0, estimatedTokens: 0 };
     modelStats.requests += 1;
     modelStats.estimatedInputTokens += inputTokens;
     modelStats.estimatedOutputTokens += outputTokens;
+    if (isEstimated) modelStats.estimatedTokens += totalTokens;
+    else modelStats.actualTokens += totalTokens;
     byModel[model] = modelStats;
+
+    const sessionSummary = recordTokenUsageSession(tokenUsage || normalizeTokenUsage({}, {
+        provider: 'gemini',
+        model,
+        fallbackInputTokens: inputTokens,
+        fallbackOutputTokens: outputTokens,
+        selectedDatasets,
+        contextCount,
+        latencyMs,
+        source: 'client_estimate',
+    }));
 
     const nextStats = {
         requests: (stats.requests || 0) + 1,
         estimatedInputTokens: (stats.estimatedInputTokens || 0) + inputTokens,
         estimatedOutputTokens: (stats.estimatedOutputTokens || 0) + outputTokens,
+        actualTokens: Number(stats.actualTokens || 0) + (isEstimated ? 0 : totalTokens),
+        estimatedTokens: Number(stats.estimatedTokens || 0) + (isEstimated ? totalTokens : 0),
         byModel,
         lastRequest: {
             model,
@@ -424,7 +459,19 @@ function recordTokenStats({ model, intent, inputText, outputText, contextCount }
             contextCount,
             estimatedInputTokens: inputTokens,
             estimatedOutputTokens: outputTokens,
+            totalTokens,
+            isEstimated,
+            source: tokenUsage?.source || 'client_estimate',
+            selectedDatasets: Array.isArray(selectedDatasets) ? selectedDatasets.slice(0, 12) : [],
+            latencyMs,
             at: new Date().toISOString(),
+        },
+        sessionSummary: {
+            requestCount: sessionSummary.requestCount,
+            totalTokens: sessionSummary.totalTokens,
+            actualTokens: sessionSummary.actualTokens,
+            estimatedTokens: sessionSummary.estimatedTokens,
+            averageTokens: sessionSummary.averageTokens,
         },
     };
 
@@ -447,9 +494,18 @@ export function getAIModelRuntimeStatus() {
         lastIntent: stats.lastRequest?.intent || '-',
         lastContextCount: Number(stats.lastRequest?.contextCount || 0),
         lastRequestAt: stats.lastRequest?.at || null,
+        lastTokenUsage: stats.lastRequest ? {
+            totalTokens: Number(stats.lastRequest.totalTokens || 0),
+            isEstimated: Boolean(stats.lastRequest.isEstimated),
+            source: stats.lastRequest.source || 'unknown',
+            selectedDatasets: stats.lastRequest.selectedDatasets || [],
+            latencyMs: stats.lastRequest.latencyMs || null,
+        } : null,
         escalationOrder: modelOrderForIntent('general', settings),
         catalog,
         totalRequests: Number(stats.requests || 0),
+        actualTokens: Number(stats.actualTokens || 0),
+        estimatedTokens: Number(stats.estimatedTokens || 0),
     };
 }
 
@@ -897,6 +953,7 @@ async function postGeminiModel(model, requestBody, options = {}) {
                 role: options.user.role || '',
                 email: options.user.email || '',
             } : undefined,
+            usageMeta: options.usageMeta || undefined,
         }),
     });
 }
@@ -1642,6 +1699,10 @@ function hrContext(options = {}) {
     })}${compensationContext}`;
 }
 
+export function getAITokenUsageSessionSummary() {
+    return getTokenUsageSessionSummary();
+}
+
 function strategicContext(options = {}) {
     const live = liveDatasetContext('strategic', 'ยุทธศาสตร์และ OKR', options);
     if (!live.data) return live.missing;
@@ -2165,6 +2226,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
         settings,
         useSearch,
     });
+    const retrievedContextCount = requestLocalContexts.length + (useSearch ? 2 : 0);
     const disableCacheForPlan = options.disableCache || executiveRecommendationMode || reasoningMode || orchestrationPlan.shouldDisableCache;
     const cachedResponse = disableCacheForPlan ? null : readAIResponseCache(responseCacheKey, useSearch);
     if (cachedResponse) {
@@ -2180,6 +2242,26 @@ async function _sendMessageImpl(userMessage, options = {}) {
             conversationHistory = conversationHistory.slice(-16);
         }
         options.onChunk?.(cachedResponse, { cached: true });
+        const cacheUsage = {
+            provider: 'cache',
+            model: 'cache',
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0,
+            cachedTokens: null,
+            reasoningTokens: null,
+            isEstimated: false,
+            source: 'cache',
+            requestId: `cache_${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            selectedDatasets,
+            contextChars: Number(contextSlimming.usedChars || 0),
+            contextCount: retrievedContextCount,
+            latencyMs: Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - requestStartedAt),
+            success: true,
+            error: '',
+        };
+        recordTokenUsageSession(cacheUsage);
         emitAIDebugMetadata({
             cached: true,
             intent,
@@ -2191,6 +2273,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
             contextSlimming,
             latencyMs: Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - requestStartedAt),
             modelName: 'cache',
+            tokenUsage: cacheUsage,
             useSearch,
             chartRequest: isChartRequest,
         }, options.onMetadata);
@@ -2212,8 +2295,6 @@ async function _sendMessageImpl(userMessage, options = {}) {
     // Always use retrieved contexts only; realtime wins, current web datasets are used as the interim source.
     const baseInstruction = buildAgenticRagInstruction(originalQuestion, options.user || {}, settings);
     const systemText = baseInstruction;
-
-    const retrievedContextCount = requestLocalContexts.length + (useSearch ? 2 : 0);
 
     const baseRequestBody = {
         system_instruction: {
@@ -2263,7 +2344,22 @@ async function _sendMessageImpl(userMessage, options = {}) {
 
             console.log(`[Gemini] Trying model: ${model}...`);
             if (wantsStreaming) options.onChunk?.('', { reset: true, model });
-            const response = await postGeminiModel(model, requestBody, { stream: wantsStreaming, user: options.user });
+            const response = await postGeminiModel(model, requestBody, {
+                stream: wantsStreaming,
+                user: options.user,
+                usageMeta: {
+                    selectedIntent: intent,
+                    selectedDatasets,
+                    sourceCount: selectedDatasets.length,
+                    contextCount: retrievedContextCount,
+                    contextChars: contextSlimming.usedChars || 0,
+                    chartRequest: isChartRequest,
+                    useSearch,
+                    sourceTypes: requestLocalContexts
+                        .map(context => context?.meta?.sourceType || context?.sourceType || context?.meta?.trustLevel || '')
+                        .filter(Boolean),
+                },
+            });
             updateAITokenBudgetFromHeaders(response.headers);
 
             if (response.status === 429) {
@@ -2336,6 +2432,34 @@ async function _sendMessageImpl(userMessage, options = {}) {
             onModelSuccess(model);
             const latencyMs = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - requestStartedAt);
             const providerUsage = data?.usageMetadata || {};
+            const headerUsage = {
+                promptTokenCount: Number(response.headers.get('X-AI-Request-Input-Tokens') || 0) || undefined,
+                candidatesTokenCount: Number(response.headers.get('X-AI-Request-Output-Tokens') || 0) || undefined,
+                totalTokenCount: Number(response.headers.get('X-AI-Request-Total-Tokens') || 0) || undefined,
+                cachedContentTokenCount: Number(response.headers.get('X-AI-Request-Cached-Tokens') || 0) || undefined,
+                thoughtsTokenCount: Number(response.headers.get('X-AI-Request-Reasoning-Tokens') || 0) || undefined,
+            };
+            const headerHasUsage = Number(headerUsage.totalTokenCount || 0) > 0;
+            const headerEstimated = response.headers.get('X-AI-Request-Usage-Estimated') === 'true';
+            let tokenUsage = normalizeTokenUsage(
+                providerUsage?.totalTokenCount ? providerUsage : (headerHasUsage ? headerUsage : providerUsage),
+                {
+                provider: 'gemini',
+                model,
+                requestId: response.headers.get('X-AI-Request-Id') || '',
+                fallbackInputText: `${systemText}\n${JSON.stringify(conversationHistory)}`,
+                fallbackOutputText: aiText,
+                selectedDatasets,
+                contextChars: contextSlimming.usedChars || 0,
+                contextCount: retrievedContextCount,
+                latencyMs,
+                success: true,
+                source: providerUsage?.totalTokenCount ? '' : (response.headers.get('X-AI-Request-Usage-Source') || (wantsStreaming ? 'stream_client_estimate' : 'client_estimate')),
+                }
+            );
+            if (!providerUsage?.totalTokenCount && headerHasUsage && headerEstimated) {
+                tokenUsage = { ...tokenUsage, isEstimated: true, source: response.headers.get('X-AI-Request-Usage-Source') || 'server_estimate' };
+            }
             emitAIDebugMetadata({
                 cached: false,
                 intent,
@@ -2344,7 +2468,9 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 deniedDatasets: orchestrationPlan.deniedDatasets || [],
                 sourceCount: selectedDatasets.length,
                 tokenEstimate: estimateTokens(`${systemText}\n${finalMessage}`),
-                providerTokens: providerUsage.totalTokenCount || null,
+                providerTokens: tokenUsage.isEstimated ? null : tokenUsage.totalTokens,
+                tokenUsage,
+                tokenUsageSource: tokenUsage.source,
                 contextSlimming,
                 latencyMs,
                 modelName: model,
@@ -2359,6 +2485,9 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 inputText: `${systemText}\n${JSON.stringify(conversationHistory)}`,
                 outputText: aiText,
                 contextCount: retrievedContextCount,
+                tokenUsage,
+                selectedDatasets,
+                latencyMs,
             });
             refreshAITokenBudgetSnapshot().catch(() => {});
 
