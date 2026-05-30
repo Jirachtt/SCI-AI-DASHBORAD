@@ -28,6 +28,15 @@ const TUITION_BREAKDOWN_COLORS = [
     'var(--accent-rose)',
 ];
 
+function toNumber(value, fallback = 0) {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : fallback;
+}
+
+function money(value) {
+    return `${Math.round(toNumber(value)).toLocaleString('th-TH')} บาท`;
+}
+
 export default function TuitionPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
@@ -36,20 +45,40 @@ export default function TuitionPage() {
     if (!canAccess(user?.role, 'tuition')) return <AccessDenied />;
 
     const showDetail = canAccess(user?.role, 'tuition_detail');
-    const isOfficialTuition = Array.isArray(tuitionData.officialMajors) && tuitionData.officialMajors.length > 0;
-    const plannedStudents2570 = tuitionData.byFaculty.reduce((sum, item) => sum + Number(item.plannedStudents2570 || 0), 0);
-    const totalAdditionalFee = tuitionData.officialMajors?.reduce((sum, item) => sum + Number(item.totalAdditionalFee || 0), 0) || 0;
+    const officialMajors = Array.isArray(tuitionData.officialMajors) ? tuitionData.officialMajors : [];
+    const facultyRows = Array.isArray(tuitionData.byFaculty) ? tuitionData.byFaculty : [];
+    const isOfficialTuition = officialMajors.length > 0;
+    const plannedStudents2570 = facultyRows.reduce((sum, item) => sum + toNumber(item.plannedStudents2570), 0);
+    const totalAdditionalFee = officialMajors.reduce((sum, item) => sum + toNumber(item.totalAdditionalFee), 0);
+    const tuitionPlanRows = (isOfficialTuition ? officialMajors : facultyRows).map(item => {
+        const name = item.major || item.name;
+        const fee = toNumber(item.newFee2570 ?? item.fee);
+        const currentFee = toNumber(item.fee2567to2569 ?? item.currentFee ?? item.fee);
+        const planned = toNumber(item.plannedStudents2570);
+        const students2569 = toNumber(item.students2569);
+        const projectedTermRevenue = fee * planned;
+        return {
+            ...item,
+            name,
+            fee,
+            currentFee,
+            plannedStudents2570: planned,
+            students2569,
+            projectedTermRevenue,
+        };
+    });
+    const projectedTermRevenue2570 = tuitionPlanRows.reduce((sum, item) => sum + toNumber(item.projectedTermRevenue), 0);
 
     const barData = {
-        labels: tuitionData.byFaculty.map(f => f.name),
+        labels: facultyRows.map(f => f.name),
         datasets: [{
             label: 'ค่าเทอม (บาท/เทอม)',
-            data: tuitionData.byFaculty.map(f => f.fee),
-            backgroundColor: tuitionData.byFaculty.map((_, i) => {
+            data: facultyRows.map(f => f.fee),
+            backgroundColor: facultyRows.map((_, i) => {
                 const colors = ['color-mix(in srgb, var(--accent-purple) 70%, transparent)', 'color-mix(in srgb, var(--accent-success) 70%, transparent)', 'color-mix(in srgb, var(--accent-warning) 70%, transparent)', 'color-mix(in srgb, var(--accent-danger) 70%, transparent)', 'color-mix(in srgb, var(--accent-blue) 70%, transparent)', 'color-mix(in srgb, var(--accent-cyan) 70%, transparent)', 'color-mix(in srgb, var(--accent-pink) 70%, transparent)', 'color-mix(in srgb, var(--accent-purple) 70%, transparent)', 'color-mix(in srgb, var(--accent-teal) 70%, transparent)', 'color-mix(in srgb, var(--accent-orange) 70%, transparent)', 'color-mix(in srgb, var(--accent-purple) 70%, transparent)', 'color-mix(in srgb, var(--text-subtle) 70%, transparent)'];
                 return colors[i % colors.length];
             }),
-            borderColor: tuitionData.byFaculty.map((_, i) => {
+            borderColor: facultyRows.map((_, i) => {
                 const colors = ['var(--accent-purple)', 'var(--accent-success)', 'var(--accent-warning)', 'var(--accent-danger)', 'var(--accent-blue)', 'var(--accent-cyan)', 'var(--accent-pink)', 'var(--accent-purple)', 'var(--accent-teal)', 'var(--accent-orange)', 'var(--accent-purple)', 'var(--text-subtle)'];
                 return colors[i % colors.length];
             }),
@@ -125,7 +154,7 @@ export default function TuitionPage() {
     ];
 
     const barDrilldownOptions = withChartDrilldown(barOptions, barData, setDrillDetail, (point) => {
-        const faculty = tuitionData.byFaculty[point.index];
+        const faculty = facultyRows[point.index];
         if (!faculty) return null;
         const avgEntryFee = Math.round((tuitionData.entryFee.min + tuitionData.entryFee.max) / 2);
         return {
@@ -245,6 +274,45 @@ export default function TuitionPage() {
                             <Pie data={pieData} options={pieDrilldownOptions} />
                         </div>
                     </div>
+                </div>
+            )}
+
+            {showDetail && tuitionPlanRows.length > 0 && (
+                <div className="data-table-container animate-in" style={{ marginTop: 24 }}>
+                    <div className="data-table-header">
+                        <span className="data-table-title">
+                            {isOfficialTuition ? 'รายละเอียดค่าธรรมเนียมรายหลักสูตร ปี 2570' : 'รายละเอียดค่าธรรมเนียมรายคณะ'}
+                        </span>
+                        {isOfficialTuition && (
+                            <span className="status-badge paid">
+                                รายรับ/เทอมประมาณ {money(projectedTermRevenue2570)}
+                            </span>
+                        )}
+                    </div>
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>หลักสูตร/รายการ</th>
+                                <th>ค่าธรรมเนียมปัจจุบัน</th>
+                                <th>ค่าธรรมเนียมใหม่ 2570</th>
+                                <th>นักศึกษา 2569</th>
+                                <th>แผนรับ 2570</th>
+                                <th>ประมาณรายรับ/เทอม</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tuitionPlanRows.map((row, index) => (
+                                <tr key={`${row.name}-${index}`}>
+                                    <td>{row.name}</td>
+                                    <td>{money(row.currentFee)}</td>
+                                    <td><strong>{money(row.fee)}</strong></td>
+                                    <td>{row.students2569 ? `${row.students2569.toLocaleString('th-TH')} คน` : '-'}</td>
+                                    <td>{row.plannedStudents2570 ? `${row.plannedStudents2570.toLocaleString('th-TH')} คน` : '-'}</td>
+                                    <td>{row.projectedTermRevenue ? money(row.projectedTermRevenue) : '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             )}
 

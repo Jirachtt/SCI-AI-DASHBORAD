@@ -107,7 +107,7 @@ const ACCESS_LEVELS = {
         dataRows: 100000,
         color: 'var(--accent-pink)',
         sections: [
-            'dashboard', 'tuition', 'student_life',
+            'dashboard', 'tuition', 'tuition_detail', 'student_life',
             'graduation_check', 'student_stats',
             'course_analytics',
             'ai_chat',
