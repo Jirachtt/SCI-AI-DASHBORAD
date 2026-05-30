@@ -1,4 +1,4 @@
-import { canAccess, canManageUsers, getRoleInfo } from '../utils/accessControl';
+import { canAccess, getRoleInfo, normalizeRole } from '../utils/accessControl';
 
 const CONSENT_KEY_PREFIX = 'sci-ai-dashboard:mju-connected-consent:';
 
@@ -97,28 +97,15 @@ function firstNonEmpty(...values) {
 }
 
 function normalizeUserType(role, user = {}) {
-    if (role === 'admin' || user.systemAdmin || user.canManageUsers || user.isAdminCodeSession) return 'admin';
+    if (role === 'admin') return 'admin';
     if (role === 'student' || user.studentCode || user.studentId) return 'student';
-    if (['dean', 'executive', 'chair', 'instructor'].includes(role)) return 'lecturer';
+    if (['dean', 'chair', 'general'].includes(role)) return 'lecturer';
     if (role === 'staff') return 'staff';
     return role || 'general';
 }
 
-function isAdminLike(user = {}, role = user?.role) {
-    const identifiers = [
-        user.uid,
-        user.mjuId,
-        user.mjuUserId,
-        user.employeeId,
-        user.employeeCode,
-        user.email,
-    ].map(value => String(value || '').toLowerCase());
-    return role === 'admin'
-        || user.systemAdmin === true
-        || user.canManageUsers === true
-        || user.isAdminCodeSession === true
-        || canManageUsers(user)
-        || identifiers.some(value => value === 'admin313' || value.includes('admin-bypass') || value === 'admin@mju.ac.th');
+function hasElevatedMjuDataScope(user = {}, role = user?.role) {
+    return normalizeRole(role) === 'dean' && user.mjuVerified === true;
 }
 
 function getConsentKey(user = {}) {
@@ -147,7 +134,7 @@ export function grantMjuConnectedDataConsent(user = {}) {
 }
 
 export function normalizeMjuIdentity(user = {}) {
-    const role = user.role || user.assignedRole || 'general';
+    const role = normalizeRole(user.role || user.assignedRole || 'general');
     const roleInfo = getRoleInfo(role);
     const studentCode = firstNonEmpty(user.studentCode, user.studentId, user.studentID);
     const employeeCode = firstNonEmpty(user.employeeCode, user.employeeId, user.personID, user.humanID);
@@ -177,21 +164,20 @@ export function normalizeMjuIdentity(user = {}) {
 }
 
 function isExecutiveLike(role) {
-    return ['dean', 'executive', 'chair'].includes(role);
+    return ['dean', 'chair'].includes(normalizeRole(role));
 }
 
 function isStaffLike(role) {
-    return ['dean', 'executive', 'chair', 'instructor', 'staff'].includes(role);
+    return ['dean', 'chair', 'staff', 'general'].includes(normalizeRole(role));
 }
 
 export function canUseMjuConnectedDomain(user = {}, domainId) {
     const domain = DOMAIN_BY_ID.get(domainId);
     if (!domain || !user) return false;
-    const role = user.role || 'general';
-    if (isAdminLike(user, role)) return true;
+    const role = normalizeRole(user.role || 'general');
     if (domain.id === 'profile') return Boolean(user.uid || user.email || user.mjuVerified);
     if (domain.scope === 'aggregate') return isExecutiveLike(role) || canAccess(role, domain.section);
-    if (domain.scope === 'advisor') return ['dean', 'chair', 'instructor'].includes(role);
+    if (domain.scope === 'advisor') return ['dean', 'chair'].includes(role);
     if (domain.scope === 'staff_self') return isStaffLike(role) && canAccess(role, domain.section);
     if (domain.scope === 'self') {
         if (role === 'student') return Boolean(user.studentCode || user.studentId || user.mjuVerified);
@@ -220,15 +206,15 @@ export function getMjuConnectedDataStatus(user = {}, domainId) {
 
     const identity = normalizeMjuIdentity(user);
     const allowed = canUseMjuConnectedDomain(user, domain.id);
-    const adminLike = isAdminLike(user, identity.role);
-    const consentGranted = adminLike || hasMjuConnectedDataConsent(user);
+    const elevatedDataScope = hasElevatedMjuDataScope(user, identity.role);
+    const consentGranted = elevatedDataScope || hasMjuConnectedDataConsent(user);
     const permissions = {
         allowed,
         role: identity.role,
-        scope: adminLike ? 'admin_all' : domain.scope,
-        requiresConsent: domain.sensitive && !adminLike,
+        scope: elevatedDataScope ? 'faculty_scope' : domain.scope,
+        requiresConsent: domain.sensitive && !elevatedDataScope,
         consentGranted: !domain.sensitive || consentGranted,
-        elevated: adminLike,
+        elevated: elevatedDataScope,
     };
 
     if (!allowed) {

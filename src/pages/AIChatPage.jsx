@@ -48,6 +48,8 @@ import {
 import { buildMjuConnectedContextForAI } from '../services/mjuConnectedDataService';
 import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 import { usageKindLabel } from '../utils/aiTokenUsage';
+import { canAccess } from '../utils/accessControl';
+import AccessDenied from '../components/AccessDenied';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -2596,6 +2598,12 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
     );
 }
 
+export default function AIChatPage() {
+    const { user } = useAuth();
+    if (!canAccess(user?.role, 'ai_chat')) return <AccessDenied />;
+    return <AIChatPageContent />;
+}
+
 
 // ==================== Main AIChatPage Component ====================
 export function generateChartFromFile(parsed, fileName) {
@@ -2659,13 +2667,11 @@ export const MAIN_AI_QUICK_ACTIONS = [
 
 const ROLE_DISPLAY = {
     dean: 'คณบดี',
-    executive: 'ผู้บริหาร',
-    chair: 'ประธานหลักสูตร',
-    instructor: 'อาจารย์',
+    chair: 'หัวหน้าสาขา',
     staff: 'เจ้าหน้าที่',
     student: 'นักศึกษา',
-    general: 'ผู้ใช้ทั่วไป',
-    admin: 'ผู้ดูแลระบบ',
+    general: 'ทั่วไป',
+    admin: 'ผู้ดูแลผู้ใช้',
 };
 
 const QUICK_ACTION_GROUPS = [
@@ -2769,7 +2775,7 @@ function FileIntelligenceSummary({ fileData, onAsk, disabled = false }) {
     );
 }
 
-export default function AIChatPage() {
+function AIChatPageContent() {
     const { user } = useAuth();
     const { theme } = useTheme();
     const [expandedChart, setExpandedChart] = useState(null);

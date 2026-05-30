@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import {
@@ -8,6 +8,7 @@ import {
     UserCheck, LineChart, Microscope, Wallet, FileBarChart2, ArrowUpRight
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import AccessDenied from '../components/AccessDenied';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
@@ -75,7 +76,7 @@ const topics = [
     }
 ];
 
-export default function DashboardHome() {
+function DashboardHomeContent() {
     const { user } = useAuth();
     const { data: dashboardSummary } = useDashboardDataset('dashboard_summary');
     const { data: studentStatsData } = useDashboardDataset('student_stats');
@@ -620,4 +621,12 @@ export default function DashboardHome() {
             </div>
         </div>
     );
+}
+
+export default function DashboardHome() {
+    const { user } = useAuth();
+    if (!canAccess(user?.role, 'dashboard')) {
+        return user?.role === 'admin' ? <Navigate to="/dashboard/admin" replace /> : <AccessDenied />;
+    }
+    return <DashboardHomeContent />;
 }

@@ -1,10 +1,12 @@
-// Access control utility
-// Defines which sections each role can access
+import { ROLES, getRoleLabel, normalizeRole } from '../constants/roles.js';
 
-const GENERAL_SECTIONS = ['dashboard', 'tuition', 'ai_chat', 'academic_rules'];
-const FULL_DATA_SECTIONS = [
+// Access control utility
+// Keep user-management permissions separate from dashboard/data permissions.
+
+const ADMIN_SECTIONS = ['admin_panel', 'user_management', 'role_management'];
+
+const DEAN_SECTIONS = [
     'dashboard', 'tuition', 'tuition_detail',
-    'admin_panel',
     'financial', 'financial_detail', 'financial_faculty', 'student_life',
     'student_life_detail', 'faculty_budget', 'staff_management', 'reports',
     'budget_planning', 'student_list', 'graduation_check',
@@ -13,154 +15,129 @@ const FULL_DATA_SECTIONS = [
     'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
     'graduation_stats',
     'alert_center',
-    'academic_rules'
+    'academic_rules',
+];
+
+const CHAIR_SECTIONS = [
+    'dashboard', 'tuition', 'tuition_detail',
+    'student_life', 'student_life_detail', 'reports',
+    'student_list', 'graduation_check',
+    'student_stats', 'budget_forecast',
+    'tcas_admissions', 'course_analytics',
+    'research_overview', 'strategic_overview', 'ai_chat',
+    'graduation_stats',
+    'alert_center',
+    'academic_rules',
+];
+
+const STAFF_SECTIONS = [
+    'dashboard', 'tuition', 'tuition_detail',
+    'financial', 'student_life', 'student_life_detail',
+    'student_list', 'graduation_check',
+    'student_stats', 'budget_forecast',
+    'tcas_admissions', 'course_analytics',
+    'hr_overview', 'research_overview', 'ai_chat',
+    'graduation_stats',
+    'alert_center',
+    'academic_rules',
+];
+
+const GENERAL_SECTIONS = ['dashboard', 'tuition', 'ai_chat', 'academic_rules'];
+
+const STUDENT_SECTIONS = [
+    'dashboard', 'tuition', 'tuition_detail', 'student_life',
+    'graduation_check', 'student_stats',
+    'course_analytics',
+    'ai_chat',
+    'academic_rules',
 ];
 
 const ACCESS_LEVELS = {
-    admin: {
-        label: 'Admin',
-        level: 1,
-        dataRows: 100000,
-        color: 'var(--accent-teal)',
-        sections: FULL_DATA_SECTIONS
-    },
-    dean: {
-        label: 'คณบดี',
+    [ROLES.DEAN]: {
+        label: getRoleLabel(ROLES.DEAN),
         level: 1,
         dataRows: 1000000,
         color: 'var(--accent-gold)',
-        sections: FULL_DATA_SECTIONS
+        sections: DEAN_SECTIONS,
     },
-    chair: {
-        label: 'ประธานหลักสูตร',
+    [ROLES.CHAIR]: {
+        label: getRoleLabel(ROLES.CHAIR),
         level: 2,
         dataRows: 500000,
         color: 'var(--accent-info)',
-        sections: [
-            'dashboard', 'tuition', 'tuition_detail',
-            'financial', 'student_life', 'student_life_detail', 'reports',
-            'student_list', 'graduation_check',
-            'student_stats', 'budget_forecast',
-            'tcas_admissions', 'course_analytics',
-            'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
-            'graduation_stats',
-            'alert_center',
-            'academic_rules'
-        ]
+        sections: CHAIR_SECTIONS,
     },
-    executive: {
-        label: 'ผู้บริหาร',
-        level: 2,
-        dataRows: 750000,
-        color: 'var(--accent-purple)',
-        sections: [
-            'dashboard', 'tuition', 'tuition_detail',
-            'financial', 'financial_detail', 'financial_faculty', 'student_life',
-            'student_life_detail', 'faculty_budget', 'reports',
-            'budget_planning', 'graduation_check',
-            'student_stats', 'budget_forecast',
-            'tcas_admissions', 'course_analytics',
-            'hr_overview', 'research_overview', 'strategic_overview', 'ai_chat',
-            'graduation_stats',
-            'alert_center',
-            'academic_rules'
-        ]
-    },
-    instructor: {
-        label: 'อาจารย์',
-        level: 3,
-        dataRows: 200000,
-        color: 'var(--accent-cyan)',
-        sections: [
-            'dashboard', 'student_life', 'student_life_detail',
-            'graduation_check', 'student_stats',
-            'tcas_admissions', 'course_analytics',
-            'research_overview', 'ai_chat',
-            'graduation_stats',
-            'academic_rules'
-        ]
-    },
-    staff: {
-        label: 'Staff',
+    [ROLES.STAFF]: {
+        label: getRoleLabel(ROLES.STAFF),
         level: 3,
         dataRows: 300000,
         color: 'var(--accent-success-deep)',
-        sections: [
-            'dashboard', 'financial',
-            'student_stats', 'graduation_stats', 'budget_forecast',
-            'tcas_admissions', 'course_analytics',
-            'hr_overview', 'research_overview', 'ai_chat',
-            'alert_center',
-            'academic_rules'
-        ]
+        sections: STAFF_SECTIONS,
     },
-    general: {
-        label: 'ทั่วไป',
+    [ROLES.GENERAL]: {
+        label: getRoleLabel(ROLES.GENERAL),
         level: 4,
         dataRows: 100000,
         color: 'var(--accent-purple)',
-        sections: GENERAL_SECTIONS
+        sections: GENERAL_SECTIONS,
     },
-    student: {
-        label: 'นักศึกษา',
+    [ROLES.STUDENT]: {
+        label: getRoleLabel(ROLES.STUDENT),
         level: 4,
         dataRows: 100000,
         color: 'var(--accent-pink)',
-        sections: [
-            'dashboard', 'tuition', 'tuition_detail', 'student_life',
-            'graduation_check', 'student_stats',
-            'course_analytics',
-            'ai_chat',
-            'academic_rules'
-        ]
+        sections: STUDENT_SECTIONS,
     },
-    // Pending approval roles — same access as general, amber badge
-    pending_staff: {
-        label: 'รอการอนุมัติ (Staff)',
-        level: 4,
-        dataRows: 100000,
-        color: 'var(--accent-warning)',
-        sections: GENERAL_SECTIONS
+    [ROLES.ADMIN]: {
+        label: getRoleLabel(ROLES.ADMIN),
+        level: 9,
+        dataRows: 0,
+        color: 'var(--accent-danger)',
+        sections: ADMIN_SECTIONS,
     },
-    pending_chair: {
-        label: 'รอการอนุมัติ (Chair)',
-        level: 4,
-        dataRows: 100000,
-        color: 'var(--accent-warning)',
-        sections: GENERAL_SECTIONS
-    }
 };
 
 export function canAccess(role, section) {
-    const access = ACCESS_LEVELS[role];
+    if (!section) return false;
+    const normalizedRole = normalizeRole(role);
+    const access = ACCESS_LEVELS[normalizedRole];
     if (!access) return false;
     return access.sections.includes(section);
 }
 
 export function getRoleInfo(role) {
-    return ACCESS_LEVELS[role] || null;
+    const normalizedRole = normalizeRole(role);
+    return ACCESS_LEVELS[normalizedRole] || null;
 }
 
 export function getRoleBadgeColor(role) {
-    const info = ACCESS_LEVELS[role];
+    const info = getRoleInfo(role);
     return info ? info.color : 'var(--text-subtle)';
 }
 
 export function getDataRowLimit(role) {
-    const info = ACCESS_LEVELS[role];
+    const info = getRoleInfo(role);
     return info ? info.dataRows : 100000;
 }
 
 export function canManageUsers(userOrRole) {
     const role = typeof userOrRole === 'string' ? userOrRole : userOrRole?.role;
-    if (typeof userOrRole === 'object' && (userOrRole?.canManageUsers === true || userOrRole?.systemAdmin === true)) {
+    if (
+        typeof userOrRole === 'object'
+        && (userOrRole?.canManageUsers === true || userOrRole?.systemAdmin === true)
+    ) {
         return true;
     }
-    return role === 'admin' || role === 'dean';
+    return normalizeRole(role) === ROLES.ADMIN;
 }
 
 export function isPendingRole(role) {
     return role === 'pending_staff' || role === 'pending_chair';
 }
 
+export function hasStudentDataWriteAccess(role) {
+    return [ROLES.DEAN, ROLES.CHAIR, ROLES.STAFF].includes(normalizeRole(role));
+}
+
+export { normalizeRole };
 export default ACCESS_LEVELS;

@@ -1,3 +1,5 @@
+import { ROLES, getRoleLabel, normalizeRole } from '../constants/roles.js';
+
 const SSO_STATE_KEY = 'mju_sso_state';
 const SSO_RETURN_KEY = 'mju_sso_return_to';
 const DEFAULT_MJU_SSO_CLIENT_ID = '74dade2afc8449ecb975165f6451619f';
@@ -220,29 +222,21 @@ export function normalizeMjuRoleFromClaims(claims = {}) {
         claims.departmentRole,
     ].filter(Boolean).join(' ');
 
-    if (['admin', 'system_admin'].includes(raw)) return 'admin';
-    if (['dean', 'คณบดี', 'ผจก.คณะ', 'ผู้จัดการคณะ'].includes(raw) || hasDeanSignal(roleText)) return 'dean';
-    if (executiveEmails.includes(email) || hasExecutiveSignal(roleText)) return 'executive';
-    if (['chair', 'program_chair', 'head', 'หัวหน้าหลักสูตร', 'ประธานหลักสูตร'].includes(raw)) return 'chair';
-    if (hasInstructorSignal(roleText)) return 'instructor';
-    if (['staff', 'employee', 'บุคลากร', 'เจ้าหน้าที่'].includes(raw) || hasStaffSignal(roleText)) return 'staff';
-    if (['student', 'นิสิต', 'นักศึกษา'].includes(raw)) return 'student';
-    if (studentId) return 'student';
-    if (staffId) return 'staff';
-    if (/^\d{8,13}$/.test(mjuId)) return 'student';
-    return 'general';
+    if (['admin', 'system_admin'].includes(raw)) return ROLES.ADMIN;
+    if (['dean', 'คณบดี', 'ผจก.คณะ', 'ผู้จัดการคณะ'].includes(raw) || hasDeanSignal(roleText)) return ROLES.DEAN;
+    if (executiveEmails.includes(email) || hasExecutiveSignal(roleText)) return ROLES.DEAN;
+    if (['chair', 'program_chair', 'department_head', 'head', 'หัวหน้าหลักสูตร', 'ประธานหลักสูตร'].includes(raw)) return ROLES.CHAIR;
+    if (['staff', 'employee', 'officer', 'บุคลากร', 'เจ้าหน้าที่'].includes(raw) || hasStaffSignal(roleText)) return ROLES.STAFF;
+    if (['student', 'นิสิต', 'นักศึกษา'].includes(raw)) return ROLES.STUDENT;
+    if (hasInstructorSignal(roleText)) return ROLES.GENERAL;
+    if (studentId) return ROLES.STUDENT;
+    if (staffId) return ROLES.STAFF;
+    if (/^\d{8,13}$/.test(mjuId)) return ROLES.STUDENT;
+    return ROLES.GENERAL;
 }
 
 export function roleLabelForMjuRole(role) {
-    const labels = {
-        admin: 'Admin',
-        dean: 'คณบดี (MJU SSO)',
-        chair: 'ประธานหลักสูตร (MJU SSO)',
-        executive: 'ผู้บริหาร (Executive)',
-        instructor: 'อาจารย์ (MJU SSO)',
-        staff: 'เจ้าหน้าที่ (MJU SSO)',
-        student: 'นักศึกษา (MJU SSO)',
-        general: 'ผู้ใช้ทั่วไป (MJU SSO)',
-    };
-    return labels[role] || labels.general;
+    const normalized = normalizeRole(role);
+    if (normalized === ROLES.ADMIN) return 'ผู้ดูแลผู้ใช้ (Admin)';
+    return `${getRoleLabel(normalized)} (MJU SSO)`;
 }

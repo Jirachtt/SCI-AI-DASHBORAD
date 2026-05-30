@@ -10,7 +10,7 @@ function sendJson(res, status, body) {
 }
 
 function validAdminCode() {
-  return String(process.env.ADMIN_LOGIN_CODE || process.env.DEAN_ACCESS_CODE || 'admin313').trim();
+  return String(process.env.ADMIN_LOGIN_CODE || 'admin313').trim();
 }
 
 export default async function handler(req, res) {

@@ -6,9 +6,10 @@ import { collection, doc, getDocs, orderBy, query, updateDoc } from 'firebase/fi
 import {
     Shield, Users, Clock, Briefcase, Building, Check, X, Search, Filter,
     RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
-    ScrollText, ShieldCheck, Database, Activity
+    ScrollText, ShieldCheck
 } from 'lucide-react';
 import { canManageUsers, getRoleBadgeColor, getRoleInfo, isPendingRole } from '../utils/accessControl';
+import { MANAGEABLE_ROLES, ROLE_LABELS_WITH_EN, getRoleInitial, normalizeRole } from '../constants/roles';
 import {
     addRoleMonths,
     buildRoleValidityPatch,
@@ -20,26 +21,17 @@ import {
     toRoleDateInput
 } from '../utils/roleValidity';
 import AdminAuditLog from '../components/AdminAuditLog';
-import AdminAIUsagePanel from '../components/AdminAIUsagePanel';
-import AdminAutoSyncPanel from '../components/AdminAutoSyncPanel';
-import AdminDataAccuracyPanel from '../components/AdminDataAccuracyPanel';
-import AdminDataUpload from '../components/AdminDataUpload';
 import ExportPDFButton from '../components/ExportPDFButton';
 
-const MANAGEABLE_ROLES = ['executive', 'dean', 'chair', 'instructor', 'staff', 'student', 'general'];
 const ROLE_LABELS = {
-    admin: 'Admin',
-    dean: 'คณบดี (Dean)',
-    executive: 'ผู้บริหาร (Executive)',
-    chair: 'ประธานหลักสูตร (Chair)',
-    instructor: 'อาจารย์ (Instructor)',
-    staff: 'เจ้าหน้าที่ (Staff)',
-    general: 'ผู้ใช้ทั่วไป (General)',
-    student: 'นักศึกษา (Student)',
+    ...ROLE_LABELS_WITH_EN,
     pending_staff: 'รอการอนุมัติ (Staff)',
     pending_chair: 'รอการอนุมัติ (Chair)'
 };
-const AVATAR_BY_ROLE = { dean: 'D', executive: 'E', chair: 'C', instructor: 'I', staff: 'S', general: 'U', student: 'U' };
+const AVATAR_BY_ROLE = MANAGEABLE_ROLES.reduce((acc, role) => {
+    acc[role] = getRoleInitial(role);
+    return acc;
+}, { pending_staff: 'S', pending_chair: 'C' });
 const DEMO_USERS = [
     {
         uid: 'demo-pending-staff',
@@ -106,19 +98,21 @@ const getDisplayStatus = (u = {}) => {
 };
 
 const hasManageableRoleTerm = (u = {}) =>
-    MANAGEABLE_ROLES.includes(u.role) && getDisplayStatus(u) === 'approved';
+    MANAGEABLE_ROLES.includes(normalizeRole(u.role)) && getDisplayStatus(u) === 'approved';
 
 function buildMissingRoleValidityPatch(u = {}) {
     if (!hasManageableRoleTerm(u)) return null;
     const validity = getRoleValidity(u);
     const patch = {};
 
+    const normalizedRole = normalizeRole(u.role);
+    if (u.role !== normalizedRole) patch.role = normalizedRole;
     if (!u.roleStartedAt) patch.roleStartedAt = validity.startedAt.toISOString();
     if (!u.roleExpiresAt) patch.roleExpiresAt = validity.expiresAt.toISOString();
     if (!Number(u.roleDurationYears)) patch.roleDurationYears = validity.durationYears;
     if (!u.status) patch.status = 'approved';
-    if (!u.roleLabel && ROLE_LABELS[u.role]) patch.roleLabel = ROLE_LABELS[u.role];
-    if (!u.avatar) patch.avatar = AVATAR_BY_ROLE[u.role] || 'U';
+    if (!u.roleLabel || u.role !== normalizedRole) patch.roleLabel = ROLE_LABELS[normalizedRole];
+    if (!u.avatar || u.role !== normalizedRole) patch.avatar = AVATAR_BY_ROLE[normalizedRole] || 'U';
 
     if (Object.keys(patch).length === 0) return null;
     return {
@@ -205,10 +199,12 @@ export default function AdminPanelPage() {
     const stats = useMemo(() => ({
         total: users.length,
         pending: pendingUsers.length,
-        executive: users.filter(u => u.role === 'executive').length,
-        instructor: users.filter(u => u.role === 'instructor').length,
-        staff: users.filter(u => u.role === 'staff').length,
-        chair: users.filter(u => u.role === 'chair').length,
+        dean: users.filter(u => normalizeRole(u.role) === 'dean').length,
+        chair: users.filter(u => normalizeRole(u.role) === 'chair').length,
+        staff: users.filter(u => normalizeRole(u.role) === 'staff').length,
+        general: users.filter(u => normalizeRole(u.role) === 'general').length,
+        student: users.filter(u => normalizeRole(u.role) === 'student').length,
+        admin: users.filter(u => normalizeRole(u.role) === 'admin').length,
         expiring: users.filter(u => hasManageableRoleTerm(u) && getRoleValidity(u).status === 'expiring').length,
         expired: users.filter(u => hasManageableRoleTerm(u) && getRoleValidity(u).status === 'expired').length
     }), [users, pendingUsers]);
@@ -216,7 +212,7 @@ export default function AdminPanelPage() {
     const filteredUsers = useMemo(() => {
         const s = search.trim().toLowerCase();
         return users.filter(u => {
-            if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+            if (roleFilter !== 'all' && normalizeRole(u.role) !== roleFilter) return false;
             if (!s) return true;
             return (
                 (u.name || '').toLowerCase().includes(s) ||
@@ -276,7 +272,7 @@ export default function AdminPanelPage() {
     };
 
     const handleApprove = async (u) => {
-        const requested = u.requestedRole || (u.role === 'pending_staff' ? 'staff' : 'chair');
+        const requested = normalizeRole(u.requestedRole || (u.role === 'pending_staff' ? 'staff' : 'chair'));
         const info = getRoleInfo(requested);
         const roleLabel = ROLE_LABELS[requested] || (info?.label ? `${info.label} (${requested.charAt(0).toUpperCase() + requested.slice(1)})` : requested);
         const patch = {
@@ -339,19 +335,24 @@ export default function AdminPanelPage() {
             showToast('error', 'ไม่สามารถเปลี่ยน role ของตัวเองได้');
             return;
         }
-        if (newRole === u.role) return;
+        const normalizedNewRole = normalizeRole(newRole);
+        if (!MANAGEABLE_ROLES.includes(normalizedNewRole)) {
+            showToast('error', 'role นี้ไม่อยู่ในชุดสิทธิ์ใหม่ของระบบ');
+            return;
+        }
+        if (normalizedNewRole === normalizeRole(u.role)) return;
         const patch = {
-            role: newRole,
-            roleLabel: ROLE_LABELS[newRole] || newRole,
-            avatar: AVATAR_BY_ROLE[newRole] || 'U',
+            role: normalizedNewRole,
+            roleLabel: ROLE_LABELS[normalizedNewRole] || normalizedNewRole,
+            avatar: AVATAR_BY_ROLE[normalizedNewRole] || 'U',
             status: 'approved',
             approvedBy: user?.uid || user?.email || 'admin',
             approvedAt: new Date().toISOString(),
-            ...buildRoleValidityPatch(newRole, new Date())
+            ...buildRoleValidityPatch(normalizedNewRole, new Date())
         };
         if (u.uid?.startsWith('demo-')) {
             setUsers(prev => prev.map(x => x.uid === u.uid ? { ...x, ...patch } : x));
-            showToast('success', `เปลี่ยน role ของ ${u.name || u.email} เป็น ${ROLE_LABELS[newRole] || newRole}`);
+            showToast('success', `เปลี่ยน role ของ ${u.name || u.email} เป็น ${ROLE_LABELS[normalizedNewRole] || normalizedNewRole}`);
             return;
         }
         setSavingUid(u.uid);
@@ -359,7 +360,7 @@ export default function AdminPanelPage() {
         setSavingUid(null);
         if (result.success) {
             setUsers(prev => prev.map(x => x.uid === u.uid ? { ...x, ...patch } : x));
-            showToast('success', `เปลี่ยน role ของ ${u.name || u.email} เป็น ${ROLE_LABELS[newRole] || newRole}`);
+            showToast('success', `เปลี่ยน role ของ ${u.name || u.email} เป็น ${ROLE_LABELS[normalizedNewRole] || normalizedNewRole}`);
         } else {
             showToast('error', 'เปลี่ยน role ไม่สำเร็จ: ' + result.error);
         }
@@ -423,8 +424,8 @@ export default function AdminPanelPage() {
                         <ShieldCheck size={22} />
                     </div>
                     <div>
-                        <p className="admin-stat-label">ผู้บริหาร (Executive)</p>
-                        <h2 className="admin-stat-value">{stats.executive}</h2>
+                        <p className="admin-stat-label">คณบดี (Dean)</p>
+                        <h2 className="admin-stat-value">{stats.dean}</h2>
                     </div>
                 </div>
                 <div className="admin-stat-card">
@@ -432,8 +433,8 @@ export default function AdminPanelPage() {
                         <IdCard size={22} />
                     </div>
                     <div>
-                        <p className="admin-stat-label">อาจารย์ (Instructor)</p>
-                        <h2 className="admin-stat-value">{stats.instructor}</h2>
+                        <p className="admin-stat-label">ทั่วไป (General)</p>
+                        <h2 className="admin-stat-value">{stats.general}</h2>
                     </div>
                 </div>
                 <div className="admin-stat-card">
@@ -450,7 +451,7 @@ export default function AdminPanelPage() {
                         <Building size={22} />
                     </div>
                     <div>
-                        <p className="admin-stat-label">ประธานหลักสูตร (Chair)</p>
+                        <p className="admin-stat-label">หัวหน้าสาขา (Chair)</p>
                         <h2 className="admin-stat-value">{stats.chair}</h2>
                     </div>
                 </div>
@@ -496,30 +497,6 @@ export default function AdminPanelPage() {
                 >
                     <ScrollText size={16} /> ประวัติการเปลี่ยนแปลง
                 </button>
-                <button
-                    className={`admin-tab ${activeTab === 'data' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('data')}
-                >
-                    <Database size={16} /> ข้อมูลระบบ
-                </button>
-                <button
-                    className={`admin-tab ${activeTab === 'sync' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('sync')}
-                >
-                    <RefreshCw size={16} /> Auto Sync
-                </button>
-                <button
-                    className={`admin-tab ${activeTab === 'accuracy' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('accuracy')}
-                >
-                    <ShieldCheck size={16} /> Data Accuracy
-                </button>
-                <button
-                    className={`admin-tab ${activeTab === 'aiUsage' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('aiUsage')}
-                >
-                    <Activity size={16} /> AI Usage
-                </button>
             </div>
 
             {/* Pending tab */}
@@ -539,7 +516,7 @@ export default function AdminPanelPage() {
                     ) : (
                         <div className="admin-pending-grid">
                             {pendingUsers.map(u => {
-                                const requested = u.requestedRole || (u.role === 'pending_staff' ? 'staff' : 'chair');
+                                const requested = normalizeRole(u.requestedRole || (u.role === 'pending_staff' ? 'staff' : 'chair'));
                                 return (
                                     <div key={u.uid} className="admin-pending-card">
                                         <div className="admin-pending-header">
@@ -607,15 +584,9 @@ export default function AdminPanelPage() {
                             <Filter size={16} />
                             <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
                                 <option value="all">ทุกตำแหน่ง</option>
-                                <option value="executive">ผู้บริหาร (Executive)</option>
-                                <option value="dean">คณบดี (Dean)</option>
-                                <option value="chair">ประธานหลักสูตร (Chair)</option>
-                                <option value="instructor">อาจารย์ (Instructor)</option>
-                                <option value="staff">เจ้าหน้าที่ (Staff)</option>
-                                <option value="student">นักศึกษา (Student)</option>
-                                <option value="general">ผู้ใช้ทั่วไป (General)</option>
-                                <option value="pending_staff">รออนุมัติ: Staff</option>
-                                <option value="pending_chair">รออนุมัติ: Chair</option>
+                                {MANAGEABLE_ROLES.map(role => (
+                                    <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -657,6 +628,7 @@ export default function AdminPanelPage() {
                                 <tbody>
                                     {filteredUsers.map(u => {
                                         const isSelf = u.uid === user?.uid;
+                                        const normalizedUserRole = normalizeRole(u.role);
                                         const validity = getRoleValidity(u);
                                         const canManageTime = hasManageableRoleTerm(u);
                                         const statusClass = getDisplayStatus(u);
@@ -682,14 +654,14 @@ export default function AdminPanelPage() {
                                                 <td className="admin-role-cell">
                                                     <select
                                                         className="admin-role-select"
-                                                        value={MANAGEABLE_ROLES.includes(u.role) ? u.role : ''}
+                                                        value={MANAGEABLE_ROLES.includes(normalizedUserRole) ? normalizedUserRole : ''}
                                                         onChange={(e) => handleChangeRole(u, e.target.value)}
                                                         disabled={isSelf || savingUid === u.uid}
-                                                        style={{ borderColor: getRoleBadgeColor(u.role) }}
-                                                        title={ROLE_LABELS[u.role] || u.role}
+                                                        style={{ borderColor: getRoleBadgeColor(normalizedUserRole) }}
+                                                        title={ROLE_LABELS[normalizedUserRole] || normalizedUserRole}
                                                     >
-                                                        {!MANAGEABLE_ROLES.includes(u.role) && (
-                                                            <option value="" disabled>{ROLE_LABELS[u.role] || u.role}</option>
+                                                        {!MANAGEABLE_ROLES.includes(normalizedUserRole) && (
+                                                            <option value="" disabled>{ROLE_LABELS[normalizedUserRole] || normalizedUserRole}</option>
                                                         )}
                                                         {MANAGEABLE_ROLES.map(r => (
                                                             <option key={r} value={r}>{ROLE_LABELS[r]}</option>
@@ -760,34 +732,6 @@ export default function AdminPanelPage() {
                 </div>
             )}
 
-            {/* System data tab */}
-            {activeTab === 'data' && (
-                <div className="admin-tab-panel">
-                    <AdminDataUpload onToast={showToast} />
-                </div>
-            )}
-
-            {/* Auto Sync tab */}
-            {activeTab === 'sync' && (
-                <div className="admin-tab-panel">
-                    <AdminAutoSyncPanel onToast={showToast} />
-                </div>
-            )}
-
-            {/* Data Accuracy tab */}
-            {activeTab === 'accuracy' && (
-                <div className="admin-tab-panel">
-                    <AdminDataAccuracyPanel onToast={showToast} />
-                </div>
-            )}
-
-            {/* AI Usage tab */}
-            {activeTab === 'aiUsage' && (
-                <div className="admin-tab-panel">
-                    <AdminAIUsagePanel onToast={showToast} />
-                </div>
-            )}
-
             {/* Confirm modal */}
             {confirmAction && (
                 <div className="admin-modal-overlay" onClick={() => setConfirmAction(null)}>
@@ -801,7 +745,7 @@ export default function AdminPanelPage() {
                         <p>
                             {confirmAction.type === 'approve'
                                 ? (() => {
-                                    const requested = confirmAction.user.requestedRole || (confirmAction.user.role === 'pending_staff' ? 'staff' : 'chair');
+                                    const requested = normalizeRole(confirmAction.user.requestedRole || (confirmAction.user.role === 'pending_staff' ? 'staff' : 'chair'));
                                     return <>จะให้สิทธิ์ <strong>{ROLE_LABELS[requested] || requested}</strong> แก่ <strong>{confirmAction.user.name}</strong> โดยเริ่มวันนี้และหมดอายุใน {getRoleDurationLabel(requested)}</>;
                                 })()
                                 : <>คำขอของ <strong>{confirmAction.user.name}</strong> จะถูกปฏิเสธ และถูกลดสิทธิ์เป็นผู้ใช้ทั่วไป</>}

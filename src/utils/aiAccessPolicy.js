@@ -1,6 +1,6 @@
-import { canAccess, getRoleInfo } from './accessControl.js';
+import { canAccess, getRoleInfo, normalizeRole } from './accessControl.js';
 
-const UNRESTRICTED_AI_ROLES = new Set(['admin', 'dean', 'executive']);
+const UNRESTRICTED_AI_ROLES = new Set(['dean']);
 
 const DOMAIN_SECTION_MAP = {
     students: ['student_stats', 'student_list'],
@@ -26,7 +26,8 @@ const DOMAIN_SECTION_MAP = {
 
 export function resolveAIRole(roleOrUser) {
     const rawRole = typeof roleOrUser === 'string' ? roleOrUser : roleOrUser?.role;
-    return rawRole && getRoleInfo(rawRole) ? rawRole : 'general';
+    const role = normalizeRole(rawRole);
+    return getRoleInfo(role) ? role : 'general';
 }
 export function isAIUnrestrictedRole(roleOrUser) {
     return UNRESTRICTED_AI_ROLES.has(resolveAIRole(roleOrUser));

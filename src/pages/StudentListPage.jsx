@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap, Users, AlertTriangle } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
-import { canAccess, canManageUsers } from '../utils/accessControl';
+import { canAccess, hasStudentDataWriteAccess } from '../utils/accessControl';
 
 /* ────────────── Student Data (live from Firestore, mock fallback) ────────────── */
 import { SCIENCE_MAJORS } from '../data/studentListData';
@@ -43,10 +43,10 @@ const ROWS_PER_PAGE = 20;
 /* ────────────── Component ────────────── */
 export default function StudentListPage() {
     const { user } = useAuth();
-    const canManage = canManageUsers(user);
-    const canViewStudentList = canManage || canAccess(user?.role, 'student_list');
+    const canViewStudentList = canAccess(user?.role, 'student_list');
+    const canManage = canViewStudentList && hasStudentDataWriteAccess(user?.role);
 
-    const [students, setStudents] = useState(() => getStudentListSync());
+    const [students, setStudents] = useState(() => (canViewStudentList ? getStudentListSync() : []));
     const [dataSourceStatus, setDataSourceStatus] = useState(() => getStudentDataSourceStatus());
     const [searchTerm, setSearchTerm] = useState('');
     const syncStudentState = useCallback((list = getStudentListSync()) => {
@@ -56,6 +56,10 @@ export default function StudentListPage() {
 
     // Load live data on mount; re-sync when an admin uploads or manually edits data.
     useEffect(() => {
+        if (!canViewStudentList) {
+            const clearTimer = window.setTimeout(() => setStudents([]), 0);
+            return () => window.clearTimeout(clearTimer);
+        }
         let cancelled = false;
         ensureStudentList().then(async list => {
             if (cancelled) return;
@@ -74,7 +78,7 @@ export default function StudentListPage() {
         });
         const unsub = onStudentDataChange(list => { if (!cancelled && list) syncStudentState(list); });
         return () => { cancelled = true; unsub(); };
-    }, [canManage, user?.uid, user?.email, syncStudentState]);
+    }, [canManage, canViewStudentList, user?.uid, user?.email, syncStudentState]);
     const [yearFilter, setYearFilter] = useState('all');
     const [majorFilter, setMajorFilter] = useState('all');
     const [page, setPage] = useState(1);

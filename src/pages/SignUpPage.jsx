@@ -84,6 +84,7 @@ const ROLE_OPTIONS = [
         roleLabel: 'รอการอนุมัติ (Chair)'
     },
 ];
+const PUBLIC_ROLE_OPTIONS = ROLE_OPTIONS.filter(role => ['general', 'student'].includes(role.value));
 
 export default function SignUpPage() {
     const { signup, checkEmailExists } = useAuth();
@@ -106,7 +107,7 @@ export default function SignUpPage() {
     const [checkingEmail, setCheckingEmail] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    const roleMeta = ROLE_OPTIONS.find(r => r.value === selectedRole) || null;
+    const roleMeta = PUBLIC_ROLE_OPTIONS.find(r => r.value === selectedRole) || null;
     const needsStep3 = roleMeta?.pending;
     const totalSteps = needsStep3 ? 3 : 2;
 
@@ -322,7 +323,7 @@ export default function SignUpPage() {
                     {step === 2 && (
                         <div className="signup-step-content">
                             <div className="signup-role-grid">
-                                {ROLE_OPTIONS.map(role => {
+                                {PUBLIC_ROLE_OPTIONS.map(role => {
                                     const Icon = role.icon;
                                     const selected = selectedRole === role.value;
                                     return (

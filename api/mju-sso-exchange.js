@@ -124,12 +124,13 @@ function normalizeRole(data = {}) {
     raw,
     firstValue(data, ['position', 'positionName', 'jobTitle', 'title', 'userGroup', 'personType', 'personnelType', 'departmentRole']),
   ].filter(Boolean).join(' ');
+  if (['admin', 'system_admin', 'super_admin'].includes(raw)) return 'admin';
   if (['dean', 'คณบดี', 'ผจก.คณะ', 'ผู้จัดการคณะ'].includes(raw) || hasDeanSignal(roleText)) return 'dean';
-  if (executiveEmails.includes(email) || hasExecutiveSignal(roleText)) return 'executive';
-  if (['chair', 'program_chair', 'head', 'หัวหน้าหลักสูตร', 'ประธานหลักสูตร'].includes(raw)) return 'chair';
-  if (hasInstructorSignal(roleText)) return 'instructor';
-  if (['staff', 'employee', 'บุคลากร', 'เจ้าหน้าที่'].includes(raw) || hasStaffSignal(roleText)) return 'staff';
+  if (executiveEmails.includes(email) || hasExecutiveSignal(roleText)) return 'dean';
+  if (['chair', 'program_chair', 'department_head', 'head', 'หัวหน้าหลักสูตร', 'ประธานหลักสูตร'].includes(raw)) return 'chair';
+  if (['staff', 'employee', 'officer', 'บุคลากร', 'เจ้าหน้าที่'].includes(raw) || hasStaffSignal(roleText)) return 'staff';
   if (['student', 'นักศึกษา', 'นิสิต'].includes(raw)) return 'student';
+  if (hasInstructorSignal(roleText)) return 'general';
   if (studentId) return 'student';
   if (staffId) return 'staff';
   if (/^\d{8,13}$/.test(id)) return 'student';

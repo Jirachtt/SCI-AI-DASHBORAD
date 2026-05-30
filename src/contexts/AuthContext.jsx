@@ -14,6 +14,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { isPendingRole } from '../utils/accessControl';
 import { buildRoleValidityPatch, getRoleValidity } from '../utils/roleValidity';
+import { ROLE_LABELS_WITH_EN, getRoleInitial, getRoleLabel, normalizeRole } from '../constants/roles';
 import {
     buildMjuSsoSignoutUrl,
     buildMjuSsoStartUrl,
@@ -27,34 +28,27 @@ import { normalizeMjuIdentity } from '../services/mjuConnectedDataService';
 
 const AuthContext = createContext(null);
 
-const ROLE_LABELS_BY_ROLE = {
-    admin: 'Admin',
-    dean: 'คณบดี (Dean)',
-    chair: 'ประธานหลักสูตร (Chair)',
-    executive: 'ผู้บริหาร (Executive)',
-    instructor: 'อาจารย์ (Instructor)',
-    staff: 'เจ้าหน้าที่ (Staff)',
-    general: 'ผู้ใช้ทั่วไป (General)',
-    student: 'นักศึกษา (Student)',
-    pending_staff: 'รอการอนุมัติ (Staff)',
-    pending_chair: 'รอการอนุมัติ (Chair)'
-};
+const ROLE_LABELS_BY_ROLE = ROLE_LABELS_WITH_EN;
+const LOCAL_ADMIN_ACCESS_CODE = String(import.meta.env.VITE_ADMIN_ACCESS_CODE || '').trim();
 
 const normalizeRoleLabel = (role, roleLabel, fallback = 'นักศึกษา (Student)') => {
+    const normalizedRole = normalizeRole(role);
     const current = String(roleLabel || fallback);
-    if (!roleLabel && ROLE_LABELS_BY_ROLE[role]) return ROLE_LABELS_BY_ROLE[role];
-    if (role === 'dean' && /ผจก|ผู้จัดการ\s*คณะ|ผู้จัดการคณะ|ผู้บริหาร|dean/i.test(current)) {
+    if (!roleLabel || !ROLE_LABELS_BY_ROLE[role]) return ROLE_LABELS_BY_ROLE[normalizedRole] || getRoleLabel(normalizedRole, { withEnglish: true });
+    if (normalizedRole !== role) return ROLE_LABELS_BY_ROLE[normalizedRole];
+    if (normalizedRole === 'dean' && /ผจก|ผู้จัดการ\s*คณะ|ผู้จัดการคณะ|ผู้บริหาร|dean/i.test(current)) {
         return ROLE_LABELS_BY_ROLE.dean;
     }
-    return current;
+    return ROLE_LABELS_BY_ROLE[normalizedRole] || current;
 };
 
 const hasManualRoleOverride = (userData = {}, nextRole) => {
-    const currentRole = userData.role;
+    const currentRole = normalizeRole(userData.role);
+    const normalizedNextRole = normalizeRole(nextRole);
     return Boolean(
         currentRole &&
-        nextRole &&
-        currentRole !== nextRole &&
+        normalizedNextRole &&
+        currentRole !== normalizedNextRole &&
         (userData.approvedBy || userData.roleManagedBy || userData.roleOverride || userData.canManageUsers || userData.systemAdmin)
     );
 };
@@ -192,11 +186,11 @@ const buildAdminBypassUser = () => {
         uid: 'admin-bypass-' + Date.now(),
         email: 'admin@mju.ac.th',
         name: 'Admin',
-        avatar: 'AD',
+        avatar: getRoleInitial('admin'),
         role: 'admin',
         assignedRole: 'admin',
-        roleLabel: 'Admin',
-        assignedRoleLabel: 'Admin',
+        roleLabel: ROLE_LABELS_BY_ROLE.admin,
+        assignedRoleLabel: ROLE_LABELS_BY_ROLE.admin,
         status: 'approved',
         authProvider: 'admin_code_fallback',
         isAdminCodeSession: true,
@@ -265,7 +259,7 @@ export function AuthProvider({ children }) {
                     name: currentUser.displayName || 'User',
                     avatar: currentUser.photoURL || '👤',
                     role: 'general',
-                    roleLabel: 'ทั่วไป'
+                    roleLabel: ROLE_LABELS_BY_ROLE.general
                 };
 
                 setUser(basicUser);
@@ -293,13 +287,17 @@ export function AuthProvider({ children }) {
                             });
                             userData = { ...userData, ...mjuPatch };
                         }
-                        const role = userData.role || 'student';
+                        const storedRole = userData.role || 'general';
+                        const role = normalizeRole(storedRole);
                         const roleValidity = getRoleValidity({ ...userData, role });
                         const roleExpired = roleValidity.status === 'expired' && role !== 'general' && !isPendingRole(role);
                         const effectiveRole = roleExpired ? 'general' : role;
                         const normalizedRoleLabel = normalizeRoleLabel(role, userData.roleLabel);
-                        if (normalizedRoleLabel !== userData.roleLabel) {
-                            updateDoc(userDocRef, { roleLabel: normalizedRoleLabel }).catch((err) => {
+                        const rolePatch = {};
+                        if (role !== storedRole) rolePatch.role = role;
+                        if (normalizedRoleLabel !== userData.roleLabel) rolePatch.roleLabel = normalizedRoleLabel;
+                        if (Object.keys(rolePatch).length > 0) {
+                            updateDoc(userDocRef, rolePatch).catch((err) => {
                                 console.warn('[Auth] Failed to normalize role label:', err?.message || err);
                             });
                         }
@@ -310,7 +308,7 @@ export function AuthProvider({ children }) {
                             assignedRoleLabel: normalizedRoleLabel,
                             role: effectiveRole,
                             roleLabel: roleExpired ? 'ผู้ใช้ทั่วไป (สิทธิ์เดิมหมดอายุ)' : normalizedRoleLabel,
-                            isPending: isPendingRole(role),
+                            isPending: isPendingRole(storedRole) || userData.status === 'pending',
                             roleExpired,
                             roleValidity,
                             requestedRole: userData.requestedRole || null,
@@ -408,7 +406,7 @@ export function AuthProvider({ children }) {
             }
         }
 
-        if (trimmedCode === 'admin313') {
+        if (LOCAL_ADMIN_ACCESS_CODE && trimmedCode === LOCAL_ADMIN_ACCESS_CODE) {
             const adminUser = buildAdminBypassUser();
             localStorage.setItem('admin_bypass', 'true');
             setUser(adminUser);

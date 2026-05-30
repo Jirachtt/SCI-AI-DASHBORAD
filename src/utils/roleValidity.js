@@ -1,25 +1,23 @@
+import { MANAGEABLE_ROLES, normalizeRole } from '../constants/roles.js';
+
 export const ROLE_DURATION_YEARS = {
-    admin: 1,
     dean: 4,
     chair: 4,
-    executive: 4,
-    instructor: 10,
     staff: 10,
-    student: 6,
     general: 1,
+    student: 6,
+    admin: 1,
 };
 
-export const TERM_REQUIRED_ROLES = ['executive', 'dean', 'chair', 'instructor', 'staff', 'student'];
+export const TERM_REQUIRED_ROLES = MANAGEABLE_ROLES;
 
 export const ROLE_DURATION_LABELS = {
-    admin: '1 ปี',
     dean: '4 ปี',
     chair: '4 ปี',
-    executive: '4 ปี',
-    instructor: '10 ปี',
     staff: '10 ปี',
-    student: '6 ปี',
     general: '1 ปี',
+    student: '6 ปี',
+    admin: '1 ปี',
 };
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -133,11 +131,11 @@ export function addRoleMonths(value, months = 1) {
 }
 
 export function getDefaultRoleDurationYears(role) {
-    return ROLE_DURATION_YEARS[role] || ROLE_DURATION_YEARS.general;
+    return ROLE_DURATION_YEARS[normalizeRole(role)] || ROLE_DURATION_YEARS.general;
 }
 
 export function getRoleDurationLabel(role) {
-    return ROLE_DURATION_LABELS[role] || ROLE_DURATION_LABELS.general;
+    return ROLE_DURATION_LABELS[normalizeRole(role)] || ROLE_DURATION_LABELS.general;
 }
 
 export function getRoleTermCoverage(requiredRoles = TERM_REQUIRED_ROLES) {
@@ -164,7 +162,8 @@ export function formatRoleRemainingText(validity = {}) {
 
 export function buildRoleValidityPatch(role, startValue = new Date()) {
     const start = parseRoleDate(startValue) || new Date();
-    const durationYears = getDefaultRoleDurationYears(role);
+    const normalizedRole = normalizeRole(role);
+    const durationYears = getDefaultRoleDurationYears(normalizedRole);
     const expires = addRoleYears(start, durationYears);
     return {
         roleStartedAt: start.toISOString(),
@@ -175,7 +174,7 @@ export function buildRoleValidityPatch(role, startValue = new Date()) {
 }
 
 export function getRoleValidity(user = {}) {
-    const role = user.role || 'general';
+    const role = normalizeRole(user.role || 'general');
     const durationYears = Number(user.roleDurationYears) || getDefaultRoleDurationYears(role);
     const startedAt = parseRoleDate(user.roleStartedAt || user.approvedAt || user.createdAt) || new Date();
     const expiresAt = parseRoleDate(user.roleExpiresAt) || addRoleYears(startedAt, durationYears);
