@@ -38,10 +38,10 @@ export const hrData = {
 
         // ตำแหน่งทางวิชาการ
         academicPositions: [
-            { position: 'ศาสตราจารย์', count: 0, color: 'var(--accent-gold)', icon: 'Prof' },
+            { position: 'ศาสตราจารย์', count: 1, color: 'var(--accent-gold)', icon: 'Prof' },
             { position: 'รองศาสตราจารย์', count: 18, color: 'var(--accent-gold)', icon: 'Assoc' },
             { position: 'ผู้ช่วยศาสตราจารย์', count: 27, color: 'var(--accent-info)', icon: 'Asst' },
-            { position: 'อาจารย์', count: 59, color: 'var(--accent-success-deep)', icon: 'Lect' }
+            { position: 'อาจารย์', count: 58, color: 'var(--accent-success-deep)', icon: 'Lect' }
         ],
 
         // วุฒิการศึกษา
@@ -73,10 +73,10 @@ export const hrData = {
 
         // สถิติการได้ตำแหน่งทางวิชาการใหม่สะสมรายปี
         promotionTrend: [
-            { year: '2564', newAssocProf: 3, newAssistProf: 4, newProf: 0 },
-            { year: '2565', newAssocProf: 2, newAssistProf: 3, newProf: 0 },
-            { year: '2566', newAssocProf: 4, newAssistProf: 2, newProf: 0 },
-            { year: '2567', newAssocProf: 1, newAssistProf: 5, newProf: 0 },
+            { year: '2564', newAssocProf: 3, newAssistProf: 4, newProf: 1 },
+            { year: '2565', newAssocProf: 2, newAssistProf: 3, newProf: 1 },
+            { year: '2566', newAssocProf: 4, newAssistProf: 2, newProf: 1 },
+            { year: '2567', newAssocProf: 1, newAssistProf: 5, newProf: 1 },
             { year: '2568', newAssocProf: 2, newAssistProf: 3, newProf: 1, type: 'forecast' }
         ],
 

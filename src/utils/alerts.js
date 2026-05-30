@@ -20,6 +20,7 @@ const SEVERITY_RANK = { critical: 3, warning: 2, info: 1 };
 
 // ---------- Thresholds (tunable) ----------
 const T = {
+    followUpGPA: 2.50,       // 2.25 <= GPA < 2.50 -> info
     lowGPA: 2.00,            // GPA < 2.00 → critical
     probationGPA: 2.25,      // 2.00 ≤ GPA < 2.25 → warning
     gradRateWarn: 88,        // อัตราจบ < 88% → warning (per major)
@@ -100,6 +101,9 @@ function buildStudentAlerts() {
     const probation = sortStudentsByMajorRisk(students.filter(s =>
         typeof s.gpa === 'number' && s.gpa >= T.lowGPA && s.gpa < T.probationGPA
     ));
+    const followUp = sortStudentsByMajorRisk(students.filter(s =>
+        typeof s.gpa === 'number' && s.gpa >= T.probationGPA && s.gpa < T.followUpGPA
+    ));
 
     const out = [];
     if (atRisk.length > 0) {
@@ -128,6 +132,20 @@ function buildStudentAlerts() {
             target: 0,
             suggestedAction: 'ส่งรายงานให้อาจารย์ที่ปรึกษา และเปิดคลินิกวิชาการ',
             data: probation,
+        }, 'local_students'));
+    }
+    if (followUp.length > 0) {
+        out.push(withSource({
+            id: 'stu-follow-up',
+            severity: 'info',
+            domain: 'เธเธฑเธเธจเธถเธเธฉเธฒ',
+            title: `เธเธฑเธเธจเธถเธเธฉเธฒเธ—เธตเนเธเธงเธฃเธ•เธดเธ”เธ•เธฒเธก ${followUp.length} เธเธ (${T.probationGPA.toFixed(2)} โค GPA < ${T.followUpGPA.toFixed(2)})`,
+            detail: 'กลุ่มนี้ยังไม่วิกฤต แต่ควรติดตามก่อนลงทะเบียนรอบถัดไปเพื่อป้องกันไม่ให้ไหลลงไปอยู่ในกลุ่มเสี่ยง',
+            metric: 'GPA',
+            value: followUp.length,
+            target: 0,
+            suggestedAction: 'ให้ระบบแจ้งเตือนอาจารย์ที่ปรึกษาและชวนเข้าคลินิกวิชาการ/ติวพื้นฐานแบบสมัครใจ',
+            data: followUp,
         }, 'local_students'));
     }
     return out;
@@ -285,7 +303,17 @@ export function getAllAlerts() {
         ...buildBudgetAlerts(),
         ...buildResearchAlerts(),
         ...buildStrategicAlerts(),
-    ];
+    ].map(alert => {
+        if (alert.id !== 'stu-follow-up') return alert;
+        const value = Number(alert.value) || 0;
+        return {
+            ...alert,
+            domain: '\u0e19\u0e31\u0e01\u0e28\u0e36\u0e01\u0e29\u0e32',
+            title: `\u0e19\u0e31\u0e01\u0e28\u0e36\u0e01\u0e29\u0e32\u0e17\u0e35\u0e48\u0e04\u0e27\u0e23\u0e15\u0e34\u0e14\u0e15\u0e32\u0e21 ${value.toLocaleString('th-TH')} \u0e04\u0e19 (${T.probationGPA.toFixed(2)} <= GPA < ${T.followUpGPA.toFixed(2)})`,
+            detail: '\u0e01\u0e25\u0e38\u0e48\u0e21\u0e19\u0e35\u0e49\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e27\u0e34\u0e01\u0e24\u0e15 \u0e41\u0e15\u0e48\u0e04\u0e27\u0e23\u0e15\u0e34\u0e14\u0e15\u0e32\u0e21\u0e01\u0e48\u0e2d\u0e19\u0e25\u0e07\u0e17\u0e30\u0e40\u0e1a\u0e35\u0e22\u0e19\u0e23\u0e2d\u0e1a\u0e16\u0e31\u0e14\u0e44\u0e1b\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1b\u0e49\u0e2d\u0e07\u0e01\u0e31\u0e19\u0e44\u0e21\u0e48\u0e43\u0e2b\u0e49\u0e44\u0e2b\u0e25\u0e25\u0e07\u0e44\u0e1b\u0e2d\u0e22\u0e39\u0e48\u0e43\u0e19\u0e01\u0e25\u0e38\u0e48\u0e21\u0e40\u0e2a\u0e35\u0e48\u0e22\u0e07',
+            suggestedAction: '\u0e43\u0e2b\u0e49\u0e23\u0e30\u0e1a\u0e1a\u0e41\u0e08\u0e49\u0e07\u0e40\u0e15\u0e37\u0e2d\u0e19\u0e2d\u0e32\u0e08\u0e32\u0e23\u0e22\u0e4c\u0e17\u0e35\u0e48\u0e1b\u0e23\u0e36\u0e01\u0e29\u0e32\u0e41\u0e25\u0e30\u0e0a\u0e27\u0e19\u0e40\u0e02\u0e49\u0e32\u0e04\u0e25\u0e34\u0e19\u0e34\u0e01\u0e27\u0e34\u0e0a\u0e32\u0e01\u0e32\u0e23/\u0e15\u0e34\u0e27\u0e1e\u0e37\u0e49\u0e19\u0e10\u0e32\u0e19\u0e41\u0e1a\u0e1a\u0e2a\u0e21\u0e31\u0e04\u0e23\u0e43\u0e08',
+        };
+    });
     // Sort critical → warning → info
     alerts.sort((a, b) => (SEVERITY_RANK[b.severity] || 0) - (SEVERITY_RANK[a.severity] || 0));
     return alerts;

@@ -333,6 +333,10 @@ function updateAITokenBudgetFromHeaders(headers) {
     return setAIUsageSnapshot({
         budgetTokens: budget,
         usedTokens: used,
+        providerTokens: Number(headers.get('X-AI-Provider-Tokens') || 0),
+        estimatedTokens: Number(headers.get('X-AI-Estimated-Tokens') || 0),
+        inputTokens: Number(headers.get('X-AI-Input-Tokens') || 0),
+        outputTokens: Number(headers.get('X-AI-Output-Tokens') || 0),
         remainingTokens: remaining,
         remainingPercent: Number(headers.get('X-AI-Token-Remaining-Percent') || Math.round((remaining / budget) * 100)),
         requests: Number(headers.get('X-AI-Requests-Used') || 0),

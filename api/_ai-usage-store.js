@@ -434,6 +434,10 @@ export function usageHeaders(snapshot = {}) {
     'X-AI-Token-Remaining': remaining.dailyTokenBudget ?? 0,
     'X-AI-Token-Remaining-Percent': snapshot.remainingPercent ?? 0,
     'X-AI-Token-Used': used.usedTokens ?? 0,
+    'X-AI-Provider-Tokens': used.providerTokens ?? 0,
+    'X-AI-Estimated-Tokens': used.estimatedTokens ?? 0,
+    'X-AI-Input-Tokens': used.inputTokens ?? 0,
+    'X-AI-Output-Tokens': used.outputTokens ?? 0,
     'X-AI-Requests-Used': used.requestCount ?? 0,
     'X-AI-Requests-Remaining': remaining.globalRpd ?? 0,
   };

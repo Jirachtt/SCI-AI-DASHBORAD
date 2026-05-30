@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import process from 'node:process'
 import mjuDashboardSyncHandler from './api/mju-dashboard-sync.js'
 import geminiChatHandler from './api/gemini-chat.js'
+import aiUsageHandler from './api/ai-usage.js'
 
 function localApiDev() {
   return {
@@ -21,6 +22,12 @@ function localApiDev() {
         if (path === '/api/gemini-chat') {
           req.query = Object.fromEntries(url.searchParams.entries())
           await geminiChatHandler(req, res)
+          return
+        }
+
+        if (path === '/api/ai-usage') {
+          req.query = Object.fromEntries(url.searchParams.entries())
+          await aiUsageHandler(req, res)
           return
         }
 

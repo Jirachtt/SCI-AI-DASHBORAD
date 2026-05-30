@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { getStudentListSync } from '../services/studentDataService';
+import { getStudentReconciliationSnapshot } from '../services/dataAccuracyService';
 import {
     ensureSharedDashboardData,
     onSharedDashboardDataChange,
@@ -40,11 +41,16 @@ const ALERT_DATASET_IDS = [
     'strategic',
 ];
 
+function getAlertStudentCount() {
+    const reconcile = getStudentReconciliationSnapshot();
+    return Number(reconcile?.officialTotal) || getStudentListSync().length;
+}
+
 export default function AlertCenterPage() {
     const { user } = useAuth();
     const [alertDataVersion, setAlertDataVersion] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [studentCount, setStudentCount] = useState(() => getStudentListSync().length);
+    const [studentCount, setStudentCount] = useState(() => getAlertStudentCount());
     const [severityFilter, setSeverityFilter] = useState('all');
     const [domainFilter, setDomainFilter] = useState('all');
     const [sourceFilter, setSourceFilter] = useState('all');
@@ -56,7 +62,7 @@ export default function AlertCenterPage() {
         let active = true;
         const refreshFromSharedData = () => {
             if (!active) return;
-            setStudentCount(getStudentListSync().length);
+            setStudentCount(getAlertStudentCount());
             setAlertDataVersion(t => t + 1);
             setLoading(false);
         };
@@ -156,7 +162,7 @@ export default function AlertCenterPage() {
                                     console.warn('[AlertCenterPage] manual alert recompute failed:', error?.message || error);
                                 })
                                 .finally(() => {
-                                    setStudentCount(getStudentListSync().length);
+                                    setStudentCount(getAlertStudentCount());
                                     setAlertDataVersion(t => t + 1);
                                     setLoading(false);
                                 });

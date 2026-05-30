@@ -53,6 +53,80 @@ const studentColumns = [
     { key: 'honors', label: 'เกียรตินิยม' },
 ];
 
+function finiteNumber(...values) {
+    for (const value of values) {
+        const number = Number(value);
+        if (Number.isFinite(number)) return number;
+    }
+    return null;
+}
+
+function usableArray(value, fallback, isUsable = item => Boolean(item)) {
+    if (Array.isArray(value) && value.length > 0 && value.some(isUsable)) return value;
+    return fallback;
+}
+
+function normalizeGraduationHistoryRows(rows, fallbackRows = graduationHistory) {
+    const sourceRows = Array.isArray(rows) && rows.length > 0 ? rows : fallbackRows;
+    const fallbackByYear = new Map(
+        fallbackRows
+            .filter(row => row?.year != null)
+            .map(row => [Number(row.year), row])
+    );
+
+    const normalized = sourceRows
+        .map(row => {
+            const year = finiteNumber(row?.year, row?.academicYear);
+            const fallback = fallbackByYear.get(Number(year)) || {};
+            const candidates = finiteNumber(row?.candidates, row?.candidateCount, row?.totalCandidates, row?.total, fallback.candidates);
+            const graduated = finiteNumber(row?.graduated, row?.graduateCount, row?.expectedGraduates, row?.expected, fallback.graduated);
+            const calculatedRate = candidates && graduated != null ? (graduated / candidates) * 100 : null;
+            const rate = finiteNumber(row?.rate, row?.graduationRate, row?.successRate, row?.completionRate, calculatedRate, fallback.rate);
+            const avgGPA = finiteNumber(row?.avgGPA, row?.avgGpa, row?.gpa, fallback.avgGPA);
+
+            return {
+                ...fallback,
+                ...row,
+                year,
+                candidates,
+                graduated,
+                rate: rate == null ? null : Number(rate.toFixed(1)),
+                avgGPA: avgGPA == null ? null : Number(avgGPA.toFixed(2)),
+            };
+        })
+        .filter(row => row.year != null);
+
+    const hasUsableRate = normalized.some(row => Number.isFinite(Number(row.rate)));
+    const hasUsableVolume = normalized.some(row =>
+        Number(row.candidates) > 0 || Number(row.graduated) > 0
+    );
+
+    if (!hasUsableRate && !hasUsableVolume) return fallbackRows;
+    return normalized;
+}
+
+function normalizeGraduationStats(liveStats = {}, fallbackStats = currentGraduationStats) {
+    const merged = { ...fallbackStats };
+    Object.entries(liveStats || {}).forEach(([key, value]) => {
+        const fallbackValue = fallbackStats?.[key];
+        if (typeof fallbackValue === 'number') {
+            const number = Number(value);
+            if (!Number.isFinite(number)) return;
+            if (number === 0 && fallbackValue > 0) return;
+            merged[key] = number;
+            return;
+        }
+        if (value !== undefined && value !== null && value !== '') merged[key] = value;
+    });
+    return merged;
+}
+
+function normalizeHonorsData(value, fallback = honorsData) {
+    const sum = item => ['firstClass', 'secondClass', 'normal', 'belowStandard']
+        .reduce((total, key) => total + (Number(item?.[key]) || 0), 0);
+    return value && sum(value) > 0 ? value : fallback;
+}
+
 function rowsByGpaRange(range, candidates = graduationCandidateList) {
     const [min, max] = String(range).split('-').map(Number);
     return candidates.filter(student => {
@@ -74,12 +148,28 @@ export default function GraduationStatsPage() {
     const hasGraduationAccess = canAccess(user?.role, 'graduation_stats');
     const { data: liveGraduationData, meta: graduationMeta } = useDashboardDataset('graduation');
 
-    const graduationHistoryData = liveGraduationData?.graduationHistory || liveGraduationData?.history || graduationHistory;
-    const stats = { ...currentGraduationStats, ...(liveGraduationData?.current || {}) };
-    const candidateRows = liveGraduationData?.candidateList || liveGraduationData?.candidates || graduationCandidateList;
-    const graduationByMajorRows = liveGraduationData?.byMajor || graduationByMajor;
-    const gpaDistributionRows = liveGraduationData?.gpaDistribution || gpaDistribution;
-    const honorsSummary = liveGraduationData?.honors || honorsData;
+    const rawGraduationHistory = liveGraduationData?.graduationHistory || liveGraduationData?.history;
+    const graduationHistoryData = normalizeGraduationHistoryRows(rawGraduationHistory, graduationHistory);
+    const stats = normalizeGraduationStats(
+        liveGraduationData?.current || liveGraduationData?.currentGraduationStats,
+        currentGraduationStats
+    );
+    const candidateRows = usableArray(
+        liveGraduationData?.candidateList || liveGraduationData?.candidates,
+        graduationCandidateList,
+        row => row?.id && row?.name
+    );
+    const graduationByMajorRows = usableArray(
+        liveGraduationData?.byMajor || liveGraduationData?.graduationByMajor,
+        graduationByMajor,
+        row => Number(row?.total || row?.expected || row?.rate) > 0
+    );
+    const gpaDistributionRows = usableArray(
+        liveGraduationData?.gpaDistribution,
+        gpaDistribution,
+        row => Number(row?.count) > 0
+    );
+    const honorsSummary = normalizeHonorsData(liveGraduationData?.honors, honorsData);
 
     // Filter candidate list
     const filteredCandidates = useMemo(() => candidateRows.filter(s => {

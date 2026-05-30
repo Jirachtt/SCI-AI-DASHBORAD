@@ -39,7 +39,7 @@ const fallbackTuitionData = {
     semesterHistory: [
         { semester: '1/2567', paid: 18500, status: 'จ่ายแล้ว' },
         { semester: '2/2567', paid: 18500, status: 'จ่ายแล้ว' },
-        { semester: '1/2568', paid: 0, status: 'ค้างชำระ' }
+        { semester: '1/2568', paid: 4500, status: 'ค้างชำระ' }
     ]
 };
 
@@ -53,7 +53,7 @@ export const tuitionData = {
 
 const fallbackFinancialData = {
     tuitionStatus: {
-        current: { amount: 18500, paid: 0, status: 'ค้างชำระ', dueDate: '2568-02-28' },
+        current: { amount: 18500, paid: 6200, status: 'ค้างชำระ', dueDate: '2568-02-28' },
         total: { totalPaid: 37000, totalRemaining: 111000 }
     },
     paymentHistory: [
@@ -161,7 +161,7 @@ export const dashboardSummary = {
         { name: 'คณะพยาบาลศาสตร์', totalStudents: 131, totalCourses: 45, avgGPA: 3.42, graduationRate: 96.5 },
         { name: 'คณะสัตวแพทยศาสตร์', totalStudents: 96, totalCourses: 52, avgGPA: 3.28, graduationRate: 92.0 },
         { name: 'วิทยาลัยนานาชาติ', totalStudents: 82, totalCourses: 38, avgGPA: 3.20, graduationRate: 90.0 },
-        { name: 'โครงการ', totalStudents: 73, totalCourses: 0, avgGPA: null, graduationRate: null }
+        { name: 'โครงการ', totalStudents: 73, totalCourses: 12, avgGPA: 3.05, graduationRate: 86.5 }
     ]
 };
 

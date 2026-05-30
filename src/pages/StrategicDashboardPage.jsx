@@ -25,7 +25,9 @@ const cardStyle = {
 };
 
 function ProgressBar({ value, target, color }) {
-    const pct = Math.min((value / target) * 100, 100);
+    const numericValue = Number(value || 0);
+    const numericTarget = Number(target || 0);
+    const pct = numericTarget > 0 ? Math.min((numericValue / numericTarget) * 100, 100) : 0;
     const accentColor = legacyColorToVar(color || 'var(--accent-success)');
     return (
         <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'var(--bg-secondary)' }}>
@@ -38,6 +40,80 @@ function ProgressBar({ value, target, color }) {
     );
 }
 
+function finiteNumberOrNull(value) {
+    if (value == null || value === '') return null;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    const text = String(value).replace(/,/g, '').trim();
+    if (!/^-?\d+(\.\d+)?$/.test(text)) return null;
+    const numberValue = Number(text);
+    return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function firstNumericValue(row, keys) {
+    for (const key of keys) {
+        const value = finiteNumberOrNull(row?.[key]);
+        if (value != null) return value;
+    }
+    return null;
+}
+
+function kpiStatusFromProgress(progress) {
+    if (progress == null) return 'unknown';
+    if (progress >= 100) return 'met';
+    if (progress >= 85) return 'near';
+    return 'below';
+}
+
+function normalizeKpiRowForDisplay(row) {
+    const actual = firstNumericValue(row, ['actual2568', 'result2568', 'actual2567', 'result2567', 'actual2566', 'result2566', 'average']);
+    const target = firstNumericValue(row, ['targetReviewed2569', 'targetOriginal2569', 'target2569', 'target']);
+    const declaredProgress = finiteNumberOrNull(row?.progress);
+    const hasActualEvidence = actual != null && actual > 0;
+    const hasTargetEvidence = target != null && target > 0;
+    let progress = declaredProgress;
+    let gap = finiteNumberOrNull(row?.gap);
+
+    if ((!progress || progress <= 0) && hasActualEvidence && hasTargetEvidence) {
+        if (row?.lowerIsBetter) {
+            progress = actual > 0 ? Math.min((target / actual) * 100, 999) : null;
+            gap = actual - target;
+        } else {
+            progress = Math.min((actual / target) * 100, 999);
+            gap = target - actual;
+        }
+    }
+
+    if ((!hasActualEvidence && (!declaredProgress || declaredProgress <= 0)) || progress == null) {
+        return {
+            ...row,
+            progress: null,
+            gap: null,
+            status: 'unknown',
+        };
+    }
+
+    const status = ['met', 'near', 'below'].includes(row?.status)
+        ? row.status
+        : kpiStatusFromProgress(progress);
+
+    return {
+        ...row,
+        progress,
+        gap,
+        status: status === 'below' && !hasActualEvidence ? 'unknown' : status,
+    };
+}
+
+function summarizeKpiRows(rows) {
+    return rows.reduce((acc, row) => {
+        acc.totalKpis += 1;
+        if (row.status === 'met') acc.met += 1;
+        else if (row.status === 'near') acc.near += 1;
+        else if (row.status === 'below') acc.below += 1;
+        return acc;
+    }, { totalKpis: 0, met: 0, near: 0, below: 0 });
+}
+
 export default function StrategicDashboardPage() {
     const { user } = useAuth();
     const [activeOKR, setActiveOKR] = useState(0);
@@ -48,13 +124,9 @@ export default function StrategicDashboardPage() {
     if (!canAccess(user?.role, 'strategic_overview')) return <AccessDenied />;
 
     const { strategicGoals, okr, performanceRadar, efficiencyTrend } = strategicData;
-    const kpiReviewRows = Array.isArray(strategicData.kpiReviewRows) ? strategicData.kpiReviewRows : [];
-    const kpiReviewSummary = strategicData.kpiReviewSummary || {
-        totalKpis: kpiReviewRows.length,
-        met: kpiReviewRows.filter(row => row.status === 'met').length,
-        near: kpiReviewRows.filter(row => row.status === 'near').length,
-        below: kpiReviewRows.filter(row => row.status === 'below').length,
-    };
+    const rawKpiReviewRows = Array.isArray(strategicData.kpiReviewRows) ? strategicData.kpiReviewRows : [];
+    const kpiReviewRows = rawKpiReviewRows.map(normalizeKpiRowForDisplay);
+    const kpiReviewSummary = summarizeKpiRows(kpiReviewRows);
     const developmentPlanRows = Array.isArray(strategicData.developmentPlanRows) ? strategicData.developmentPlanRows : [];
     const unknownKpiCount = kpiReviewRows.filter(row => row.status === 'unknown').length;
     const sourceFiles = Array.isArray(strategicData.sourceFiles) ? strategicData.sourceFiles : [];
