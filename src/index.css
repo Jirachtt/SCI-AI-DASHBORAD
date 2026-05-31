@@ -47,11 +47,11 @@
   --chart-10: #F472B6;
   --chart-11: #E2E8F0;
   --chart-12: #86EFAC;
-  --student-level-bachelor: #3B82F6;
-  --student-level-master: #A855F7;
+  --student-level-bachelor: #2563EB;
+  --student-level-master: #8B5CF6;
   --student-level-doctoral: #FB923C;
-  --student-level-certificate: #22D3EE;
-  --student-level-other: #F43F5E;
+  --student-level-certificate: #06B6D4;
+  --student-level-other: #E11D48;
 
   --border-color: rgba(255, 255, 255, 0.06);
   --border-glow: rgba(0, 166, 81, 0.35);
