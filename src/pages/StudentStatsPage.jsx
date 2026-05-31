@@ -173,6 +173,13 @@ function buildScienceMajorRows(scienceFaculty, studentRows) {
         .sort((a, b) => b.total - a.total || a.major.localeCompare(b.major, 'th'));
 }
 
+const LEVEL_FILTER_LABELS = {
+    certificate: 'ประกาศนียบัตร',
+    bachelor: 'ป.ตรี',
+    master: 'ป.โท',
+    doctoral: 'ป.เอก',
+};
+
 export default function StudentStatsPage() {
     const { user } = useAuth();
     const [selectedFaculty, setSelectedFaculty] = useState('all');
@@ -221,9 +228,9 @@ export default function StudentStatsPage() {
         ];
         if (appliedLevel !== 'all') {
             const lvl = levels.find(l => l.key === appliedLevel);
-            return lvl ? [{ ...lvl, count: filteredFaculty.reduce((s, f) => s + f[lvl.key], 0) }] : [];
+            return lvl ? [{ ...lvl, count: filteredFaculty.reduce((s, f) => s + Number(f[lvl.key] || 0), 0) }] : [];
         }
-        return levels.map(l => ({ ...l, count: filteredFaculty.reduce((s, f) => s + f[l.key], 0) }));
+        return levels.map(l => ({ ...l, count: filteredFaculty.reduce((s, f) => s + Number(f[l.key] || 0), 0) }));
     })();
 
     const levelCompositionItems = current.byLevel.map((item, i) => ({
@@ -304,11 +311,15 @@ export default function StudentStatsPage() {
         }
     };
 
-    // Calculate YoY growth
+    // Calculate overall YoY growth for the trend chart only. It is not shown on
+    // individual level cards because those cards do not have level-specific trend data.
     const lastActual = trend.filter(t => t.type === 'actual');
     const growthYoY = lastActual.length >= 2
         ? (((lastActual[lastActual.length - 1].total - lastActual[lastActual.length - 2].total) / lastActual[lastActual.length - 2].total) * 100).toFixed(1)
         : 0;
+    const overallGrowthLabel = Number.isFinite(Number(growthYoY))
+        ? `${Number(growthYoY) >= 0 ? '+' : ''}${growthYoY}% เทียบปีก่อน`
+        : 'ไม่มีฐานเทียบปีก่อน';
 
     // ==================== Science Faculty Charts ====================
     const scienceLevelCompositionItems = scienceFaculty.byLevel
@@ -689,7 +700,7 @@ export default function StudentStatsPage() {
                 </button>
                 {isFiltered && (
                     <span style={{ fontSize: '0.85rem', color: 'var(--accent-success)', fontWeight: 600, marginLeft: 'auto' }}>
-                        กรอง: {appliedFaculty !== 'all' ? appliedFaculty : 'ทุกคณะ'} / {appliedLevel !== 'all' ? (appliedLevel === 'bachelor' ? 'ป.ตรี' : appliedLevel === 'master' ? 'ป.โท' : 'ป.เอก') : 'ทุกระดับ'} — ผลลัพธ์: {filteredTotal.toLocaleString()} คน
+                        กรอง: {appliedFaculty !== 'all' ? appliedFaculty : 'ทุกคณะ'} / {appliedLevel !== 'all' ? LEVEL_FILTER_LABELS[appliedLevel] : 'ทุกระดับ'} — ผลลัพธ์: {filteredTotal.toLocaleString()} คน
                     </span>
                 )}
             </div>
@@ -706,7 +717,6 @@ export default function StudentStatsPage() {
                                         {item.key === 'bachelor' || (!item.key && i === 0) ? <GraduationCap size={20} color="var(--text-on-accent)" /> : item.key === 'master' || (!item.key && i === 1) ? <BookOpen size={20} color="var(--text-on-accent)" /> : item.key === 'doctoral' || (!item.key && i === 2) ? <Award size={20} color="var(--text-on-accent)" /> : <FileText size={20} color="var(--text-on-accent)" />}
                                     </span>
                                 </div>
-                                {!isFiltered && i === 0 && <span className="stat-card-trend up">+{growthYoY}%</span>}
                             </div>
                             <div className="stat-card-value">{item.count.toLocaleString()}</div>
                             <div className="stat-card-label">{item.level}</div>
@@ -736,7 +746,7 @@ export default function StudentStatsPage() {
                     <div className="chart-card-header">
                         <div>
                             <div className="chart-card-title">แนวโน้มจำนวนนิสิต</div>
-                            <div className="chart-card-subtitle">ย้อนหลัง 4 ปี + พยากรณ์ 2 ปี (เส้นประ = พยากรณ์)</div>
+                            <div className="chart-card-subtitle">ย้อนหลัง 4 ปี + พยากรณ์ 2 ปี · ภาพรวม {overallGrowthLabel}</div>
                         </div>
                     </div>
                     <div className="chart-container">
@@ -754,6 +764,7 @@ export default function StudentStatsPage() {
                     <thead>
                         <tr>
                             <th>คณะ</th>
+                            {(appliedLevel === 'all' || appliedLevel === 'certificate') && <th>ประกาศนียบัตร</th>}
                             {(appliedLevel === 'all' || appliedLevel === 'bachelor') && <th>ป.ตรี</th>}
                             {(appliedLevel === 'all' || appliedLevel === 'master') && <th>ป.โท</th>}
                             {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <th>ป.เอก</th>}
@@ -763,12 +774,13 @@ export default function StudentStatsPage() {
                     <tbody>
                         {filteredFaculty.map((fac, i) => {
                             const total = appliedLevel === 'all'
-                                ? fac.bachelor + fac.master + fac.doctoral
-                                : fac[appliedLevel] || 0;
+                                ? Number(fac.certificate || 0) + Number(fac.bachelor || 0) + Number(fac.master || 0) + Number(fac.doctoral || 0)
+                                : Number(fac[appliedLevel] || 0);
                             const isSci = fac.name === 'คณะวิทยาศาสตร์';
                             return (
                                 <tr key={i} style={isSci ? { background: 'color-mix(in srgb, var(--accent-success-deep) 15%, transparent)', borderLeft: '3px solid var(--accent-success)' } : {}}>
                                     <td style={{ fontWeight: isSci ? 700 : 500, color: isSci ? 'var(--accent-success)' : undefined }}>{fac.name}</td>
+                                    {(appliedLevel === 'all' || appliedLevel === 'certificate') && <td style={{ color: 'var(--accent-success)' }}>{Number(fac.certificate || 0).toLocaleString()}</td>}
                                     {(appliedLevel === 'all' || appliedLevel === 'bachelor') && <td style={{ color: 'var(--mju-green-light)' }}>{fac.bachelor.toLocaleString()}</td>}
                                     {(appliedLevel === 'all' || appliedLevel === 'master') && <td style={{ color: 'var(--accent-info)' }}>{fac.master}</td>}
                                     {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <td style={{ color: 'var(--accent-pink)' }}>{fac.doctoral}</td>}
@@ -778,10 +790,11 @@ export default function StudentStatsPage() {
                         })}
                         <tr style={{ background: 'color-mix(in srgb, var(--accent-success-deep) 10%, transparent)', fontWeight: 700 }}>
                             <td>รวม{isFiltered ? ' (กรองแล้ว)' : 'ทั้งหมด'}</td>
+                            {(appliedLevel === 'all' || appliedLevel === 'certificate') && <td style={{ color: 'var(--accent-success)' }}>{filteredFaculty.reduce((s, f) => s + Number(f.certificate || 0), 0).toLocaleString()}</td>}
                             {(appliedLevel === 'all' || appliedLevel === 'bachelor') && <td style={{ color: 'var(--mju-green-light)' }}>{filteredFaculty.reduce((s, f) => s + f.bachelor, 0).toLocaleString()}</td>}
                             {(appliedLevel === 'all' || appliedLevel === 'master') && <td style={{ color: 'var(--accent-info)' }}>{filteredFaculty.reduce((s, f) => s + f.master, 0)}</td>}
                             {(appliedLevel === 'all' || appliedLevel === 'doctoral') && <td style={{ color: 'var(--accent-pink)' }}>{filteredFaculty.reduce((s, f) => s + f.doctoral, 0)}</td>}
-                            {appliedLevel === 'all' && <td>{filteredFaculty.reduce((s, f) => s + f.bachelor + f.master + f.doctoral, 0).toLocaleString()}</td>}
+                            {appliedLevel === 'all' && <td>{filteredFaculty.reduce((s, f) => s + Number(f.certificate || 0) + Number(f.bachelor || 0) + Number(f.master || 0) + Number(f.doctoral || 0), 0).toLocaleString()}</td>}
                         </tr>
                     </tbody>
                 </table>
