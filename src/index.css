@@ -6408,41 +6408,46 @@ button.composition-metric-card:focus-visible {
 
 .composition-pie-panel {
   display: grid;
-  grid-template-columns: minmax(150px, 0.92fr) minmax(190px, 1.08fr);
+  grid-template-columns: minmax(150px, 0.78fr) minmax(230px, 1.22fr);
   align-items: center;
-  gap: 18px;
+  gap: 22px;
   min-height: auto;
-  padding: 18px 20px 20px;
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--accent-blue) 8%, transparent), transparent 34%),
-    var(--bg-card);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-color) 7%, transparent);
+  padding: 4px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .composition-pie-wrap {
   display: grid;
   justify-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
+.composition-pie-figure {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 206px);
+}
+
 .composition-pie {
-  width: min(100%, 214px);
-  max-width: 214px;
-  filter: drop-shadow(0 16px 26px color-mix(in srgb, var(--shadow-color) 10%, transparent));
+  width: min(100%, 206px);
+  max-width: 206px;
+  filter: drop-shadow(0 14px 24px color-mix(in srgb, var(--shadow-color) 12%, transparent));
 }
 
 .composition-pie-bg {
-  fill: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  fill: color-mix(in srgb, var(--chart-muted) 7%, transparent);
 }
 
 .composition-pie-slice {
   cursor: pointer;
   stroke: var(--bg-card);
   stroke-linejoin: round;
-  stroke-width: 2.5;
+  stroke-width: 2.75;
   transition: filter 160ms ease, transform 160ms ease;
   transform-box: fill-box;
   transform-origin: center;
@@ -6456,20 +6461,57 @@ button.composition-metric-card:focus-visible {
 }
 
 .composition-pie-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -54%);
   display: inline-flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 2px;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  line-height: 1.15;
+  pointer-events: none;
+  text-align: center;
 }
 
 .composition-pie-center strong {
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 1.08rem;
   font-variant-numeric: tabular-nums;
   font-weight: 900;
+}
+
+.composition-pie-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--chart-1) 18%, var(--border-color));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--chart-1) 8%, transparent);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 7px 10px;
+}
+
+.composition-pie-primary span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composition-pie-primary strong {
+  color: var(--chart-1);
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .composition-pie-legend {
@@ -6480,16 +6522,16 @@ button.composition-metric-card:focus-visible {
 
 .composition-pie-legend-row {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
+  grid-template-columns: 10px minmax(0, 1fr) minmax(54px, auto);
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  min-height: 48px;
-  border: 1px solid color-mix(in srgb, var(--segment-color) 12%, var(--border-color));
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--segment-color) 5%, var(--bg-card));
+  min-height: 56px;
+  border: 1px solid color-mix(in srgb, var(--segment-color) 14%, var(--border-color));
+  border-radius: 8px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--segment-color) 6%, var(--bg-card)), color-mix(in srgb, var(--bg-card) 88%, transparent));
   color: var(--text-primary);
-  padding: 9px 11px;
+  padding: 10px 12px;
   text-align: left;
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
@@ -6508,7 +6550,7 @@ button.composition-pie-legend-row:focus-visible {
 
 .composition-pie-dot {
   width: 10px;
-  height: 30px;
+  height: 34px;
   border-radius: 999px;
   background: var(--segment-color);
 }
@@ -6530,16 +6572,33 @@ button.composition-pie-legend-row:focus-visible {
 
 .composition-pie-legend-copy strong {
   color: var(--text-primary);
-  font-size: 1.08rem;
+  font-size: 1.02rem;
   font-variant-numeric: tabular-nums;
   font-weight: 900;
   line-height: 1.1;
 }
 
+.composition-pie-progress {
+  display: block;
+  width: 100%;
+  height: 5px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--segment-color) 12%, var(--bg-secondary));
+}
+
+.composition-pie-progress b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--segment-color), color-mix(in srgb, var(--segment-color) 74%, var(--text-on-accent)));
+}
+
 .composition-pie-legend-row em {
   border-radius: 999px;
-  background: color-mix(in srgb, var(--segment-color) 10%, var(--bg-card));
-  color: color-mix(in srgb, var(--segment-color) 82%, var(--text-primary));
+  background: color-mix(in srgb, var(--segment-color) 13%, var(--bg-secondary));
+  color: color-mix(in srgb, var(--segment-color) 88%, var(--text-primary));
   font-size: 0.75rem;
   font-style: normal;
   font-variant-numeric: tabular-nums;
@@ -6644,6 +6703,10 @@ button.composition-pie-legend-row:focus-visible {
 
   .composition-pie {
     max-width: 186px;
+  }
+
+  .composition-pie-figure {
+    width: min(100%, 186px);
   }
 
   .composition-pie-legend-row {
@@ -18082,16 +18145,14 @@ button:disabled,
 }
 
 .composition-pie-panel {
-  background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--chart-1) 9%, transparent), transparent 34%),
-    color-mix(in srgb, var(--surface-card, var(--bg-card)) 96%, transparent) !important;
-  border-color: var(--surface-border, var(--border-color)) !important;
-  box-shadow: var(--shadow-card, 0 1px 2px color-mix(in srgb, var(--shadow-color) 8%, transparent)) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
   color: var(--text-primary);
 }
 
 .composition-pie-slice {
-  stroke: color-mix(in srgb, var(--surface-card, var(--bg-card)) 92%, var(--bg-primary)) !important;
+  stroke: color-mix(in srgb, var(--surface-card, var(--bg-card)) 88%, var(--bg-primary)) !important;
 }
 
 .composition-pie-center {
@@ -18104,8 +18165,8 @@ button:disabled,
 }
 
 .composition-pie-legend-row {
-  background: color-mix(in srgb, var(--segment-color) 6%, var(--surface-card, var(--bg-card))) !important;
-  border-color: color-mix(in srgb, var(--segment-color) 16%, var(--surface-border, var(--border-color))) !important;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--segment-color) 7%, var(--surface-card, var(--bg-card))), color-mix(in srgb, var(--surface-card, var(--bg-card)) 92%, transparent)) !important;
+  border-color: color-mix(in srgb, var(--segment-color) 18%, var(--surface-border, var(--border-color))) !important;
 }
 
 .composition-pie-legend-copy span {
@@ -18118,7 +18179,7 @@ button:disabled,
 }
 
 .composition-pie-legend-row em {
-  background: color-mix(in srgb, var(--segment-color) 11%, var(--bg-secondary)) !important;
+  background: color-mix(in srgb, var(--segment-color) 13%, var(--bg-secondary)) !important;
   font-weight: 650;
 }
 

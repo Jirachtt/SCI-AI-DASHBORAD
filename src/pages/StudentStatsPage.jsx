@@ -35,12 +35,12 @@ const studentColumns = [
     { key: 'gpa', label: 'GPA', align: 'right', render: value => typeof value === 'number' ? value.toFixed(2) : '-' },
 ];
 
-const levelFallbackPalette = ['var(--accent-success)', 'var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-orange)', 'var(--text-subtle)'];
+const levelFallbackPalette = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--text-subtle)'];
 const levelColorRules = [
-    { test: /ประกาศ|cert/i, color: 'var(--accent-success)' },
     { test: /ตรี|bachelor/i, color: 'var(--accent-blue)' },
     { test: /โท|master/i, color: 'var(--accent-purple)' },
     { test: /เอก|doctoral|phd/i, color: 'var(--accent-orange)' },
+    { test: /ประกาศ|cert/i, color: 'var(--accent-success)' },
 ];
 
 const aggregateLevelColumns = [
@@ -229,7 +229,7 @@ export default function StudentStatsPage() {
     const levelCompositionItems = current.byLevel.map((item, i) => ({
         label: item.level,
         value: item.count,
-        color: item.color || getStudentLevelColor(item.level, i),
+        color: getStudentLevelColor(item.level, i),
     }));
 
     // Line chart for trend (actual + forecast)
@@ -316,7 +316,7 @@ export default function StudentStatsPage() {
         .map((item, i) => ({
             label: item.level,
             value: item.count,
-            color: item.color || getStudentLevelColor(item.level, i),
+            color: getStudentLevelColor(item.level, i),
         }));
 
     const majorBarData = {
@@ -696,20 +696,23 @@ export default function StudentStatsPage() {
 
             {/* Summary Stats */}
             <div className="stats-grid">
-                {(isFiltered ? filteredByLevel : current.byLevel).map((item, i) => (
-                    <div key={i} className="stat-card animate-in">
-                        <div className="stat-card-header">
-                            <div className="stat-card-icon" style={{ background: themeGradient(item.color) }}>
-                                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {item.key === 'bachelor' || (!item.key && i === 0) ? <GraduationCap size={20} color="var(--text-on-accent)" /> : item.key === 'master' || (!item.key && i === 1) ? <BookOpen size={20} color="var(--text-on-accent)" /> : item.key === 'doctoral' || (!item.key && i === 2) ? <Award size={20} color="var(--text-on-accent)" /> : <FileText size={20} color="var(--text-on-accent)" />}
-                                </span>
+                {(isFiltered ? filteredByLevel : current.byLevel).map((item, i) => {
+                    const levelColor = getStudentLevelColor(item.level, i);
+                    return (
+                        <div key={i} className="stat-card animate-in">
+                            <div className="stat-card-header">
+                                <div className="stat-card-icon" style={{ background: themeGradient(levelColor) }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {item.key === 'bachelor' || (!item.key && i === 0) ? <GraduationCap size={20} color="var(--text-on-accent)" /> : item.key === 'master' || (!item.key && i === 1) ? <BookOpen size={20} color="var(--text-on-accent)" /> : item.key === 'doctoral' || (!item.key && i === 2) ? <Award size={20} color="var(--text-on-accent)" /> : <FileText size={20} color="var(--text-on-accent)" />}
+                                    </span>
+                                </div>
+                                {!isFiltered && i === 0 && <span className="stat-card-trend up">+{growthYoY}%</span>}
                             </div>
-                            {!isFiltered && i === 0 && <span className="stat-card-trend up">+{growthYoY}%</span>}
+                            <div className="stat-card-value">{item.count.toLocaleString()}</div>
+                            <div className="stat-card-label">{item.level}</div>
                         </div>
-                        <div className="stat-card-value">{item.count.toLocaleString()}</div>
-                        <div className="stat-card-label">{item.level}</div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Charts */}
@@ -811,42 +814,45 @@ export default function StudentStatsPage() {
 
                 {/* Science Faculty Stat Cards */}
                 <div className="stats-grid">
-                    {scienceFaculty.byLevel.map((item, i) => (
-                        <div key={i} className="stat-card animate-in" style={{
-                            borderTop: `3px solid ${legacyColorToVar(item.color)}`,
-                            position: 'relative',
-                            overflow: 'hidden'
-                        }}>
-                            <div style={{
-                                position: 'absolute',
-                                top: 0, right: 0,
-                                width: 80, height: 80,
-                                background: `radial-gradient(circle at top right, ${themeAlpha(item.color, 8)}, transparent 70%)`,
-                                borderRadius: '0 0 0 100%'
-                            }} />
-                            <div className="stat-card-header">
-                                <div className="stat-card-icon" style={{ background: themeGradient(item.color) }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {i === 0 ? <GraduationCap size={20} color="var(--text-on-accent)" /> : i === 1 ? <BookOpen size={20} color="var(--text-on-accent)" /> : i === 2 ? <Award size={20} color="var(--text-on-accent)" /> : <FileText size={20} color="var(--text-on-accent)" />}
-                                    </span>
+                    {scienceFaculty.byLevel.map((item, i) => {
+                        const levelColor = getStudentLevelColor(item.level, i);
+                        return (
+                            <div key={i} className="stat-card animate-in" style={{
+                                borderTop: `3px solid ${legacyColorToVar(levelColor)}`,
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 0, right: 0,
+                                    width: 80, height: 80,
+                                    background: `radial-gradient(circle at top right, ${themeAlpha(levelColor, 8)}, transparent 70%)`,
+                                    borderRadius: '0 0 0 100%'
+                                }} />
+                                <div className="stat-card-header">
+                                    <div className="stat-card-icon" style={{ background: themeGradient(levelColor) }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {i === 0 ? <GraduationCap size={20} color="var(--text-on-accent)" /> : i === 1 ? <BookOpen size={20} color="var(--text-on-accent)" /> : i === 2 ? <Award size={20} color="var(--text-on-accent)" /> : <FileText size={20} color="var(--text-on-accent)" />}
+                                        </span>
+                                    </div>
+                                    {item.count > 0 && (
+                                        <span style={{
+                                            fontSize: 12,
+                                            color: 'var(--text-secondary)',
+                                            background: 'var(--bg-secondary)',
+                                            padding: '3px 10px',
+                                            borderRadius: 8,
+                                            fontWeight: 600
+                                        }}>
+                                            {((item.count / scienceFaculty.total) * 100).toFixed(1)}%
+                                        </span>
+                                    )}
                                 </div>
-                                {item.count > 0 && (
-                                    <span style={{
-                                        fontSize: 12,
-                                        color: 'var(--text-secondary)',
-                                        background: 'var(--bg-secondary)',
-                                        padding: '3px 10px',
-                                        borderRadius: 8,
-                                        fontWeight: 600
-                                    }}>
-                                        {((item.count / scienceFaculty.total) * 100).toFixed(1)}%
-                                    </span>
-                                )}
+                                <div className="stat-card-value">{item.count.toLocaleString()}</div>
+                                <div className="stat-card-label">{item.level}</div>
                             </div>
-                            <div className="stat-card-value">{item.count.toLocaleString()}</div>
-                            <div className="stat-card-label">{item.level}</div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {/* Science Faculty Charts */}

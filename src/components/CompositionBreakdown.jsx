@@ -30,15 +30,18 @@ function pointOnCircle(cx, cy, radius, angleInDegrees) {
     };
 }
 
-function describePieSlice(cx, cy, radius, startAngle, endAngle) {
-    const start = pointOnCircle(cx, cy, radius, endAngle);
-    const end = pointOnCircle(cx, cy, radius, startAngle);
+function describeDonutSlice(cx, cy, outerRadius, innerRadius, startAngle, endAngle) {
+    const outerStart = pointOnCircle(cx, cy, outerRadius, endAngle);
+    const outerEnd = pointOnCircle(cx, cy, outerRadius, startAngle);
+    const innerStart = pointOnCircle(cx, cy, innerRadius, startAngle);
+    const innerEnd = pointOnCircle(cx, cy, innerRadius, endAngle);
     const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
 
     return [
-        `M ${cx} ${cy}`,
-        `L ${start.x} ${start.y}`,
-        `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`,
+        `M ${outerStart.x} ${outerStart.y}`,
+        `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 0 ${outerEnd.x} ${outerEnd.y}`,
+        `L ${innerStart.x} ${innerStart.y}`,
+        `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${innerEnd.x} ${innerEnd.y}`,
         'Z',
     ].join(' ');
 }
@@ -85,6 +88,8 @@ export default function CompositionBreakdown({
         .sort((a, b) => b.value - a.value || a.index - b.index);
     const chartTotal = toNumber(total) || normalizedItems.reduce((sum, item) => sum + item.value, 0);
     const segments = buildVisibleSegments(normalizedItems, chartTotal);
+    const leadingItem = normalizedItems[0];
+    const leadingPct = leadingItem ? (leadingItem.value / chartTotal) * 100 : 0;
 
     if (!normalizedItems.length || !chartTotal) {
         return <div className="composition-breakdown-empty">No chartable composition data</div>;
@@ -93,36 +98,44 @@ export default function CompositionBreakdown({
     return (
         <div className="composition-breakdown composition-pie-panel" role="group" aria-label={ariaLabel}>
             <div className="composition-pie-wrap">
-                <svg className="composition-pie" viewBox="0 0 220 220" role="img">
-                    <circle className="composition-pie-bg" cx="110" cy="110" r="101" />
-                    {segments.map(item => {
-                        const pct = (item.value / chartTotal) * 100;
-                        const accent = segmentAccent(item);
-                        const title = `${item.label}: ${formatValue(item.value)} (${pct.toFixed(1)}%)`;
-                        return (
-                            <path
-                                key={`${item.label}-${item.index}`}
-                                d={describePieSlice(110, 110, 100, item.startAngle, item.endAngle)}
-                                fill={accent}
-                                className="composition-pie-slice"
-                                role={onItemClick ? 'button' : 'img'}
-                                tabIndex={onItemClick ? 0 : undefined}
-                                aria-label={title}
-                                onClick={onItemClick ? () => onItemClick({ ...item, color: accent }, item.index) : undefined}
-                                onKeyDown={onItemClick ? (event) => {
-                                    if (event.key === 'Enter' || event.key === ' ') {
-                                        event.preventDefault();
-                                        onItemClick({ ...item, color: accent }, item.index);
-                                    }
-                                } : undefined}
-                            />
-                        );
-                    })}
-                </svg>
-                <div className="composition-pie-center">
-                    <span>Total</span>
-                    <strong>{formatValue(chartTotal)}</strong>
+                <div className="composition-pie-figure">
+                    <svg className="composition-pie" viewBox="0 0 220 220" role="img">
+                        <circle className="composition-pie-bg" cx="110" cy="110" r="100" />
+                        {segments.map(item => {
+                            const pct = (item.value / chartTotal) * 100;
+                            const accent = segmentAccent(item);
+                            const title = `${item.label}: ${formatValue(item.value)} (${pct.toFixed(1)}%)`;
+                            return (
+                                <path
+                                    key={`${item.label}-${item.index}`}
+                                    d={describeDonutSlice(110, 110, 100, 62, item.startAngle, item.endAngle)}
+                                    fill={accent}
+                                    className="composition-pie-slice"
+                                    role={onItemClick ? 'button' : 'img'}
+                                    tabIndex={onItemClick ? 0 : undefined}
+                                    aria-label={title}
+                                    onClick={onItemClick ? () => onItemClick({ ...item, color: accent }, item.index) : undefined}
+                                    onKeyDown={onItemClick ? (event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            onItemClick({ ...item, color: accent }, item.index);
+                                        }
+                                    } : undefined}
+                                />
+                            );
+                        })}
+                    </svg>
+                    <div className="composition-pie-center">
+                        <span>รวม</span>
+                        <strong>{formatValue(chartTotal)}</strong>
+                    </div>
                 </div>
+                {leadingItem && (
+                    <div className="composition-pie-primary">
+                        <span>{leadingItem.label}</span>
+                        <strong>{leadingPct.toFixed(1)}%</strong>
+                    </div>
+                )}
             </div>
 
             <div className="composition-pie-legend">
@@ -146,6 +159,9 @@ export default function CompositionBreakdown({
                             <div className="composition-pie-legend-copy">
                                 <span>{item.label}</span>
                                 <strong>{formatValue(item.value)}</strong>
+                                <i className="composition-pie-progress" aria-hidden="true">
+                                    <b style={{ width: `${Math.max(1, Math.min(100, pct))}%` }} />
+                                </i>
                             </div>
                             <em>{pct.toFixed(1)}%</em>
                         </RowTag>
