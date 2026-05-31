@@ -1,7 +1,46 @@
 import { useState } from 'react';
 import { FileDown, FileSpreadsheet, Printer } from 'lucide-react';
-import { exportExcelReportWorkbook, exportPageAsExcelReport } from '../utils/exportUtils';
-import { APP_NAME_TH } from '../config/appBrand';
+import {
+    exportCSVReportWorkbook,
+    exportExcelReportWorkbook,
+    exportPageAsCSVReport,
+    exportPageAsExcelReport,
+} from '../utils/exportUtils';
+import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
+
+function createPrintReportMetadata(title, stamp) {
+    const wrapper = document.createElement('section');
+    wrapper.className = 'print-report-metadata';
+    wrapper.setAttribute('aria-hidden', 'true');
+
+    const heading = document.createElement('h1');
+    heading.textContent = title || APP_NAME_TH;
+
+    const app = document.createElement('p');
+    app.textContent = `${APP_NAME_TH} / ${APP_NAME_EN}`;
+
+    const meta = document.createElement('div');
+    meta.className = 'print-report-metadata-grid';
+
+    const rows = [
+        ['Generated at', stamp],
+        ['Route scope', window.location?.pathname || '/dashboard'],
+        ['Report standard', 'University production report: visible dashboard state, source notes, filters, and charts'],
+    ];
+
+    rows.forEach(([label, value]) => {
+        const item = document.createElement('div');
+        const key = document.createElement('span');
+        key.textContent = label;
+        const val = document.createElement('strong');
+        val.textContent = value;
+        item.append(key, val);
+        meta.appendChild(item);
+    });
+
+    wrapper.append(heading, app, meta);
+    return wrapper;
+}
 
 export default function ExportPDFButton({
     title = `รายงาน ${APP_NAME_TH}`,
@@ -12,6 +51,7 @@ export default function ExportPDFButton({
     getCSVReportSheets = null,
 }) {
     const [printing, setPrinting] = useState(false);
+    const [exportingCSV, setExportingCSV] = useState(false);
     const [exportingExcel, setExportingExcel] = useState(false);
 
     const handleClick = () => {
@@ -24,9 +64,12 @@ export default function ExportPDFButton({
             hour: '2-digit', minute: '2-digit',
         });
         document.title = `${title} — ${stamp}`;
+        const printMeta = createPrintReportMetadata(title, stamp);
+        document.body.prepend(printMeta);
 
         const restore = () => {
             document.title = original;
+            printMeta.remove();
             setPrinting(false);
             window.removeEventListener('afterprint', restore);
         };
@@ -37,6 +80,27 @@ export default function ExportPDFButton({
             finally { /* afterprint handler restores state */ }
             setTimeout(() => { if (document.title !== original) restore(); }, 1500);
         }, 60);
+    };
+
+    const handleCSVReport = async () => {
+        if (exportingCSV) return;
+        setExportingCSV(true);
+        try {
+            if (getCSVReportSheets) {
+                const sheets = await getCSVReportSheets();
+                await exportCSVReportWorkbook(title, sheets);
+                return;
+            }
+            if (onCSVExport) {
+                await onCSVExport();
+                return;
+            }
+            await exportPageAsCSVReport(title);
+        } catch (error) {
+            console.error('[ExportPDFButton] CSV export failed:', error);
+        } finally {
+            setExportingCSV(false);
+        }
     };
 
     const handleExcelReport = async () => {
@@ -65,16 +129,28 @@ export default function ExportPDFButton({
     return (
         <div className="export-actions no-print">
             {includeDataExports && (
-                <button
-                    type="button"
-                    onClick={handleExcelReport}
-                    className="export-action-btn export-action-btn-csv export-csv-primary no-print"
-                    disabled={exportingExcel}
-                    aria-label="Export page data and graph images as one Excel workbook"
-                    title="Export Excel พร้อมข้อมูลครบถ้วนและรูปกราฟของหน้านี้"
-                >
-                    <FileSpreadsheet size={15} /> {exportingExcel ? 'Excel...' : 'Excel'}
-                </button>
+                <>
+                    <button
+                        type="button"
+                        onClick={handleCSVReport}
+                        className="export-action-btn export-action-btn-pdf no-print"
+                        disabled={exportingCSV}
+                        aria-label="Export page data as a UTF-8 CSV report"
+                        title="Export CSV พร้อม metadata, source และข้อมูลทุก section ของหน้านี้"
+                    >
+                        <FileSpreadsheet size={15} /> {exportingCSV ? 'CSV...' : 'CSV'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleExcelReport}
+                        className="export-action-btn export-action-btn-csv export-csv-primary no-print"
+                        disabled={exportingExcel}
+                        aria-label="Export page data and graph images as one Excel workbook"
+                        title="Export Excel พร้อมข้อมูลครบถ้วนและรูปกราฟของหน้านี้"
+                    >
+                        <FileSpreadsheet size={15} /> {exportingExcel ? 'Excel...' : 'Excel'}
+                    </button>
+                </>
             )}
             <button
                 type="button"

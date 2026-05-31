@@ -62,6 +62,33 @@ function safeFileName(name = 'export') {
         .slice(0, 120) || 'export';
 }
 
+function dateKey(date = new Date()) {
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function routeScope() {
+    if (typeof window === 'undefined') return 'server';
+    const path = String(window.location?.pathname || '')
+        .replace(/^\/dashboard\/?/, '')
+        .replace(/^\/+|\/+$/g, '');
+    return path || 'overview';
+}
+
+function standardReportFileBase(title = 'Report', scope = routeScope()) {
+    return safeFileName(`SCI-Dashboard_${title || 'Report'}_${dateKey()}_${scope || 'scope'}`);
+}
+
+function generatedAtText() {
+    return new Date().toLocaleString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
 function sheetName(name, fallback = 'Sheet') {
     const cleaned = String(name || fallback).replace(/[\\/?*[\]:]+/g, ' ').trim();
     return (cleaned || fallback).slice(0, SHEET_NAME_LIMIT);
@@ -116,6 +143,68 @@ function rowsToCsv(rows) {
     ].join('\n');
 }
 
+function reportMetadataRows(title, sheets = {}, chartSheets = []) {
+    const sheetEntries = Object.entries(sheets || {});
+    const rowCount = sheetEntries.reduce((sum, [, rows]) => sum + normalizeRows(rows).length, 0);
+    const chartCount = (chartSheets || []).filter(chart => chart?.imageDataUrl || normalizeRows(chart?.rows).length).length;
+    const meta = [
+        ['Report title', title || 'SCI AI Dashboard Report'],
+        ['Application', `${APP_NAME_TH} / ${APP_NAME_EN}`],
+        ['Generated at', generatedAtText()],
+        ['Route scope', routeScope()],
+        ['Data sections', sheetEntries.length],
+        ['Data rows', rowCount],
+        ['Charts', chartCount],
+        ['Export standard', 'Production report workbook with metadata, data sections, sources, and chart images'],
+    ];
+    return meta.map(([field, value], idx) => ({ row: idx + 1, field, value }));
+}
+
+function reportNotesRows(sheets = {}, chartSheets = []) {
+    const notes = [];
+    Object.entries(sheets || {}).forEach(([name, rows]) => {
+        const normalized = normalizeRows(rows);
+        if (/mock|sample|demo|fallback/i.test(name) || normalized.some(row =>
+            /mock|sample|demo|fallback|generated/i.test(JSON.stringify(row || {}))
+        )) {
+            notes.push({
+                section: name,
+                note: 'This section may contain sample/fallback/generated records. Verify against the listed source before using as official individual-level data.',
+            });
+        }
+    });
+    (chartSheets || []).forEach(chart => {
+        if (chart?.name) {
+            notes.push({
+                section: chart.name,
+                note: `Chart image exported at report resolution from the dashboard canvas. Source rows are included in the matching chart sheet when available.`,
+            });
+        }
+    });
+    return notes;
+}
+
+function sheetsToSectionedCsvRows(title, sheets = {}) {
+    const rows = [
+        ...reportMetadataRows(title, sheets).map(row => ({ section: 'Report Metadata', sheetRow: row.row, field: row.field, value: row.value })),
+        { section: '', sheetRow: '', field: '', value: '' },
+    ];
+    Object.entries(sheets || {}).forEach(([name, sheetRows]) => {
+        const normalized = normalizeRows(sheetRows);
+        if (normalized.length === 0) return;
+        rows.push({ section: name, sheetRow: '', field: 'Section', value: name });
+        normalized.forEach((row, idx) => {
+            rows.push({
+                section: name,
+                sheetRow: idx + 1,
+                ...row,
+            });
+        });
+        rows.push({ section: '', sheetRow: '', field: '', value: '' });
+    });
+    return rows;
+}
+
 function triggerBlobDownload(fileName, blob) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -133,6 +222,11 @@ function downloadBlob(fileName, mimeType, content) {
 
 export function downloadCSV(fileName, rows) {
     const csv = rowsToCsv(rows);
+    downloadBlob(`${safeFileName(fileName)}.csv`, 'text/csv;charset=utf-8', `\uFEFF${csv}`);
+}
+
+export function downloadCSVReport(fileName, title, sheets) {
+    const csv = rowsToCsv(sheetsToSectionedCsvRows(title, sheets));
     downloadBlob(`${safeFileName(fileName)}.csv`, 'text/csv;charset=utf-8', `\uFEFF${csv}`);
 }
 
@@ -2115,6 +2209,13 @@ function nearestReadableTitle(element, fallback) {
     return title?.trim?.() || fallback;
 }
 
+function nearestReadableSource(element) {
+    const container = element.closest('.chart-card, .dashboard-card, .card, section, article, [data-export-source]');
+    const source = container?.getAttribute?.('data-export-source') ||
+        container?.querySelector?.('.chart-card-subtitle,.chart-source,.source-badge,.status-badge')?.innerText;
+    return source?.trim?.() || '';
+}
+
 function findSolidBackground(element) {
     let node = element;
     while (node && node !== document.documentElement) {
@@ -2127,14 +2228,67 @@ function findSolidBackground(element) {
     return getComputedStyle(document.body).backgroundColor || '#ffffff';
 }
 
-function canvasToDataUrl(canvas) {
+function rgbNumbers(color = '') {
+    const match = String(color).match(/rgba?\(([^)]+)\)/i);
+    if (!match) return null;
+    return match[1].split(',').slice(0, 3).map(value => Number.parseFloat(value));
+}
+
+function isDarkColor(color) {
+    const rgb = rgbNumbers(color);
+    if (!rgb || rgb.some(value => Number.isNaN(value))) return false;
+    const [r, g, b] = rgb;
+    return ((r * 299) + (g * 587) + (b * 114)) / 1000 < 130;
+}
+
+function canvasToDataUrl(canvas, {
+    title = '',
+    source = '',
+    minWidth = 1600,
+    minHeight = 900,
+    padding = 72,
+} = {}) {
+    const sourceWidth = Math.max(1, canvas.width || canvas.clientWidth || 960);
+    const sourceHeight = Math.max(1, canvas.height || canvas.clientHeight || 540);
+    const targetWidth = Math.max(minWidth, Math.round(sourceWidth * 1.6));
+    const headerHeight = title ? 92 : 42;
+    const footerHeight = source ? 58 : 32;
+    const chartAreaWidth = targetWidth - (padding * 2);
+    const chartAreaHeightByAspect = Math.round((chartAreaWidth * sourceHeight) / sourceWidth);
+    const targetHeight = Math.max(minHeight, chartAreaHeightByAspect + headerHeight + footerHeight + padding);
+
     const out = document.createElement('canvas');
-    out.width = Math.max(1, canvas.width || canvas.clientWidth || 960);
-    out.height = Math.max(1, canvas.height || canvas.clientHeight || 540);
+    out.width = targetWidth;
+    out.height = targetHeight;
     const ctx = out.getContext('2d');
-    ctx.fillStyle = findSolidBackground(canvas);
-    ctx.fillRect(0, 0, out.width, out.height);
-    ctx.drawImage(canvas, 0, 0, out.width, out.height);
+    const background = findSolidBackground(canvas);
+    const textColor = isDarkColor(background) ? '#F8FAFC' : '#0F172A';
+    const mutedColor = isDarkColor(background) ? '#CBD5E1' : '#475569';
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+    if (title) {
+        ctx.fillStyle = textColor;
+        ctx.font = '700 34px Arial, sans-serif';
+        ctx.textBaseline = 'top';
+        ctx.fillText(title.slice(0, 110), padding, 34);
+    }
+
+    const availableHeight = targetHeight - headerHeight - footerHeight;
+    const scale = Math.min(chartAreaWidth / sourceWidth, availableHeight / sourceHeight);
+    const drawWidth = Math.max(1, Math.round(sourceWidth * scale));
+    const drawHeight = Math.max(1, Math.round(sourceHeight * scale));
+    const drawX = Math.round((targetWidth - drawWidth) / 2);
+    const drawY = headerHeight;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(canvas, drawX, drawY, drawWidth, drawHeight);
+
+    const footerText = source || `${APP_NAME_TH} · exported ${generatedAtText()}`;
+    ctx.fillStyle = mutedColor;
+    ctx.font = '500 22px Arial, sans-serif';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(footerText.slice(0, 140), padding, targetHeight - 30);
     return out.toDataURL('image/png');
 }
 
@@ -2157,12 +2311,15 @@ async function svgToDataUrl(svg) {
             img.src = svgUrl;
         });
         const canvas = document.createElement('canvas');
-        canvas.width = width * 2;
-        canvas.height = height * 2;
+        canvas.width = Math.max(1400, width * 2);
+        canvas.height = Math.max(900, height * 2);
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = findSolidBackground(svg);
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const scale = Math.min(canvas.width / width, canvas.height / height);
+        const drawWidth = Math.round(width * scale);
+        const drawHeight = Math.round(height * scale);
+        ctx.drawImage(image, Math.round((canvas.width - drawWidth) / 2), Math.round((canvas.height - drawHeight) / 2), drawWidth, drawHeight);
         return canvas.toDataURL('image/png');
     } finally {
         URL.revokeObjectURL(svgUrl);
@@ -2190,12 +2347,13 @@ async function collectChartSheets(root = document) {
         const chart = ChartJS.getChart(canvas);
         chart?.update?.('none');
         const title = nearestReadableTitle(canvas, `Chart ${idx + 1}`);
+        const source = nearestReadableSource(canvas);
         const rows = chart ? chartToRows(chart, title) : [];
         try {
             chartSheets.push({
                 name: title,
                 rows,
-                imageDataUrl: canvasToDataUrl(canvas),
+                imageDataUrl: canvasToDataUrl(canvas, { title, source }),
             });
         } catch (error) {
             console.warn('[exportUtils] Unable to capture canvas chart:', error);
@@ -2257,6 +2415,8 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
     const embeddedImageCount = (chartSheets || []).filter(chart => chart?.imageDataUrl).length;
     const visibleSummaryRows = normalizeRows(dataSheets['Visible Summary']).slice(0, 30);
     const chartImages = (chartSheets || []).filter(chart => chart?.imageDataUrl);
+    const metadataRows = reportMetadataRows(title, dataSheets, chartImages);
+    const notesRows = reportNotesRows(dataSheets, chartImages);
 
     let infoSheetName = 'Full Page Report';
     let index = 2;
@@ -2340,6 +2500,11 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
     }));
 
     return {
+        'Report Metadata': {
+            rows: metadataRows,
+            dataStartRow: 1,
+            colWidths: [10, 28, 72],
+        },
         [infoSheetName]: {
             rows: overviewRows,
             images: overviewImages,
@@ -2347,6 +2512,13 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
             colWidths: [16, 18, 52, 14, 14, 14, 14, 14, 14, 14],
             rowHeights: overviewRowHeights,
         },
+        ...(notesRows.length ? {
+            'Source Notes': {
+                rows: notesRows,
+                dataStartRow: 1,
+                colWidths: [26, 90],
+            },
+        } : {}),
         ...dataSheets,
         ...chartDetailSheets,
     };
@@ -2354,26 +2526,26 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
 
 export async function exportPageAsCSV(title = 'page-export') {
     const { sheets } = extractPageExportData(document);
-    await exportExcelReportWorkbook(title, sheets);
+    await exportCSVReportWorkbook(title, sheets);
 }
 
 export async function exportExcelReportWorkbook(title = 'page-export', sheets = {}) {
     const path = normalizeRoutePath(typeof window !== 'undefined' ? window.location?.pathname : '');
     if (path.endsWith('/hr')) {
-        downloadProfessionalWorkbook(`${title}_professional_dashboard`, buildHrProfessionalWorkbookSheets(title));
+        downloadProfessionalWorkbook(standardReportFileBase(`${title}_professional_dashboard`), buildHrProfessionalWorkbookSheets(title));
         return;
     }
     const chartSheets = await collectChartSheets();
-    await exportWorkbook(`${title}_excel_report`, singleFileReportSheets(title, sheets, chartSheets));
+    await exportWorkbook(standardReportFileBase(title), singleFileReportSheets(title, sheets, chartSheets));
 }
 
 export async function exportCSVReportWorkbook(title = 'page-export', sheets = {}) {
-    await exportExcelReportWorkbook(title, sheets);
+    downloadCSVReport(standardReportFileBase(title), title, sheets);
 }
 
 export async function exportPageAsCSVReport(title = 'page-export') {
     const { sheets } = extractPageExportData();
-    await exportExcelReportWorkbook(title, sheets);
+    await exportCSVReportWorkbook(title, sheets);
 }
 
 export async function exportPageAsExcelReport(title = 'page-export') {
@@ -2384,7 +2556,7 @@ export async function exportPageAsExcelReport(title = 'page-export') {
 export async function exportPageAsExcel(title = 'page-export') {
     const { sheets } = extractPageExportData();
     const chartSheets = await collectChartSheets();
-    await exportWorkbook(title, sheets, chartSheets);
+    await exportWorkbook(standardReportFileBase(title), sheets, chartSheets);
 }
 
 export async function exportChartAsCSV(title, chart) {
@@ -2394,7 +2566,7 @@ export async function exportChartAsCSV(title, chart) {
 export async function exportChartAsCSVReport(title, chart) {
     const chartTitle = title || 'Chart';
     const imageDataUrl = await renderChartImageDataUrl(chart);
-    await exportWorkbook(`${chartTitle}_excel_report`, {}, [{
+    await exportWorkbook(standardReportFileBase(chartTitle, 'chart'), {}, [{
         name: chartTitle,
         rows: chartToRows(chart, chartTitle),
         imageDataUrl,
@@ -2403,7 +2575,7 @@ export async function exportChartAsCSVReport(title, chart) {
 
 export async function exportChartAsExcel(title, chart) {
     const imageDataUrl = await renderChartImageDataUrl(chart);
-    await exportWorkbook(title, {}, [{
+    await exportWorkbook(standardReportFileBase(title || 'Chart', 'chart'), {}, [{
         name: title || 'Chart',
         rows: chartToRows(chart, title || 'Chart'),
         imageDataUrl,
@@ -2413,8 +2585,8 @@ export async function exportChartAsExcel(title, chart) {
 async function renderChartImageDataUrl(chart) {
     if (!chart?.data || typeof document === 'undefined') return '';
     const canvas = document.createElement('canvas');
-    canvas.width = 1100;
-    canvas.height = 620;
+    canvas.width = 1600;
+    canvas.height = 900;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = findSolidBackground(document.body);
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2422,6 +2594,7 @@ async function renderChartImageDataUrl(chart) {
     let instance;
     try {
         const config = JSON.parse(JSON.stringify(chart));
+        const chartTitle = chart.title || chart.name || config.options?.plugins?.title?.text || 'Chart';
         instance = new ChartJS(canvas, {
             type: config.chartType || 'bar',
             data: config.data,
@@ -2434,7 +2607,12 @@ async function renderChartImageDataUrl(chart) {
         });
         instance.update('none');
         await new Promise(resolve => requestAnimationFrame(resolve));
-        return canvasToDataUrl(canvas);
+        return canvasToDataUrl(canvas, {
+            title: Array.isArray(chartTitle) ? chartTitle.join(' ') : String(chartTitle),
+            source: chart.source || chart.subtitle || `${APP_NAME_TH} · ${generatedAtText()}`,
+            minWidth: 1600,
+            minHeight: 900,
+        });
     } catch (error) {
         console.warn('[exportUtils] Unable to render chart image:', error);
         return '';

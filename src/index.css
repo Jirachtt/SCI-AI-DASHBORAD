@@ -47,6 +47,11 @@
   --chart-10: #F472B6;
   --chart-11: #E2E8F0;
   --chart-12: #86EFAC;
+  --student-level-bachelor: #3B82F6;
+  --student-level-master: #A855F7;
+  --student-level-doctoral: #FB923C;
+  --student-level-certificate: #22D3EE;
+  --student-level-other: #F43F5E;
 
   --border-color: rgba(255, 255, 255, 0.06);
   --border-glow: rgba(0, 166, 81, 0.35);
@@ -1779,6 +1784,11 @@
   --chart-10: #A21CAF;
   --chart-11: #334155;
   --chart-12: #16A34A;
+  --student-level-bachelor: #2563EB;
+  --student-level-master: #7C3AED;
+  --student-level-doctoral: #EA580C;
+  --student-level-certificate: #0891B2;
+  --student-level-other: #BE123C;
 
   --border-color: rgba(0, 0, 0, 0.08);
   --border-glow: rgba(0, 166, 81, 0.25);
@@ -13870,6 +13880,61 @@ button,
     display: none !important;
   }
 
+  .print-report-metadata {
+    display: block !important;
+    margin: 0 0 10mm 0 !important;
+    padding: 7mm 8mm !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 10px !important;
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-report-metadata h1 {
+    margin: 0 0 2mm 0 !important;
+    font-size: 18pt !important;
+    line-height: 1.25 !important;
+    color: var(--text-primary) !important;
+  }
+
+  .print-report-metadata p {
+    margin: 0 0 4mm 0 !important;
+    font-size: 9pt !important;
+    color: var(--text-secondary) !important;
+  }
+
+  .print-report-metadata-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 3mm !important;
+    font-size: 8pt !important;
+  }
+
+  .print-report-metadata-grid div {
+    padding: 2.5mm !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    background: color-mix(in srgb, var(--bg-card) 88%, var(--accent-success) 12%) !important;
+  }
+
+  .print-report-metadata-grid span,
+  .print-report-metadata-grid strong {
+    display: block !important;
+  }
+
+  .print-report-metadata-grid span {
+    margin-bottom: 1mm !important;
+    color: var(--text-secondary) !important;
+  }
+
+  .print-report-metadata-grid strong {
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    overflow-wrap: anywhere;
+  }
+
   /* Expand main content full width */
   .main-layout,
   .main-content,
@@ -13924,6 +13989,10 @@ button,
     animation: none !important;
     transition: none !important;
   }
+}
+
+.print-report-metadata {
+  display: none;
 }
 
 /* Minimal AI chat welcome */
@@ -18917,6 +18986,40 @@ body {
 
 .dashboard-typography :where(.composition-pie-slice) {
   stroke: var(--chart-surface, var(--bg-card)) !important;
+}
+
+[data-theme="dark"] :where(.composition-pie-bg) {
+  fill: color-mix(in srgb, var(--bg-primary) 92%, #000000) !important;
+}
+
+[data-theme="dark"] :where(.composition-pie) {
+  filter:
+    drop-shadow(0 18px 34px rgba(0, 0, 0, 0.44))
+    drop-shadow(0 0 18px color-mix(in srgb, var(--student-level-bachelor) 10%, transparent));
+}
+
+[data-theme="dark"] :where(.composition-pie-slice) {
+  stroke: color-mix(in srgb, var(--bg-primary) 82%, #000000) !important;
+  stroke-width: 3.2;
+  filter: saturate(1.16) contrast(1.08);
+}
+
+[data-theme="dark"] :where(.composition-pie-slice:hover, .composition-pie-slice:focus-visible) {
+  filter: brightness(1.12) saturate(1.28) contrast(1.08);
+}
+
+[data-theme="dark"] :where(.composition-pie-legend-row) {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--segment-color) 14%, var(--surface-card, var(--bg-card))),
+      color-mix(in srgb, var(--surface-card, var(--bg-card)) 94%, transparent)
+    ) !important;
+  border-color: color-mix(in srgb, var(--segment-color) 34%, var(--surface-border, var(--border-color))) !important;
+}
+
+[data-theme="dark"] :where(.composition-pie-dot) {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--segment-color) 38%, transparent);
 }
 
 /* AI header icon stability: keep the assistant mark premium without hover flicker. */

@@ -35,12 +35,18 @@ const studentColumns = [
     { key: 'gpa', label: 'GPA', align: 'right', render: value => typeof value === 'number' ? value.toFixed(2) : '-' },
 ];
 
-const levelFallbackPalette = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--text-subtle)'];
+const levelFallbackPalette = [
+    'var(--student-level-bachelor)',
+    'var(--student-level-master)',
+    'var(--student-level-doctoral)',
+    'var(--student-level-certificate)',
+    'var(--student-level-other)',
+];
 const levelColorRules = [
-    { test: /ตรี|bachelor/i, color: 'var(--accent-blue)' },
-    { test: /โท|master/i, color: 'var(--accent-purple)' },
-    { test: /เอก|doctoral|phd/i, color: 'var(--accent-orange)' },
-    { test: /ประกาศ|cert/i, color: 'var(--accent-success)' },
+    { test: /ตรี|bachelor/i, color: 'var(--student-level-bachelor)' },
+    { test: /โท|master/i, color: 'var(--student-level-master)' },
+    { test: /เอก|doctoral|phd/i, color: 'var(--student-level-doctoral)' },
+    { test: /ประกาศ|cert/i, color: 'var(--student-level-certificate)' },
 ];
 
 const aggregateLevelColumns = [
