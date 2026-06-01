@@ -112,7 +112,7 @@ export default function StudentListPage() {
         ][y - 1]
     }));
 
-    const getCSVReportSheets = () => ({
+    const getWorkbookReportSheets = () => ({
         Summary: [
             { metric: 'total_students', value: students.length },
             { metric: 'filtered_students', value: filtered.length },
@@ -214,7 +214,7 @@ export default function StudentListPage() {
                     <p>{dataSourceText} • ทั้งหมด <strong style={{ color: 'var(--text-primary)' }}>{students.length}</strong> คน</p>
                 </div>
                 <div className="section-header-actions">
-                    <ExportPDFButton title="รายชื่อนักศึกษา" label="PDF" getCSVReportSheets={getCSVReportSheets} />
+                    <ExportPDFButton title="รายชื่อนักศึกษา" label="PDF" getWorkbookReportSheets={getWorkbookReportSheets} />
                     {canManage && (
                         <button onClick={() => { setStudentSaveMessage(''); setShowModal(true); }} style={{
                             display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',

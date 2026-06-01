@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { FileDown, FileSpreadsheet, Printer } from 'lucide-react';
 import {
-    exportCSVReportWorkbook,
-    exportPageAsCSVReport,
+    exportExcelReportWorkbook,
+    exportPageAsExcelReport,
 } from '../utils/exportUtils';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 
@@ -45,11 +45,13 @@ export default function ExportPDFButton({
     label = 'PDF',
     variant = 'default',        // 'default' | 'ghost'
     includeDataExports = true,
+    onWorkbookExport = null,
+    getWorkbookReportSheets = null,
     onCSVExport = null,
     getCSVReportSheets = null,
 }) {
     const [printing, setPrinting] = useState(false);
-    const [exportingCSV, setExportingCSV] = useState(false);
+    const [exportingWorkbook, setExportingWorkbook] = useState(false);
 
     const handleClick = () => {
         if (printing) return;
@@ -79,24 +81,26 @@ export default function ExportPDFButton({
         }, 60);
     };
 
-    const handleCSVReport = async () => {
-        if (exportingCSV) return;
-        setExportingCSV(true);
+    const handleWorkbookReport = async () => {
+        if (exportingWorkbook) return;
+        setExportingWorkbook(true);
         try {
-            if (getCSVReportSheets) {
-                const sheets = await getCSVReportSheets();
-                await exportCSVReportWorkbook(title, sheets);
+            const sheetProvider = getWorkbookReportSheets || getCSVReportSheets;
+            if (sheetProvider) {
+                const sheets = await sheetProvider();
+                await exportExcelReportWorkbook(title, sheets);
                 return;
             }
-            if (onCSVExport) {
-                await onCSVExport();
+            const customExport = onWorkbookExport || onCSVExport;
+            if (customExport) {
+                await customExport();
                 return;
             }
-            await exportPageAsCSVReport(title);
+            await exportPageAsExcelReport(title);
         } catch (error) {
-            console.error('[ExportPDFButton] CSV export failed:', error);
+            console.error('[ExportPDFButton] Excel export failed:', error);
         } finally {
-            setExportingCSV(false);
+            setExportingWorkbook(false);
         }
     };
 
@@ -108,13 +112,13 @@ export default function ExportPDFButton({
                 <>
                     <button
                         type="button"
-                        onClick={handleCSVReport}
-                        className="export-action-btn export-action-btn-csv export-csv-primary no-print"
-                        disabled={exportingCSV}
-                        aria-label="Export page data as a UTF-8 CSV report"
-                        title="Export CSV: ข้อมูลทุก section พร้อม metadata/source (ไฟล์ CSV ไม่รองรับรูปกราฟ)"
+                        onClick={handleWorkbookReport}
+                        className="export-action-btn export-action-btn-workbook export-workbook-primary no-print"
+                        disabled={exportingWorkbook}
+                        aria-label="Export page data and charts as an Excel workbook"
+                        title="Export Excel: ข้อมูลทุก section หลาย sheet พร้อม metadata/source และรูปกราฟคมชัดในไฟล์เดียว"
                     >
-                        <FileSpreadsheet size={15} /> {exportingCSV ? 'CSV...' : 'CSV'}
+                        <FileSpreadsheet size={15} /> {exportingWorkbook ? 'Excel...' : 'Excel'}
                     </button>
                 </>
             )}

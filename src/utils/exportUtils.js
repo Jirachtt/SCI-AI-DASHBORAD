@@ -148,7 +148,7 @@ function reportMetadataRows(title, sheets = {}, chartSheets = [], exportKind = '
     const rowCount = sheetEntries.reduce((sum, [, rows]) => sum + normalizeRows(rows).length, 0);
     const chartCount = (chartSheets || []).filter(chart => chart?.imageDataUrl || normalizeRows(chart?.rows).length).length;
     const exportStandard = exportKind === 'csv'
-        ? 'CSV data report with metadata, source notes, and all available table sections. CSV files cannot embed chart images; use PDF for visual charts.'
+        ? 'CSV data report with metadata, source notes, all table sections, and matching PNG chart image files downloaded separately. CSV files cannot embed images.'
         : 'Production report workbook with metadata, data sections, sources, and chart images';
     const meta = [
         ['Report title', title || 'SCI AI Dashboard Report'],
@@ -158,6 +158,9 @@ function reportMetadataRows(title, sheets = {}, chartSheets = [], exportKind = '
         ['Data sections', sheetEntries.length],
         ['Data rows', rowCount],
         ['Charts', chartCount],
+        ['Chart images', chartCount
+            ? (exportKind === 'csv' ? 'Downloaded separately as PNG files in report resolution' : 'Embedded in workbook chart sheets at report resolution')
+            : 'No charts found on this page'],
         ['Export standard', exportStandard],
     ];
     return meta.map(([field, value], idx) => ({ row: idx + 1, field, value }));
@@ -187,11 +190,29 @@ function reportNotesRows(sheets = {}, chartSheets = []) {
     return notes;
 }
 
-function sheetsToSectionedCsvRows(title, sheets = {}) {
+function chartPngFileName(fileBase, chart, chartIdx) {
+    const chartName = chart?.name || `chart-${chartIdx + 1}`;
+    return `${safeFileName(fileBase)}_chart-${chartIdx + 1}_${safeFileName(chartName)}.png`;
+}
+
+function sheetsToSectionedCsvRows(title, sheets = {}, chartSheets = [], fileBase = standardReportFileBase(title)) {
     const rows = [
-        ...reportMetadataRows(title, sheets, [], 'csv').map(row => ({ section: 'Report Metadata', sheetRow: row.row, field: row.field, value: row.value })),
+        ...reportMetadataRows(title, sheets, chartSheets, 'csv').map(row => ({ section: 'Report Metadata', sheetRow: row.row, field: row.field, value: row.value })),
         { section: '', sheetRow: '', field: '', value: '' },
     ];
+    const notes = reportNotesRows(sheets, chartSheets);
+    if (notes.length > 0) {
+        rows.push({ section: 'Source Notes', sheetRow: '', field: 'Section', value: 'Source Notes' });
+        notes.forEach((note, idx) => {
+            rows.push({
+                section: 'Source Notes',
+                sheetRow: idx + 1,
+                field: note.section,
+                value: note.note,
+            });
+        });
+        rows.push({ section: '', sheetRow: '', field: '', value: '' });
+    }
     Object.entries(sheets || {}).forEach(([name, sheetRows]) => {
         const normalized = normalizeRows(sheetRows);
         if (normalized.length === 0) return;
@@ -203,6 +224,27 @@ function sheetsToSectionedCsvRows(title, sheets = {}) {
                 ...row,
             });
         });
+        rows.push({ section: '', sheetRow: '', field: '', value: '' });
+    });
+    (chartSheets || []).forEach((chart, chartIdx) => {
+        const chartName = chart?.name || `Chart ${chartIdx + 1}`;
+        const normalized = normalizeRows(chart?.rows);
+        rows.push({
+            section: `Chart ${chartIdx + 1}`,
+            sheetRow: '',
+            field: 'Chart image',
+            value: chart?.imageDataUrl ? chartPngFileName(fileBase, chart, chartIdx) : 'No image captured; chart data rows are included below.',
+        });
+        if (normalized.length > 0) {
+            rows.push({ section: `Chart ${chartIdx + 1}`, sheetRow: '', field: 'Section', value: `Chart data: ${chartName}` });
+            normalized.forEach((row, idx) => {
+                rows.push({
+                    section: `Chart ${chartIdx + 1}`,
+                    sheetRow: idx + 1,
+                    ...row,
+                });
+            });
+        }
         rows.push({ section: '', sheetRow: '', field: '', value: '' });
     });
     return rows;
@@ -228,9 +270,45 @@ export function downloadCSV(fileName, rows) {
     downloadBlob(`${safeFileName(fileName)}.csv`, 'text/csv;charset=utf-8', `\uFEFF${csv}`);
 }
 
-export function downloadCSVReport(fileName, title, sheets) {
-    const csv = rowsToCsv(sheetsToSectionedCsvRows(title, sheets));
+export function downloadCSVReport(fileName, title, sheets, chartSheets = []) {
+    const csv = rowsToCsv(sheetsToSectionedCsvRows(title, sheets, chartSheets, fileName));
     downloadBlob(`${safeFileName(fileName)}.csv`, 'text/csv;charset=utf-8', `\uFEFF${csv}`);
+}
+
+function dataUrlToBlob(dataUrl) {
+    const [header = '', payload = ''] = String(dataUrl || '').split(',');
+    const mime = header.match(/data:([^;]+)/)?.[1] || 'image/png';
+    if (!payload) return null;
+    try {
+        const binary = atob(payload);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return new Blob([bytes], { type: mime });
+    } catch (error) {
+        console.warn('[exportUtils] Unable to decode chart image data:', error);
+        return null;
+    }
+}
+
+function downloadPNG(fileName, dataUrl, delayMs = 0) {
+    const blob = dataUrlToBlob(dataUrl);
+    if (!blob) return;
+    const name = `${safeFileName(fileName)}.png`;
+    if (delayMs > 0) {
+        setTimeout(() => triggerBlobDownload(name, blob), delayMs);
+        return;
+    }
+    triggerBlobDownload(name, blob);
+}
+
+function downloadChartPNGs(fileBase, chartSheets = []) {
+    const charts = (chartSheets || []).filter(chart => chart?.imageDataUrl);
+    charts.forEach((chart, idx) => {
+        downloadPNG(chartPngFileName(fileBase, chart, idx).replace(/\.png$/i, ''), chart.imageDataUrl, idx * 220);
+    });
+    return charts.length;
 }
 
 export function chartToRows(chart, chartName = 'Chart') {
@@ -2515,13 +2593,16 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
             colWidths: [16, 18, 52, 14, 14, 14, 14, 14, 14, 14],
             rowHeights: overviewRowHeights,
         },
-        ...(notesRows.length ? {
-            'Source Notes': {
-                rows: notesRows,
-                dataStartRow: 1,
-                colWidths: [26, 90],
-            },
-        } : {}),
+        Sources: {
+            rows: notesRows.length
+                ? notesRows
+                : [{
+                    section: 'Sources',
+                    note: 'No additional source warnings were detected. See Dataset Meta and each data sheet for source fields, row counts, and timestamps when available.',
+                }],
+            dataStartRow: 1,
+            colWidths: [26, 90],
+        },
         ...dataSheets,
         ...chartDetailSheets,
     };
@@ -2543,7 +2624,10 @@ export async function exportExcelReportWorkbook(title = 'page-export', sheets = 
 }
 
 export async function exportCSVReportWorkbook(title = 'page-export', sheets = {}) {
-    downloadCSVReport(standardReportFileBase(title), title, sheets);
+    const fileBase = standardReportFileBase(title);
+    const chartSheets = await collectChartSheets();
+    downloadCSVReport(fileBase, title, sheets, chartSheets);
+    downloadChartPNGs(fileBase, chartSheets);
 }
 
 export async function exportPageAsCSVReport(title = 'page-export') {
@@ -2563,26 +2647,34 @@ export async function exportPageAsExcel(title = 'page-export') {
 }
 
 export async function exportChartAsCSV(title, chart) {
-    await exportChartAsCSVReport(title, chart);
-}
-
-export async function exportChartAsCSVReport(title, chart) {
     const chartTitle = title || 'Chart';
     const imageDataUrl = await renderChartImageDataUrl(chart);
-    await exportWorkbook(standardReportFileBase(chartTitle, 'chart'), {}, [{
+    const chartSheet = {
         name: chartTitle,
         rows: chartToRows(chart, chartTitle),
         imageDataUrl,
-    }]);
+    };
+    const fileBase = standardReportFileBase(chartTitle, 'chart');
+    downloadCSVReport(fileBase, chartTitle, { [chartTitle]: chartSheet.rows }, [chartSheet]);
+    downloadChartPNGs(fileBase, [chartSheet]);
+}
+
+export async function exportChartAsCSVReport(title, chart) {
+    await exportChartAsCSV(title, chart);
 }
 
 export async function exportChartAsExcel(title, chart) {
+    const chartTitle = title || 'Chart';
     const imageDataUrl = await renderChartImageDataUrl(chart);
-    await exportWorkbook(standardReportFileBase(title || 'Chart', 'chart'), {}, [{
-        name: title || 'Chart',
-        rows: chartToRows(chart, title || 'Chart'),
+    const chartSheet = {
+        name: chartTitle,
+        rows: chartToRows(chart, chartTitle),
         imageDataUrl,
-    }]);
+    };
+    await exportWorkbook(
+        standardReportFileBase(chartTitle, 'chart'),
+        singleFileReportSheets(chartTitle, { 'Chart Data': chartSheet.rows }, [chartSheet])
+    );
 }
 
 async function renderChartImageDataUrl(chart) {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
 import {
     AlertTriangle,
     CheckCircle,
@@ -42,29 +43,23 @@ function toneIcon(tone) {
     return <Database size={16} />;
 }
 
-function csvEscape(value) {
-    const text = String(value ?? '');
-    if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
-    return text;
-}
-
 function downloadAccuracyReport(snapshot) {
     const rows = buildDataAccuracyReportRows(snapshot);
     const headers = ['section', 'item', 'source', 'value', 'status', 'updatedAt', 'note'];
-    const csv = [
-        headers.join(','),
-        ...rows.map(row => headers.map(key => csvEscape(row[key])).join(',')),
-    ].join('\n');
-    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+    worksheet['!cols'] = [
+        { wch: 22 },
+        { wch: 34 },
+        { wch: 28 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 24 },
+        { wch: 80 },
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Accuracy');
     const stamp = new Date().toISOString().slice(0, 10);
-    link.href = url;
-    link.download = `sci-ai-data-accuracy-${stamp}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    XLSX.writeFile(workbook, `sci-ai-data-accuracy-${stamp}.xlsx`, { compression: true });
 }
 
 export default function AdminDataAccuracyPanel({ onToast }) {
@@ -236,7 +231,7 @@ export default function AdminDataAccuracyPanel({ onToast }) {
                     </button>
                     <button type="button" className="admin-data-btn ghost" onClick={handleExport}>
                         <Download size={15} />
-                        Export CSV
+                        Export Excel
                     </button>
                 </div>
 

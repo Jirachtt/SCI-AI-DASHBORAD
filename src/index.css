@@ -15365,7 +15365,8 @@ input {
   }
 }
 
-/* CSV is the primary data export path; PDF carries the visual report and chart images. */
+/* Excel is the primary data export path; PDF carries the presentation report. */
+.export-actions .export-workbook-primary,
 .export-actions .export-csv-primary {
   order: 0;
   flex-basis: 116px;
@@ -15377,12 +15378,14 @@ input {
   box-shadow: 0 14px 28px -20px color-mix(in srgb, var(--accent-success) 88%, transparent) !important;
 }
 
+.export-actions .export-workbook-primary:hover:not(:disabled),
 .export-actions .export-csv-primary:hover:not(:disabled) {
   transform: translateY(-1px);
   background: linear-gradient(135deg, var(--accent-success) 0%, var(--accent-success) 100%) !important;
   box-shadow: 0 18px 32px -22px color-mix(in srgb, var(--accent-success) 95%, transparent) !important;
 }
 
+.export-actions .export-workbook-primary:disabled,
 .export-actions .export-csv-primary:disabled {
   opacity: 0.72;
   cursor: wait;
@@ -15614,7 +15617,7 @@ input {
   }
 }
 
-/* Export controls: one consistent CSV/PDF control set across every dashboard page. */
+/* Export controls: one consistent Excel/PDF control set across every dashboard page. */
 :root {
   --export-button-width: 104px;
   --export-button-height: 42px;
@@ -15657,6 +15660,7 @@ input {
   flex: 0 0 15px;
 }
 
+.export-actions .export-action-btn-workbook,
 .export-actions .export-action-btn-csv {
   order: 0;
   background: linear-gradient(135deg, var(--accent-success) 0%, var(--accent-success) 100%) !important;
@@ -15665,6 +15669,7 @@ input {
   box-shadow: 0 14px 28px -18px color-mix(in srgb, var(--shadow-color) 78%, transparent) !important;
 }
 
+.export-actions .export-action-btn-workbook:hover:not(:disabled),
 .export-actions .export-action-btn-csv:hover:not(:disabled) {
   transform: translateY(-1px);
   background: linear-gradient(135deg, var(--accent-success-deep) 0%, var(--accent-success) 100%) !important;
@@ -15742,7 +15747,7 @@ input {
   }
 }
 
-/* Header action alignment: CSV/PDF and page-specific actions share one row rhythm. */
+/* Header action alignment: Excel/PDF and page-specific actions share one row rhythm. */
 .section-header-actions,
 .admin-panel-actions {
   margin-left: auto;
@@ -16430,6 +16435,7 @@ body,
     0 0 0 1px color-mix(in srgb, var(--text-on-accent) 90%, transparent) inset !important;
 }
 
+.export-actions .export-workbook-primary,
 .export-actions .export-csv-primary,
 .filter-apply-btn {
   box-shadow:
