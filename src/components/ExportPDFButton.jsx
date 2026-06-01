@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { FileDown, FileSpreadsheet, Printer } from 'lucide-react';
 import {
     exportCSVReportWorkbook,
-    exportExcelReportWorkbook,
     exportPageAsCSVReport,
-    exportPageAsExcelReport,
 } from '../utils/exportUtils';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 
@@ -52,7 +50,6 @@ export default function ExportPDFButton({
 }) {
     const [printing, setPrinting] = useState(false);
     const [exportingCSV, setExportingCSV] = useState(false);
-    const [exportingExcel, setExportingExcel] = useState(false);
 
     const handleClick = () => {
         if (printing) return;
@@ -103,27 +100,6 @@ export default function ExportPDFButton({
         }
     };
 
-    const handleExcelReport = async () => {
-        if (exportingExcel) return;
-        setExportingExcel(true);
-        try {
-            if (getCSVReportSheets) {
-                const sheets = await getCSVReportSheets();
-                await exportExcelReportWorkbook(title, sheets);
-                return;
-            }
-            if (onCSVExport) {
-                await onCSVExport();
-                return;
-            }
-            await exportPageAsExcelReport(title);
-        } catch (error) {
-            console.error('[ExportPDFButton] Excel report export failed:', error);
-        } finally {
-            setExportingExcel(false);
-        }
-    };
-
     const Icon = variant === 'ghost' ? Printer : FileDown;
 
     return (
@@ -133,22 +109,12 @@ export default function ExportPDFButton({
                     <button
                         type="button"
                         onClick={handleCSVReport}
-                        className="export-action-btn export-action-btn-pdf no-print"
+                        className="export-action-btn export-action-btn-csv export-csv-primary no-print"
                         disabled={exportingCSV}
                         aria-label="Export page data as a UTF-8 CSV report"
-                        title="Export CSV พร้อม metadata, source และข้อมูลทุก section ของหน้านี้"
+                        title="Export CSV: ข้อมูลทุก section พร้อม metadata/source (ไฟล์ CSV ไม่รองรับรูปกราฟ)"
                     >
                         <FileSpreadsheet size={15} /> {exportingCSV ? 'CSV...' : 'CSV'}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleExcelReport}
-                        className="export-action-btn export-action-btn-csv export-csv-primary no-print"
-                        disabled={exportingExcel}
-                        aria-label="Export page data and graph images as one Excel workbook"
-                        title="Export Excel พร้อมข้อมูลครบถ้วนและรูปกราฟของหน้านี้"
-                    >
-                        <FileSpreadsheet size={15} /> {exportingExcel ? 'Excel...' : 'Excel'}
                     </button>
                 </>
             )}

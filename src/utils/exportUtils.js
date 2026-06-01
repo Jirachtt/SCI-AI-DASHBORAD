@@ -143,10 +143,13 @@ function rowsToCsv(rows) {
     ].join('\n');
 }
 
-function reportMetadataRows(title, sheets = {}, chartSheets = []) {
+function reportMetadataRows(title, sheets = {}, chartSheets = [], exportKind = 'workbook') {
     const sheetEntries = Object.entries(sheets || {});
     const rowCount = sheetEntries.reduce((sum, [, rows]) => sum + normalizeRows(rows).length, 0);
     const chartCount = (chartSheets || []).filter(chart => chart?.imageDataUrl || normalizeRows(chart?.rows).length).length;
+    const exportStandard = exportKind === 'csv'
+        ? 'CSV data report with metadata, source notes, and all available table sections. CSV files cannot embed chart images; use PDF for visual charts.'
+        : 'Production report workbook with metadata, data sections, sources, and chart images';
     const meta = [
         ['Report title', title || 'SCI AI Dashboard Report'],
         ['Application', `${APP_NAME_TH} / ${APP_NAME_EN}`],
@@ -155,7 +158,7 @@ function reportMetadataRows(title, sheets = {}, chartSheets = []) {
         ['Data sections', sheetEntries.length],
         ['Data rows', rowCount],
         ['Charts', chartCount],
-        ['Export standard', 'Production report workbook with metadata, data sections, sources, and chart images'],
+        ['Export standard', exportStandard],
     ];
     return meta.map(([field, value], idx) => ({ row: idx + 1, field, value }));
 }
@@ -186,7 +189,7 @@ function reportNotesRows(sheets = {}, chartSheets = []) {
 
 function sheetsToSectionedCsvRows(title, sheets = {}) {
     const rows = [
-        ...reportMetadataRows(title, sheets).map(row => ({ section: 'Report Metadata', sheetRow: row.row, field: row.field, value: row.value })),
+        ...reportMetadataRows(title, sheets, [], 'csv').map(row => ({ section: 'Report Metadata', sheetRow: row.row, field: row.field, value: row.value })),
         { section: '', sheetRow: '', field: '', value: '' },
     ];
     Object.entries(sheets || {}).forEach(([name, sheetRows]) => {

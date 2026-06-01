@@ -15365,10 +15365,12 @@ input {
   }
 }
 
-/* Excel report is the primary export path because it includes workbook data and chart images. */
+/* CSV is the primary data export path; PDF carries the visual report and chart images. */
 .export-actions .export-csv-primary {
   order: 0;
-  min-width: 78px;
+  flex-basis: 116px;
+  width: 116px;
+  min-width: 116px;
   background: linear-gradient(135deg, var(--accent-success-deep) 0%, var(--accent-success) 100%) !important;
   border: 1px solid color-mix(in srgb, var(--accent-success) 42%, transparent) !important;
   color: var(--text-on-accent) !important;
@@ -15389,7 +15391,9 @@ input {
 
 .export-actions .export-pdf-secondary {
   order: 1;
-  min-width: 78px;
+  flex-basis: 88px;
+  width: 88px;
+  min-width: 88px;
   background: var(--bg-card) !important;
   border: 1px solid var(--border-color) !important;
   color: var(--text-secondary) !important;
@@ -15610,7 +15614,7 @@ input {
   }
 }
 
-/* Export controls: one consistent Excel/PDF control set across every dashboard page. */
+/* Export controls: one consistent CSV/PDF control set across every dashboard page. */
 :root {
   --export-button-width: 104px;
   --export-button-height: 42px;
@@ -15738,7 +15742,7 @@ input {
   }
 }
 
-/* Header action alignment: Excel/PDF and page-specific actions share one row rhythm. */
+/* Header action alignment: CSV/PDF and page-specific actions share one row rhythm. */
 .section-header-actions,
 .admin-panel-actions {
   margin-left: auto;
