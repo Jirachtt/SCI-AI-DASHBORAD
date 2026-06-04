@@ -42,12 +42,12 @@ const STAFF_SECTIONS = [
     'academic_rules',
 ];
 
-const GENERAL_SECTIONS = ['dashboard', 'tuition', 'ai_chat', 'academic_rules'];
+const GENERAL_SECTIONS = ['dashboard', 'tuition', 'tcas_admissions', 'ai_chat', 'academic_rules'];
 
 const STUDENT_SECTIONS = [
     'dashboard', 'tuition', 'tuition_detail', 'student_life',
     'graduation_check', 'student_stats',
-    'course_analytics',
+    'tcas_admissions', 'course_analytics',
     'ai_chat',
     'academic_rules',
 ];

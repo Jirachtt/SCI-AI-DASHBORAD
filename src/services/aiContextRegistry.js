@@ -20,7 +20,7 @@ export const AI_DATASET_REGISTRY = [
         label: 'สถิตินักศึกษา',
         domain: 'students',
         sections: ['student_stats'],
-        keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|ชั้นปี|คงอยู่|ลาออก|พ้นสภาพ|รอพินิจ|เสี่ยง/i,
+        keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|ชั้นปี|คงอยู่|retention|ลดลง|ลาออก|พ้นสภาพ|รอพินิจ|เสี่ยง|อัตราสำเร็จ|สำเร็จการศึกษา|ความพร้อมจบ/i,
         chartableFields: ['total', 'byLevel', 'byEnrollmentYear', 'byMajor', 'newStudentIntake', 'trend'],
     },
     {
@@ -28,7 +28,7 @@ export const AI_DATASET_REGISTRY = [
         label: 'TCAS / แผนรับนักศึกษา',
         domain: 'tcas',
         sections: ['tcas_admissions'],
-        keywords: /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|รอบ\s*[1-4]|portfolio|quota|direct/i,
+        keywords: /tcas|admission|รับสมัคร|รับเข้า|เข้า\s*\d+|สมัคร|ผ่านคัดเลือก|รายงานตัว|คงอยู่หลังปี\s*1|funnel|แผนรับ|รับเข้าน้อย|ลดลง|รอบ\s*[1-4]|portfolio|quota|direct/i,
         chartableFields: ['round3Plan2569', 'roundPlan2569', 'intakeTarget2570', 'majorOutlook'],
     },
     {
@@ -36,7 +36,7 @@ export const AI_DATASET_REGISTRY = [
         label: 'รายวิชาและการกระจายเกรด',
         domain: 'course_analytics',
         sections: ['course_analytics'],
-        keywords: /รายวิชา|วิชา|course|เกรดรายวิชา|กระจายเกรด|วิชาไหน|แผนเรียน|ข้ามสาขา|จุดเด่น/i,
+        keywords: /รายวิชา|วิชา|วิชาข้าม|course|เกรดรายวิชา|กระจายเกรด|วิชาไหน|แผนเรียน|ข้ามสาขา|จุดเด่น/i,
         chartableFields: ['gradeDistributions', 'featuredCourses', 'coursePlanByYear', 'branchStrengths'],
     },
     {
@@ -44,7 +44,7 @@ export const AI_DATASET_REGISTRY = [
         label: 'กฎระเบียบและเกียรตินิยม',
         domain: 'academic_rules',
         sections: ['academic_rules', 'graduation_check', 'graduation_stats'],
-        keywords: /กฎ|กฏ|ระเบียบ|เกียรตินิยม|พ้นสภาพ|สำเร็จการศึกษา|หน่วยกิต|f\s*หรือ\s*u/i,
+        keywords: /กฎ|กฏ|ระเบียบ|เกียรตินิยม|gpa|ต่ำกว่า\s*2|2\.00|รอพินิจ|พ้นสภาพ|สำเร็จการศึกษา|ตรวจสอบการจบ|เงื่อนไขจบ|เงื่อนไข|จบ|หน่วยกิต|f\s*หรือ\s*u/i,
         chartableFields: [],
     },
     {
@@ -52,7 +52,7 @@ export const AI_DATASET_REGISTRY = [
         label: 'ค่าเทอมและค่าธรรมเนียม',
         domain: 'tuition',
         sections: ['tuition'],
-        keywords: /ค่าเทอม|ค่าเล่าเรียน|ค่าธรรมเนียม|ชำระ|ค้างจ่าย|tuition/i,
+        keywords: /ค่าเทอม|ค่าเล่าเรียน|ค่าธรรมเนียม|รายได้|รายรับ|กระทบรายได้|ผลต่อรายได้|ชำระ|ค้างจ่าย|tuition/i,
         chartableFields: ['fees', 'byProgram', 'byYear'],
     },
     {
@@ -60,7 +60,7 @@ export const AI_DATASET_REGISTRY = [
         label: 'สถิติสำเร็จการศึกษา',
         domain: 'graduation',
         sections: ['graduation_check', 'graduation_stats'],
-        keywords: /สำเร็จ|จบ|graduation|ผู้สำเร็จ|อัตราสำเร็จ|เกียรติ/i,
+        keywords: /สำเร็จ|จบ|graduation|ผู้สำเร็จ|อัตราสำเร็จ|ชั่วโมงกิจกรรม|กิจกรรม.*ครบ|ความพร้อมจบ|เกียรติ/i,
         chartableFields: ['history', 'byMajor', 'gpaDistribution'],
     },
     {
@@ -92,7 +92,7 @@ export const AI_DATASET_REGISTRY = [
         label: 'งานวิจัย',
         domain: 'research',
         sections: ['research_overview'],
-        keywords: /วิจัย|research|scopus|citation|สิทธิบัตร|ทุน/i,
+        keywords: /วิจัย|งานวิจัย|ภาพรวมงานวิจัย|research|scopus|citation|สิทธิบัตร|ทุน|ทุนวิจัย|ความเชี่ยวชาญ|จุดเด่น/i,
         chartableFields: ['publications', 'funding', 'patents'],
     },
     {
@@ -100,7 +100,7 @@ export const AI_DATASET_REGISTRY = [
         label: 'บุคลากร',
         domain: 'hr',
         sections: ['hr_overview'],
-        keywords: /บุคลากร|อาจารย์|staff|hr|เกษียณ|ตำแหน่ง|ผู้บริหาร/i,
+        keywords: /บุคลากร|อาจารย์|staff|hr|เกษียณ|ตำแหน่ง|ผู้บริหาร|สายวิชาการ|สายสนับสนุน|ความเชี่ยวชาญ|จุดเด่น/i,
         chartableFields: ['byPosition', 'byEducation', 'retirementForecast'],
     },
     {
