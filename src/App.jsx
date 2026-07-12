@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { lazy, Suspense } from 'react';
 import { lazyRouteLoaders } from './utils/routePrefetch';
 import './index.css';
+import './design-system.css';
 
 // Lazy load heavy pages for better performance — shared with prefetchRoute
 // so hovering a sidebar link warms the same chunk cache the router uses.

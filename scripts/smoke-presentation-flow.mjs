@@ -95,11 +95,11 @@ expect(
 );
 
 expect(
-  'Data Accuracy is visible in the global header',
-  /DataSourceStatusPill/.test(layout)
+  'Data Accuracy remains available without cluttering the global header',
+  !/DataSourceStatusPill/.test(layout)
     && /ensureDataAccuracy/.test(dataSourceStatusPill)
     && /studentReconcile/.test(dataSourceStatusPill),
-  'Every page should show whether official totals and roster rows are aligned.'
+  'Data quality remains available to Admin and AI while the command bar stays focused.'
 );
 
 expect(

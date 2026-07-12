@@ -424,12 +424,16 @@ export default function StudentStatsPage() {
         };
     });
 
-    const hasScienceGenderData = Number.isFinite(Number(scienceFaculty.byGender?.male))
-        && Number.isFinite(Number(scienceFaculty.byGender?.female));
+    const scienceGenderMale = Number(scienceFaculty.byGender?.male);
+    const scienceGenderFemale = Number(scienceFaculty.byGender?.female);
+    const scienceGenderTotal = scienceGenderMale + scienceGenderFemale;
+    const hasScienceGenderData = Number.isFinite(scienceGenderMale)
+        && Number.isFinite(scienceGenderFemale)
+        && scienceGenderTotal > 0;
     const genderData = {
         labels: ['ชาย', 'หญิง'],
         datasets: [{
-            data: [Number(scienceFaculty.byGender?.male || 0), Number(scienceFaculty.byGender?.female || 0)],
+            data: [scienceGenderMale || 0, scienceGenderFemale || 0],
             backgroundColor: ['var(--accent-blue)', 'var(--accent-pink)'],
             borderWidth: 0,
             cutout: '65%',
@@ -440,7 +444,7 @@ export default function StudentStatsPage() {
         responsive: true, maintainAspectRatio: false,
         plugins: {
             legend: { position: 'bottom', labels: { color: 'var(--text-muted)', padding: 14, font: { size: 12 } } },
-            tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString()} คน (${((ctx.parsed / scienceFaculty.total) * 100).toFixed(1)}%)` } }
+            tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString()} คน (${((ctx.parsed / scienceGenderTotal) * 100).toFixed(1)}%)` } }
         }
     };
 

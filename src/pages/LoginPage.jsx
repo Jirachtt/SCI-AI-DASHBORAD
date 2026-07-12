@@ -302,6 +302,7 @@ export default function LoginPage() {
                         <button
                             className="modal-close"
                             onClick={() => setShowAdminModal(false)}
+                            aria-label="ปิดหน้าต่างเข้าสู่ระบบ Admin"
                         >
                             <X size={20} />
                         </button>

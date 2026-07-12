@@ -441,7 +441,7 @@ export default function StudentListPage() {
             {showModal && (
                 <div style={modalOverlay} onClick={() => { if (!savingStudent) setShowModal(false); }}>
                     <div style={modalBox} onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setShowModal(false)} disabled={savingStudent}
+                        <button onClick={() => setShowModal(false)} disabled={savingStudent} aria-label="ปิดหน้าต่างเพิ่มนักศึกษา"
                             style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                             <X size={20} />
                         </button>

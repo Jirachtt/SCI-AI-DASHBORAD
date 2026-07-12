@@ -74,7 +74,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const modelLastLabel = modelRuntime.lastModelLabel || modelRuntime.lastModel || '-';
 
     return (
-        <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+        <aside id="primary-sidebar" className={`sidebar ${isOpen ? 'open' : ''}`} aria-label="Primary navigation">
             <div className="sidebar-header">
                 <div className="sidebar-logo">SCI</div>
                 <div className="sidebar-title" title={APP_NAME_FULL}>
@@ -83,7 +83,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 </div>
             </div>
 
-            <nav className="sidebar-nav">
+            <nav className="sidebar-nav" aria-label="Dashboard sections">
                 {featuredItem && canViewFeatured && (() => {
                     const FeaturedIcon = featuredItem.icon || Bot;
                     const warm = () => { if (featuredItem.path) prefetchRoute(featuredItem.path); };
@@ -123,6 +123,8 @@ export default function Sidebar({ isOpen, onClose }) {
                                             type="button"
                                             className={`nav-item nav-item-button ${settingsOpen ? 'active' : ''}`}
                                             onClick={() => setSettingsOpen(true)}
+                                            aria-expanded={settingsOpen}
+                                            aria-haspopup="dialog"
                                         >
                                             <Icon size={18} />
                                             <span>{item.label}</span>

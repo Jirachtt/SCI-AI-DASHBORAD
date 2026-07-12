@@ -8,7 +8,6 @@ import { Menu, Sun, Moon } from 'lucide-react';
 import { ensureStudentList } from '../services/studentDataService';
 import { ensureDashboardLiveData, startDashboardAutoSync } from '../services/dashboardLiveDataService';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
-import DataSourceStatusPill from './DataSourceStatusPill';
 
 export default function Layout() {
     const { theme, toggleTheme } = useTheme();
@@ -93,7 +92,13 @@ export default function Layout() {
             <div className="main-content" ref={mainContentRef}>
                 <header className="main-header">
                     <div className="header-left">
-                        <button className="menu-toggle" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+                        <button
+                            className="menu-toggle"
+                            onClick={() => setSidebarOpen(true)}
+                            aria-label="Open navigation"
+                            aria-expanded={sidebarOpen}
+                            aria-controls="primary-sidebar"
+                        >
                             <Menu size={24} />
                         </button>
                         <div className="header-title">
@@ -102,7 +107,6 @@ export default function Layout() {
                         </div>
                     </div>
                     <div className="header-right">
-                        <DataSourceStatusPill />
                         <button
                             className={`theme-toggle ${theme}`}
                             onClick={toggleTheme}

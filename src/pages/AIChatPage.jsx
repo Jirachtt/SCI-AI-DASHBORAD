@@ -3888,7 +3888,7 @@ function AIChatPageContent() {
                                 onKeyDown={handleKeyDown}
                                 disabled={typing}
                             />
-                            <button className="ai-chat-page-send" onClick={handleSend} disabled={typing || !input.trim()}>
+                            <button className="ai-chat-page-send" onClick={handleSend} disabled={typing || !input.trim()} aria-label="ส่งคำถาม">
                                 <Send size={20} />
                             </button>
                         </div>

@@ -341,7 +341,7 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
         const count = isSlice ? Math.max(labelCount, dataCount) : 0;
         const isLine = type === 'line' || chartType === 'line';
         const isPointChart = type === 'scatter' || type === 'bubble' || chartType === 'scatter' || chartType === 'bubble';
-        const fillAlpha = isLine ? 0.22 : isPointChart ? 0.78 : 0.82;
+        const fillAlpha = isLine ? 0.18 : isPointChart ? 0.82 : (themeConfig.theme === 'dark' ? 0.90 : 0.84);
 
         const originalBackground = originalColor(dataset, 'backgroundColor');
         const originalBorder = originalColor(dataset, 'borderColor');
@@ -362,11 +362,10 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
                     dataset.hoverBorderColor = 'transparent';
                     dataset.borderRadius = stackedBarBorderRadius;
                 } else if (!Array.isArray(dataset.backgroundColor)) {
-                    const horizontal = chart?.config?.options?.indexAxis === 'y';
-                    dataset.backgroundColor = (context) => chartLinearGradient(context, fallback, themeConfig.theme === 'dark' ? 0.92 : 0.88, themeConfig.theme === 'dark' ? 0.56 : 0.52, horizontal);
-                    dataset.hoverBackgroundColor = (context) => chartLinearGradient(context, fallback, 1, themeConfig.theme === 'dark' ? 0.68 : 0.62, horizontal);
+                    dataset.backgroundColor = rgbaFromColor(originalBackground, fallback, themeConfig.theme === 'dark' ? 0.90 : 0.84);
+                    dataset.hoverBackgroundColor = rgbaFromColor(originalBackground, fallback, 0.98);
                 }
-                if (dataset.borderRadius == null) dataset.borderRadius = 8;
+                if (dataset.borderRadius == null) dataset.borderRadius = 6;
                 if (dataset.borderSkipped == null) dataset.borderSkipped = false;
                 if (dataset.maxBarThickness == null) dataset.maxBarThickness = 54;
             }
@@ -401,11 +400,11 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
 }
 
 const PREMIUM_CHART_MOTION = {
-    initialDuration: 820,
-    updateDuration: 280,
-    sliceDuration: 880,
-    maxInitialDelay: 260,
-    maxUpdateDelay: 70,
+    initialDuration: 250,
+    updateDuration: 180,
+    sliceDuration: 250,
+    maxInitialDelay: 100,
+    maxUpdateDelay: 40,
     easing: 'easeOutQuart',
 };
 
@@ -593,7 +592,7 @@ export const themeAdaptorPlugin = {
             ...(options.elements.point || {}),
         };
         options.elements.bar = {
-            borderRadius: 8,
+            borderRadius: 6,
             borderSkipped: false,
             ...(options.elements.bar || {}),
         };
@@ -604,6 +603,8 @@ export const themeAdaptorPlugin = {
             if (scale.ticks) {
                 scale.ticks.color = themeConfig.muted;
                 scale.ticks.font = withDashboardFont(scale.ticks.font, '500');
+                scale.ticks.padding = scale.ticks.padding ?? 7;
+                scale.ticks.autoSkipPadding = scale.ticks.autoSkipPadding ?? 12;
             }
             if (scale.grid && scale.grid.display !== false) {
                 scale.grid.color = themeConfig.grid;
@@ -634,8 +635,8 @@ export const themeAdaptorPlugin = {
             tooltip.bodyColor = themeConfig.tooltipBody;
             tooltip.borderColor = themeConfig.tooltipBorder;
             tooltip.borderWidth = 1;
-            if (!tooltip.cornerRadius) tooltip.cornerRadius = 14;
-            if (!tooltip.padding) tooltip.padding = 14;
+            if (!tooltip.cornerRadius) tooltip.cornerRadius = 10;
+            if (!tooltip.padding) tooltip.padding = 12;
             tooltip.titleFont = withDashboardFont(tooltip.titleFont, '600');
             tooltip.bodyFont = withDashboardFont(tooltip.bodyFont, '500');
             if (tooltip.displayColors == null) tooltip.displayColors = true;

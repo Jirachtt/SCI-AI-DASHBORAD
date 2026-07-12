@@ -228,10 +228,10 @@ export default function BudgetForecastPage() {
             </div>
 
             {/* ── Stat Cards ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px', alignItems: 'stretch' }}>
+            <div className="budget-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px', alignItems: 'stretch' }}>
                 {statCards.map((sc, i) => (
-                    <div key={i} style={{ ...card, padding: '18px 20px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 120, height: '100%' }}>
-                        <div style={{ position: 'absolute', top: 0, right: 0, width: '80px', height: '80px', background: sc.gradient, borderRadius: '0 16px 0 60px', opacity: 0.6 }} />
+                    <div key={i} className="budget-kpi-card" style={{ ...card, padding: '18px 20px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 120, height: '100%' }}>
+                        <div className="budget-kpi-decoration" style={{ position: 'absolute', top: 0, right: 0, width: '80px', height: '80px', background: sc.gradient, borderRadius: '0 16px 0 60px', opacity: 0.6 }} />
                         <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 8, position: 'relative', lineHeight: 1.3 }}>
                             <sc.Icon size={16} /> {sc.label}
                         </div>
