@@ -17306,6 +17306,34 @@ body,
   line-height: 1.25;
 }
 
+/* Keep the authentication surface inside narrow mobile viewports. Earlier
+   login rules used content-box sizing, so a 100% card plus padding overflowed. */
+.login-page,
+.login-page *,
+.login-page *::before,
+.login-page *::after {
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .login-page {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .login-container.login-shell,
+  .login-container.login-shell .login-card {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .login-container.login-shell .login-logo p {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
 .google-btn-text,
 .mju-login-btn-text {
   font-size: 0;

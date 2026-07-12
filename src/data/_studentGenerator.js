@@ -3,6 +3,11 @@
 // (some Rollup setups choke when statically analysing top-level
 // computed exports).
 
+import {
+    OFFICIAL_SCIENCE_ROSTER_YEAR_TARGETS,
+    OFFICIAL_SCIENCE_STUDENT_LEVELS,
+} from './mjuOfficialStudentSnapshot.js';
+
 const MAJOR_CODES = {
     'เคมี': '101',
     'วิทยาการคอมพิวเตอร์': '102',
@@ -100,19 +105,12 @@ function makeStudent(rng, id, major, level, year) {
     };
 }
 
-const DEFAULT_BACHELOR_YEAR_TARGETS = [
-    { cohortCode: '65', year: 4, target: 187 },
-    { cohortCode: '66', year: 3, target: 343 },
-    { cohortCode: '67', year: 2, target: 433 },
-    { cohortCode: '68', year: 1, target: 406 },
-];
+const DEFAULT_BACHELOR_YEAR_TARGETS = OFFICIAL_SCIENCE_ROSTER_YEAR_TARGETS;
 
-const DEFAULT_LEVEL_TARGETS = {
-    bachelor: 1369,
-    master: 16,
-    doctoral: 5,
-    certificate: 0,
-};
+const DEFAULT_LEVEL_TARGETS = OFFICIAL_SCIENCE_STUDENT_LEVELS.reduce((acc, row) => {
+    acc[row.key] = row.count;
+    return acc;
+}, {});
 
 function toPositiveInteger(value, fallback = 0) {
     const n = Number(value);
@@ -197,9 +195,7 @@ export function generatePaddedStudents(curated, options = {}) {
     const padded = [];
     for (let ti = 0; ti < targets.length; ti++) {
         const t = targets[ti];
-        const existing = curated.filter(s =>
-            s.id.indexOf(t.cohortCode) === 0 && s.level === 'ปริญญาตรี' && s.year === t.year
-        ).length;
+        const existing = curated.filter(s => s.level === 'ปริญญาตรี' && s.year === t.year).length;
         const need = Math.max(0, t.target - existing);
         const counters = {};
         let made = 0;

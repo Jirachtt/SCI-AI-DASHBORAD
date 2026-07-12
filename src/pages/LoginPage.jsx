@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Lock, Mail, ShieldCheck, X, Sun, Moon, Landmark } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
+import { OFFICIAL_STUDENT_TOTAL } from '../data/mjuOfficialStudentSnapshot';
 
 export default function LoginPage() {
     const { user, loginWithEmail, loginWithGoogle, loginWithMjuSso, loginWithAdminCode } = useAuth();
@@ -136,14 +137,14 @@ export default function LoginPage() {
                                         <span>Decision Support Dashboard</span>
                                     </div>
                                     <div className="login-preview-actions">
-                                        <span>CSV</span>
+                                        <span>Excel</span>
                                         <span>PDF</span>
                                     </div>
                                 </div>
 
                                 <div className="login-preview-cards">
                                     <div>
-                                        <strong>16,506</strong>
+                                        <strong>{OFFICIAL_STUDENT_TOTAL.toLocaleString('th-TH')}</strong>
                                         <span>นักศึกษาทั้งหมด</span>
                                     </div>
                                     <div>

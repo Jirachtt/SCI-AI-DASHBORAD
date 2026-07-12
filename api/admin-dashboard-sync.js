@@ -1,6 +1,6 @@
-/* global process */
-
-import { runTransaction, updateWrite } from './_firestore-server.js';
+import { readJsonBody } from './mju-sso-exchange.js';
+import { getDocument, runTransaction, updateWrite } from './_firestore-server.js';
+import { normalizeRole, verifyFirebaseIdToken } from './admin-user-update.js';
 import {
   DASHBOARD_SYNC_DATASETS,
   dashboardSyncCapabilities,
@@ -14,65 +14,54 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function assertCronAuthorized(req) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    if (process.env.VERCEL_ENV === 'production') {
-      const error = new Error('Missing CRON_SECRET in production.');
-      error.statusCode = 500;
-      throw error;
-    }
-    return;
-  }
-
-  const auth = req.headers?.authorization || req.headers?.Authorization || '';
-  if (auth !== `Bearer ${secret}`) {
-    const error = new Error('Unauthorized cron request');
-    error.statusCode = 401;
-    throw error;
-  }
+function canTriggerSync(profile = {}, authUser = {}) {
+  if (authUser.uid === 'admin-313' && normalizeRole(authUser.claims?.role) === 'admin') return true;
+  if (profile.status !== 'approved') return false;
+  return profile.canSyncData === true
+    || profile.systemAdmin === true
+    || ['dean', 'staff'].includes(normalizeRole(profile.role));
 }
 
-function requestedDatasets(req, configuredIds) {
-  const queryDataset = String(req.query?.dataset || '').trim();
-  if (queryDataset) return queryDataset === 'all' ? configuredIds : [queryDataset];
-
-  const envList = String(process.env.MJU_SYNC_DATASETS || '').trim();
-  if (envList) {
-    return [...new Set(envList.split(',').map(item => item.trim()).filter(Boolean))];
-  }
-
-  return configuredIds;
-}
-
-function failureFor(dataset, reason) {
-  return {
-    dataset,
-    code: reason?.code || 'SOURCE_FETCH_FAILED',
-    error: reason?.message || String(reason),
-    validation: reason?.validation || null,
-    companionFailures: reason?.companionFailures || null,
-  };
+function normalizeRequestedDatasets(value, configuredIds) {
+  const requested = value === 'all' || value == null
+    ? configuredIds
+    : Array.isArray(value)
+      ? value
+      : [value];
+  return [...new Set(requested.map(item => String(item || '').trim()).filter(Boolean))];
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET' && req.method !== 'POST') {
+  if (req.method === 'OPTIONS') {
+    sendJson(res, 204, {});
+    return;
+  }
+  if (req.method !== 'POST') {
     sendJson(res, 405, { error: 'METHOD_NOT_ALLOWED', message: 'Method not allowed.' });
     return;
   }
 
   try {
-    assertCronAuthorized(req);
+    const authUser = await verifyFirebaseIdToken(req);
+    const callerDoc = await getDocument(`users/${authUser.uid}`);
+    if (!canTriggerSync(callerDoc?.data || {}, authUser)) {
+      sendJson(res, 403, {
+        error: 'SYNC_PERMISSION_REQUIRED',
+        message: 'This account cannot trigger dashboard data sync.',
+      });
+      return;
+    }
 
+    const body = await readJsonBody(req);
     const capabilities = dashboardSyncCapabilities();
     const configuredIds = capabilities.filter(item => item.configured).map(item => item.dataset);
-    const datasets = requestedDatasets(req, configuredIds);
+    const datasets = normalizeRequestedDatasets(body.datasets ?? body.dataset, configuredIds);
     const unknown = datasets.filter(id => !DASHBOARD_SYNC_DATASETS.includes(id));
     const unconfigured = datasets.filter(id => !configuredIds.includes(id));
     if (unknown.length || unconfigured.length || datasets.length === 0) {
       sendJson(res, 424, {
         error: 'SYNC_SOURCE_NOT_READY',
-        message: 'Cron was not started because one or more requested datasets are not configured.',
+        message: 'One or more requested datasets do not have a validated source configuration.',
         unknown,
         unconfigured,
         configured: configuredIds,
@@ -82,7 +71,15 @@ export default async function handler(req, res) {
 
     const settled = await Promise.allSettled(datasets.map(dataset => fetchDashboardSource(dataset)));
     const failures = settled
-      .map((result, index) => result.status === 'rejected' ? failureFor(datasets[index], result.reason) : null)
+      .map((result, index) => result.status === 'rejected'
+        ? {
+            dataset: datasets[index],
+            code: result.reason?.code || 'SOURCE_FETCH_FAILED',
+            error: result.reason?.message || String(result.reason),
+            validation: result.reason?.validation || null,
+            companionFailures: result.reason?.companionFailures || null,
+          }
+        : null)
       .filter(Boolean);
     if (failures.length) {
       sendJson(res, 502, {
@@ -100,7 +97,7 @@ export default async function handler(req, res) {
       `datasets/${result.dataset}`,
       `datasets/${result.dataset}/history/${historyKey}`,
     ]);
-    paths.push(`auditLogs/dashboard-cron-${historyKey}`);
+    paths.push(`auditLogs/dashboard-sync-${historyKey}`);
 
     await runTransaction(paths, () => {
       const writes = [];
@@ -112,13 +109,12 @@ export default async function handler(req, res) {
           sourceUrls: result.sourceUrls || [],
           sourceEvidence: result.sourceEvidence || [],
           updatedAt: now,
-          updatedBy: 'mju-dashboard-cron',
+          updatedBy: authUser.uid,
           version: 2,
           syncMeta: {
             fetchedAt: result.fetchedAt,
             adapter: result.adapter,
             validation: result.validation,
-            cron: true,
             atomicBatch: datasets.length > 1,
           },
         };
@@ -132,10 +128,11 @@ export default async function handler(req, res) {
           payload: result.payload,
         }));
       }
-      writes.push(updateWrite(`auditLogs/dashboard-cron-${historyKey}`, {
-        action: 'dashboard_cron_sync',
+      writes.push(updateWrite(`auditLogs/dashboard-sync-${historyKey}`, {
+        action: 'dashboard_sync',
         datasets,
-        actorUid: 'mju-dashboard-cron',
+        actorUid: authUser.uid,
+        actorEmail: authUser.email || '',
         createdAt: now,
         sourceCount: results.reduce((total, result) => total + (result.sourceUrls?.length || 1), 0),
         validationPassed: true,
@@ -158,8 +155,8 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     sendJson(res, error.statusCode || 500, {
-      error: error.code || 'DASHBOARD_CRON_SYNC_FAILED',
-      message: error.message || 'Dashboard cron sync failed.',
+      error: error.code || 'ADMIN_DASHBOARD_SYNC_FAILED',
+      message: error.message || 'Dashboard sync failed.',
     });
   }
 }

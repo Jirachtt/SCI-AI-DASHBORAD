@@ -47,6 +47,11 @@ import {
     formatAIOrchestrationPlanForPrompt,
 } from './aiOrchestrator';
 import { formatAIContextBundleForPrompt, formatAIEvidencePackForPrompt } from './aiContextRegistry';
+import {
+    decideAIRetrievalPolicy,
+    formatAIRetrievalPolicyForPrompt,
+    isTrustedAIExternalSource,
+} from './aiRetrievalPolicy';
 import { buildMjuConnectedContextForAI } from './mjuConnectedDataService';
 import { getAllAlerts } from '../utils/alerts';
 import { verifyAIAnswerAgainstContext } from '../utils/aiAnswerVerifier';
@@ -569,11 +574,43 @@ const CONTEXT_SOURCE_LABELS = {
     trusted_external_fallback: 'Trusted external public sources',
 };
 
+const CONTEXT_DATASET_IDS = {
+    students: 'student_stats',
+    tcas: 'tcas_admissions',
+    course_analytics: 'course_analytics',
+    academic_rules: 'academic_rules',
+    tuition: 'tuition',
+    graduation: 'graduation',
+    budget: 'science_budget',
+    research: 'research',
+    hr: 'hr',
+    strategic: 'strategic',
+    alerts: 'alerts',
+    student_life: 'student_life',
+    dashboard: 'dashboard_summary',
+};
+
 function localContextSourceLines(localContexts = []) {
     return localContexts
         .map(context => context?.id)
         .filter(Boolean)
-        .map(id => `- ${CONTEXT_SOURCE_LABELS[id] || id}`);
+        .map(id => {
+            const label = CONTEXT_SOURCE_LABELS[id] || id;
+            const datasetId = CONTEXT_DATASET_IDS[id];
+            if (!datasetId) return `- ${label}`;
+            const meta = getSharedDashboardDatasetMetaSync(datasetId);
+            const sourceType = meta?.sourceType || 'system';
+            const updatedAt = meta?.updatedAt instanceof Date
+                ? meta.updatedAt.toLocaleString('th-TH')
+                : meta?.updatedAt
+                    ? new Date(meta.updatedAt).toLocaleString('th-TH')
+                    : '';
+            const details = [sourceType, updatedAt ? `อัปเดต ${updatedAt}` : ''].filter(Boolean).join(', ');
+            if (meta?.sourceUrl) {
+                return `- [${safeMarkdownLinkLabel(label)}](${meta.sourceUrl})${details ? ` — ${details}` : ''}`;
+            }
+            return `- ${label}${details ? ` — ${details}` : ''}`;
+        });
 }
 
 function safeMarkdownLinkLabel(text) {
@@ -588,7 +625,7 @@ function groundingSourceLines(candidate) {
     const chunks = candidate?.groundingMetadata?.groundingChunks || [];
     const sources = chunks
         .map(chunk => chunk?.web)
-        .filter(web => web?.uri)
+        .filter(web => web?.uri && isTrustedAIExternalSource(web.uri))
         .map(web => {
             const label = safeMarkdownLinkLabel(web.title || web.uri);
             return `- [${label}](${web.uri})`;
@@ -603,8 +640,8 @@ function appendAnswerMetadata(text, { data, localContexts }) {
     const sourceLines = [...new Set([...localSources, ...groundedSources])].slice(0, 10);
     let output = String(text || '').trim();
 
-    if (sourceLines.length && !output.includes('แหล่งข้อมูล')) {
-        output += `\n\n**แหล่งข้อมูลที่ใช้:**\n${sourceLines.join('\n')}`;
+    if (sourceLines.length && !output.includes('แหล่งข้อมูลที่ระบบใช้จริง')) {
+        output += `\n\n**แหล่งข้อมูลที่ระบบใช้จริง:**\n${sourceLines.join('\n')}`;
     }
 
     return output.trim();
@@ -2019,13 +2056,22 @@ function chartPaletteInstruction(theme = 'light') {
     return `Theme-aware chart palette: current theme=${theme}. Use high-contrast dataset colors only: ${palette.join(', ')}. Avoid black, near-black, low-contrast gray, or dark green chart fills/hover colors.`;
 }
 
-function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}) {
+function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}, runtime = {}) {
     const role = resolveAIRole(userContext);
     const roleInfo = getRoleInfo(role);
     const memory = getAIUserMemory(userContext);
     const orchestrationPlan = createAIOrchestrationPlan(userMessage, userContext);
-    const useMaejoWebMode = shouldUseWebSearch(userMessage);
-    const rawLocalContexts = retrieveRelevantContexts(userMessage, userContext, settings);
+    const rawLocalContexts = runtime.localContexts || retrieveRelevantContexts(userMessage, userContext, settings);
+    const retrievalPolicy = runtime.retrievalPolicy || decideAIRetrievalPolicy({
+        question: userMessage,
+        intent: orchestrationPlan.intent,
+        contexts: rawLocalContexts,
+        contextBundle: orchestrationPlan.contextBundle,
+        allowWebSearch: settings.allowWebSearch,
+        shouldUseWebFallback: orchestrationPlan.shouldUseWebFallback,
+        blockedReason: orchestrationPlan.blockedReason,
+    });
+    const useMaejoWebMode = retrievalPolicy.useWebSearch;
     const evidencePackText = formatAIEvidencePackForPrompt(orchestrationPlan.contextBundle, rawLocalContexts, {
         limit: 8,
     });
@@ -2118,6 +2164,7 @@ ${mjuConnectedContext || 'ไม่มี MJU connected identity context สำ�
 AI ORCHESTRATION / CONTEXT REGISTRY:
 ${formatAIOrchestrationPlanForPrompt(orchestrationPlan)}
 ${formatAIContextBundleForPrompt(orchestrationPlan.contextBundle)}
+${formatAIRetrievalPolicyForPrompt(retrievalPolicy)}
 
 ${reasoningInstruction}
 
@@ -2207,15 +2254,21 @@ async function _sendMessageImpl(userMessage, options = {}) {
 6. ต้องแนบ \`\`\`json_chart\`\`\` block เสมอถ้ามีข้อมูล]`;
     }
 
-    const useSearch = settings.allowWebSearch && (
-        shouldUseWebSearch(originalQuestion)
-        || (orchestrationPlan.shouldUseWebFallback && orchestrationPlan.contextBundle.contexts.length === 0)
-    );
+    const rawRequestLocalContexts = retrieveRelevantContexts(originalQuestion, options.user || {}, settings);
+    const retrievalPolicy = decideAIRetrievalPolicy({
+        question: originalQuestion,
+        intent: orchestrationPlan.intent,
+        contexts: rawRequestLocalContexts,
+        contextBundle: orchestrationPlan.contextBundle,
+        allowWebSearch: settings.allowWebSearch,
+        shouldUseWebFallback: orchestrationPlan.shouldUseWebFallback,
+        blockedReason: orchestrationPlan.blockedReason,
+    });
+    const useSearch = retrievalPolicy.useWebSearch;
     const wantsStructuredOutput = isChartRequest && !useSearch && settings.structuredOutput !== false;
     if (wantsStructuredOutput) {
         finalMessage += `\n\n[System: Return a JSON object that matches the configured responseJsonSchema. Put user-facing Thai prose in "answer". Put chart config JSON as a string in "chartJson" only when a chart is needed. Fill "sources" with the retrieved dataset labels used and "actions" with 1-3 useful next actions.]`;
     }
-    const rawRequestLocalContexts = retrieveRelevantContexts(originalQuestion, options.user || {}, settings);
     const requestContextBundle = slimRetrievedContexts(rawRequestLocalContexts, {
         intent: orchestrationPlan.intent,
         settings,
@@ -2230,7 +2283,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
         settings,
         useSearch,
     });
-    const retrievedContextCount = requestLocalContexts.length + (useSearch ? 2 : 0);
+    const retrievedContextCount = requestLocalContexts.length + (useSearch ? 1 : 0);
     const disableCacheForPlan = options.disableCache || executiveRecommendationMode || reasoningMode || orchestrationPlan.shouldDisableCache;
     const cachedResponse = disableCacheForPlan ? null : readAIResponseCache(responseCacheKey, useSearch);
     if (cachedResponse) {
@@ -2279,6 +2332,9 @@ async function _sendMessageImpl(userMessage, options = {}) {
             modelName: 'cache',
             tokenUsage: cacheUsage,
             useSearch,
+            retrievalMode: retrievalPolicy.mode,
+            localCoverage: retrievalPolicy.coverage,
+            retrievalReason: retrievalPolicy.reason,
             chartRequest: isChartRequest,
         }, options.onMetadata);
         return cachedResponse;
@@ -2297,7 +2353,10 @@ async function _sendMessageImpl(userMessage, options = {}) {
     let allQuotaExhausted = true;
 
     // Always use retrieved contexts only; realtime wins, current web datasets are used as the interim source.
-    const baseInstruction = buildAgenticRagInstruction(originalQuestion, options.user || {}, settings);
+    const baseInstruction = buildAgenticRagInstruction(originalQuestion, options.user || {}, settings, {
+        localContexts: rawRequestLocalContexts,
+        retrievalPolicy,
+    });
     const systemText = baseInstruction;
 
     const baseRequestBody = {
@@ -2359,6 +2418,9 @@ async function _sendMessageImpl(userMessage, options = {}) {
                     contextChars: contextSlimming.usedChars || 0,
                     chartRequest: isChartRequest,
                     useSearch,
+                    retrievalMode: retrievalPolicy.mode,
+                    localCoverage: retrievalPolicy.coverage,
+                    retrievalReason: retrievalPolicy.reason,
                     sourceTypes: requestLocalContexts
                         .map(context => context?.meta?.sourceType || context?.sourceType || context?.meta?.trustLevel || '')
                         .filter(Boolean),
@@ -2479,6 +2541,9 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 latencyMs,
                 modelName: model,
                 useSearch,
+                retrievalMode: retrievalPolicy.mode,
+                localCoverage: retrievalPolicy.coverage,
+                retrievalReason: retrievalPolicy.reason,
                 chartRequest: isChartRequest,
                 structuredOutput: wantsStructuredOutput,
                 answerVerification,

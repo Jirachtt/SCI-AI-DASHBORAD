@@ -2,6 +2,17 @@
 // อ้างอิงข้อมูลจากมหาวิทยาลัยแม่โจ้ (mju.ac.th)
 import { SCIENCE_ACTIVITY_REQUIREMENT, scienceActivityEvents } from './scienceActivitiesData';
 import { officialFinancialData, officialScienceBudgetData, officialTuitionData } from './officialPlanningData';
+import {
+    OFFICIAL_SCIENCE_ENROLLMENT_ROWS,
+    OFFICIAL_SCIENCE_STUDENT_LEVELS,
+    OFFICIAL_SCIENCE_STUDENT_TOTAL,
+    OFFICIAL_STUDENT_ENROLLMENT_ROWS,
+    OFFICIAL_STUDENT_FACULTY_ROWS,
+    OFFICIAL_STUDENT_LEVELS,
+    OFFICIAL_STUDENT_SNAPSHOT_DATE,
+    OFFICIAL_STUDENT_SOURCE_URL,
+    OFFICIAL_STUDENT_TOTAL,
+} from './mjuOfficialStudentSnapshot';
 
 const fallbackTuitionData = {
     flatRate: {
@@ -135,7 +146,7 @@ export const studentLifeData = {
 
 export const dashboardSummary = {
     // อ้างอิงตัวเลขจริง: dashboard.mju.ac.th/student (ตรวจสอบ 16 พ.ค. 2569)
-    totalStudents: 16392,
+    totalStudents: OFFICIAL_STUDENT_TOTAL,
     totalCourses: 847,
     avgGPA: 3.12,
     graduationRate: 89.5,
@@ -145,7 +156,7 @@ export const dashboardSummary = {
     faculties: [
         { name: 'คณะบริหารธุรกิจ', totalStudents: 3629, totalCourses: 210, avgGPA: 2.95, graduationRate: 85.4 },
         { name: 'คณะผลิตกรรมการเกษตร', totalStudents: 2047, totalCourses: 185, avgGPA: 3.02, graduationRate: 86.8 },
-        { name: 'คณะวิทยาศาสตร์', totalStudents: 1390, totalCourses: 156, avgGPA: 3.18, graduationRate: 91.2 },
+        { name: 'คณะวิทยาศาสตร์', totalStudents: OFFICIAL_SCIENCE_STUDENT_TOTAL, totalCourses: 156, avgGPA: 3.18, graduationRate: 91.2 },
         { name: 'คณะสารสนเทศและการสื่อสาร', totalStudents: 1229, totalCourses: 72, avgGPA: 3.10, graduationRate: 89.5 },
         { name: 'วิทยาลัยบริหารศาสตร์', totalStudents: 1013, totalCourses: 95, avgGPA: 3.08, graduationRate: 87.2 },
         { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ฯ', totalStudents: 926, totalCourses: 110, avgGPA: 3.00, graduationRate: 84.5 },
@@ -170,7 +181,7 @@ export const dashboardSummary = {
 // รวมทั้งสิ้น 16,392 คน — ปริญญาตรี 15,693 / โท 417 / เอก 209 / ประกาศนียบัตร 73
 export const studentStatsData = {
     current: {
-        total: 16392,
+        total: OFFICIAL_STUDENT_TOTAL,
         byLevel: [
             { level: 'ปริญญาตรี', count: 15693, color: 'var(--accent-success-deep)', icon: 'BSc' },
             { level: 'ปริญญาโท', count: 417, color: 'var(--accent-info)', icon: 'MSc' },
@@ -225,21 +236,14 @@ export const studentStatsData = {
         { year: '2561', count: 11, type: 'actual' },
         { year: '2560', count: 4, type: 'actual' }
     ],
-    // แนวโน้มจำนวนนิสิตทั้งมหาวิทยาลัย (ปรับตามฐานจริงล่าสุด = 16,392)
-    trend: [
-        { year: '2564', total: 12850, bachelor: 12320, master: 320, doctoral: 210, type: 'actual' },
-        { year: '2565', total: 13975, bachelor: 13420, master: 340, doctoral: 215, type: 'actual' },
-        { year: '2566', total: 15225, bachelor: 14620, master: 385, doctoral: 220, type: 'actual' },
-        { year: '2567', total: 16100, bachelor: 15440, master: 415, doctoral: 220, type: 'actual' },
-        { year: '2568', total: 16392, bachelor: 15693, master: 417, doctoral: 209, type: 'actual' },
-        { year: '2569', total: 17500, bachelor: 16740, master: 455, doctoral: 230, type: 'forecast' }
-    ],
+    // ยังไม่มี historical total series ที่ยืนยันจาก public source
+    trend: [],
     // ==================== ข้อมูลเฉพาะคณะวิทยาศาสตร์ ====================
     // อ้างอิง: dashboard.mju.ac.th/student?dep=20300-20300-20300
     // อ้างอิง: dashboard.mju.ac.th/person?dep=20300-20300-20300
     scienceFaculty: {
         name: 'คณะวิทยาศาสตร์',
-        total: 1390,
+        total: OFFICIAL_SCIENCE_STUDENT_TOTAL,
         byLevel: [
             { level: 'ปริญญาตรี', count: 1369, color: 'var(--accent-success-deep)', icon: 'BSc' },
             { level: 'ปริญญาโท', count: 16, color: 'var(--accent-info)', icon: 'MSc' },
@@ -281,7 +285,7 @@ export const studentStatsData = {
         ],
         // อัตราส่วน นศ./อาจารย์ (อ้างอิงนักศึกษาจริง 1,390 / บุคลากรสายวิชาการ 113)
         studentFacultyRatio: {
-            students: 1390,
+            students: OFFICIAL_SCIENCE_STUDENT_TOTAL,
             academicStaff: 113,
             ratio: 12.3,
             comparison: [
@@ -329,6 +333,114 @@ export const studentStatsData = {
             ]
         }
     }
+};
+
+// Keep the bundled fallback aligned with the latest verified public MJU snapshot.
+// Firestore/manual sync still takes precedence at runtime.
+const fallbackFacultyMeta = new Map(dashboardSummary.faculties.map(row => [row.name, row]));
+dashboardSummary.totalStudents = OFFICIAL_STUDENT_TOTAL;
+dashboardSummary.currentSemester = '1/2569';
+dashboardSummary.academicYear = '2569';
+dashboardSummary.faculties = OFFICIAL_STUDENT_FACULTY_ROWS.map(row => ({
+    ...(fallbackFacultyMeta.get(row.name) || {}),
+    name: row.name,
+    totalStudents: row.total,
+}));
+
+studentStatsData.current = {
+    total: OFFICIAL_STUDENT_TOTAL,
+    byLevel: OFFICIAL_STUDENT_LEVELS.map(({ level, count, color, icon }) => ({ level, count, color, icon })),
+};
+studentStatsData.byFaculty = OFFICIAL_STUDENT_FACULTY_ROWS.map(row => ({ ...row }));
+studentStatsData.byEnrollmentYear = OFFICIAL_STUDENT_ENROLLMENT_ROWS.map(row => ({ ...row, count: row.total }));
+// Do not expose the legacy synthetic time series as historical fact. The
+// public source currently provides a cross-sectional entry-year breakdown.
+studentStatsData.trend = [];
+studentStatsData.byCampus = [
+    { campus: 'เชียงใหม่', certificate: 87, bachelor: 19800, master: 476, doctoral: 248, total: 20611, count: 20611 },
+    { campus: 'แพร่', certificate: 0, bachelor: 1329, master: 71, doctoral: 0, total: 1400, count: 1400 },
+    { campus: 'ชุมพร', certificate: 0, bachelor: 333, master: 0, doctoral: 0, total: 333, count: 333 },
+];
+// The current public university aggregate does not expose a verified overall
+// nationality split through the sync parser. Keep this empty instead of
+// carrying forward an old ratio as if it were current.
+studentStatsData.byNationality = [];
+
+const scienceFallback = studentStatsData.scienceFaculty;
+scienceFallback.total = OFFICIAL_SCIENCE_STUDENT_TOTAL;
+scienceFallback.byLevel = OFFICIAL_SCIENCE_STUDENT_LEVELS.map(({ level, count, color, icon }) => ({ level, count, color, icon }));
+scienceFallback.byEnrollmentYear = OFFICIAL_SCIENCE_ENROLLMENT_ROWS
+    .map(row => ({ ...row, count: row.total }))
+    .sort((a, b) => Number(a.year) - Number(b.year));
+scienceFallback.byCampus = [
+    { campus: 'เชียงใหม่', certificate: 0, bachelor: 1735, master: 19, doctoral: 5, total: 1759, count: 1759 },
+];
+scienceFallback.byNationality = [
+    { nationality: 'ไทย', count: 1730 },
+    { nationality: 'ไม่มีสัญชาติ', count: 29 },
+];
+scienceFallback.byGender = {
+    male: null,
+    female: null,
+    malePercent: null,
+    femalePercent: null,
+    sourceStatus: 'unavailable_from_public_source',
+};
+scienceFallback.newStudentIntake = OFFICIAL_SCIENCE_ENROLLMENT_ROWS
+    .map(row => ({
+        ...row,
+        channels: { quota: null, directAdmit: null, tcas: null, other: null },
+    }))
+    .sort((a, b) => Number(a.year) - Number(b.year));
+scienceFallback.studentFacultyRatio = {
+    ...scienceFallback.studentFacultyRatio,
+    students: OFFICIAL_SCIENCE_STUDENT_TOTAL,
+    academicStaff: 113,
+    ratio: Number((OFFICIAL_SCIENCE_STUDENT_TOTAL / 113).toFixed(1)),
+    comparison: (scienceFallback.studentFacultyRatio?.comparison || []).map((row, index) => (
+        index === 0 ? { ...row, ratio: Number((OFFICIAL_SCIENCE_STUDENT_TOTAL / 113).toFixed(1)) } : row
+    )),
+};
+scienceFallback.personnel = {
+    total: 173,
+    male: null,
+    female: null,
+    byType: [
+        { type: 'พนักงานมหาวิทยาลัย', count: 145 },
+        { type: 'พนักงานส่วนงาน', count: 14 },
+        { type: 'ข้าราชการ', count: 14 },
+    ],
+    byPosition: [
+        { position: 'ผู้ช่วยศาสตราจารย์', count: 68 },
+        { position: 'อาจารย์', count: 25 },
+        { position: 'รองศาสตราจารย์', count: 20 },
+    ],
+    byEducation: [
+        { level: 'ปริญญาเอก', count: 106 },
+        { level: 'ปริญญาโท', count: 34 },
+        { level: 'ปริญญาตรี', count: 28 },
+        { level: 'ปวส.', count: 4 },
+        { level: 'ประถมศึกษา', count: 1 },
+    ],
+    retirementForecast: [
+        { year: '2569', remaining: 173, retiring: 0 },
+        { year: '2570', remaining: 167, retiring: 6 },
+        { year: '2571', remaining: 164, retiring: 3 },
+        { year: '2572', remaining: 161, retiring: 3 },
+        { year: '2573', remaining: 158, retiring: 3 },
+        { year: '2574', remaining: 153, retiring: 5 },
+    ],
+    sourceUrl: 'https://dashboard.mju.ac.th/person.aspx?dep=20300',
+    checkedAt: OFFICIAL_STUDENT_SNAPSHOT_DATE,
+};
+studentStatsData.sourceCoverage = {
+    ...(studentStatsData.sourceCoverage || {}),
+    officialSnapshot: {
+        checkedAt: OFFICIAL_STUDENT_SNAPSHOT_DATE,
+        sourceUrl: OFFICIAL_STUDENT_SOURCE_URL,
+        fields: ['current', 'byFaculty', 'byEnrollmentYear', 'byCampus', 'scienceFaculty', 'scienceFaculty.personnel'],
+    },
+    unavailable: ['historical total time series', 'overall nationality breakdown', 'science gender breakdown'],
 };
 
 // ==================== ข้อมูลพยากรณ์งบประมาณมหาวิทยาลัย ====================

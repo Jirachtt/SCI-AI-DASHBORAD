@@ -400,7 +400,9 @@ function patchStudentStats(baseData) {
         byMajor: snapshot.byMajor,
         gpaDistribution: snapshot.gpaDistribution,
         avgGPA: snapshot.avgGPA ?? science.avgGPA,
-        byGender: snapshot.gender || scaleGender(science.byGender, snapshot.total),
+        byGender: isStudentListLive() && snapshot.gender
+            ? snapshot.gender
+            : science.byGender,
         byNationality: snapshot.nationality || scaleExistingRowsToTotal(science.byNationality || [], snapshot.total),
         linkedStudentRows: {
             source: 'datasets/students',
@@ -434,21 +436,6 @@ function mergeIntakeChannels(nextIntake = [], existingIntake = []) {
             channels: existing?.channels || row.channels,
         };
     });
-}
-
-function scaleGender(gender, total) {
-    if (!gender || !total) return gender || { male: 0, female: 0, malePercent: 0, femalePercent: 0 };
-    const sourceTotal = toNumber(gender.male) + toNumber(gender.female);
-    if (!sourceTotal) return gender;
-    const male = Math.round((toNumber(gender.male) / sourceTotal) * total);
-    const female = Math.max(0, total - male);
-    return {
-        ...gender,
-        male,
-        female,
-        malePercent: round((male / total) * 100, 1),
-        femalePercent: round((female / total) * 100, 1),
-    };
 }
 
 function patchDashboardSummary(baseData) {

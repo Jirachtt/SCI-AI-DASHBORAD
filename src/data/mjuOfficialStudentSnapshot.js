@@ -1,21 +1,21 @@
-export const OFFICIAL_STUDENT_SNAPSHOT_DATE = '2026-05-16';
+export const OFFICIAL_STUDENT_SNAPSHOT_DATE = '2026-07-11';
 export const OFFICIAL_STUDENT_SOURCE_URL = 'https://dashboard.mju.ac.th/student';
 
 export const OFFICIAL_STUDENT_LEVELS = [
-    { key: 'certificate', level: 'ประกาศนียบัตร', count: 73, color: 'var(--accent-success)', icon: 'Cert' },
-    { key: 'bachelor', level: 'ปริญญาตรี', count: 15693, color: 'var(--accent-success-deep)', icon: 'BSc' },
-    { key: 'master', level: 'ปริญญาโท', count: 417, color: 'var(--accent-info)', icon: 'MSc' },
-    { key: 'doctoral', level: 'ปริญญาเอก', count: 209, color: 'var(--accent-pink)', icon: 'PhD' },
+    { key: 'certificate', level: 'ประกาศนียบัตร', count: 87, color: 'var(--accent-success)', icon: 'Cert' },
+    { key: 'bachelor', level: 'ปริญญาตรี', count: 21462, color: 'var(--accent-success-deep)', icon: 'BSc' },
+    { key: 'master', level: 'ปริญญาโท', count: 547, color: 'var(--accent-info)', icon: 'MSc' },
+    { key: 'doctoral', level: 'ปริญญาเอก', count: 248, color: 'var(--accent-pink)', icon: 'PhD' },
 ];
 
 export const OFFICIAL_SCIENCE_STUDENT_LEVELS = [
     { key: 'certificate', level: 'ประกาศนียบัตร', count: 0, color: 'var(--accent-success)', icon: 'Cert' },
-    { key: 'bachelor', level: 'ปริญญาตรี', count: 1369, color: 'var(--accent-success-deep)', icon: 'BSc' },
-    { key: 'master', level: 'ปริญญาโท', count: 16, color: 'var(--accent-info)', icon: 'MSc' },
+    { key: 'bachelor', level: 'ปริญญาตรี', count: 1735, color: 'var(--accent-success-deep)', icon: 'BSc' },
+    { key: 'master', level: 'ปริญญาโท', count: 19, color: 'var(--accent-info)', icon: 'MSc' },
     { key: 'doctoral', level: 'ปริญญาเอก', count: 5, color: 'var(--accent-pink)', icon: 'PhD' },
 ];
 
-export const OFFICIAL_STUDENT_FACULTY_ROWS = [
+export const LEGACY_STUDENT_FACULTY_ROWS = [
     { name: 'คณะบริหารธุรกิจ', certificate: 0, bachelor: 3565, master: 56, doctoral: 8, total: 3629 },
     { name: 'คณะผลิตกรรมการเกษตร', certificate: 0, bachelor: 1878, master: 90, doctoral: 79, total: 2047 },
     { name: 'คณะวิทยาศาสตร์', certificate: 0, bachelor: 1369, master: 16, doctoral: 5, total: 1390 },
@@ -37,11 +37,65 @@ export const OFFICIAL_STUDENT_FACULTY_ROWS = [
     { name: 'โครงการ', certificate: 73, bachelor: 0, master: 0, doctoral: 0, total: 73 },
 ];
 
-export const OFFICIAL_STUDENT_TOTAL = 16392;
-export const OFFICIAL_SCIENCE_STUDENT_TOTAL = 1390;
+export const OFFICIAL_STUDENT_FACULTY_ROWS = [
+    { name: 'คณะบริหารธุรกิจ', certificate: 0, bachelor: 4855, master: 81, doctoral: 10, total: 4946 },
+    { name: 'คณะผลิตกรรมการเกษตร', certificate: 0, bachelor: 2443, master: 97, doctoral: 99, total: 2639 },
+    { name: 'คณะสารสนเทศและการสื่อสาร', certificate: 0, bachelor: 1791, master: 0, doctoral: 0, total: 1791 },
+    { name: 'คณะวิทยาศาสตร์', certificate: 0, bachelor: 1735, master: 19, doctoral: 5, total: 1759 },
+    { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ เฉลิมพระเกียรติ', certificate: 0, bachelor: 1329, master: 71, doctoral: 0, total: 1400 },
+    { name: 'วิทยาลัยบริหารศาสตร์', certificate: 0, bachelor: 1247, master: 87, doctoral: 18, total: 1352 },
+    { name: 'คณะศิลปศาสตร์', certificate: 0, bachelor: 1249, master: 0, doctoral: 0, total: 1249 },
+    { name: 'คณะเศรษฐศาสตร์', certificate: 0, bachelor: 1140, master: 13, doctoral: 15, total: 1168 },
+    { name: 'คณะพัฒนาการท่องเที่ยว', certificate: 0, bachelor: 1118, master: 11, doctoral: 13, total: 1142 },
+    { name: 'วิทยาลัยพลังงานทดแทน', certificate: 0, bachelor: 1037, master: 51, doctoral: 14, total: 1102 },
+    { name: 'คณะวิศวกรรมและอุตสาหกรรมเกษตร', certificate: 0, bachelor: 899, master: 12, doctoral: 5, total: 916 },
+    { name: 'คณะสัตวศาสตร์และเทคโนโลยี', certificate: 0, bachelor: 883, master: 29, doctoral: 3, total: 915 },
+    { name: 'คณะเทคโนโลยีการประมงและทรัพยากรทางน้ำ', certificate: 0, bachelor: 543, master: 13, doctoral: 5, total: 561 },
+    { name: 'คณะสถาปัตยกรรมศาสตร์และการออกแบบสิ่งแวดล้อม', certificate: 0, bachelor: 486, master: 12, doctoral: 12, total: 510 },
+    { name: 'มหาวิทยาลัยแม่โจ้-ชุมพร', certificate: 0, bachelor: 333, master: 0, doctoral: 0, total: 333 },
+    { name: 'คณะสัตวแพทยศาสตร์', certificate: 0, bachelor: 198, master: 0, doctoral: 0, total: 198 },
+    { name: 'คณะพยาบาลศาสตร์', certificate: 0, bachelor: 176, master: 0, doctoral: 0, total: 176 },
+    { name: 'วิทยาลัยนานาชาติ', certificate: 0, bachelor: 0, master: 51, doctoral: 49, total: 100 },
+    { name: 'โครงการ', certificate: 87, bachelor: 0, master: 0, doctoral: 0, total: 87 },
+];
 
-const STALE_SCIENCE_TOTALS = new Set([1398, 1399, 1451, 1452]);
-const STALE_CURRENT_TOTALS = new Set([16475, 16505, 16506, 16834, 16839]);
+export const OFFICIAL_STUDENT_ENROLLMENT_ROWS = [
+    { year: '2569', certificate: 14, bachelor: 6123, master: 176, doctoral: 52, total: 6365 },
+    { year: '2568', certificate: 12, bachelor: 5058, master: 162, doctoral: 33, total: 5265 },
+    { year: '2567', certificate: 12, bachelor: 4856, master: 120, doctoral: 62, total: 5050 },
+    { year: '2566', certificate: 18, bachelor: 4161, master: 29, doctoral: 43, total: 4251 },
+    { year: '2565', certificate: 21, bachelor: 943, master: 48, doctoral: 23, total: 1035 },
+    { year: '2564', certificate: 10, bachelor: 221, master: 10, doctoral: 22, total: 263 },
+    { year: '2563', certificate: 0, bachelor: 57, master: 0, doctoral: 9, total: 66 },
+    { year: '2562', certificate: 0, bachelor: 37, master: 1, doctoral: 2, total: 40 },
+    { year: '2561', certificate: 0, bachelor: 4, master: 0, doctoral: 1, total: 5 },
+    { year: '2560', certificate: 0, bachelor: 2, master: 1, doctoral: 1, total: 4 },
+];
+
+export const OFFICIAL_SCIENCE_ENROLLMENT_ROWS = [
+    { year: '2569', certificate: 0, bachelor: 417, master: 6, doctoral: 1, total: 424 },
+    { year: '2568', certificate: 0, bachelor: 394, master: 2, doctoral: 1, total: 397 },
+    { year: '2567', certificate: 0, bachelor: 431, master: 2, doctoral: 0, total: 433 },
+    { year: '2566', certificate: 0, bachelor: 344, master: 1, doctoral: 0, total: 345 },
+    { year: '2565', certificate: 0, bachelor: 103, master: 6, doctoral: 2, total: 111 },
+    { year: '2564', certificate: 0, bachelor: 32, master: 1, doctoral: 1, total: 34 },
+    { year: '2563', certificate: 0, bachelor: 6, master: 0, doctoral: 0, total: 6 },
+    { year: '2562', certificate: 0, bachelor: 8, master: 0, doctoral: 0, total: 8 },
+    { year: '2560', certificate: 0, bachelor: 0, master: 1, doctoral: 0, total: 1 },
+];
+
+export const OFFICIAL_SCIENCE_ROSTER_YEAR_TARGETS = [
+    { cohortCode: '66', year: 4, target: 493 },
+    { cohortCode: '67', year: 3, target: 431 },
+    { cohortCode: '68', year: 2, target: 394 },
+    { cohortCode: '69', year: 1, target: 417 },
+];
+
+export const OFFICIAL_STUDENT_TOTAL = 22344;
+export const OFFICIAL_SCIENCE_STUDENT_TOTAL = 1759;
+
+const STALE_SCIENCE_TOTALS = new Set([1383, 1390, 1398, 1399, 1451, 1452, 1528]);
+const STALE_CURRENT_TOTALS = new Set([16350, 16392, 16475, 16505, 16506, 16834, 16839, 17773]);
 const SCIENCE_MATCH = 'วิทยาศาสตร์';
 
 function clone(value) {

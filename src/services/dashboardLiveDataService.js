@@ -1,5 +1,5 @@
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
 import {
     dashboardSummary,
     financialData,
@@ -24,6 +24,7 @@ import { courseAnalyticsData } from '../data/courseAnalyticsData';
 import { applyOfficialStudentSnapshot } from '../data/mjuOfficialStudentSnapshot';
 
 const SYNC_ENDPOINT = import.meta.env.VITE_MJU_SYNC_ENDPOINT || '/api/mju-dashboard-sync';
+const ADMIN_SYNC_ENDPOINT = import.meta.env.VITE_MJU_ADMIN_SYNC_ENDPOINT || '/api/admin-dashboard-sync';
 const AUTO_SYNC_ENABLED = String(import.meta.env.VITE_MJU_AUTO_SYNC || '').toLowerCase() === 'true';
 const AUTO_SYNC_INTERVAL_MINUTES = Math.max(5, Number(import.meta.env.VITE_MJU_SYNC_INTERVAL_MINUTES || 15));
 const LAST_SYNC_KEY = 'sci-ai-dashboard:last-mju-auto-sync';
@@ -96,8 +97,8 @@ export const DASHBOARD_DATASETS = [
         id: 'graduation',
         label: 'Graduation',
         section: 'graduation_stats',
-        source: 'https://dashboard.mju.ac.th/homeDashboard?&dep=20300',
-        syncMode: 'public',
+        source: 'MJU Reg/Graduation export or authorized API endpoint',
+        syncMode: 'api',
     },
     {
         id: 'hr',
@@ -223,6 +224,22 @@ function mergePayloadWithFallback(id, payload) {
     return applyOfficialStudentSnapshot(id, merged);
 }
 
+function isValidatedSourceDocument(data = {}) {
+    return data?.syncMeta?.validation?.valid === true;
+}
+
+function isAuthoritativeSourceType(sourceType = '') {
+    return /mju|api|sync|official|dashboard|file|upload|csv|excel|xlsx|manual/i.test(String(sourceType || ''));
+}
+
+function displayPayloadForDocument(id, rawPayload, data = {}) {
+    const sourceType = data.sourceType || data.lastWriteSource || '';
+    if (isValidatedSourceDocument(data) || isAuthoritativeSourceType(sourceType)) {
+        return rawPayload;
+    }
+    return mergePayloadWithFallback(id, rawPayload);
+}
+
 function normalizeDocPayload(data) {
     if (!data) return null;
     if (data.payload && typeof data.payload === 'object') return data.payload;
@@ -264,7 +281,7 @@ function applyDatasetSnapshot(id, snap) {
     const data = snap.data();
     const incomingUpdatedAt = readTimestamp(data.updatedAt);
     const rawPayload = normalizeDocPayload(data);
-    const payload = mergePayloadWithFallback(id, rawPayload);
+    const payload = displayPayloadForDocument(id, rawPayload, data);
     if (!isCompatiblePayload(id, payload)) {
         console.warn(`[dashboardLiveDataService] Ignoring incompatible payload for ${id}`);
         _cache.set(id, fallback);
@@ -282,7 +299,10 @@ function applyDatasetSnapshot(id, snap) {
 
     _cache.set(id, payload);
     const sourceType = data.sourceType || data.lastWriteSource || 'firestore';
-    const isLiveSource = !/fallback|mock|static|demo|sample/i.test(sourceType);
+    const validation = data.syncMeta?.validation || null;
+    const requiresSourceValidation = /mju_public|mju_api|mju_sync|official_sync|dashboard_sync/i.test(sourceType);
+    const isLiveSource = !/fallback|mock|static|demo|sample/i.test(sourceType)
+        && (!requiresSourceValidation || validation?.valid === true);
     if (isLiveSource) _liveCache.set(id, rawPayload || payload);
     else _liveCache.delete(id);
     _meta.set(id, {
@@ -295,6 +315,10 @@ function applyDatasetSnapshot(id, snap) {
         rowCount: data.rowCount ?? getRowCount(payload),
         version: data.version || 1,
         isLive: isLiveSource,
+        syncMeta: data.syncMeta || null,
+        validation,
+        sourceEvidence: data.sourceEvidence || [],
+        sourceUrls: data.sourceUrls || [],
     });
 }
 
@@ -308,19 +332,59 @@ function notify(id) {
     }
 }
 
-async function fetchDashboardDatasetFromSource(id) {
-    const url = new URL(SYNC_ENDPOINT, window.location.origin);
-    url.searchParams.set('dataset', id);
-
-    const response = await fetch(url.toString(), {
-        headers: { Accept: 'application/json' },
-    });
+async function readJsonResponse(response) {
     const result = await response.json().catch(() => ({}));
-
     if (!response.ok) {
-        throw new Error(result?.error || `MJU sync failed with HTTP ${response.status}`);
+        const message = result?.message || result?.error || `MJU sync failed with HTTP ${response.status}`;
+        const error = new Error(message);
+        error.code = result?.error || result?.code || 'MJU_SYNC_FAILED';
+        error.details = result;
+        throw error;
     }
     return result;
+}
+
+export async function getDashboardSyncCapabilities() {
+    const url = new URL(SYNC_ENDPOINT, window.location.origin);
+    url.searchParams.set('status', '1');
+    try {
+        const result = await readJsonResponse(await fetch(url.toString(), {
+            headers: { Accept: 'application/json' },
+            cache: 'no-store',
+        }));
+        return Array.isArray(result.datasets) ? result.datasets : [];
+    } catch (error) {
+        console.warn('[dashboardLiveDataService] Unable to read server sync capabilities:', error?.message || error);
+        return DASHBOARD_DATASETS.map(item => ({
+            dataset: item.id,
+            configured: item.syncMode === 'public',
+            syncMode: item.syncMode,
+            adapter: item.syncMode === 'public' ? 'mju_public_html' : 'unconfigured',
+            sourceUrl: item.syncMode === 'public' ? item.source : '',
+            envKey: `MJU_DASHBOARD_SOURCE_${item.id.toUpperCase()}`,
+            statusUnavailable: true,
+        }));
+    }
+}
+
+async function requestServerDashboardSync(datasets) {
+    const currentUser = auth?.currentUser;
+    if (!currentUser) {
+        const error = new Error('กรุณาเข้าสู่ระบบอีกครั้งก่อน Sync ข้อมูล');
+        error.code = 'AUTH_REQUIRED';
+        throw error;
+    }
+    const idToken = await currentUser.getIdToken();
+    const response = await fetch(ADMIN_SYNC_ENDPOINT, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ datasets }),
+    });
+    return readJsonResponse(response);
 }
 
 function startDatasetListener(id) {
@@ -412,7 +476,7 @@ export async function getDashboardDatasetMeta(id) {
 
 export async function saveDashboardDataset(id, payload, { uid, who, sourceUrl, sourceType = 'mju_sync', meta = {} } = {}) {
     const rawPayload = payload;
-    const displayPayload = mergePayloadWithFallback(id, rawPayload);
+    const displayPayload = displayPayloadForDocument(id, rawPayload, { sourceType, syncMeta: meta });
     if (!isCompatiblePayload(id, displayPayload)) {
         throw new Error(`Payload for ${id} does not match the dashboard schema.`);
     }
@@ -441,43 +505,46 @@ export async function saveDashboardDataset(id, payload, { uid, who, sourceUrl, s
         updatedBy: who || uid || 'mju-sync',
         rowCount,
         version: 1,
-        isLive: true,
+        isLive: !/mju_public|mju_api|mju_sync|official_sync|dashboard_sync/i.test(sourceType)
+            || meta?.validation?.valid === true,
+        syncMeta: meta,
+        validation: meta?.validation || null,
+        sourceEvidence: meta?.sourceEvidence || [],
+        sourceUrls: meta?.sourceUrls || [],
     });
     notify(id);
     return getDashboardDatasetMetaSync(id);
 }
 
-export async function refreshDashboardDatasetFromSource(id, { uid, who } = {}) {
-    const result = await fetchDashboardDatasetFromSource(id);
+export async function refreshDashboardDatasetsFromSources(ids = 'all', { uid, who } = {}) {
+    const requested = ids === 'all' ? 'all' : (Array.isArray(ids) ? ids : [ids]);
+    const result = await requestServerDashboardSync(requested);
+    const syncedIds = (result.datasets || []).map(item => item.dataset).filter(Boolean);
 
-    const payload = result.payload || result.data;
-    await saveDashboardDataset(id, payload, {
-        uid,
-        who,
-        sourceUrl: result.sourceUrl || datasetConfig(id)?.source,
-        sourceType: result.sourceType || 'mju_sync',
-        meta: {
-            fetchedAt: result.fetchedAt || new Date().toISOString(),
-            adapter: result.adapter || 'json',
-            sourceUrls: result.sourceUrls || (result.sourceUrl ? [result.sourceUrl] : []),
-            sourceCoverage: payload?.sourceCoverage || null,
-        },
-    });
+    await Promise.all(syncedIds.map(id => getDashboardDatasetMeta(id)));
 
-    if (id === 'student_stats' || id === 'dashboard_summary') {
+    if (syncedIds.some(id => id === 'student_stats' || id === 'dashboard_summary')) {
         try {
             const { reconcileGeneratedRosterWithLatestOfficialTotal } = await import('./studentDataService');
             await reconcileGeneratedRosterWithLatestOfficialTotal({
                 uid,
                 who,
-                reason: `sync:${id}`,
+                reason: `sync:${syncedIds.join(',')}`,
             });
         } catch (err) {
             console.warn('[dashboardLiveDataService] Student roster reconciliation skipped:', err?.message || err);
         }
     }
 
-    return getDashboardDatasetMetaSync(id);
+    return {
+        ...result,
+        metas: Object.fromEntries(syncedIds.map(id => [id, getDashboardDatasetMetaSync(id)])),
+    };
+}
+
+export async function refreshDashboardDatasetFromSource(id, options = {}) {
+    const result = await refreshDashboardDatasetsFromSources([id], options);
+    return result.metas?.[id] || getDashboardDatasetMetaSync(id);
 }
 
 function readLastSyncMap() {
@@ -506,18 +573,21 @@ export function startDashboardAutoSync({ uid, who, role } = {}) {
     async function runOnce() {
         const last = readLastSyncMap();
         const now = Date.now();
+        const capabilities = await getDashboardSyncCapabilities();
+        const configured = new Set(capabilities.filter(item => item.configured).map(item => item.dataset));
         const due = DASHBOARD_DATASETS
-            .filter(item => item.id !== 'students')
-            .filter(item => !last[item.id] || now - last[item.id] >= intervalMs);
+            .map(item => item.id)
+            .filter(id => configured.has(id))
+            .filter(id => !last[id] || now - last[id] >= intervalMs);
 
-        for (const item of due) {
-            if (cancelled) return;
+        if (!cancelled && due.length > 0) {
             try {
-                await refreshDashboardDatasetFromSource(item.id, { uid, who });
-                last[item.id] = Date.now();
+                await refreshDashboardDatasetsFromSources(due, { uid, who });
+                const completedAt = Date.now();
+                due.forEach(id => { last[id] = completedAt; });
                 writeLastSyncMap(last);
             } catch (err) {
-                console.warn(`[dashboardLiveDataService] Auto sync skipped for ${item.id}:`, err?.message || err);
+                console.warn('[dashboardLiveDataService] Atomic auto sync skipped:', err?.message || err);
             }
         }
     }

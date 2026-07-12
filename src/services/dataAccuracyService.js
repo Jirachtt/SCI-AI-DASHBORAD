@@ -78,6 +78,14 @@ const DATASET_TRUST_STATUSES = {
         description: 'Using shared Firestore realtime data.',
         isReady: true,
     },
+    validationNeeded: {
+        key: 'validation_needed',
+        label: 'Validation Required',
+        shortLabel: 'Not verified',
+        tone: 'warning',
+        description: 'Source data exists, but the current record has not passed source reconciliation.',
+        isReady: false,
+    },
     mjuApiNeeded: {
         key: 'mju_api_needed',
         label: 'MJU API Needed',
@@ -119,6 +127,12 @@ export function getDatasetTrustStatus(itemOrId, meta = null) {
     const resolvedMeta = meta || getDashboardDatasetMetaSync(item?.id);
     const sourceType = resolvedMeta?.sourceType || '';
     const isLive = Boolean(resolvedMeta?.isLive);
+    const validation = resolvedMeta?.validation || resolvedMeta?.syncMeta?.validation || null;
+    const requiresValidation = /mju_public|mju_api|mju_sync|official_sync|dashboard_sync/i.test(sourceType);
+
+    if (requiresValidation && validation?.valid !== true) {
+        return DATASET_TRUST_STATUSES.validationNeeded;
+    }
 
     if (isLive && (item?.syncMode === 'file' || isUploadedFileSource(sourceType))) {
         return DATASET_TRUST_STATUSES.uploadedFile;

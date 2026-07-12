@@ -31,7 +31,7 @@ const DOC_PATH = ['datasets', 'students'];
 const MANUAL_STUDENTS_KEY = 'sci_dashboard_manual_students';
 const DEMO_DATASET_KEY = 'sci_dashboard_demo_student_dataset';
 const MIN_TRUSTED_LIVE_ROWS = 1000;
-const STALE_GENERATED_ROW_COUNTS = new Set([1451, 1452]);
+const STALE_GENERATED_ROW_COUNTS = new Set([1383, 1390, 1398, 1399, 1451, 1452, 1528]);
 
 let _cache = null;
 let _isLive = false;           // true once Firestore has returned a valid dataset

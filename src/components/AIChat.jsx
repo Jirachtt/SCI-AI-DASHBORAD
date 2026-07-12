@@ -231,9 +231,12 @@ export default function AIChat() {
                     disableCache: isAnalyticalReasoningIntent(sourceQuestion),
                 });
                 const parsedAI = tools.parseAIResponse(aiText, sourceQuestion);
+                const plannedRetryChart = isAnalyticalReasoningIntent(sourceQuestion)
+                    ? tools.planLocalChartResponse?.(sourceQuestion, user)?.chart || null
+                    : null;
                 setMessages(prev => prev.map(message =>
                     message._retryId === retryId
-                        ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart }
+                        ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart || plannedRetryChart }
                         : message
                 ));
                 return;
@@ -265,6 +268,9 @@ export default function AIChat() {
         }
 
         const tools = await ensureAiModule();
+        const plannedChartResult = reasoningMode
+            ? tools.planLocalChartResponse?.(question, user)
+            : null;
         const localResult = reasoningMode ? null : tools.tryLocalResponse(question, user);
         if (localResult) {
             setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
@@ -278,7 +284,12 @@ export default function AIChat() {
             onMetadata: (meta) => { requestMeta = meta; },
         });
         const parsedAI = tools.parseAIResponse(aiText, question);
-        setMessages(prev => [...prev, { role: 'bot', text: parsedAI.text, chart: parsedAI.chart, tokenUsage: requestMeta?.tokenUsage }]);
+        setMessages(prev => [...prev, {
+            role: 'bot',
+            text: parsedAI.text,
+            chart: parsedAI.chart || plannedChartResult?.chart || null,
+            tokenUsage: requestMeta?.tokenUsage,
+        }]);
     };
 
     const submitQuestion = async (question) => {

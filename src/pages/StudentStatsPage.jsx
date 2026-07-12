@@ -204,7 +204,7 @@ export default function StudentStatsPage() {
 
     if (!canAccess(user?.role, 'student_stats')) return <AccessDenied />;
 
-    const { current, byFaculty, trend, scienceFaculty } = studentStatsData;
+    const { current, byFaculty, byEnrollmentYear, scienceFaculty } = studentStatsData;
     const studentRows = getStudentListSync();
     const scienceMajorRows = buildScienceMajorRows(scienceFaculty, studentRows);
 
@@ -245,54 +245,39 @@ export default function StudentStatsPage() {
         color: getStudentLevelColor(item.level, i),
     }));
 
-    // Line chart for trend (actual + forecast)
-    const actualData = trend.filter(t => t.type === 'actual');
+    // MJU exposes the current headcount split by entry year. This is a cohort
+    // snapshot, not a historical total or an original admissions count.
+    const overallEntryRows = (Array.isArray(byEnrollmentYear) ? byEnrollmentYear : [])
+        .filter(row => Number(row.total || row.count || 0) > 0)
+        .sort((a, b) => Number(a.year || 0) - Number(b.year || 0));
 
     const trendLineData = {
-        labels: trend.map(t => `ปี ${t.year}`),
+        labels: overallEntryRows.map(row => `ปี ${row.year}`),
         datasets: [
             {
-                label: 'จำนวนนิสิตรวม (ข้อมูลจริง)',
-                data: trend.map(t => t.type === 'actual' ? t.total : null),
+                label: 'นักศึกษาคงอยู่ทั้งหมด',
+                data: overallEntryRows.map(row => Number(row.total || row.count || 0)),
                 borderColor: 'var(--accent-success)',
                 backgroundColor: 'color-mix(in srgb, var(--accent-success) 12%, transparent)',
                 fill: true,
-                tension: 0.4,
+                tension: 0.28,
                 pointBackgroundColor: 'var(--accent-success)',
-                pointRadius: 6,
-                pointHoverRadius: 8,
-                spanGaps: false,
-            },
-            {
-                label: 'จำนวนนิสิตรวม (พยากรณ์)',
-                data: trend.map((t, i) => {
-                    if (t.type === 'forecast') return t.total;
-                    if (i === actualData.length - 1) return t.total;
-                    return null;
-                }),
-                borderColor: 'var(--accent-success)',
-                borderDash: [8, 4],
-                backgroundColor: 'color-mix(in srgb, var(--accent-success) 5%, transparent)',
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: 'var(--accent-success)',
-                pointRadius: 6,
-                pointHoverRadius: 8,
-                pointStyle: 'triangle',
+                pointRadius: 5,
+                pointHoverRadius: 7,
             },
             {
                 label: 'ป.ตรี',
-                data: trend.map(t => t.bachelor),
+                data: overallEntryRows.map(row => Number(row.bachelor || 0)),
                 borderColor: 'var(--accent-blue)',
-                tension: 0.4,
+                tension: 0.28,
                 pointRadius: 4,
                 borderWidth: 2,
             },
             {
                 label: 'ป.โท + ป.เอก',
-                data: trend.map(t => t.master + t.doctoral),
+                data: overallEntryRows.map(row => Number(row.master || 0) + Number(row.doctoral || 0)),
                 borderColor: 'var(--accent-warning)',
-                tension: 0.4,
+                tension: 0.28,
                 pointRadius: 4,
                 borderWidth: 2,
             }
@@ -316,16 +301,6 @@ export default function StudentStatsPage() {
             }
         }
     };
-
-    // Calculate overall YoY growth for the trend chart only. It is not shown on
-    // individual level cards because those cards do not have level-specific trend data.
-    const lastActual = trend.filter(t => t.type === 'actual');
-    const growthYoY = lastActual.length >= 2
-        ? (((lastActual[lastActual.length - 1].total - lastActual[lastActual.length - 2].total) / lastActual[lastActual.length - 2].total) * 100).toFixed(1)
-        : 0;
-    const overallGrowthLabel = Number.isFinite(Number(growthYoY))
-        ? `${Number(growthYoY) >= 0 ? '+' : ''}${growthYoY}% เทียบปีก่อน`
-        : 'ไม่มีฐานเทียบปีก่อน';
 
     // ==================== Science Faculty Charts ====================
     const scienceLevelCompositionItems = scienceFaculty.byLevel
@@ -407,23 +382,22 @@ export default function StudentStatsPage() {
     };
 
     const trendLineDrilldownOptions = withChartDrilldown(trendLineOptions, trendLineData, setDrillDetail, (point) => {
-        const row = trend[point.index];
-        const isForecastBridge = row?.type !== 'forecast' && String(point.datasetLabel || '').includes('พยากรณ์');
+        const row = overallEntryRows[point.index];
         return {
-            title: `แนวโน้มจำนวนนักศึกษา ${point.label}`,
-            subtitle: isForecastBridge ? 'จุดนี้เป็นปีข้อมูลจริงที่ใช้เชื่อมเส้นพยากรณ์' : point.datasetLabel,
-            valueLabel: isForecastBridge ? 'จุดเชื่อมจากข้อมูลจริง' : point.datasetLabel,
+            title: `นักศึกษาคงอยู่ที่รับเข้า ${point.label}`,
+            subtitle: `${point.datasetLabel} · ภาพถ่ายข้อมูลปัจจุบันจาก MJU Dashboard`,
+            valueLabel: point.datasetLabel,
             value: point.value,
             unit: 'คน',
             accentColor: point.color,
             rows: row ? [row] : [],
             columns: [
-                { key: 'year', label: 'ปี' },
+                { key: 'year', label: 'ปีที่รับเข้า' },
                 { key: 'total', label: 'รวม', align: 'right' },
+                { key: 'certificate', label: 'ประกาศนียบัตร', align: 'right' },
                 { key: 'bachelor', label: 'ป.ตรี', align: 'right' },
                 { key: 'master', label: 'ป.โท', align: 'right' },
                 { key: 'doctoral', label: 'ป.เอก', align: 'right' },
-                { key: 'type', label: 'ประเภท' },
             ],
         };
     });
@@ -450,10 +424,12 @@ export default function StudentStatsPage() {
         };
     });
 
+    const hasScienceGenderData = Number.isFinite(Number(scienceFaculty.byGender?.male))
+        && Number.isFinite(Number(scienceFaculty.byGender?.female));
     const genderData = {
         labels: ['ชาย', 'หญิง'],
         datasets: [{
-            data: [scienceFaculty.byGender.male, scienceFaculty.byGender.female],
+            data: [Number(scienceFaculty.byGender?.male || 0), Number(scienceFaculty.byGender?.female || 0)],
             backgroundColor: ['var(--accent-blue)', 'var(--accent-pink)'],
             borderWidth: 0,
             cutout: '65%',
@@ -538,7 +514,7 @@ export default function StudentStatsPage() {
                 { key: 'students', label: 'นักศึกษา', align: 'right' },
                 { key: 'academicStaff', label: 'อาจารย์', align: 'right' },
             ],
-            note: 'คณะวิทยาศาสตร์คำนวณจากยอดนักศึกษาทางการ 1,398 คน และบุคลากรสายวิชาการ 113 คน',
+            note: `คณะวิทยาศาสตร์คำนวณจากนักศึกษา ${Number(scienceFaculty.studentFacultyRatio.students || 0).toLocaleString('th-TH')} คน และบุคลากรสายวิชาการ ${Number(scienceFaculty.studentFacultyRatio.academicStaff || 0).toLocaleString('th-TH')} คน`,
         };
     });
 
@@ -637,8 +613,8 @@ export default function StudentStatsPage() {
             return sameYear && (point.datasetIndex === 0 ? level.includes('ตรี') : !level.includes('ตรี'));
         });
         return {
-            title: `นักศึกษาใหม่ปี ${intake.year}: ${point.datasetLabel}`,
-            subtitle: 'จำนวนรับเข้าคณะวิทยาศาสตร์ย้อนหลัง 5 ปี',
+            title: `นักศึกษาคงอยู่ที่รับเข้าปี ${intake.year}: ${point.datasetLabel}`,
+            subtitle: 'จำนวนผู้ที่ยังมีสถานะศึกษาอยู่ แยกตามปีที่รับเข้า ไม่ใช่จำนวนรับเข้าเดิมทั้งหมด',
             valueLabel: point.datasetLabel,
             value: point.value,
             unit: 'คน',
@@ -651,7 +627,7 @@ export default function StudentStatsPage() {
                 { label: 'รับตรง', value: intake.channels.directAdmit, unit: 'คน' },
                 { label: 'TCAS', value: intake.channels.tcas, unit: 'คน' },
             ],
-            note: rows.length ? noteWhenRowsDiffer(rows, point.value, studentDataNote) : 'ข้อมูลรับเข้าเป็นยอดรวมรายปี หากไฟล์อัปโหลดไม่มีรายชื่อที่รหัสตรงปีนี้ ระบบจะแสดงเฉพาะยอดจากกราฟ',
+            note: rows.length ? noteWhenRowsDiffer(rows, point.value, studentDataNote) : 'ข้อมูลนี้เป็นนักศึกษาคงอยู่ปัจจุบันแยกตามปีที่รับเข้า หากต้องการจำนวนผู้สมัคร/รับเข้าเดิมให้ใช้ข้อมูล TCAS หรือ Reg admissions',
         };
     });
 
@@ -751,8 +727,8 @@ export default function StudentStatsPage() {
                 <div className="chart-card animate-in">
                     <div className="chart-card-header">
                         <div>
-                            <div className="chart-card-title">แนวโน้มจำนวนนิสิต</div>
-                            <div className="chart-card-subtitle">ย้อนหลัง 4 ปี + พยากรณ์ 2 ปี · ภาพรวม {overallGrowthLabel}</div>
+                            <div className="chart-card-title">นักศึกษาคงอยู่ตามปีที่รับเข้า</div>
+                            <div className="chart-card-subtitle">ข้อมูลปัจจุบันทุกคณะจาก MJU Dashboard · ไม่ใช่ยอดรับเข้าเดิมหรือยอดรวมย้อนหลัง</div>
                         </div>
                     </div>
                     <div className="chart-container">
@@ -919,25 +895,36 @@ export default function StudentStatsPage() {
                         <div className="chart-card-header">
                             <div>
                                 <div className="chart-card-title">สัดส่วนเพศนักศึกษา</div>
-                                <div className="chart-card-subtitle">คณะวิทยาศาสตร์ — ข้อมูลจาก MJU Dashboard</div>
-                            </div>
-                        </div>
-                        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 16 }}>
-                            <div className="chart-container" style={{ height: 200 }}>
-                                <Doughnut data={genderData} options={genderDrilldownOptions} />
-                            </div>
-                            <div style={{ display: 'flex', gap: 24, justifyContent: 'flex-start', width: '100%' }}>
-                                <div style={{ textAlign: 'left' }}>
-                                    <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-info)' }}>{scienceFaculty.byGender.male}</div>
-                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>ชาย ({scienceFaculty.byGender.malePercent}%)</div>
-                                </div>
-                                <div style={{ width: 1, background: 'var(--border-color)' }} />
-                                <div style={{ textAlign: 'left' }}>
-                                    <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-pink)' }}>{scienceFaculty.byGender.female}</div>
-                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>หญิง ({scienceFaculty.byGender.femalePercent}%)</div>
+                                <div className="chart-card-subtitle">
+                                    {hasScienceGenderData
+                                        ? 'คณะวิทยาศาสตร์ — ข้อมูลจากชุดรายชื่อที่ได้รับอนุญาต'
+                                        : 'MJU Dashboard ชุดปัจจุบันยังไม่ส่งข้อมูลแยกเพศ'}
                                 </div>
                             </div>
                         </div>
+                        {hasScienceGenderData ? (
+                            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 16 }}>
+                                <div className="chart-container" style={{ height: 200 }}>
+                                    <Doughnut data={genderData} options={genderDrilldownOptions} />
+                                </div>
+                                <div style={{ display: 'flex', gap: 24, justifyContent: 'flex-start', width: '100%' }}>
+                                    <div style={{ textAlign: 'left' }}>
+                                        <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-info)' }}>{scienceFaculty.byGender.male}</div>
+                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>ชาย ({scienceFaculty.byGender.malePercent}%)</div>
+                                    </div>
+                                    <div style={{ width: 1, background: 'var(--border-color)' }} />
+                                    <div style={{ textAlign: 'left' }}>
+                                        <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-pink)' }}>{scienceFaculty.byGender.female}</div>
+                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>หญิง ({scienceFaculty.byGender.femalePercent}%)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="data-empty-state" style={{ minHeight: 230, padding: 28 }}>
+                                <strong>ยังไม่มีข้อมูลแยกเพศที่ยืนยันได้</strong>
+                                <span>เมื่อเชื่อมไฟล์ Reg ที่ได้รับอนุญาต ระบบจะแสดงกราฟส่วนนี้อัตโนมัติ</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Student-to-Faculty Ratio */}
@@ -969,7 +956,7 @@ export default function StudentStatsPage() {
                 <div className="chart-card intake-trend-card animate-in">
                     <div className="chart-card-header">
                         <div>
-                            <div className="chart-card-title">จำนวนนักศึกษาใหม่ (Intake) คณะวิทยาศาสตร์</div>
+                            <div className="chart-card-title">นักศึกษาคงอยู่ตามปีที่รับเข้า คณะวิทยาศาสตร์</div>
                             <div className="chart-card-subtitle">ย้อนหลัง 5 ปี — อ้างอิงจาก MJU Dashboard</div>
                         </div>
                     </div>
@@ -1006,7 +993,12 @@ export default function StudentStatsPage() {
                         <div className="chart-card-header">
                             <div>
                                 <div className="chart-card-title">บุคลากรคณะวิทยาศาสตร์</div>
-                                <div className="chart-card-subtitle">รวม {scienceFaculty.personnel.total} คน (ชาย {scienceFaculty.personnel.male} / หญิง {scienceFaculty.personnel.female})</div>
+                                <div className="chart-card-subtitle">
+                                    รวม {scienceFaculty.personnel.total} คน
+                                    {Number.isFinite(Number(scienceFaculty.personnel.male)) && Number.isFinite(Number(scienceFaculty.personnel.female))
+                                        ? ` (ชาย ${scienceFaculty.personnel.male} / หญิง ${scienceFaculty.personnel.female})`
+                                        : ' · MJU Dashboard ยังไม่ส่งข้อมูลแยกเพศในชุดนี้'}
+                                </div>
                             </div>
                         </div>
                         <div style={{ padding: '0 20px 20px' }}>
@@ -1037,10 +1029,10 @@ export default function StudentStatsPage() {
 
                             <div style={{ marginBottom: 16 }}>
                                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>ประเภทการจ้าง</div>
-                                <div style={{ display: 'flex', gap: 12 }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                                     {scienceFaculty.personnel.byType.map((t, i) => (
                                         <div key={i} style={{
-                                            flex: 1,
+                                            flex: '1 1 140px',
                                             background: 'var(--bg-secondary)',
                                             borderRadius: 10,
                                             padding: '12px 14px',

@@ -6,8 +6,10 @@ import {
     DASHBOARD_DATASETS,
     ensureDashboardLiveData,
     getDashboardDatasetMetaSync,
+    getDashboardSyncCapabilities,
     onDashboardLiveDataChange,
     refreshDashboardDatasetFromSource,
+    refreshDashboardDatasetsFromSources,
 } from '../services/dashboardLiveDataService';
 import { featureCompletionDataSummary } from '../data/featureCompletionFallbackData';
 
@@ -32,6 +34,8 @@ export default function AdminAutoSyncPanel({ onToast }) {
         DASHBOARD_DATASETS.map(item => [item.id, getDashboardDatasetMetaSync(item.id)])
     ));
     const [syncingId, setSyncingId] = useState('');
+    const [capabilities, setCapabilities] = useState([]);
+    const [capabilitiesLoading, setCapabilitiesLoading] = useState(true);
 
     useEffect(() => {
         let mounted = true;
@@ -39,6 +43,13 @@ export default function AdminAutoSyncPanel({ onToast }) {
             if (!mounted) return;
             setMetas(Object.fromEntries(DASHBOARD_DATASETS.map(item => [item.id, getDashboardDatasetMetaSync(item.id)])));
         });
+        getDashboardSyncCapabilities()
+            .then(items => {
+                if (mounted) setCapabilities(items);
+            })
+            .finally(() => {
+                if (mounted) setCapabilitiesLoading(false);
+            });
         const unsubscribe = onDashboardLiveDataChange(({ id, meta }) => {
             setMetas(prev => ({ ...prev, [id]: meta }));
         });
@@ -51,6 +62,14 @@ export default function AdminAutoSyncPanel({ onToast }) {
     const readyCount = useMemo(
         () => DASHBOARD_DATASETS.filter(item => getDatasetTrustStatus(item, metas[item.id]).isReady).length,
         [metas]
+    );
+    const capabilityMap = useMemo(
+        () => Object.fromEntries(capabilities.map(item => [item.dataset, item])),
+        [capabilities]
+    );
+    const configuredIds = useMemo(
+        () => capabilities.filter(item => item.configured).map(item => item.dataset),
+        [capabilities]
     );
     const sourceSummary = useMemo(() => {
         const official = featureCompletionDataSummary.filter(item =>
@@ -78,6 +97,23 @@ export default function AdminAutoSyncPanel({ onToast }) {
         }
     }, [onToast, user]);
 
+    const handleSyncAll = useCallback(async () => {
+        if (configuredIds.length === 0) return;
+        setSyncingId('all');
+        try {
+            const result = await refreshDashboardDatasetsFromSources(configuredIds, {
+                uid: user?.uid || 'admin',
+                who: user?.email || user?.uid || 'admin',
+            });
+            setMetas(prev => ({ ...prev, ...(result.metas || {}) }));
+            onToast?.('success', `Sync แบบ atomic สำเร็จ ${configuredIds.length} ชุดข้อมูล`);
+        } catch (err) {
+            onToast?.('error', `Sync ทั้งหมดไม่สำเร็จและไม่มีข้อมูลใดถูกเขียน: ${err?.message || 'unknown'}`);
+        } finally {
+            setSyncingId('');
+        }
+    }, [configuredIds, onToast, user]);
+
     return (
         <div className="admin-data-section">
             <div className="admin-data-status-card auto-sync-hero">
@@ -89,9 +125,20 @@ export default function AdminAutoSyncPanel({ onToast }) {
                         <h3>Auto Sync จาก MJU Dashboard / API</h3>
                         <p>ทุกหน้าและ AI อ่านจาก Firestore realtime cache เดียวกัน เมื่อข้อมูล sync เข้ามา ทุกเครื่องจะเห็นข้อมูลล่าสุดทันที</p>
                     </div>
-                    <span className={`admin-data-badge ${readyCount > 0 ? 'live' : 'mock'}`}>
-                        {readyCount}/{DASHBOARD_DATASETS.length} ready
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <span className={`admin-data-badge ${readyCount > 0 ? 'live' : 'mock'}`}>
+                            {readyCount}/{DASHBOARD_DATASETS.length} verified
+                        </span>
+                        <button
+                            type="button"
+                            className="admin-data-btn primary"
+                            onClick={handleSyncAll}
+                            disabled={Boolean(syncingId) || capabilitiesLoading || configuredIds.length === 0}
+                        >
+                            <RefreshCw size={14} className={syncingId === 'all' ? 'spin-animation' : ''} />
+                            {syncingId === 'all' ? 'กำลังตรวจและ Sync...' : `Sync ที่พร้อมทั้งหมด (${configuredIds.length})`}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="auto-sync-flow" aria-label="MJU auto sync flow">
@@ -156,7 +203,12 @@ export default function AdminAutoSyncPanel({ onToast }) {
                     const meta = metas[item.id] || getDashboardDatasetMetaSync(item.id);
                     const isSyncing = syncingId === item.id;
                     const trust = getDatasetTrustStatus(item, meta);
-                    const needsSetup = !trust.isReady;
+                    const capability = capabilityMap[item.id] || null;
+                    const configured = Boolean(capability?.configured);
+                    const validation = meta.validation || meta.syncMeta?.validation || null;
+                    const evidence = Array.isArray(meta.sourceEvidence) ? meta.sourceEvidence : [];
+                    const latestHash = evidence[0]?.sha256 || '';
+                    const needsSetup = !configured;
                     return (
                         <div key={item.id} className="auto-sync-card">
                             <div className="auto-sync-card-head">
@@ -173,11 +225,17 @@ export default function AdminAutoSyncPanel({ onToast }) {
                                 <div><ShieldCheck size={14} /> <span>{trust.description}</span></div>
                                 <div><Clock size={14} /> {formatDate(meta.updatedAt)}</div>
                                 <div><CheckCircle size={14} /> {meta.rowCount == null ? '-' : `${meta.rowCount.toLocaleString('th-TH')} rows`}</div>
-                                <div><LinkIcon size={14} /> <span title={meta.sourceUrl || item.source}>{meta.sourceUrl || item.source}</span></div>
+                                <div><LinkIcon size={14} /> <span title={meta.sourceUrl || capability?.sourceUrl || item.source}>{meta.sourceUrl || capability?.sourceUrl || item.source}</span></div>
+                                {validation && (
+                                    <div><ShieldCheck size={14} /> ผ่าน {validation.checks?.filter(check => check.passed).length || 0}/{validation.checks?.length || 0} reconciliation checks</div>
+                                )}
+                                {latestHash && (
+                                    <div><DatabaseZap size={14} /> <span title={latestHash}>Source SHA-256: {latestHash.slice(0, 12)}...</span></div>
+                                )}
                             </div>
                             {needsSetup && (
                                 <div className="auto-sync-card-note">
-                                    Configure the official endpoint, token, or source file for {item.id} before using it as trusted presentation data.
+                                    ยังไม่มี endpoint ที่ตรวจสอบได้ ตั้งค่า <strong>{capability?.envKey || `MJU_DASHBOARD_SOURCE_${item.id.toUpperCase()}`}</strong> ฝั่ง Vercel ก่อนเปิด Sync ชุดนี้
                                 </div>
                             )}
 
@@ -185,10 +243,10 @@ export default function AdminAutoSyncPanel({ onToast }) {
                                 type="button"
                                 className="admin-data-btn primary auto-sync-button"
                                 onClick={() => handleSync(item.id)}
-                                disabled={Boolean(syncingId)}
+                                disabled={Boolean(syncingId) || !configured || capabilitiesLoading}
                             >
                                 <RefreshCw size={14} className={isSyncing ? 'spin-animation' : ''} />
-                                {isSyncing ? 'กำลัง Sync...' : 'Sync ตอนนี้'}
+                                {isSyncing ? 'กำลังตรวจและ Sync...' : configured ? 'Sync ตอนนี้' : 'รอตั้งค่า endpoint'}
                             </button>
                         </div>
                     );

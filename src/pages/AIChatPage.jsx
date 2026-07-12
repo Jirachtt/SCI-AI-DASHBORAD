@@ -2598,6 +2598,10 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
     );
 }
 
+export function planLocalChartResponse(question, userContext = {}) {
+    return createPlannedChartAnswer(question, userContext);
+}
+
 export default function AIChatPage() {
     const { user } = useAuth();
     if (!canAccess(user?.role, 'ai_chat')) return <AccessDenied />;
@@ -2846,6 +2850,7 @@ function AIChatPageContent() {
     const verificationState = answerVerification?.status === 'warning' ? 'warn' : (answerVerification?.status ? 'ready' : 'idle');
     const observabilityRows = [
         { label: 'Intent', value: lastAIMetadata?.intent || 'waiting', detail: lastAIMetadata?.chartRequest ? 'chart request' : 'question router', state: lastAIMetadata ? 'ready' : 'idle' },
+        { label: 'Retrieval', value: lastAIMetadata?.retrievalMode || 'waiting', detail: lastAIMetadata ? `${lastAIMetadata.localCoverage || 'none'} • ${lastAIMetadata.retrievalReason || 'local-first'}` : 'local evidence first', state: lastAIMetadata?.useSearch ? 'warn' : (lastAIMetadata ? 'ready' : 'idle') },
         { label: 'Datasets', value: selectedDatasetLabel, detail: selectedDatasetDetail, state: lastAIMetadata ? 'ready' : 'idle' },
         { label: 'Denied', value: lastAIMetadata?.deniedDatasets?.length ? lastAIMetadata.deniedDatasets.slice(0, 3).join(', ') : 'none', detail: 'role policy', state: lastAIMetadata?.deniedDatasets?.length ? 'warn' : 'ready' },
         { label: 'Verification', value: answerVerification?.status || 'waiting', detail: answerVerification?.warningCount ? `${answerVerification.warningCount} warning` : `${answerVerification?.answerNumberCount || 0} numbers`, state: verificationState },
@@ -3251,7 +3256,7 @@ function AIChatPageContent() {
         }
     };
 
-    const createAIStreamUpdater = useCallback((sourceQuestion) => {
+    const createAIStreamUpdater = useCallback((sourceQuestion, fallbackChart = null) => {
         const streamId = `ai_stream_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
         const renderStream = (fullText, isFinal = false, metadata = null) => {
@@ -3259,7 +3264,7 @@ function AIChatPageContent() {
             const nextMessage = {
                 role: 'bot',
                 text: parsedAI.text || 'กำลังเรียบเรียงคำตอบจากข้อมูลที่เกี่ยวข้อง...',
-                chart: parsedAI.chart,
+                chart: parsedAI.chart || fallbackChart,
                 streaming: !isFinal,
                 _streamId: streamId,
                 tokenUsage: metadata?.tokenUsage || undefined,
@@ -3318,9 +3323,12 @@ function AIChatPageContent() {
                     onMetadata: (meta) => { requestMeta = meta; },
                 });
                 const parsedAI = parseAIResponse(aiText, sourceQuestion);
+                const plannedRetryChart = isAnalyticalReasoningIntent(sourceQuestion)
+                    ? createPlannedChartAnswer(sourceQuestion, user)?.chart || null
+                    : null;
                 setMessages(prev => prev.map(m =>
                     m._retryId === retryId
-                        ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart, tokenUsage: requestMeta?.tokenUsage }
+                        ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart || plannedRetryChart, tokenUsage: requestMeta?.tokenUsage }
                         : m
                 ));
                 return;
@@ -3348,6 +3356,7 @@ function AIChatPageContent() {
 
         let stream = null;
         const reasoningMode = isAnalyticalReasoningIntent(userMsg);
+        const plannedChartResult = reasoningMode ? createPlannedChartAnswer(userMsg, user) : null;
         try {
             // Try local response first (forecast, student search)
             const localResult = reasoningMode ? null : tryLocalResponse(userMsg, user);
@@ -3357,7 +3366,7 @@ function AIChatPageContent() {
                 return;
             }
             const buildMsg = () => buildAIChatPrompt(userMsg, uploadedFileData, dashboardMergeSummary, user);
-            stream = createAIStreamUpdater(userMsg);
+            stream = createAIStreamUpdater(userMsg, plannedChartResult?.chart || null);
             let requestMeta = null;
             const aiText = await sendAI(buildMsg(), stream.update, {
                 disableCache: reasoningMode,
@@ -3396,6 +3405,7 @@ function AIChatPageContent() {
         setTyping(true);
         let stream = null;
         const reasoningMode = isAnalyticalReasoningIntent(query);
+        const plannedChartResult = reasoningMode ? createPlannedChartAnswer(query, user) : null;
         try {
             // Try local response first (forecast, student search)
             const localResult = reasoningMode ? null : tryLocalResponse(query, user);
@@ -3404,7 +3414,7 @@ function AIChatPageContent() {
                 setTyping(false);
                 return;
             }
-            stream = createAIStreamUpdater(query);
+            stream = createAIStreamUpdater(query, plannedChartResult?.chart || null);
             let requestMeta = null;
             const aiText = await sendAI(buildAIChatPrompt(query, uploadedFileData, dashboardMergeSummary, user), stream.update, {
                 disableCache: reasoningMode,

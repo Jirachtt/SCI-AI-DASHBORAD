@@ -13,8 +13,12 @@
     "eval:e2e": "node scripts/run-ai-e2e-eval.mjs",
     "audit:roles": "node scripts/validate-role-access-matrix.mjs",
     "audit:navigation": "node scripts/validate-navigation-config.mjs",
+    "audit:data": "node scripts/validate-data-consistency.mjs",
+    "audit:ai-retrieval": "node scripts/validate-ai-retrieval-policy.mjs",
+    "audit:sync": "node scripts/validate-dashboard-sync.mjs",
+    "audit:sync:live": "node scripts/validate-dashboard-sync.mjs --live",
     "smoke:vercel": "node scripts/smoke-vercel-production.mjs",
-    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:roles && npm run audit:navigation && npm run smoke:presentation"
+    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:ai-retrieval && npm run audit:sync && npm run audit:roles && npm run audit:navigation && npm run audit:data && npm run smoke:presentation"
   },
   "dependencies": {
     "chart.js": "^4.5.1",

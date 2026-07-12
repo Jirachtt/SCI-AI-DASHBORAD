@@ -20,15 +20,14 @@ export const hrData = {
     },
 
     // ข้อมูลเฉพาะคณะวิทยาศาสตร์
-    // อ้างอิง: dashboard.mju.ac.th/homeDashboard?dep=20300 (ข้อมูลจริง ปี 2567)
+    // อ้างอิง: dashboard.mju.ac.th/person.aspx?dep=20300 (ตรวจล่าสุด 11 ก.ค. 2569)
     scienceFaculty: {
         name: 'คณะวิทยาศาสตร์',
         total: 173,
-        academic: 104,
-        support: 69,
+        academic: 113,
+        support: 60,
         byGender: [
-            { gender: 'ชาย', count: 64, color: 'var(--accent-info)' },
-            { gender: 'หญิง', count: 109, color: 'var(--accent-pink)' }
+            { gender: 'ยังไม่จำแนกจากแหล่งข้อมูล', count: 173, color: 'var(--accent-info)' }
         ],
         byType: [
             { type: 'พนักงานมหาวิทยาลัย', count: 145, color: 'var(--accent-success-deep)' },
@@ -38,71 +37,52 @@ export const hrData = {
 
         // ตำแหน่งทางวิชาการ
         academicPositions: [
-            { position: 'ศาสตราจารย์', count: 1, color: 'var(--accent-gold)', icon: 'Prof' },
-            { position: 'รองศาสตราจารย์', count: 18, color: 'var(--accent-gold)', icon: 'Assoc' },
-            { position: 'ผู้ช่วยศาสตราจารย์', count: 27, color: 'var(--accent-info)', icon: 'Asst' },
-            { position: 'อาจารย์', count: 58, color: 'var(--accent-success-deep)', icon: 'Lect' }
+            { position: 'ศาสตราจารย์', count: 0, color: 'var(--accent-gold)', icon: 'Prof' },
+            { position: 'รองศาสตราจารย์', count: 20, color: 'var(--accent-gold)', icon: 'Assoc' },
+            { position: 'ผู้ช่วยศาสตราจารย์', count: 68, color: 'var(--accent-info)', icon: 'Asst' },
+            { position: 'อาจารย์', count: 25, color: 'var(--accent-success-deep)', icon: 'Lect' }
         ],
 
         // วุฒิการศึกษา
         byEducation: [
-            { level: 'ปริญญาเอก', count: 87, color: 'var(--accent-pink)', icon: 'PhD' },
-            { level: 'ปริญญาโท', count: 17, color: 'var(--accent-info)', icon: 'MSc' }
+            { level: 'ปริญญาเอก', count: 106, color: 'var(--accent-pink)', icon: 'PhD' },
+            { level: 'ปริญญาโท', count: 34, color: 'var(--accent-info)', icon: 'MSc' },
+            { level: 'ปริญญาตรี', count: 28, color: 'var(--accent-success-deep)', icon: 'BSc' },
+            { level: 'ปวส.', count: 4, color: 'var(--accent-gold)', icon: 'Diploma' },
+            { level: 'ประถมศึกษา', count: 1, color: 'var(--accent-orange)', icon: 'Other' }
         ],
 
-        // 7 ภาควิชาจริงของคณะวิทยาศาสตร์ มจ. — รวม academic 104 / support 69 / total 173
+        // หน้า public ปัจจุบันให้ยอดรวมตามกลุ่มตำแหน่ง แต่ไม่แจกแจงรายภาควิชา
         byDepartment: [
-            { dept: 'ภาควิชาเคมี', academic: 19, support: 13, total: 32 },
-            { dept: 'ภาควิชาเทคโนโลยีชีวภาพ', academic: 18, support: 11, total: 29 },
-            { dept: 'ภาควิชาฟิสิกส์', academic: 13, support: 10, total: 23 },
-            { dept: 'ภาควิชาคณิตศาสตร์และสถิติ', academic: 22, support: 14, total: 36 },
-            { dept: 'ภาควิชาวิทยาการคอมพิวเตอร์', academic: 13, support: 9, total: 22 },
-            { dept: 'ภาควิชาเทคโนโลยีสารสนเทศ', academic: 11, support: 7, total: 18 },
-            { dept: 'ภาควิชาเคมีประยุกต์', academic: 8, support: 5, total: 13 }
+            { dept: 'รวมคณะวิทยาศาสตร์', academic: 113, support: 60, total: 173 }
         ],
 
-        // แนวโน้มจำนวนบุคลากรย้อนหลัง
+        // มีเฉพาะ snapshot ล่าสุดจากแหล่ง public จึงไม่สร้างประวัติย้อนหลังเอง
         trend: [
-            { year: '2564', academic: 98, support: 67, total: 165 },
-            { year: '2565', academic: 100, support: 68, total: 168 },
-            { year: '2566', academic: 102, support: 69, total: 171 },
-            { year: '2567', academic: 104, support: 69, total: 173 },
-            { year: '2568', academic: 104, support: 68, total: 172, type: 'forecast' },
-            { year: '2569', academic: 103, support: 67, total: 170, type: 'forecast' }
+            { year: '2569', academic: 113, support: 60, total: 173, type: 'actual' }
         ],
 
         // สถิติการได้ตำแหน่งทางวิชาการใหม่สะสมรายปี
-        promotionTrend: [
-            { year: '2564', newAssocProf: 3, newAssistProf: 4, newProf: 1 },
-            { year: '2565', newAssocProf: 2, newAssistProf: 3, newProf: 1 },
-            { year: '2566', newAssocProf: 4, newAssistProf: 2, newProf: 1 },
-            { year: '2567', newAssocProf: 1, newAssistProf: 5, newProf: 1 },
-            { year: '2568', newAssocProf: 2, newAssistProf: 3, newProf: 1, type: 'forecast' }
-        ],
+        promotionTrend: [],
 
         // ความหลากหลาย (Diversity)
         diversity: {
             nationality: [
-                { label: 'ไทย', count: 165 },
-                { label: 'ต่างชาติ', count: 8 }
+                { label: 'ยังไม่จำแนกจากแหล่งข้อมูล', count: 173 }
             ],
             ageGroup: [
-                { group: '25-35 ปี', count: 28, color: 'var(--accent-success)' },
-                { group: '36-45 ปี', count: 54, color: 'var(--accent-info)' },
-                { group: '46-55 ปี', count: 64, color: 'var(--accent-gold)' },
-                { group: '56-65 ปี', count: 27, color: 'var(--accent-pink)' }
+                { group: 'ยังไม่จำแนกจากแหล่งข้อมูล', count: 173, color: 'var(--accent-info)' }
             ],
-            retirementIn5Years: 18
+            retirementIn5Years: 20
         },
 
-        // อัตราส่วนนักศึกษาต่ออาจารย์ (ใช้ academic staff = 104)
+        // อัตราส่วนนักศึกษาต่ออาจารย์จาก snapshot ปัจจุบัน 1,759 / 113
         studentFacultyRatio: [
-            { year: '2564', ratio: 13.8 },
-            { year: '2565', ratio: 14.1 },
-            { year: '2566', ratio: 13.9 },
-            { year: '2567', ratio: 14.0 },
-            { year: '2568', ratio: 14.2, type: 'forecast' }
-        ]
+            { year: '2569', ratio: 15.6, type: 'actual' }
+        ],
+        sourceUrl: 'https://dashboard.mju.ac.th/person.aspx?dep=20300',
+        checkedAt: '2026-07-11',
+        dataGaps: ['เพศ', 'หน่วยงานย่อย', 'สัญชาติ', 'ช่วงอายุ', 'ประวัติการเลื่อนตำแหน่ง']
     }
 };
 

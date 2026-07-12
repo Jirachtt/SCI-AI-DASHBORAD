@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { collection, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import {
     Shield, Users, Clock, Briefcase, Building, Check, X, Search, Filter,
     RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
-    ScrollText, ShieldCheck
+    ScrollText, ShieldCheck, DatabaseZap, Activity
 } from 'lucide-react';
 import { canManageUsers, getRoleBadgeColor, getRoleInfo, isPendingRole } from '../utils/accessControl';
 import { MANAGEABLE_ROLES, ROLE_LABELS_WITH_EN, getRoleInitial, normalizeRole } from '../constants/roles';
@@ -21,6 +21,9 @@ import {
     toRoleDateInput
 } from '../utils/roleValidity';
 import AdminAuditLog from '../components/AdminAuditLog';
+import AdminAutoSyncPanel from '../components/AdminAutoSyncPanel';
+import AdminDataAccuracyPanel from '../components/AdminDataAccuracyPanel';
+import AdminAIUsagePanel from '../components/AdminAIUsagePanel';
 import ExportPDFButton from '../components/ExportPDFButton';
 
 const ROLE_LABELS = {
@@ -166,10 +169,10 @@ export default function AdminPanelPage() {
             if (missingRoleTerms.length > 0) {
                 Promise.allSettled(
                     missingRoleTerms.map(({ user: targetUser, patch }) =>
-                        updateDoc(doc(db, 'users', targetUser.uid), patch)
+                        updateUserDoc(targetUser.uid, patch)
                     )
                 ).then(results => {
-                    const failed = results.filter(result => result.status === 'rejected');
+                    const failed = results.filter(result => result.status === 'rejected' || result.value?.success === false);
                     if (failed.length > 0) {
                         console.warn(`[AdminPanelPage] Role validity backfill failed for ${failed.length} user(s)`);
                     }
@@ -181,7 +184,7 @@ export default function AdminPanelPage() {
         } finally {
             setLoading(false);
         }
-    }, [isAdminBypass, showToast]);
+    }, [isAdminBypass, showToast, updateUserDoc]);
 
     useEffect(() => {
         if (!canViewPanel) return undefined;
@@ -497,6 +500,24 @@ export default function AdminPanelPage() {
                 >
                     <ScrollText size={16} /> ประวัติการเปลี่ยนแปลง
                 </button>
+                <button
+                    className={`admin-tab ${activeTab === 'auto_sync' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('auto_sync')}
+                >
+                    <DatabaseZap size={16} /> Auto Sync
+                </button>
+                <button
+                    className={`admin-tab ${activeTab === 'data_accuracy' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('data_accuracy')}
+                >
+                    <ShieldCheck size={16} /> Data Accuracy
+                </button>
+                <button
+                    className={`admin-tab ${activeTab === 'ai_usage' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('ai_usage')}
+                >
+                    <Activity size={16} /> AI Usage
+                </button>
             </div>
 
             {/* Pending tab */}
@@ -729,6 +750,24 @@ export default function AdminPanelPage() {
             {activeTab === 'audit' && (
                 <div className="admin-tab-panel">
                     <AdminAuditLog />
+                </div>
+            )}
+
+            {activeTab === 'auto_sync' && (
+                <div className="admin-tab-panel">
+                    <AdminAutoSyncPanel onToast={showToast} />
+                </div>
+            )}
+
+            {activeTab === 'data_accuracy' && (
+                <div className="admin-tab-panel">
+                    <AdminDataAccuracyPanel onToast={showToast} />
+                </div>
+            )}
+
+            {activeTab === 'ai_usage' && (
+                <div className="admin-tab-panel">
+                    <AdminAIUsagePanel onToast={showToast} />
                 </div>
             )}
 

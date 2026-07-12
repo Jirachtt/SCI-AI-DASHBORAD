@@ -4,7 +4,7 @@ rules_version = '2';
 // Security goal:
 // - Users can create/read their own profile safely.
 // - Users cannot promote themselves by editing role/status/role validity.
-// - Dean manages users and roles.
+// - Admin manages users and roles only; dashboard data access remains separate.
 // - Dean/Staff can write operational datasets; everyone signed in can read shared dashboard data.
 
 service cloud.firestore {
@@ -27,6 +27,16 @@ service cloud.firestore {
 
     function callerIsDean() {
       return callerHasApprovedRole(['dean']);
+    }
+
+    function callerCanManageUsers() {
+      return callerHasProfile()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved'
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.canManageUsers == true
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.systemAdmin == true
+        );
     }
 
     function callerCanManageDashboardData() {
@@ -117,7 +127,31 @@ service cloud.firestore {
         && hasMjuSsoClaim()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(mjuSsoMutableKeys())
         && request.resource.data.status == 'approved'
-        && request.resource.data.role in ['dean', 'chair', 'staff', 'student', 'general', 'executive', 'instructor'];
+        && request.resource.data.role in ['dean', 'chair', 'staff', 'student', 'general', 'admin'];
+    }
+
+    function managedUserMutableKeys() {
+      return [
+        'role',
+        'roleLabel',
+        'avatar',
+        'status',
+        'approvedBy',
+        'approvedAt',
+        'roleStartedAt',
+        'roleExpiresAt',
+        'roleDurationYears',
+        'roleManagedAt',
+        'roleManagedBy',
+        'updatedAt'
+      ];
+    }
+
+    function safeManagedUserUpdate(uid) {
+      return callerCanManageUsers()
+        && request.auth.uid != uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(managedUserMutableKeys())
+        && request.resource.data.role in ['dean', 'chair', 'staff', 'student', 'general', 'admin', 'pending_staff', 'pending_chair'];
     }
 
     match /users/{uid} {
@@ -128,11 +162,11 @@ service cloud.firestore {
           publicSignupRoleIsAllowed()
           || (
             hasMjuSsoClaim()
-            && request.resource.data.role in ['dean', 'chair', 'staff', 'student', 'general', 'executive', 'instructor']
+            && request.resource.data.role in ['dean', 'chair', 'staff', 'student', 'general', 'admin']
             && request.resource.data.status == 'approved'
           )
         );
-      allow update: if safeSelfUserUpdate(uid) || safeMjuSsoUserUpdate(uid) || callerIsDean();
+      allow update: if safeSelfUserUpdate(uid) || safeMjuSsoUserUpdate(uid) || safeManagedUserUpdate(uid);
       allow delete: if false;
     }
 

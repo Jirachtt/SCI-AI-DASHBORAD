@@ -15,11 +15,12 @@ function can(role, section) {
   return canAccess(role, section);
 }
 
-const nonAdminRoles = ['executive', 'chair', 'instructor', 'staff', 'student', 'general', 'pending_staff', 'pending_chair'];
+const nonAdminRoles = ['chair', 'staff', 'student', 'general', 'pending_staff', 'pending_chair'];
 
-expect('admin can open all protected data sections', [
-  'dashboard',
+expect('admin can open user-management sections only', [
   'admin_panel',
+].every(section => can('admin', section)));
+expect('admin cannot open protected dashboard data sections', [
   'student_list',
   'student_stats',
   'financial',
@@ -35,11 +36,11 @@ expect('admin can open all protected data sections', [
   'student_life',
   'academic_rules',
   'ai_chat',
-].every(section => can('admin', section)));
+].every(section => !can('admin', section)));
 expect('admin can manage users by default', canManageUsers(user('admin')));
 
-expect('dean can open admin panel', can('dean', 'admin_panel'));
-expect('dean can manage users by default', canManageUsers(user('dean')));
+expect('dean cannot open admin panel by default', !can('dean', 'admin_panel'));
+expect('dean cannot manage users by default', !canManageUsers(user('dean')));
 
 for (const role of nonAdminRoles) {
   expect(`${role} cannot open admin panel`, !can(role, 'admin_panel'), `${role} should not have admin_panel section.`);
@@ -48,7 +49,7 @@ for (const role of nonAdminRoles) {
 
 expect('explicit system admin flag can manage users', canManageUsers(user('staff', { canManageUsers: true })));
 
-expect('executive sees broad management dashboards', [
+expect('dean sees broad management dashboards', [
   'dashboard',
   'student_stats',
   'budget_forecast',
@@ -57,7 +58,7 @@ expect('executive sees broad management dashboards', [
   'research_overview',
   'alert_center',
   'ai_chat',
-].every(section => can('executive', section)));
+].every(section => can('dean', section)));
 
 expect('chair sees program/student planning areas', [
   'dashboard',
@@ -70,18 +71,15 @@ expect('chair sees program/student planning areas', [
   'ai_chat',
 ].every(section => can('chair', section)));
 
-expect('instructor sees teaching-facing areas', [
+expect('legacy instructor maps to general/public access', [
   'dashboard',
-  'course_analytics',
-  'student_life',
-  'graduation_check',
-  'student_stats',
-  'research_overview',
+  'tuition',
+  'tcas_admissions',
   'academic_rules',
   'ai_chat',
 ].every(section => can('instructor', section)));
-expect('instructor cannot see alert center until advisor scope exists', !can('instructor', 'alert_center'));
-expect('instructor cannot see student list by default', !can('instructor', 'student_list'));
+expect('legacy instructor cannot see alert center until advisor scope exists', !can('instructor', 'alert_center'));
+expect('legacy instructor cannot see student list by default', !can('instructor', 'student_list'));
 
 expect('staff sees operational dashboards but not admin', [
   'dashboard',
@@ -110,6 +108,7 @@ expect('student cannot see roster or finance operations', !can('student', 'stude
 expect('general has public/low-risk sections only', [
   'dashboard',
   'tuition',
+  'tcas_admissions',
   'academic_rules',
   'ai_chat',
 ].every(section => can('general', section)));
@@ -124,28 +123,28 @@ expect('general cannot see locked internal sections', [
 expect('pending roles fall back to general access', [
   'dashboard',
   'tuition',
+  'tcas_admissions',
   'academic_rules',
   'ai_chat',
 ].every(section => can('pending_staff', section) && can('pending_chair', section)));
 
-expect('admin, dean and executive are AI unrestricted for presentation leadership use',
-  isAIUnrestrictedRole('admin') && isAIUnrestrictedRole('dean') && isAIUnrestrictedRole('executive'));
-expect('chair/staff/instructor/student/general are not AI unrestricted', [
+expect('dean is the only canonical AI unrestricted role',
+  isAIUnrestrictedRole('dean') && !isAIUnrestrictedRole('admin'));
+expect('chair/staff/student/general are not AI unrestricted', [
   'chair',
   'staff',
-  'instructor',
   'student',
   'general',
 ].every(role => !isAIUnrestrictedRole(role)));
 
-expect('executive AI can use management domains', [
+expect('dean AI can use management domains', [
   'budget',
   'strategic',
   'hr',
   'tcas',
   'students',
   'alerts',
-].every(domain => canAIUseInternalDomain('executive', domain)));
+].every(domain => canAIUseInternalDomain('dean', domain)));
 
 expect('student AI can use student-safe domains', [
   'dashboard',

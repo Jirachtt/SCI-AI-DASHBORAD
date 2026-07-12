@@ -43,18 +43,23 @@ for (const item of getNavigationRouteItems()) {
 
 const adminItems = visibleItemIds('admin');
 expect('admin sees admin panel', adminItems.has('admin_panel'));
-expect('admin sees dashboard', adminItems.has('dashboard'));
-expect('admin sees every route-backed navigation item', getNavigationRouteItems().every(item => adminItems.has(item.id)));
+expect('admin does not see dashboard/data navigation by default', !adminItems.has('dashboard'));
+expect('admin sees only user-management route-backed navigation', [...adminItems].every(item => item === 'admin_panel' || item === 'settings'));
 
 const deanItems = visibleItemIds('dean');
 expect('dean sees AI chat', deanItems.has('ai_chat'));
 expect('dean sees strategic dashboard', deanItems.has('strategic_overview'));
-expect('dean sees admin panel by default', deanItems.has('admin_panel'));
+expect('dean does not see admin panel by default', hiddenFor('dean', 'admin_panel'));
 
 const instructorItems = visibleItemIds('instructor');
-expect('lecturer/instructor sees course analytics', instructorItems.has('course_analytics'));
-expect('lecturer/instructor does not see student roster by default', hiddenFor('instructor', 'student_list'));
-expect('lecturer/instructor does not see alert center without advisor scope', hiddenFor('instructor', 'alert_center'));
+expect('legacy lecturer/instructor maps to general navigation', [
+  'dashboard',
+  'ai_chat',
+  'tuition',
+  'academic_rules',
+].every(item => instructorItems.has(item)));
+expect('legacy lecturer/instructor does not see student roster by default', hiddenFor('instructor', 'student_list'));
+expect('legacy lecturer/instructor does not see alert center without advisor scope', hiddenFor('instructor', 'alert_center'));
 
 const staffItems = visibleItemIds('staff');
 expect('staff sees operational student stats', staffItems.has('student_stats'));

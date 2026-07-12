@@ -641,6 +641,28 @@ export function AuthProvider({ children }) {
     const updateUserDoc = async (uid, patch) => {
         if (!db) return firebaseUnavailable();
         try {
+            const idToken = await auth?.currentUser?.getIdToken?.().catch(() => '');
+            if (idToken) {
+                const response = await fetch('/api/admin-user-update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${idToken}`,
+                    },
+                    body: JSON.stringify({ targetUid: uid, patch }),
+                });
+                const body = await response.json().catch(() => ({}));
+                if (response.ok && body?.success) return { success: true, patch: body.patch };
+
+                // In local/dev environments without the API or service account, fall back to
+                // Firestore rules so existing development flows still work.
+                if (![404, 501, 503].includes(response.status)) {
+                    return {
+                        success: false,
+                        error: body?.message || body?.error || `Admin update failed (${response.status})`,
+                    };
+                }
+            }
             await updateDoc(doc(db, 'users', uid), patch);
             return { success: true };
         } catch (error) {

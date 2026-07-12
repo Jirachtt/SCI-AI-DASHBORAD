@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import process from 'node:process'
 import mjuDashboardSyncHandler from './api/mju-dashboard-sync.js'
+import adminDashboardSyncHandler from './api/admin-dashboard-sync.js'
 import geminiChatHandler from './api/gemini-chat.js'
 import aiUsageHandler from './api/ai-usage.js'
 
@@ -16,6 +17,12 @@ function localApiDev() {
         if (path === '/api/mju-dashboard-sync') {
           req.query = Object.fromEntries(url.searchParams.entries())
           await mjuDashboardSyncHandler(req, res)
+          return
+        }
+
+        if (path === '/api/admin-dashboard-sync') {
+          req.query = Object.fromEntries(url.searchParams.entries())
+          await adminDashboardSyncHandler(req, res)
           return
         }
 

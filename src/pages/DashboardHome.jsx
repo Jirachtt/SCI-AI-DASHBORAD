@@ -123,9 +123,18 @@ function DashboardHomeContent() {
     const dragItem = useRef(null);
     const dragOverItem = useRef(null);
     const scienceSharePct = totalStudents ? ((scienceStudentTotal / totalStudents) * 100).toFixed(1) : '0.0';
+    const finiteNumber = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+    const universityCourseTotal = finiteNumber(dashboardSummary?.totalCourses) ? Number(dashboardSummary.totalCourses) : null;
+    const scienceCourseTotal = finiteNumber(sci?.totalCourses) ? Number(sci.totalCourses) : null;
+    const universityAvgGpa = finiteNumber(dashboardSummary?.avgGPA) ? Number(dashboardSummary.avgGPA) : null;
+    const scienceAvgGpa = finiteNumber(sci?.avgGPA) ? Number(sci.avgGPA) : null;
+    const universityGraduationRate = finiteNumber(dashboardSummary?.graduationRate) ? Number(dashboardSummary.graduationRate) : null;
+    const scienceGraduationRate = finiteNumber(sci?.graduationRate) ? Number(sci.graduationRate) : null;
     const insights = [
         `คณะวิทยาศาสตร์มีนักศึกษา ${scienceStudentTotal.toLocaleString('th-TH')} คน คิดเป็น ${scienceSharePct}% ของนักศึกษาทั้งมหาวิทยาลัย`,
-        `อัตราสำเร็จการศึกษาคณะวิทยาศาสตร์ ${sci.graduationRate || '-'}% เทียบกับค่าเฉลี่ยมหาวิทยาลัย ${dashboardSummary.graduationRate || '-'}%`,
+        scienceGraduationRate !== null && universityGraduationRate !== null
+            ? `อัตราสำเร็จการศึกษาคณะวิทยาศาสตร์ ${scienceGraduationRate}% เทียบกับค่าเฉลี่ยมหาวิทยาลัย ${universityGraduationRate}%`
+            : 'อัตราสำเร็จการศึกษายังรอชุดข้อมูล Graduation ที่ผ่านการ Sync และตรวจสอบ',
         `ข้อมูลนักศึกษาใช้แหล่งเดียวกับ Alert Center และ AI Chat จึงเห็นความเสี่ยง GPA ตามข้อมูลล่าสุด`,
     ];
 
@@ -141,42 +150,34 @@ function DashboardHomeContent() {
             ]
         },
         {
-            key: 'courses', value: sci.totalCourses, label: 'รายวิชาคณะวิทยาศาสตร์',
-            pct: ((sci.totalCourses / dashboardSummary.totalCourses) * 100).toFixed(1),
+            key: 'courses', value: scienceCourseTotal ?? '—', label: 'รายวิชาคณะวิทยาศาสตร์',
+            pct: scienceCourseTotal !== null && universityCourseTotal ? ((scienceCourseTotal / universityCourseTotal) * 100).toFixed(1) : null,
             color: 'var(--accent-info)',
-            details: [
-                { label: 'วิชาบรรยาย', value: '98', color: 'var(--accent-info)' },
-                { label: 'วิชาปฏิบัติการ', value: '42', color: 'var(--accent-success)' },
-                { label: 'วิชาสัมมนา/วิจัย', value: '16', color: 'var(--accent-gold)' },
-            ]
+            details: []
         },
         {
-            key: 'gpa', value: sci.avgGPA, label: 'GPA คณะวิทยาศาสตร์',
+            key: 'gpa', value: scienceAvgGpa ?? '—', label: 'GPA คณะวิทยาศาสตร์',
             pct: null, color: 'var(--accent-gold)',
-            comparison: { label: 'สูงกว่ามหาวิทยาลัย', diff: '+0.06' },
-            details: [
-                { label: 'เกรดเฉลี่ย ป.ตรี', value: '3.15', color: 'var(--accent-success)' },
-                { label: 'เกรดเฉลี่ย ป.โท', value: '3.42', color: 'var(--accent-info)' },
-                { label: 'เกรดเฉลี่ย ป.เอก', value: '3.68', color: 'var(--accent-pink)' },
-            ]
+            comparison: scienceAvgGpa !== null && universityAvgGpa !== null
+                ? { label: scienceAvgGpa >= universityAvgGpa ? 'สูงกว่ามหาวิทยาลัย' : 'ต่ำกว่ามหาวิทยาลัย', diff: `${scienceAvgGpa >= universityAvgGpa ? '+' : ''}${(scienceAvgGpa - universityAvgGpa).toFixed(2)}` }
+                : null,
+            details: []
         },
         {
-            key: 'graduation', value: sci.graduationRate + '%', label: 'อัตราสำเร็จ คณะวิทยาศาสตร์',
+            key: 'graduation', value: scienceGraduationRate !== null ? `${scienceGraduationRate}%` : '—', label: 'อัตราสำเร็จ คณะวิทยาศาสตร์',
             pct: null, color: 'var(--accent-pink)',
-            comparison: { label: 'สูงกว่ามหาวิทยาลัย', diff: '+1.7%' },
-            details: [
-                { label: 'สำเร็จ ป.ตรี', value: '90.8%', color: 'var(--accent-success)' },
-                { label: 'สำเร็จ ป.โท', value: '94.2%', color: 'var(--accent-info)' },
-                { label: 'สำเร็จ ป.เอก', value: '88.5%', color: 'var(--accent-pink)' },
-            ]
+            comparison: scienceGraduationRate !== null && universityGraduationRate !== null
+                ? { label: scienceGraduationRate >= universityGraduationRate ? 'สูงกว่ามหาวิทยาลัย' : 'ต่ำกว่ามหาวิทยาลัย', diff: `${scienceGraduationRate >= universityGraduationRate ? '+' : ''}${(scienceGraduationRate - universityGraduationRate).toFixed(1)}%` }
+                : null,
+            details: []
         }
     ];
 
     const statCards = [
-        { icon: <GraduationCap size={22} />, gradient: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))', value: totalStudents.toLocaleString('th-TH'), label: 'นักศึกษาทั้งหมด', trend: '+3.2%' },
-        { icon: <BookOpen size={22} />, gradient: 'linear-gradient(135deg, var(--accent-info), var(--accent-info))', value: dashboardSummary.totalCourses, label: 'รายวิชาเปิดสอน', trend: null },
-        { icon: <TrendingUp size={22} />, gradient: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))', value: dashboardSummary.avgGPA, label: 'เกรดเฉลี่ยรวม (GPA)', trend: null },
-        { icon: <Users size={22} />, gradient: 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))', value: dashboardSummary.graduationRate + '%', label: 'อัตราสำเร็จการศึกษา', trend: '+1.5%' }
+        { icon: <GraduationCap size={22} />, gradient: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))', value: totalStudents.toLocaleString('th-TH'), label: 'นักศึกษาทั้งหมด', trend: null },
+        { icon: <BookOpen size={22} />, gradient: 'linear-gradient(135deg, var(--accent-info), var(--accent-info))', value: universityCourseTotal ?? '—', label: 'รายวิชาเปิดสอน', trend: null },
+        { icon: <TrendingUp size={22} />, gradient: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))', value: universityAvgGpa ?? '—', label: 'เกรดเฉลี่ยรวม (GPA)', trend: null },
+        { icon: <Users size={22} />, gradient: 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))', value: universityGraduationRate !== null ? `${universityGraduationRate}%` : '—', label: 'อัตราสำเร็จการศึกษา', trend: null }
     ];
 
     const actualStudentTrendRows = (studentStatsData?.trend || []).filter(row => row.type !== 'forecast');
@@ -566,12 +567,16 @@ function DashboardHomeContent() {
                                     <div style={{ fontSize: 20, fontWeight: 700, color: legacyColorToVar(sciData.color) }}>{sciData.value}</div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 8 }}>
-                                    {sciData.details.map((d, j) => (
+                                    {sciData.details.length > 0 ? sciData.details.map((d, j) => (
                                         <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '10px 8px', textAlign: 'center', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
                                             <div style={{ fontSize: 18, fontWeight: 700, color: d.color }}>{d.value}</div>
                                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{d.label}</div>
                                         </div>
-                                    ))}
+                                    )) : (
+                                        <div style={{ width: '100%', color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
+                                            ยังไม่มีชุดข้อมูลต้นทางที่ผ่านการตรวจสอบสำหรับตัวชี้วัดนี้
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

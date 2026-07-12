@@ -1,5 +1,8 @@
 /* global process */
 
+import { createHash } from 'node:crypto';
+import { Buffer } from 'node:buffer';
+
 const DATASET_ENV_PREFIX = 'MJU_DASHBOARD_SOURCE_';
 
 const DEFAULT_PUBLIC_SOURCES = {
@@ -7,7 +10,6 @@ const DEFAULT_PUBLIC_SOURCES = {
   research: 'https://dashboard.mju.ac.th/homeDashboard?&dep=20300',
   dashboard_summary: 'https://dashboard.mju.ac.th/student',
   hr: 'https://dashboard.mju.ac.th/homeDashboard?&dep=20300',
-  graduation: 'https://dashboard.mju.ac.th/homeDashboard?&dep=20300',
 };
 
 const PUBLIC_COMPANION_SOURCES = {
@@ -30,10 +32,14 @@ const PUBLIC_COMPANION_SOURCES = {
 };
 
 const CHART_COLORS = ['#006838', '#2E86AB', '#C5A028', '#A23B72', '#F18F01', '#7B68EE', '#14b8a6', '#64748b'];
+const SOURCE_TIMEOUT_MS = 30_000;
+const SOURCE_MAX_BYTES = 10 * 1024 * 1024;
 
 export const DASHBOARD_SYNC_DATASETS = [
   'dashboard_summary',
   'student_stats',
+  'tcas_admissions',
+  'course_analytics',
   'university_budget',
   'science_budget',
   'financial',
@@ -45,6 +51,41 @@ export const DASHBOARD_SYNC_DATASETS = [
   'strategic',
 ];
 
+const DATASET_SYNC_MODES = {
+  dashboard_summary: 'public_html',
+  student_stats: 'public_html',
+  tcas_admissions: 'official_api',
+  course_analytics: 'official_api',
+  university_budget: 'official_api',
+  science_budget: 'official_api',
+  financial: 'official_api',
+  tuition: 'official_api',
+  student_life: 'official_api',
+  graduation: 'official_api',
+  hr: 'public_html',
+  research: 'public_html',
+  strategic: 'official_api',
+};
+
+function sourceEnvKey(dataset) {
+  return `${DATASET_ENV_PREFIX}${String(dataset || '').toUpperCase()}`;
+}
+
+function safeSourceUrl(value) {
+  if (!value) return '';
+  try {
+    const url = new URL(value);
+    url.username = '';
+    url.password = '';
+    for (const key of [...url.searchParams.keys()]) {
+      if (/token|key|secret|signature|auth/i.test(key)) url.searchParams.set(key, '[configured]');
+    }
+    return url.toString();
+  } catch {
+    return String(value).replace(/([?&](?:token|key|secret|signature|auth)=)[^&]+/gi, '$1[configured]');
+  }
+}
+
 function sendJson(res, status, body) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -53,8 +94,24 @@ function sendJson(res, status, body) {
 }
 
 export function sourceForDataset(dataset) {
-  const envKey = `${DATASET_ENV_PREFIX}${String(dataset || '').toUpperCase()}`;
+  const envKey = sourceEnvKey(dataset);
   return process.env[envKey] || DEFAULT_PUBLIC_SOURCES[dataset] || '';
+}
+
+export function dashboardSyncCapabilities() {
+  return DASHBOARD_SYNC_DATASETS.map(dataset => {
+    const sourceUrl = sourceForDataset(dataset);
+    const usesDefaultPublicSource = Boolean(DEFAULT_PUBLIC_SOURCES[dataset])
+      && sourceUrl === DEFAULT_PUBLIC_SOURCES[dataset];
+    return {
+      dataset,
+      configured: Boolean(sourceUrl),
+      syncMode: DATASET_SYNC_MODES[dataset] || 'official_api',
+      adapter: usesDefaultPublicSource ? 'mju_public_html' : sourceUrl ? 'json_api' : 'unconfigured',
+      sourceUrl: safeSourceUrl(sourceUrl),
+      envKey: sourceEnvKey(dataset),
+    };
+  });
 }
 
 export function rowCountFromPayload(payload) {
@@ -68,6 +125,273 @@ export function rowCountFromPayload(payload) {
   if (Array.isArray(payload?.publicationTrend)) return payload.publicationTrend.length;
   if (Array.isArray(payload?.scienceFaculty?.byType)) return payload.scienceFaculty.byType.length;
   return null;
+}
+
+function sum(rows, selector) {
+  return (Array.isArray(rows) ? rows : []).reduce((total, row) => total + Number(selector(row) || 0), 0);
+}
+
+function pathExists(value, path) {
+  const parts = String(path || '').split('.').filter(Boolean);
+  function walk(current, index) {
+    if (index >= parts.length) return current !== undefined && current !== null;
+    if (Array.isArray(current)) return current.length > 0 && current.every(item => walk(item, index));
+    if (!current || typeof current !== 'object') return false;
+    return walk(current[parts[index]], index + 1);
+  }
+  return walk(value, 0);
+}
+
+function normalizeSourceCoverage(payload) {
+  const coverage = payload?.sourceCoverage;
+  if (!coverage || typeof coverage !== 'object') return payload;
+  const exact = [...new Set((coverage.exact || []).filter(path => pathExists(payload, path)))];
+  const derived = [...new Set((coverage.derived || []).filter(path => pathExists(payload, path)))];
+  const unavailable = new Set(coverage.unavailableFromPublicMju || []);
+  for (const path of coverage.exact || []) {
+    if (!pathExists(payload, path)) unavailable.add(path);
+  }
+  return {
+    ...payload,
+    sourceCoverage: {
+      exact,
+      derived,
+      unavailableFromPublicMju: [...unavailable],
+    },
+  };
+}
+
+function validateDashboardSummary(payload, check) {
+  const facultyTotal = sum(payload?.faculties, row => row.totalStudents);
+  const science = (payload?.faculties || []).find(row => String(row?.name || '').includes('วิทยาศาสตร์'));
+  check('totalStudents_positive', Number(payload?.totalStudents) > 0, payload?.totalStudents);
+  check('faculty_rows_present', Array.isArray(payload?.faculties) && payload.faculties.length >= 10, payload?.faculties?.length || 0);
+  check('faculty_total_equals_university_total', facultyTotal === Number(payload?.totalStudents), `${facultyTotal}/${payload?.totalStudents}`);
+  check('science_faculty_present', Number(science?.totalStudents) > 0, science?.totalStudents || 0);
+}
+
+function validateStudentStats(payload, check) {
+  const currentTotal = Number(payload?.current?.total || 0);
+  const levelTotal = sum(payload?.current?.byLevel, row => row.count);
+  const facultyTotal = sum(payload?.byFaculty, row => row.total);
+  const science = payload?.scienceFaculty || {};
+  const scienceLevelTotal = sum(science.byLevel, row => row.count);
+  check('current_total_positive', currentTotal > 0, currentTotal);
+  check('current_levels_equal_total', levelTotal === currentTotal, `${levelTotal}/${currentTotal}`);
+  check('faculties_equal_total', facultyTotal === currentTotal, `${facultyTotal}/${currentTotal}`);
+  check('science_total_positive', Number(science.total) > 0, science.total || 0);
+  check('science_levels_equal_total', scienceLevelTotal === Number(science.total), `${scienceLevelTotal}/${science.total}`);
+  if (Array.isArray(science.byEnrollmentYear) && science.byEnrollmentYear.length) {
+    check('science_entry_years_equal_total', sum(science.byEnrollmentYear, row => row.total) === Number(science.total), `${sum(science.byEnrollmentYear, row => row.total)}/${science.total}`);
+  }
+  if (Array.isArray(science.byCampus) && science.byCampus.length) {
+    check('science_campuses_equal_total', sum(science.byCampus, row => row.total) === Number(science.total), `${sum(science.byCampus, row => row.total)}/${science.total}`);
+  }
+  if (Array.isArray(science.byNationality) && science.byNationality.length) {
+    check('science_nationalities_equal_total', sum(science.byNationality, row => row.count) === Number(science.total), `${sum(science.byNationality, row => row.count)}/${science.total}`);
+  }
+  if (Array.isArray(science.programs) && science.programs.length) {
+    check('science_programs_equal_total', sum(science.programs, row => row.count) === Number(science.total), `${sum(science.programs, row => row.count)}/${science.total}`);
+  }
+  check('source_contains_no_forecast_rows', !(payload?.trend || []).some(row => row?.type === 'forecast'), 'forecast rows are not source parity');
+}
+
+function validateHr(payload, check) {
+  const science = payload?.scienceFaculty || {};
+  const total = Number(science.total || 0);
+  check('hr_total_positive', total > 0, total);
+  check('employment_types_equal_total', sum(science.byType, row => row.count) === total, `${sum(science.byType, row => row.count)}/${total}`);
+  check('academic_plus_support_equal_total', Number(science.academic || 0) + Number(science.support || 0) === total, `${science.academic || 0}+${science.support || 0}/${total}`);
+  if (Array.isArray(science.byPosition) && science.byPosition.length) {
+    check('positions_equal_total', sum(science.byPosition, row => row.count) === total, `${sum(science.byPosition, row => row.count)}/${total}`);
+  }
+  if (Array.isArray(science.byEducation) && science.byEducation.length) {
+    check('education_levels_equal_total', sum(science.byEducation, row => row.count) === total, `${sum(science.byEducation, row => row.count)}/${total}`);
+  }
+  const retirement = science.retirementForecast || [];
+  if (retirement.length) {
+    const nonIncreasing = retirement.every((row, index) => index === 0 || Number(row.remaining) <= Number(retirement[index - 1].remaining));
+    check('retirement_starts_at_total', Number(retirement[0].remaining) === total, `${retirement[0].remaining}/${total}`);
+    check('retirement_remaining_non_increasing', nonIncreasing, retirement.length);
+  }
+}
+
+function validateResearch(payload, check) {
+  const publications = payload?.publicationTrend || [];
+  const funding = payload?.fundingTrend || [];
+  check('research_overview_present', Boolean(payload?.overview), Object.keys(payload?.overview || {}).length);
+  check('publication_trend_present', publications.length > 0, publications.length);
+  check('funding_trend_present', funding.length > 0, funding.length);
+  check('publication_rows_reconcile', publications.every(row => Number(row.total || 0) === Number(row.scopus || 0)), publications.length);
+  check('funding_rows_reconcile', funding.every(row => {
+    const components = Number(row.internal || 0) + Number(row.external || 0) + Number(row.personal || 0) + Number(row.other || 0);
+    return Math.abs(components - Number(row.total || 0)) <= 0.03;
+  }), funding.length);
+  const latestFunding = funding[funding.length - 1];
+  if (latestFunding) {
+    check('overview_funding_equals_latest_source_year', Math.abs(Number(payload.overview?.totalFunding || 0) - Number(latestFunding.total || 0)) <= 0.01, `${payload.overview?.totalFunding}/${latestFunding.total}`);
+    check('overview_projects_equals_latest_source_year', Number(payload.overview?.activeProjects || 0) === Number(latestFunding.projects || 0), `${payload.overview?.activeProjects}/${latestFunding.projects}`);
+  }
+  check('overview_publications_equal_trend_sum', Number(payload.overview?.totalPublications || 0) === sum(publications, row => row.total), `${payload.overview?.totalPublications}/${sum(publications, row => row.total)}`);
+  const intellectualProperty = payload?.intellectualPropertyTrend || [];
+  if (intellectualProperty.length) {
+    const totalIp = sum(intellectualProperty, row => row.total);
+    const totalPatents = sum(intellectualProperty, row => Number(row.patent || 0) + Number(row.pettyPatent || 0));
+    check('overview_ip_equals_trend_sum', Number(payload.overview?.totalIntellectualProperties || 0) === totalIp, `${payload.overview?.totalIntellectualProperties}/${totalIp}`);
+    check('overview_patents_equal_trend_sum', Number(payload.overview?.totalPatents || 0) === totalPatents, `${payload.overview?.totalPatents}/${totalPatents}`);
+  }
+}
+
+function approximatelyEqual(left, right, tolerance = 0.05) {
+  return Math.abs(Number(left || 0) - Number(right || 0)) <= tolerance;
+}
+
+function untrustedMarkers(value, path = '', matches = []) {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => untrustedMarkers(item, `${path}[${index}]`, matches));
+    return matches;
+  }
+  if (!value || typeof value !== 'object') return matches;
+  for (const [key, nested] of Object.entries(value)) {
+    const nextPath = path ? `${path}.${key}` : key;
+    if (/sourceStatus|sourceTrust|dataStatus|dataMode/i.test(key)) {
+      const text = typeof nested === 'string' ? nested : JSON.stringify(nested);
+      if (/mock|sample|demo|seed|fallback|placeholder|presentation/i.test(text || '')) matches.push(nextPath);
+    }
+    untrustedMarkers(nested, nextPath, matches);
+  }
+  return matches;
+}
+
+function validateTcas(payload, check) {
+  const trend = payload?.fiveYearTrend || [];
+  const roundPlan = payload?.round3Plan2569 || [];
+  check('tcas_history_present', Array.isArray(trend) && trend.length > 0, trend.length);
+  check('tcas_round_plan_present', Array.isArray(roundPlan) && roundPlan.length > 0, roundPlan.length);
+  check('tcas_funnel_is_consistent', trend.every(row => {
+    const applied = Number(row.applied ?? row.applicants ?? 0);
+    const qualified = Number(row.qualified ?? row.passed ?? 0);
+    const enrolled = Number(row.enrolled ?? row.reported ?? 0);
+    const retained = Number(row.retained ?? enrolled);
+    const withdrawn = Number(row.withdrawn ?? Math.max(0, enrolled - retained));
+    return applied >= qualified && qualified >= enrolled && enrolled >= retained && retained + withdrawn <= enrolled;
+  }), trend.length);
+  check('tcas_plans_non_negative', roundPlan.every(row => Number(row.plan ?? row.target ?? 0) >= 0), roundPlan.length);
+}
+
+function validateCourseAnalytics(payload, check) {
+  const plans = payload?.coursePlanByYear || [];
+  const distributions = payload?.gradeDistributions || [];
+  check('course_plans_present', Array.isArray(plans) && plans.length > 0, plans.length);
+  check('grade_distributions_present', Array.isArray(distributions) && distributions.length > 0, distributions.length);
+  check('grade_distribution_totals_match_enrollment', distributions.every(row => {
+    if (!row?.grades || row.enrolled == null) return true;
+    return sum(Object.values(row.grades), value => value) === Number(row.enrolled);
+  }), distributions.length);
+  check('course_gpa_in_valid_range', distributions.every(row => row.avgGpa == null || (Number(row.avgGpa) >= 0 && Number(row.avgGpa) <= 4)), distributions.length);
+}
+
+function validateBudget(payload, check) {
+  const yearly = payload?.yearly || [];
+  check('budget_years_present', Array.isArray(yearly) && yearly.length > 0, yearly.length);
+  check('budget_values_are_finite', yearly.every(row => Number.isFinite(Number(row.revenue)) && Number.isFinite(Number(row.expense))), yearly.length);
+  check('budget_surplus_reconciles', yearly.every(row => row.surplus == null || approximatelyEqual(Number(row.revenue) - Number(row.expense), row.surplus)), yearly.length);
+  check('budget_breakdowns_reconcile', yearly.every(row => {
+    const revenueOk = !Array.isArray(row.revenueBreakdown)
+      || approximatelyEqual(sum(row.revenueBreakdown, item => item.amount), row.revenue);
+    const expenseOk = !Array.isArray(row.expenseBreakdown)
+      || approximatelyEqual(sum(row.expenseBreakdown, item => item.amount), row.expense);
+    return revenueOk && expenseOk;
+  }), yearly.length);
+}
+
+function validateFinancial(payload, check) {
+  const budget = payload?.facultyBudget;
+  check('financial_scope_present', Boolean(payload?.tuitionStatus || budget), Object.keys(payload || {}).length);
+  if (budget) {
+    check('faculty_budget_reconciles', approximatelyEqual(Number(budget.spent) + Number(budget.remaining), budget.totalBudget, 1), `${budget.spent}+${budget.remaining}/${budget.totalBudget}`);
+    if (Array.isArray(budget.categories)) {
+      check('faculty_budget_categories_reconcile', approximatelyEqual(sum(budget.categories, row => row.amount), budget.spent, 1), `${sum(budget.categories, row => row.amount)}/${budget.spent}`);
+    }
+  }
+}
+
+function validateTuition(payload, check) {
+  const rows = payload?.byFaculty || [];
+  check('tuition_flat_rate_present', Boolean(payload?.flatRate), Boolean(payload?.flatRate));
+  check('tuition_faculty_rows_present', Array.isArray(rows) && rows.length > 0, rows.length);
+  check('tuition_values_non_negative', rows.every(row => Number(row.fee ?? row.amount ?? row.rate ?? 0) >= 0), rows.length);
+  if (Array.isArray(payload?.breakdown) && payload.breakdown.length) {
+    check('tuition_breakdown_is_100_percent', approximatelyEqual(sum(payload.breakdown, row => row.value), 100, 0.1), sum(payload.breakdown, row => row.value));
+  }
+}
+
+function validateStudentLife(payload, check) {
+  const hours = payload?.activityHours;
+  check('activity_hours_present', Boolean(hours), Boolean(hours));
+  check('behavior_score_present', Boolean(payload?.behaviorScore), Boolean(payload?.behaviorScore));
+  if (hours) {
+    const completed = Number(hours.completed ?? hours.current ?? hours.total ?? 0);
+    const target = Number(hours.target ?? hours.required ?? completed);
+    check('activity_hours_are_consistent', completed >= 0 && target >= completed, `${completed}/${target}`);
+  }
+}
+
+function validateGraduation(payload, check) {
+  const history = payload?.history || payload?.graduationHistory || [];
+  check('graduation_history_present', Array.isArray(history) && history.length > 0, history.length);
+  check('graduation_rows_reconcile', history.every(row => {
+    const candidates = Number(row.candidates ?? row.total ?? 0);
+    const graduated = Number(row.graduated ?? row.completed ?? 0);
+    if (candidates < graduated || candidates <= 0) return false;
+    if (row.rate == null) return true;
+    return approximatelyEqual((graduated / candidates) * 100, row.rate, 0.15);
+  }), history.length);
+}
+
+function validateStrategic(payload, check) {
+  const goals = payload?.strategicGoals || [];
+  const objectives = payload?.okr?.objectives || [];
+  check('strategic_scope_present', goals.length > 0 || objectives.length > 0, `${goals.length}/${objectives.length}`);
+  const progressRows = [
+    ...goals.map(row => row.progress ?? (row.target ? (Number(row.current || 0) / Number(row.target)) * 100 : null)),
+    ...objectives.map(row => row.progress),
+  ].filter(value => value != null);
+  check('strategic_progress_in_valid_range', progressRows.every(value => Number(value) >= 0 && Number(value) <= 100), progressRows.length);
+}
+
+export function validateDashboardSyncPayload(dataset, inputPayload) {
+  const checks = [];
+  const errors = [];
+  const check = (name, passed, detail = '') => {
+    checks.push({ name, passed: Boolean(passed), detail });
+    if (!passed) errors.push(name);
+  };
+
+  check('payload_is_object', Boolean(inputPayload) && typeof inputPayload === 'object' && !Array.isArray(inputPayload));
+  const mockMarkers = untrustedMarkers(inputPayload);
+  check('payload_contains_no_mock_markers', mockMarkers.length === 0, mockMarkers.join(', '));
+  if (dataset === 'dashboard_summary') validateDashboardSummary(inputPayload, check);
+  else if (dataset === 'student_stats') validateStudentStats(inputPayload, check);
+  else if (dataset === 'hr') validateHr(inputPayload, check);
+  else if (dataset === 'research') validateResearch(inputPayload, check);
+  else if (dataset === 'tcas_admissions') validateTcas(inputPayload, check);
+  else if (dataset === 'course_analytics') validateCourseAnalytics(inputPayload, check);
+  else if (dataset === 'university_budget' || dataset === 'science_budget') validateBudget(inputPayload, check);
+  else if (dataset === 'financial') validateFinancial(inputPayload, check);
+  else if (dataset === 'tuition') validateTuition(inputPayload, check);
+  else if (dataset === 'student_life') validateStudentLife(inputPayload, check);
+  else if (dataset === 'graduation') validateGraduation(inputPayload, check);
+  else if (dataset === 'strategic') validateStrategic(inputPayload, check);
+  else check('known_dataset', false, dataset);
+
+  return {
+    valid: errors.length === 0,
+    dataset,
+    checkedAt: new Date().toISOString(),
+    checks,
+    errors,
+  };
 }
 
 function stripTags(html) {
@@ -244,27 +568,6 @@ function aggregateRowsFromChart(chartXml, labelKey = 'label') {
   }).filter(row => row[labelKey] && row.total > 0);
 }
 
-function simpleForecastFromActualRows(rows) {
-  const actual = [...rows].sort((a, b) => Number(a.year) - Number(b.year));
-  if (actual.length < 2) return actual.map(row => ({ ...row, type: 'actual' }));
-
-  const last = actual[actual.length - 1];
-  const previous = actual[actual.length - 2];
-  const project = (key) => Math.max(0, Math.round(Number(last[key] || 0) + (Number(last[key] || 0) - Number(previous[key] || 0))));
-  return [
-    ...actual.map(row => ({ ...row, type: 'actual' })),
-    {
-      year: String(Number(last.year) + 1),
-      certificate: project('certificate'),
-      bachelor: project('bachelor'),
-      master: project('master'),
-      doctoral: project('doctoral'),
-      total: project('total'),
-      type: 'forecast',
-    },
-  ];
-}
-
 function buildScienceFaculty(byFaculty, fallback = {}) {
   const row = byFaculty.find(item => String(item.name || '').includes('วิทยาศาสตร์'));
   if (!row) return null;
@@ -309,23 +612,12 @@ function normalizeScienceStudentPage(html) {
       color: CHART_COLORS[index % CHART_COLORS.length],
     }))
     : [];
-  const newStudentIntake = byEnrollmentYear.map(row => ({
-    year: row.year,
-    total: row.total,
-    certificate: row.certificate || 0,
-    bachelor: row.bachelor || 0,
-    master: row.master || 0,
-    doctoral: row.doctoral || 0,
-    channels: { quota: null, directAdmit: null, tcas: null, other: null },
-  }));
-
   return {
     total,
     byLevel,
     ...(byEnrollmentYear.length ? { byEnrollmentYear } : {}),
     ...(byCampus.length ? { byCampus } : {}),
     ...(byNationality.length ? { byNationality } : {}),
-    ...(newStudentIntake.length ? { newStudentIntake } : {}),
   };
 }
 
@@ -413,8 +705,8 @@ function mergeScienceStudentCompanions(payload, pages) {
         'scienceFaculty.byCampus',
         'scienceFaculty.byNationality',
         'scienceFaculty.programs',
-        'scienceFaculty.studentFacultyRatio',
       ],
+      derived: ['scienceFaculty.studentFacultyRatio'],
       unavailableFromPublicMju: ['scienceFaculty.byGender', 'scienceFaculty.intakeChannels'],
     },
   };
@@ -437,7 +729,6 @@ function normalizeStudentStatsFromFusionCharts(html) {
   const byCampus = campusChart
     ? aggregateRowsFromChart(campusChart, 'campus').map(row => ({ ...row, count: row.total }))
     : [];
-  const trend = simpleForecastFromActualRows(byEnrollmentYear);
   const scienceFaculty = buildScienceFaculty(byFaculty);
 
   const total = byLevel.reduce((sum, row) => sum + row.count, 0)
@@ -450,7 +741,12 @@ function normalizeStudentStatsFromFusionCharts(html) {
     byFaculty,
     byEnrollmentYear,
     byCampus,
-    trend,
+    ...(byEnrollmentYear.length ? {
+      trend: byEnrollmentYear
+        .slice()
+        .sort((a, b) => Number(a.year) - Number(b.year))
+        .map(row => ({ ...row, type: 'actual' })),
+    } : {}),
     ...(scienceFaculty ? { scienceFaculty } : {}),
     sourceNote: 'Synced from public MJU Dashboard student page',
   };
@@ -553,9 +849,6 @@ function normalizeResearchFromHomeDashboard(html, tables) {
       const total = numberFromText(row[yearIndex + 2]) / 1000000;
       return {
         year: row[yearIndex],
-        internal: Number((total * 0.2).toFixed(2)),
-        external: Number((total * 0.65).toFixed(2)),
-        industry: Number((total * 0.15).toFixed(2)),
         total: Number(total.toFixed(2)),
         projects: numberFromText(row[yearIndex + 1]),
         type: 'actual',
@@ -682,51 +975,6 @@ function normalizeHrFromHomeDashboard(html) {
       unavailableFromPublicMju: ['scienceFaculty.byGender', 'scienceFaculty.byDepartment', 'scienceFaculty.trend'],
     },
     sourceNote: 'Synced from public MJU Dashboard faculty home page',
-  };
-}
-
-function normalizeGraduationFromHomeDashboard(tables) {
-  const surveyTable = tables.find(table =>
-    table.some(row => row.join(' ').includes('ปีสำเร็จ')) &&
-    table.some(row => row.join(' ').includes('สำเร็จ')) &&
-    table.some(row => row.join(' ').includes('ร้อยละ'))
-  );
-  if (!surveyTable) return null;
-
-  const history = surveyTable
-    .map(row => {
-      const yearIndex = row.findIndex(cell => /^\d{4}$/.test(String(cell || '').trim()));
-      if (yearIndex < 0) return null;
-      const graduated = numberFromText(row[yearIndex + 1]);
-      const responded = numberFromText(row[yearIndex + 2]);
-      const responseRate = numberFromText(row[yearIndex + 3]);
-      return {
-        year: Number(row[yearIndex]),
-        candidates: graduated,
-        graduated,
-        responded,
-        rate: responseRate,
-        type: 'actual',
-      };
-    })
-    .filter(row => row && row.year && (row.graduated > 0 || row.responded > 0))
-    .sort((a, b) => Number(a.year) - Number(b.year));
-
-  if (history.length === 0) return null;
-  const latest = history[history.length - 1];
-  return {
-    history,
-    graduationHistory: history,
-    current: {
-      academicYear: latest.year,
-      totalCandidates: latest.candidates,
-      expectedGraduates: latest.graduated,
-      pending: Math.max(0, latest.candidates - latest.graduated),
-      notPassed: 0,
-      responseRate: latest.rate,
-      responded: latest.responded,
-    },
-    sourceNote: 'Synced from public MJU Dashboard graduate employment survey on faculty home page',
   };
 }
 
@@ -904,11 +1152,6 @@ function mergeResearchCompanions(payload, pages) {
     },
     sourceCoverage: {
       exact: [
-        'overview.activeProjects',
-        'overview.totalFunding',
-        'overview.totalPublications',
-        'overview.totalPatents',
-        'overview.totalCitations',
         'publicationTrend',
         'citationTrend',
         'fundingTrend',
@@ -918,6 +1161,15 @@ function mergeResearchCompanions(payload, pages) {
         'fundingSources',
         'byDepartment',
         'intellectualPropertyTrend',
+      ],
+      derived: [
+        'overview.activeProjects',
+        'overview.totalFunding',
+        'overview.totalPublications',
+        'overview.totalPatents',
+        'overview.totalCitations',
+        'overview.totalIntellectualProperties',
+        'patents',
       ],
       unavailableFromPublicMju: ['benchmark.hIndexComparison', 'communityImpactBeneficiaries'],
     },
@@ -943,10 +1195,9 @@ function normalizeHtmlDataset(dataset, html, sourceUrl) {
     const normalized = normalizeHrFromHomeDashboard(html);
     if (normalized) return normalized;
   }
-  if (dataset === 'graduation') {
-    const normalized = normalizeGraduationFromHomeDashboard(tables);
-    if (normalized) return normalized;
-  }
+  // The public faculty dashboard exposes graduate employment-survey response
+  // rates, not curriculum completion rates. Graduation must therefore come
+  // from an authorized Reg/Graduation JSON API or uploaded official export.
 
   const tableCount = tables.length;
   const textLength = stripTags(html).length;
@@ -965,19 +1216,59 @@ function sourceHeaders() {
 }
 
 async function fetchTextSource(sourceUrl) {
-  const response = await fetch(sourceUrl, { headers: sourceHeaders() });
+  let response;
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      response = await fetch(sourceUrl, {
+        headers: sourceHeaders(),
+        signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS),
+      });
+      if (response.ok || response.status < 500 || attempt === 3) break;
+      lastError = new Error(`MJU source returned HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error;
+      if (attempt === 3) throw error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 250 * attempt));
+  }
+  if (!response) throw lastError || new Error('Unable to connect to MJU source.');
   const contentType = response.headers.get('content-type') || '';
+  const declaredBytes = Number(response.headers.get('content-length') || 0);
+  if (declaredBytes > SOURCE_MAX_BYTES) {
+    const error = new Error(`MJU source is too large (${declaredBytes} bytes). Maximum is ${SOURCE_MAX_BYTES} bytes.`);
+    error.code = 'SOURCE_TOO_LARGE';
+    throw error;
+  }
   const body = await response.text();
+  const actualBytes = Buffer.byteLength(body, 'utf8');
+  if (actualBytes > SOURCE_MAX_BYTES) {
+    const error = new Error(`MJU source is too large (${actualBytes} bytes). Maximum is ${SOURCE_MAX_BYTES} bytes.`);
+    error.code = 'SOURCE_TOO_LARGE';
+    throw error;
+  }
 
   if (!response.ok) {
     throw new Error(`MJU source returned HTTP ${response.status}: ${body.slice(0, 180)}`);
   }
 
-  return { body, contentType };
+  return {
+    body,
+    contentType,
+    evidence: {
+      sourceUrl: safeSourceUrl(sourceUrl),
+      contentType,
+      bytes: actualBytes,
+      sha256: createHash('sha256').update(body).digest('hex'),
+      etag: response.headers.get('etag') || '',
+      lastModified: response.headers.get('last-modified') || '',
+      fetchedAt: new Date().toISOString(),
+    },
+  };
 }
 
 async function fetchSource(dataset, sourceUrl) {
-  const { body, contentType } = await fetchTextSource(sourceUrl);
+  const { body, contentType, evidence } = await fetchTextSource(sourceUrl);
 
   if (contentType.includes('application/json') || body.trim().startsWith('{') || body.trim().startsWith('[')) {
     const parsed = JSON.parse(body);
@@ -985,6 +1276,7 @@ async function fetchSource(dataset, sourceUrl) {
       payload: parsed.payload || parsed.data || parsed,
       adapter: 'json',
       sourceType: 'mju_api',
+      sourceEvidence: [evidence],
     };
   }
 
@@ -992,6 +1284,7 @@ async function fetchSource(dataset, sourceUrl) {
     payload: normalizeHtmlDataset(dataset, body, sourceUrl),
     adapter: 'html',
     sourceType: 'mju_public_page',
+    sourceEvidence: [evidence],
   };
 }
 
@@ -1002,8 +1295,8 @@ async function fetchCompanionPages(dataset) {
   const entries = await Promise.all(
     Object.entries(sources).map(async ([key, url]) => {
       try {
-        const { body } = await fetchTextSource(url);
-        return [key, { url, html: body }];
+        const { body, evidence } = await fetchTextSource(url);
+        return [key, { url, html: body, evidence }];
       } catch (err) {
         return [key, { url, error: err?.message || String(err) }];
       }
@@ -1020,6 +1313,11 @@ function enrichPublicPayloadWithCompanions(dataset, payload, pages) {
 }
 
 export async function fetchDashboardSource(dataset) {
+  if (!DASHBOARD_SYNC_DATASETS.includes(dataset)) {
+    const error = new Error(`Unknown dashboard dataset: ${dataset}`);
+    error.code = 'UNKNOWN_DATASET';
+    throw error;
+  }
   const sourceUrl = sourceForDataset(dataset);
   if (!sourceUrl) {
     throw new Error(`No source configured for ${dataset}. Set MJU_DASHBOARD_SOURCE_${dataset.toUpperCase()} in Vercel.`);
@@ -1028,19 +1326,42 @@ export async function fetchDashboardSource(dataset) {
   const result = await fetchSource(dataset, sourceUrl);
   const usesDefaultPublicSource = sourceUrl === DEFAULT_PUBLIC_SOURCES[dataset] && result.sourceType === 'mju_public_page';
   const companionPages = usesDefaultPublicSource ? await fetchCompanionPages(dataset) : {};
-  const payload = usesDefaultPublicSource
+  const companionFailures = Object.entries(companionPages)
+    .filter(([, page]) => page?.error)
+    .map(([key, page]) => ({ key, sourceUrl: safeSourceUrl(page.url), error: page.error }));
+  if (companionFailures.length) {
+    const error = new Error(`Companion source fetch failed for ${dataset}: ${companionFailures.map(item => item.key).join(', ')}`);
+    error.code = 'COMPANION_SOURCE_FAILED';
+    error.companionFailures = companionFailures;
+    throw error;
+  }
+  const enrichedPayload = usesDefaultPublicSource
     ? enrichPublicPayloadWithCompanions(dataset, result.payload, companionPages)
     : result.payload;
+  const payload = normalizeSourceCoverage(enrichedPayload);
+  const validation = validateDashboardSyncPayload(dataset, payload);
+  if (!validation.valid) {
+    const error = new Error(`Source validation failed for ${dataset}: ${validation.errors.join(', ')}`);
+    error.code = 'SOURCE_VALIDATION_FAILED';
+    error.validation = validation;
+    throw error;
+  }
   const companionSourceUrls = Object.values(companionPages)
     .filter(page => page?.html)
     .map(page => page.url);
+  const sourceEvidence = [
+    ...(result.sourceEvidence || []),
+    ...Object.values(companionPages).map(page => page?.evidence).filter(Boolean),
+  ];
   return {
     dataset,
-    sourceUrl,
-    sourceUrls: [sourceUrl, ...companionSourceUrls],
+    sourceUrl: safeSourceUrl(sourceUrl),
+    sourceUrls: [safeSourceUrl(sourceUrl), ...companionSourceUrls.map(safeSourceUrl)],
     fetchedAt: new Date().toISOString(),
     rowCount: rowCountFromPayload(payload),
     ...result,
+    sourceEvidence,
+    validation,
     payload,
   };
 }
@@ -1048,6 +1369,14 @@ export async function fetchDashboardSource(dataset) {
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     sendJson(res, 405, { error: 'Method not allowed' });
+    return;
+  }
+
+  if (String(req.query?.status || '') === '1') {
+    sendJson(res, 200, {
+      fetchedAt: new Date().toISOString(),
+      datasets: dashboardSyncCapabilities(),
+    });
     return;
   }
 
@@ -1060,9 +1389,15 @@ export default async function handler(req, res) {
   try {
     sendJson(res, 200, await fetchDashboardSource(dataset));
   } catch (err) {
-    sendJson(res, 502, {
+    const status = err?.code === 'UNKNOWN_DATASET' ? 400
+      : !sourceForDataset(dataset) ? 424
+        : 502;
+    sendJson(res, status, {
       dataset,
-      sourceUrl: sourceForDataset(dataset),
+      sourceUrl: safeSourceUrl(sourceForDataset(dataset)),
+      code: err?.code || (!sourceForDataset(dataset) ? 'SOURCE_NOT_CONFIGURED' : 'SOURCE_FETCH_FAILED'),
+      validation: err?.validation || null,
+      companionFailures: err?.companionFailures || null,
       error: err?.message || 'Unable to fetch MJU dashboard source',
     });
   }

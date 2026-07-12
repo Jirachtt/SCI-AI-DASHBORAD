@@ -203,24 +203,23 @@ expect(
 
 expect(
   'Student totals are locked to current MJU Dashboard aggregate',
-  /OFFICIAL_SCIENCE_STUDENT_TOTAL\s*=\s*1390/.test(officialStudentSnapshot)
-    && /OFFICIAL_STUDENT_TOTAL\s*=\s*16392/.test(officialStudentSnapshot)
-    && /totalStudents:\s*16392/.test(mockData)
-    && /total:\s*1390/.test(mockData)
-    && /totalStudents:\s*1390/.test(mockData),
+  /OFFICIAL_SCIENCE_STUDENT_TOTAL\s*=\s*1759/.test(officialStudentSnapshot)
+    && /OFFICIAL_STUDENT_TOTAL\s*=\s*22344/.test(officialStudentSnapshot)
+    && /dashboardSummary\.totalStudents\s*=\s*OFFICIAL_STUDENT_TOTAL/.test(mockData)
+    && /scienceFallback\.total\s*=\s*OFFICIAL_SCIENCE_STUDENT_TOTAL/.test(mockData),
   'Aggregate student totals must use MJU Dashboard official values, not roster row counts.'
 );
 
 expect(
   'Generated student roster matches current MJU Dashboard aggregate',
-  scienceStudentList.length === 1390
-    && studentListSummary.total === 1390
-    && studentListSummary.byYear.year1 === 406
-    && studentListSummary.byYear.year2 === 433
-    && studentListSummary.byYear.year3 === 343
-    && studentListSummary.byYear.year4 === 187
-    && studentListSummary.graduate === 21
-    && /STALE_GENERATED_ROW_COUNTS\s*=\s*new Set\(\[1451,\s*1452\]\)/.test(studentDataService)
+  scienceStudentList.length === 1759
+    && studentListSummary.total === 1759
+    && studentListSummary.byYear.year1 === 417
+    && studentListSummary.byYear.year2 === 394
+    && studentListSummary.byYear.year3 === 431
+    && studentListSummary.byYear.year4 === 493
+    && studentListSummary.graduate === 24
+    && /STALE_GENERATED_ROW_COUNTS\s*=\s*new Set\(\[1383,\s*1390,\s*1398,\s*1399,\s*1451,\s*1452,\s*1528\]\)/.test(studentDataService)
     && /Generated mock roster/.test(studentDataService),
   'Bundled/generated rows must match the official aggregate count while remaining marked as mock data.'
 );
