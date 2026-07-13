@@ -38,8 +38,15 @@ const personnelColumns = [
     { key: 'ageGroup', label: 'ช่วงอายุ' },
 ];
 
-function expandWeighted(items, labelKey = 'label') {
-    return items.flatMap(item => Array.from({ length: item.count }, () => item[labelKey]));
+function asArray(value) {
+    return Array.isArray(value) ? value : [];
+}
+
+function expandWeighted(items = [], labelKey = 'label') {
+    return asArray(items).flatMap(item => {
+        const count = Math.max(0, Math.trunc(toNumber(item?.count)));
+        return Array.from({ length: count }, () => item?.[labelKey] || '-');
+    });
 }
 
 const EDUCATION_DEFS = [
@@ -196,17 +203,92 @@ function educationCount(rows = [], key) {
     return rows.find(row => row.key === key)?.count || 0;
 }
 
-function buildPersonnelDirectory(sci) {
-    const academicPositions = expandWeighted(sci.academicPositions.filter(p => p.count > 0), 'position');
+function normalizeGenderRows(value) {
+    if (Array.isArray(value)) {
+        return value.map(row => ({
+            ...row,
+            gender: row?.gender || row?.label || row?.name || 'ไม่ระบุ',
+            count: toNumber(row?.count ?? row?.value ?? row?.total),
+        }));
+    }
+    if (!value || typeof value !== 'object') return [];
+
+    const rows = [];
+    if (value.male != null) rows.push({ gender: 'ชาย', count: toNumber(value.male) });
+    if (value.female != null) rows.push({ gender: 'หญิง', count: toNumber(value.female) });
+    return rows;
+}
+
+function normalizeHrScienceFaculty(value = {}) {
+    const source = value && typeof value === 'object' ? value : {};
+    const diversitySource = source.diversity && typeof source.diversity === 'object'
+        ? source.diversity
+        : {};
+    const positionSource = asArray(source.academicPositions).length
+        ? source.academicPositions
+        : source.byPosition;
+    const departmentSource = asArray(source.byDepartment).length
+        ? source.byDepartment
+        : source.departments;
+    const ratioSource = Array.isArray(source.studentFacultyRatio)
+        ? source.studentFacultyRatio
+        : asArray(source.studentFacultyRatio?.trend).length
+            ? source.studentFacultyRatio.trend
+            : source.studentFacultyRatio?.ratio != null
+                ? [{
+                    year: source.year || source.checkedAt?.slice?.(0, 4) || new Date().getFullYear() + 543,
+                    ratio: source.studentFacultyRatio.ratio,
+                    type: 'actual',
+                }]
+                : [];
+    const academic = toNumber(source.academic ?? source.academicStaff);
+    const support = toNumber(source.support ?? source.supportStaff);
+
+    return {
+        ...source,
+        total: toNumber(source.total, academic + support),
+        academic,
+        support,
+        byDepartment: asArray(departmentSource).map((row, index) => ({
+            ...row,
+            dept: row?.dept || row?.department || row?.name || `หน่วยงาน ${index + 1}`,
+            academic: toNumber(row?.academic ?? row?.academicStaff),
+            support: toNumber(row?.support ?? row?.supportStaff),
+            total: toNumber(
+                row?.total,
+                toNumber(row?.academic ?? row?.academicStaff) + toNumber(row?.support ?? row?.supportStaff)
+            ),
+        })),
+        academicPositions: asArray(positionSource).map((row, index) => ({
+            ...row,
+            position: row?.position || row?.label || row?.name || `ตำแหน่ง ${index + 1}`,
+            count: toNumber(row?.count ?? row?.value ?? row?.total),
+        })),
+        byEducation: normalizeEducationRows(source.byEducation || source.education || []),
+        byGender: normalizeGenderRows(source.byGender ?? source.gender),
+        trend: asArray(source.trend || source.trends),
+        promotionTrend: asArray(source.promotionTrend || source.promotions),
+        diversity: {
+            ...diversitySource,
+            ageGroup: asArray(diversitySource.ageGroup || source.ageGroup),
+            nationality: asArray(diversitySource.nationality || source.nationality),
+            retirementIn5Years: toNumber(diversitySource.retirementIn5Years ?? source.retirementIn5Years),
+        },
+        studentFacultyRatio: asArray(ratioSource),
+    };
+}
+
+function buildPersonnelDirectory(sci = {}) {
+    const academicPositions = expandWeighted(sci.academicPositions, 'position');
     const academicEducation = expandWeighted(sci.byEducation, 'level');
-    const ageGroups = expandWeighted(sci.diversity.ageGroup, 'group');
+    const ageGroups = expandWeighted(sci.diversity?.ageGroup, 'group');
     const genderGroups = expandWeighted(sci.byGender, 'gender');
     const supportPositions = ['เจ้าหน้าที่บริหารงานทั่วไป', 'นักวิทยาศาสตร์', 'เจ้าหน้าที่ห้องปฏิบัติการ', 'เจ้าหน้าที่การเงิน', 'เจ้าหน้าที่สารสนเทศ'];
     const rows = [];
     let academicCursor = 0;
     let supportCursor = 0;
 
-    sci.byDepartment.forEach((dept, deptIndex) => {
+    asArray(sci.byDepartment).forEach((dept, deptIndex) => {
         const department = normalizeThaiText(dept.dept);
         for (let i = 0; i < dept.academic; i += 1) {
             const code = `SCI-A${String(deptIndex + 1).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`;
@@ -248,7 +330,8 @@ export default function HRDashboardPage() {
     const [drillDetail, setDrillDetail] = useState(null);
     const [educationYear, setEducationYear] = useState('');
     const { data: hrData } = useDashboardDataset('hr');
-    const sci = hrData.scienceFaculty;
+    const rawScienceFaculty = hrData?.scienceFaculty;
+    const sci = useMemo(() => normalizeHrScienceFaculty(rawScienceFaculty), [rawScienceFaculty]);
     const personnelRows = useMemo(() => buildPersonnelDirectory(sci), [sci]);
     const educationYearOptions = useMemo(() => buildEducationYearOptions(sci), [sci]);
     const selectedEducationYear = educationYearOptions.some(option => option.year === educationYear)
@@ -570,12 +653,15 @@ export default function HRDashboardPage() {
         }
     );
 
+    const promotedAcademicCount = sci.academicPositions
+        .filter(row => /รอง|ผู้ช่วย|associate|assistant/i.test(String(row.position || '')))
+        .reduce((sum, row) => sum + toNumber(row.count), 0);
     const scorecards = [
         { label: 'บุคลากรทั้งหมด', value: sci.total, icon: Users, color: 'var(--accent-success-deep)', suffix: 'คน' },
         { label: 'สายวิชาการ', value: sci.academic, icon: GraduationCap, color: 'var(--accent-info)', suffix: 'คน' },
         { label: 'สายสนับสนุน', value: sci.support, icon: UserCheck, color: 'var(--accent-gold)', suffix: 'คน' },
         { label: 'ปริญญาเอก', value: educationCount(normalizeEducationRows(sci.byEducation), 'doctoral'), icon: Award, color: 'var(--accent-teal)', suffix: 'คน' },
-        { label: 'รศ.+ ผศ.', value: sci.academicPositions[1].count + sci.academicPositions[2].count, icon: TrendingUp, color: 'var(--accent-purple)', suffix: 'คน' },
+        { label: 'รศ.+ ผศ.', value: promotedAcademicCount, icon: TrendingUp, color: 'var(--accent-purple)', suffix: 'คน' },
         { label: 'เกษียณใน 5 ปี', value: sci.diversity.retirementIn5Years, icon: Building2, color: 'var(--accent-pink)', suffix: 'คน' },
     ];
     const compensationSummary = getExecutiveCompensationSummary(executiveCompensationDemo);
