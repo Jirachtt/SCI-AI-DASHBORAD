@@ -81,7 +81,7 @@ function educationMetaFor(value, index = 0) {
 }
 
 function normalizeEducationRows(rows = []) {
-    return (rows || [])
+    return asArray(rows)
         .map((row, index) => {
             const level = row?.level || row?.label || row?.name || row?.degree || row?.education || row?.key || '';
             const meta = educationMetaFor(level, index);
@@ -141,12 +141,13 @@ function collectEducationYearRows(source, targetMap) {
 }
 
 function scaleEducationRows(rows = [], targetTotal = 0) {
-    const sourceTotal = rows.reduce((sum, row) => sum + toNumber(row.count), 0);
+    const normalizedRows = asArray(rows);
+    const sourceTotal = normalizedRows.reduce((sum, row) => sum + toNumber(row?.count), 0);
     if (!sourceTotal || !targetTotal) return rows;
 
     let remaining = Math.max(0, Math.round(targetTotal));
-    return rows.map((row, index) => {
-        const count = index === rows.length - 1
+    return normalizedRows.map((row, index) => {
+        const count = index === normalizedRows.length - 1
             ? remaining
             : Math.max(0, Math.round((toNumber(row.count) / sourceTotal) * targetTotal));
         remaining -= count;
@@ -200,7 +201,7 @@ function educationSourceLabel(source) {
 }
 
 function educationCount(rows = [], key) {
-    return rows.find(row => row.key === key)?.count || 0;
+    return asArray(rows).find(row => row?.key === key)?.count || 0;
 }
 
 function normalizeGenderRows(value) {
