@@ -12,6 +12,7 @@ import AccessDenied from '../components/AccessDenied';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
+import AnimatedMetricValue from '../components/AnimatedMetricValue';
 
 const topics = [
     {
@@ -547,7 +548,7 @@ function DashboardHomeContent() {
                                     <div className="stat-card-icon" style={{ background: card.gradient }}>{card.icon}</div>
                                     {card.trend && <span className="stat-card-trend up">{card.trend}</span>}
                                 </div>
-                                <div className="stat-card-value">{card.value}</div>
+                                <div className="stat-card-value"><AnimatedMetricValue value={card.value} /></div>
                                 <div className="stat-card-label">{card.label}</div>
                             </div>
                             <div style={{

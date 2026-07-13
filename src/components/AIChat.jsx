@@ -73,6 +73,8 @@ export default function AIChat() {
     const fileInputRef = useRef(null);
     const recognitionRef = useRef(null);
     const messagesEnd = useRef(null);
+    const messagesViewport = useRef(null);
+    const shouldFollowMessages = useRef(true);
     const [isOpen, setIsOpen] = useState(false);
     const [expandedChart, setExpandedChart] = useState(null);
     const [messages, setMessages] = useState([INITIAL_MESSAGE]);
@@ -125,8 +127,24 @@ export default function AIChat() {
         recognitionRef.current.onend = () => setIsListening(false);
     }, []);
 
+    const handleMessagesScroll = useCallback(() => {
+        const viewport = messagesViewport.current;
+        if (!viewport) return;
+        const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+        shouldFollowMessages.current = distanceFromBottom < 96;
+    }, []);
+
     useEffect(() => {
-        messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
+        const newestMessage = messages[messages.length - 1];
+        if (!shouldFollowMessages.current && newestMessage?.role !== 'user') return;
+        const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const frame = window.requestAnimationFrame(() => {
+            messagesEnd.current?.scrollIntoView({
+                behavior: reducedMotion ? 'auto' : 'smooth',
+                block: 'end',
+            });
+        });
+        return () => window.cancelAnimationFrame(frame);
     }, [messages, typing]);
 
     useEffect(() => {
@@ -535,7 +553,7 @@ export default function AIChat() {
                             </div>
                         </div>
 
-                        <div className="ai-chat-messages ai-chat-popup-messages">
+                        <div className="ai-chat-messages ai-chat-popup-messages" ref={messagesViewport} onScroll={handleMessagesScroll}>
                             {messages.map((msg, index) => (
                                 <ChatMessageComponent key={`${msg.role}-${index}`} msg={msg} onExpand={setExpandedChart} />
                             ))}
@@ -616,7 +634,7 @@ export default function AIChat() {
                                 onKeyDown={(e) => { if (e.key === 'Enter') submitQuestion(input); }}
                                 disabled={typing}
                             />
-                            <button className="ai-chat-send" onClick={() => submitQuestion(input)} disabled={typing || !input.trim()} aria-label="ส่งคำถาม">
+                            <button className="ai-chat-send" onClick={() => submitQuestion(input)} disabled={typing || !input.trim()} aria-label="ส่งคำถาม" aria-busy={typing} data-state={typing ? 'sending' : 'idle'}>
                                 <Send size={18} />
                             </button>
                         </div>

@@ -8,6 +8,7 @@ import { Menu, Sun, Moon } from 'lucide-react';
 import { ensureStudentList } from '../services/studentDataService';
 import { ensureDashboardLiveData, startDashboardAutoSync } from '../services/dashboardLiveDataService';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
+import useDashboardMotion from '../hooks/useDashboardMotion';
 
 export default function Layout() {
     const { theme, toggleTheme } = useTheme();
@@ -17,6 +18,7 @@ export default function Layout() {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const prevPath = useRef(location.pathname);
     const mainContentRef = useRef(null);
+    useDashboardMotion(mainContentRef, location.pathname);
 
     // Pre-warm live student data once the user is authenticated.
     // Gemini + page consumers read it synchronously after this resolves;

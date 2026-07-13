@@ -400,11 +400,11 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
 }
 
 const PREMIUM_CHART_MOTION = {
-    initialDuration: 250,
-    updateDuration: 180,
-    sliceDuration: 250,
-    maxInitialDelay: 100,
-    maxUpdateDelay: 40,
+    initialDuration: 700,
+    updateDuration: 240,
+    sliceDuration: 720,
+    maxInitialDelay: 160,
+    maxUpdateDelay: 24,
     easing: 'easeOutQuart',
 };
 
@@ -519,6 +519,9 @@ function applyPremiumChartMotion(chart, options, chartType, isSliceChart, args) 
         animations.x = {
             duration: Math.round(duration * 0.92),
             easing,
+            ...(isInitialMotion ? {
+                from: context => context?.chart?.scales?.x?.left,
+            } : {}),
             ...(animations.x || {}),
         };
         animations.y = {
@@ -570,7 +573,8 @@ export const themeAdaptorPlugin = {
         options.transitions.active = {
             ...(options.transitions.active || {}),
             animation: {
-                duration: isSliceChart ? 140 : 120,
+                duration: isSliceChart ? 180 : 160,
+                easing: PREMIUM_CHART_MOTION.easing,
                 ...(options.transitions.active?.animation || {}),
             },
         };
@@ -675,11 +679,13 @@ export const themeAdaptorPlugin = {
         chart.$mjuHasAnimated = true;
     },
     afterEvent(chart, args) {
-        const chartType = baseChartType(chart);
-        if (!['pie', 'doughnut', 'polarArea'].includes(chartType)) return;
-
         const eventType = args?.event?.type;
-        if (!['mouseout', 'mouseleave'].includes(eventType)) return;
+        const pointerLeftChart = ['mouseout', 'mouseleave'].includes(eventType) || args?.inChartArea === false;
+        if (!pointerLeftChart) return;
+
+        const hasActiveElement = chart.getActiveElements?.().length > 0;
+        const hasActiveTooltip = chart.tooltip?.getActiveElements?.().length > 0;
+        if (!hasActiveElement && !hasActiveTooltip) return;
 
         chart.setActiveElements([]);
         if (chart.tooltip?.setActiveElements) {

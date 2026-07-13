@@ -2905,6 +2905,8 @@ function AIChatPageContent() {
     const [typing, setTyping] = useState(false);
     const [thinkingStepIndex, setThinkingStepIndex] = useState(0);
     const messagesEnd = useRef(null);
+    const messagesViewport = useRef(null);
+    const shouldFollowMessages = useRef(true);
     const sendAI = useCallback(async (prompt, onChunk, sendOptions = {}) => {
         const { onMetadata, ...restOptions } = sendOptions;
         return sendMessageToGemini(prompt, {
@@ -2977,10 +2979,27 @@ function AIChatPageContent() {
         }
     };
 
+    const handleMessagesScroll = useCallback(() => {
+        const viewport = messagesViewport.current;
+        if (!viewport) return;
+        const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+        shouldFollowMessages.current = distanceFromBottom < 96;
+    }, []);
+
     useEffect(() => {
         const hasUserMessage = messages.some(m => m.role === 'user');
         if (!hasUserMessage && !typing) return;
-        messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
+        const newestMessage = messages[messages.length - 1];
+        if (!shouldFollowMessages.current && newestMessage?.role !== 'user') return;
+
+        const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const frame = window.requestAnimationFrame(() => {
+            messagesEnd.current?.scrollIntoView({
+                behavior: reducedMotion ? 'auto' : 'smooth',
+                block: 'end',
+            });
+        });
+        return () => window.cancelAnimationFrame(frame);
     }, [messages, typing]);
 
     useEffect(() => {
@@ -3570,7 +3589,7 @@ function AIChatPageContent() {
                     >
                         {isListening ? <Mic size={18} /> : <MicOff size={18} />}
                     </button>
-                    <button className="ai-chat-page-send" onClick={handleSend} disabled={typing || !input.trim()} aria-label="ส่งคำถาม">
+                    <button className="ai-chat-page-send" onClick={handleSend} disabled={typing || !input.trim()} aria-label="ส่งคำถาม" aria-busy={typing} data-state={typing ? 'sending' : 'idle'}>
                         <Send size={20} />
                     </button>
                 </div>
@@ -3810,7 +3829,7 @@ function AIChatPageContent() {
                     )}
 
                     {/* Messages */}
-                    <div className="ai-chat-page-messages">
+                    <div className="ai-chat-page-messages" ref={messagesViewport} onScroll={handleMessagesScroll}>
                         {visibleMessages.map((msg, i) => (
                             <ChatMessage
                                 key={i}
@@ -3888,7 +3907,7 @@ function AIChatPageContent() {
                                 onKeyDown={handleKeyDown}
                                 disabled={typing}
                             />
-                            <button className="ai-chat-page-send" onClick={handleSend} disabled={typing || !input.trim()} aria-label="ส่งคำถาม">
+                            <button className="ai-chat-page-send" onClick={handleSend} disabled={typing || !input.trim()} aria-label="ส่งคำถาม" aria-busy={typing} data-state={typing ? 'sending' : 'idle'}>
                                 <Send size={20} />
                             </button>
                         </div>
