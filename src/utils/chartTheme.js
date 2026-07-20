@@ -64,7 +64,9 @@ export function getCurrentChartTheme(theme = activeThemeName()) {
         axis: cssVarValue('--chart-axis', 'var(--border-color)'),
         tooltipBg: cssVarValue('--chart-tooltip-bg', 'var(--bg-card)'),
         tooltipTitle: cssVarValue('--chart-tooltip-text', 'var(--text-primary)'),
-        tooltipBody: cssVarValue('--chart-muted', 'var(--text-muted)'),
+        tooltipBody: isLight
+            ? cssVarValue('--chart-muted', 'var(--text-muted)')
+            : cssVarValue('--chart-text', 'var(--text-primary)'),
         tooltipBorder: cssVarValue('--accent-border-soft', 'var(--border-color)'),
     };
 }
@@ -578,6 +580,11 @@ export const themeAdaptorPlugin = {
                 ...(options.transitions.active?.animation || {}),
             },
         };
+        options.hover = {
+            mode: isSliceChart ? 'nearest' : 'index',
+            intersect: isSliceChart,
+            ...(options.hover || {}),
+        };
         options.transitions.resize = {
             ...(options.transitions.resize || {}),
             animation: {
@@ -650,6 +657,11 @@ export const themeAdaptorPlugin = {
             tooltip.bodySpacing = tooltip.bodySpacing ?? 5;
             tooltip.usePointStyle = tooltip.usePointStyle ?? true;
             tooltip.multiKeyBackground = themeConfig.surface;
+            tooltip.animation = {
+                duration: prefersReducedMotion() ? 0 : 160,
+                easing: PREMIUM_CHART_MOTION.easing,
+                ...(tooltip.animation || {}),
+            };
         }
 
         const legend = options.plugins?.legend;
