@@ -18,6 +18,12 @@
   --ds-radius-panel: 14px;
   --ds-control-height: 42px;
   --ds-focus: #38bdf8;
+  --ds-focus-width: 3px;
+  --ds-z-sticky: 20;
+  --ds-z-header: 80;
+  --ds-z-drawer: 1200;
+  --ds-z-popover: 1600;
+  --ds-z-modal: 2000;
   --ds-motion: 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   --motion-instant: 120ms;
   --motion-fast: 180ms;
@@ -186,6 +192,47 @@ a,
 :where(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--ds-focus) !important;
   outline-offset: 2px !important;
+}
+
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 12px;
+  z-index: calc(var(--ds-z-modal) + 100);
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--surface-border-strong);
+  border-radius: var(--ds-radius-control);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.82rem;
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-140%);
+  transition: opacity var(--ds-motion), transform var(--ds-motion);
+}
+
+.skip-link:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+#main-dashboard-content:focus {
+  outline: none;
+}
+
+:where(button, input, select, textarea):disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
+  opacity: 0.58 !important;
+  filter: saturate(0.72);
+}
+
+:where(button, a, [role="button"]):not(:disabled, [aria-disabled="true"]) {
+  cursor: pointer;
 }
 
 [data-theme="light"] :where(button, a, input, select, textarea, [tabindex]):focus-visible {

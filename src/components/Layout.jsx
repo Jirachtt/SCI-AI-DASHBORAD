@@ -125,6 +125,9 @@ export default function Layout() {
 
     return (
         <div className="app-layout">
+            <a className="skip-link" href="#main-dashboard-content">
+                ข้ามไปยังเนื้อหาหลัก
+            </a>
             <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)} />
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className="main-content" ref={mainContentRef}>
@@ -148,8 +151,8 @@ export default function Layout() {
                         <button
                             className={`theme-toggle ${theme}`}
                             onClick={toggleTheme}
-                            aria-label="เปลี่ยนธีม"
-                            data-tooltip="เปลี่ยนธีม"
+                            aria-label={theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
+                            data-tooltip={theme === 'dark' ? 'โหมดสว่าง' : 'โหมดมืด'}
                         >
                             <span className="theme-toggle-track">
                                 <Sun size={14} className="theme-icon sun" />
@@ -159,11 +162,11 @@ export default function Layout() {
                         </button>
                     </div>
                 </header>
-                <div className="page-content dashboard-typography">
+                <main id="main-dashboard-content" className="page-content dashboard-typography" tabIndex="-1">
                     <div className={`page-transition ${isTransitioning ? 'page-enter' : 'page-enter-active'}`}>
                         <Outlet />
                     </div>
-                </div>
+                </main>
             </div>
             <AIChat />
         </div>
