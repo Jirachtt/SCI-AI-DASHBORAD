@@ -1,4 +1,4 @@
-import { Chart as ChartJS } from 'chart.js';
+import ChartJS from 'chart.js/auto';
 import {
     dashboardSummary,
     financialData,
@@ -571,6 +571,14 @@ function buildDashboardOverviewSheets() {
     const students = getDataset('student_stats', studentStatsData) || {};
     const scienceFaculty = students.scienceFaculty || {};
     const scienceSummary = (summary.faculties || []).find(item => String(item.name || '').includes('วิทยาศาสตร์')) || {};
+    const graduation = getDataset('graduation', {
+        current: currentGraduationStats,
+        history: graduationHistory,
+    }) || {};
+    const hr = getDataset('hr', hrData) || {};
+    const research = getDataset('research', researchData) || {};
+    const scienceBudget = getDataset('science_budget', scienceFacultyBudgetData) || {};
+    const latestScienceBudget = (scienceBudget.yearly || []).slice(-1)[0] || {};
 
     addSheet(sheets, 'Summary', [
         { metric: 'นักศึกษาทั้งหมด', value: students.current?.total ?? summary.totalStudents ?? '' },
@@ -586,6 +594,13 @@ function buildDashboardOverviewSheets() {
     addSheet(sheets, 'Science Levels', rowsFromRecords(scienceFaculty.byLevel, { section: 'คณะวิทยาศาสตร์ตามระดับ' }));
     addSheet(sheets, 'Science Enrollment', rowsFromRecords(scienceFaculty.byEnrollmentYear, { section: 'คณะวิทยาศาสตร์ตามปีเข้า' }));
     addSheet(sheets, 'Science Intake', rowsFromRecords(scienceFaculty.newStudentIntake, { section: 'รับเข้าใหม่คณะวิทยาศาสตร์' }));
+    addSheet(sheets, 'Management Overview', [
+        { domain: 'บุคลากร', metric: 'บุคลากรคณะวิทยาศาสตร์', value: hr.scienceFaculty?.total ?? hr.summary?.total ?? '' },
+        { domain: 'วิจัย', metric: 'ผลงานตีพิมพ์', value: research.overview?.totalPublications ?? research.summary?.totalPublications ?? '' },
+        { domain: 'การเงิน', metric: `รายรับคณะวิทย์ ${latestScienceBudget.year || ''}`.trim(), value: latestScienceBudget.revenue ?? scienceBudget.summary?.latestRevenue ?? '', unit: scienceBudget.unit || 'ล้านบาท' },
+        { domain: 'การเงิน', metric: `รายจ่ายคณะวิทย์ ${latestScienceBudget.year || ''}`.trim(), value: latestScienceBudget.expense ?? scienceBudget.summary?.latestExpense ?? '', unit: scienceBudget.unit || 'ล้านบาท' },
+        { domain: 'สำเร็จการศึกษา', metric: 'อัตราสำเร็จการศึกษาปัจจุบัน', value: graduation.current?.graduationRate ?? graduation.graduationRate ?? summary.graduationRate ?? '', unit: '%' },
+    ]);
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['dashboard_summary', 'student_stats', 'graduation', 'hr', 'research', 'science_budget']));
     return sheets;
 }
@@ -2371,7 +2386,11 @@ function findSolidBackground(element) {
         }
         node = node.parentElement;
     }
-    return getComputedStyle(document.body).backgroundColor || '#ffffff';
+    const bodyBackground = getComputedStyle(document.body).backgroundColor;
+    if (bodyBackground && !/rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)|transparent/i.test(bodyBackground)) {
+        return bodyBackground;
+    }
+    return '#ffffff';
 }
 
 function rgbNumbers(color = '') {
@@ -2496,6 +2515,8 @@ async function collectChartSheets(root = document) {
         const title = nearestReadableTitle(canvas, `Chart ${idx + 1}`);
         const source = nearestReadableSource(canvas);
         const rows = chart ? chartToRows(chart, title) : [];
+        const matrixRows = chart ? chartToMatrixRows(chart, title) : [];
+        const seriesRows = chart ? chartSeriesRows(chart, title) : [];
         try {
             const sourceConfig = chart?.config?._config || chart?.config || {};
             const highResolutionImage = chart
@@ -2509,7 +2530,10 @@ async function collectChartSheets(root = document) {
                 : '';
             chartSheets.push({
                 name: title,
-                rows,
+                rows: matrixRows.length ? matrixRows : rows,
+                longRows: rows,
+                matrixRows,
+                seriesRows,
                 imageDataUrl: highResolutionImage || canvasToDataUrl(canvas, { title, source }),
             });
         } catch (error) {
@@ -2557,8 +2581,10 @@ export function extractPageExportData(root = document, { includeChartRows = true
         canvases.forEach((canvas, idx) => {
             const chart = ChartJS.getChart(canvas);
             const title = nearestReadableTitle(canvas, `Chart ${idx + 1}`);
-            const rows = chartToRows(chart, String(title));
-            addSheet(sheets, `Chart ${idx + 1}`, rows);
+            const chartName = String(title);
+            addSheet(sheets, `Chart ${idx + 1} Matrix`, chartToMatrixRows(chart, chartName));
+            addSheet(sheets, `Chart ${idx + 1} Data`, chartToRows(chart, chartName));
+            addSheet(sheets, `Chart ${idx + 1} Series`, chartSeriesRows(chart, chartName));
         });
     }
 
@@ -2656,6 +2682,15 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
         }];
     }));
 
+    const chartLongDataSheets = Object.fromEntries(chartImages.flatMap((chart, idx) => {
+        const rows = normalizeRows(chart.longRows);
+        return rows.length ? [[`Graph ${idx + 1} Data`, rows]] : [];
+    }));
+    const chartSeriesSheets = Object.fromEntries(chartImages.flatMap((chart, idx) => {
+        const rows = normalizeRows(chart.seriesRows);
+        return rows.length ? [[`Graph ${idx + 1} Series`, rows]] : [];
+    }));
+
     return {
         'Report Metadata': {
             rows: metadataRows,
@@ -2681,6 +2716,8 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
         },
         ...dataSheets,
         ...chartDetailSheets,
+        ...chartLongDataSheets,
+        ...chartSeriesSheets,
     };
 }
 
@@ -2769,6 +2806,13 @@ export async function exportChartAsExcel(title, chart) {
         'Chart Matrix': matrixRows,
         'Chart Data': longRows,
         'Series Metadata': seriesRows,
+        ...(String(chart?.answerText || '').trim() ? {
+            'AI Answer': String(chart.answerText)
+                .split(/\r?\n/)
+                .map(line => line.trim())
+                .filter(Boolean)
+                .map((line, index) => ({ row: index + 1, content: line })),
+        } : {}),
         Sources: sourceValues.length
             ? sourceValues.map((source, index) => ({ row: index + 1, source: exportValue(source) }))
             : [{ row: 1, source: 'แหล่งข้อมูลตามคำตอบและ context ที่แสดงใน AI Chat' }],
@@ -2777,6 +2821,98 @@ export async function exportChartAsExcel(title, chart) {
         standardReportFileBase(chartTitle, 'chart'),
         singleFileReportSheets(chartTitle, reportSheets, [chartSheet])
     );
+}
+
+const chartCssColorCache = new Map();
+const chartCssVariableFallbacks = {
+    '--accent-info': '#2563eb',
+    '--accent-blue': '#2563eb',
+    '--accent-purple': '#7c3aed',
+    '--accent-success': '#059669',
+    '--accent-success-deep': '#047857',
+    '--accent-warning': '#d97706',
+    '--accent-orange': '#ea580c',
+    '--accent-pink': '#db2777',
+    '--accent-gold': '#ca8a04',
+    '--danger': '#dc2626',
+    '--text-primary': '#0f172a',
+    '--text-secondary': '#334155',
+    '--text-muted': '#64748b',
+    '--chart-muted': '#475569',
+    '--chart-grid': '#e2e8f0',
+};
+
+function resolveCssColorForCanvas(value) {
+    if (typeof value !== 'string' || !/(?:var\(|color-mix\()/i.test(value) || typeof document === 'undefined') {
+        return value;
+    }
+    if (chartCssColorCache.has(value)) return chartCssColorCache.get(value);
+
+    const rootStyle = getComputedStyle(document.documentElement);
+    const normalizedValue = value.replace(/var\(\s*(--[\w-]+)(?:\s*,[^)]*)?\)/g, (_, variableName) => (
+        rootStyle.getPropertyValue(variableName).trim()
+        || chartCssVariableFallbacks[variableName]
+        || '#475569'
+    ));
+    const probe = document.createElement('span');
+    probe.style.position = 'fixed';
+    probe.style.left = '-9999px';
+    probe.style.visibility = 'hidden';
+    probe.style.color = normalizedValue;
+    document.body.appendChild(probe);
+    const resolved = getComputedStyle(probe).color || normalizedValue;
+    probe.remove();
+    chartCssColorCache.set(value, resolved);
+    return resolved;
+}
+
+function professionalizeChartOptions(options = {}) {
+    const next = options;
+    next.plugins = { ...(next.plugins || {}) };
+    next.plugins.legend = {
+        ...(next.plugins.legend || {}),
+        labels: {
+            ...(next.plugins.legend?.labels || {}),
+            color: '#334155',
+        },
+    };
+    if (next.plugins.title) {
+        next.plugins.title = { ...next.plugins.title, color: '#0f172a' };
+    }
+    next.scales = { ...(next.scales || {}) };
+    Object.keys(next.scales).forEach(axisKey => {
+        const axis = next.scales[axisKey] || {};
+        next.scales[axisKey] = {
+            ...axis,
+            ticks: { ...(axis.ticks || {}), color: '#475569' },
+            grid: { ...(axis.grid || {}), color: '#e2e8f0' },
+            title: axis.title ? { ...axis.title, color: '#334155' } : axis.title,
+        };
+    });
+    return next;
+}
+
+function resolveChartCssColors(value, key = '') {
+    if (Array.isArray(value)) {
+        value.forEach((item, index) => {
+            if (typeof item === 'string' && /color/i.test(key)) {
+                value[index] = resolveCssColorForCanvas(item);
+            } else {
+                resolveChartCssColors(item, key);
+            }
+        });
+        return value;
+    }
+    if (!value || typeof value !== 'object') return value;
+
+    Object.entries(value).forEach(([childKey, childValue]) => {
+        if (typeof childValue === 'string' && /color/i.test(childKey)) {
+            value[childKey] = resolveCssColorForCanvas(childValue);
+        } else {
+            resolveChartCssColors(childValue, childKey);
+        }
+    });
+    return value;
 }
 
 async function renderChartImageDataUrl(chart) {
@@ -2791,9 +2927,18 @@ async function renderChartImageDataUrl(chart) {
     let instance;
     try {
         const config = JSON.parse(JSON.stringify(chart));
+        resolveChartCssColors(config);
         const chartTitle = chart.title || chart.name || config.options?.plugins?.title?.text || 'Chart';
+        const requestedType = String(config.chartType || config.type || 'bar').toLowerCase();
+        const renderedType = requestedType === 'hbar' ? 'bar' : requestedType;
+        config.options = professionalizeChartOptions(config.options || {});
+        if (requestedType === 'hbar') {
+            config.options = { ...(config.options || {}), indexAxis: 'y' };
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         instance = new ChartJS(canvas, {
-            type: config.chartType || 'bar',
+            type: renderedType,
             data: config.data,
             options: {
                 ...(config.options || {}),
@@ -2801,6 +2946,16 @@ async function renderChartImageDataUrl(chart) {
                 animation: false,
                 maintainAspectRatio: false,
             },
+            plugins: [{
+                id: 'sciExportBackground',
+                beforeDraw: ({ ctx: chartContext, width, height }) => {
+                    chartContext.save();
+                    chartContext.globalCompositeOperation = 'destination-over';
+                    chartContext.fillStyle = '#ffffff';
+                    chartContext.fillRect(0, 0, width, height);
+                    chartContext.restore();
+                },
+            }],
         });
         instance.update('none');
         await new Promise(resolve => requestAnimationFrame(resolve));

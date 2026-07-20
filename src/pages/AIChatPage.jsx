@@ -2504,7 +2504,7 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
     // Deep clone chart for expand to prevent zoom state mutation
     const handleExpand = () => {
         const cloned = deepCloneChart(chartData);
-        if (cloned) onExpand(cloned);
+        if (cloned) onExpand({ ...cloned, answerText: msg.text || '' });
     };
     const handleCopy = async () => {
         try {
@@ -2573,7 +2573,11 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
                             </button>
                             <button
                                 className="ai-page-chart-btn"
-                                onClick={() => exportChartAsExcel(chartExportTitle, { ...chartData, chartType })}
+                                onClick={() => exportChartAsExcel(chartExportTitle, {
+                                    ...chartData,
+                                    chartType: renderType,
+                                    answerText: msg.text || '',
+                                })}
                                 aria-label="Export chart and data as Excel"
                                 data-tooltip="Export Excel กราฟและข้อมูล"
                             >
@@ -4264,7 +4268,11 @@ export function ExpandedChartModal({ chart, onClose }) {
                         </button>
                         <button
                             className="ai-page-chart-modal-reset"
-                            onClick={() => exportChartAsExcel(expandedChartExportTitle, expandedChart)}
+                            onClick={() => exportChartAsExcel(expandedChartExportTitle, {
+                                ...expandedChart,
+                                chartType: renderType,
+                                answerText: chart?.answerText || '',
+                            })}
                             aria-label="Export chart and data as Excel"
                             data-tooltip="Export Excel กราฟและข้อมูล"
                         >
