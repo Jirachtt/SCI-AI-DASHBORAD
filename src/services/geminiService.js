@@ -1454,7 +1454,10 @@ Always: responsive=true, maintainAspectRatio=false
 // covered by the per-major / per-year stats in the base instruction.
 function buildStudentData() {
     const list = getStudentListSync();
-    const sourceLabel = isLiveData()
+    const trust = getStudentRosterTrustStatus();
+    const sourceLabel = trust.canAnswerDemoIndividual
+        ? 'generated mock ที่ปรับจำนวนตาม Overview; ใช้สาธิตเท่านั้น'
+        : isLiveData()
         ? 'realtime จาก Firestore/การอัปโหลดล่าสุด'
         : 'ข้อมูลที่เว็บใช้อยู่ตอนนี้';
     // Compact JSON keeps tokens low even when a full roster is uploaded.
@@ -1613,14 +1616,17 @@ function studentDetailRowsForPrompt(list = [], question = '') {
 function studentAggregateContext(includeRows = false, { adviceMode = false, question = '' } = {}) {
     const rosterTrust = getStudentRosterTrustStatus();
     const reconcile = getStudentReconciliationSnapshot();
-    const canUseRows = rosterTrust.canAnswerIndividual;
-    if (adviceMode && !canUseRows) {
+    const canUseRealRows = rosterTrust.canAnswerIndividual;
+    const canUseRows = adviceMode ? canUseRealRows : rosterTrust.canUseForChatRows;
+    if (adviceMode && !canUseRealRows) {
         return `ข้อมูลนักศึกษาคณะวิทยาศาสตร์: ยังไม่พร้อมสำหรับคำแนะนำเชิงบริหารจากสถานการณ์จริงในระดับรายคน/รายสาขาจากรายชื่อ เพราะ datasets/students เป็น ${rosterTrust.accuracyLabel} ต้อง sync Firestore หรืออัปโหลดไฟล์นักศึกษาจริงก่อน\nยอดรวมทางการที่ใช้ตอบได้: ${reconcile.officialTotal ?? 'unknown'} คน จาก ${reconcile.officialSourceLabel}`;
     }
     const list = canUseRows ? getStudentListSync() : [];
     const sourceLabel = canUseRows
-        ? (isLiveData() ? 'live/realtime' : rosterTrust.accuracyLabel)
-        : 'official aggregate only; student rows are sample/generated and hidden';
+        ? rosterTrust.canAnswerDemoIndividual
+            ? 'generated mock aligned to Overview; demo-only realtime lookup'
+            : (isLiveData() ? 'live/realtime' : rosterTrust.accuracyLabel)
+        : 'official aggregate only; no usable student rows';
     const stats = getSharedDashboardDatasetSync('student_stats') || {};
     const scienceStats = stats.scienceFaculty || {};
     const byMajor = {};
@@ -1648,7 +1654,7 @@ function studentAggregateContext(includeRows = false, { adviceMode = false, ques
     const levelSummary = Array.isArray(scienceStats.byLevel)
         ? scienceStats.byLevel.map(row => `${row.level}:${Number(row.count || 0).toLocaleString('th-TH')} คน`).join(', ')
         : '';
-    const contextTotal = Number(reconcile.officialTotal ?? scienceStats.total ?? list.length ?? 0);
+    const contextTotal = Number(reconcile.currentDashboardTotal ?? reconcile.officialTotal ?? scienceStats.total ?? list.length ?? 0);
     const yearSummary = Object.entries(byYear).map(([year, count]) => `ปี ${year}: ${count} คน`).join(', ');
     const rowLabel = isStudentTopGpaQuery(question)
         ? 'แถวที่เกี่ยวข้องเรียง GPA สูงสุดตามคำถาม'
@@ -1658,9 +1664,15 @@ function studentAggregateContext(includeRows = false, { adviceMode = false, ques
     const rows = includeRows && canUseRows
         ? `\n${rowLabel}:\n${studentDetailRowsForPrompt(list, question).map(s => `${s.id}, ${s.name}, ${s.major}, ปี ${s.year}, GPA ${s.gpa}, ${s.status}`).join('\n')}`
         : includeRows && !canUseRows
-            ? '\nรายชื่อรายบุคคล: ไม่แนบ เพราะ datasets/students ตอนนี้เป็น sample/generated ไม่ใช่รายชื่อจริง'
+            ? '\nรายชื่อรายบุคคล: ไม่แนบ เพราะยังไม่มี roster ที่ใช้ตอบได้'
         : '';
-    return `ข้อมูลนักศึกษาคณะวิทยาศาสตร์ (${sourceLabel})\nยอดรวมทางการจาก MJU Dashboard: ${contextTotal.toLocaleString('th-TH')} คน\nสถานะรายชื่อรายคน: ${reconcile.studentSourceLabel} / ${reconcile.studentRosterAccuracyLabel}; ${reconcile.studentRowsSummary}\n${levelSummary ? `ตามระดับจาก MJU Dashboard: ${levelSummary}\n` : ''}${majorSummary ? `ตามสาขา${canUseRows ? 'จากรายชื่อจริง/ไฟล์อัปโหลด' : 'จากข้อมูลทางการเท่าที่มี'}:\n${majorSummary}\n` : ''}${yearSummary && canUseRows ? `ตามชั้นปีจากรายชื่อจริง/ไฟล์อัปโหลด: ${yearSummary}\n` : ''}${canUseRows ? `GPA < 2.00: ${atRisk} คน` : 'ห้ามตอบรายชื่อจริง/GPA รายคน/กลุ่มเสี่ยงจาก sample; หากผู้ใช้ถาม ให้บอกว่าต้องอัปโหลดไฟล์จริงจาก Reg/คณะก่อน'}${rows}`;
+    const rowScope = rosterTrust.canAnswerDemoIndividual
+        ? 'จาก generated mock เพื่อสาธิต ไม่ใช่ข้อมูล Reg จริง'
+        : 'จากรายชื่อจริง/ไฟล์อัปโหลด';
+    const totalLabel = reconcile.manualOverlayActive
+        ? `ยอด Dashboard ปัจจุบันหลัง manual adjustment (ฐาน Sync ${reconcile.officialTotal ?? 'unknown'})`
+        : 'ยอด Sync จาก MJU Dashboard';
+    return `ข้อมูลนักศึกษาคณะวิทยาศาสตร์ (${sourceLabel})\n${totalLabel}: ${contextTotal.toLocaleString('th-TH')} คน\nสถานะรายชื่อรายคน: ${reconcile.studentSourceLabel} / ${reconcile.studentRosterAccuracyLabel}; ${reconcile.studentRowsSummary}\n${rosterTrust.canAnswerDemoIndividual ? 'คำเตือนบังคับ: รายชื่อและ GPA ต่อไปนี้เป็นข้อมูลจำลอง ต้องระบุคำว่า generated mock/ข้อมูลจำลองในคำตอบ\n' : ''}${levelSummary ? `ตามระดับจาก MJU Dashboard: ${levelSummary}\n` : ''}${majorSummary ? `ตามสาขา${canUseRows ? rowScope : 'จากข้อมูลทางการเท่าที่มี'}:\n${majorSummary}\n` : ''}${yearSummary && canUseRows ? `ตามชั้นปี${rowScope}: ${yearSummary}\n` : ''}${canUseRows ? `GPA < 2.00: ${atRisk} คน (${rowScope})` : 'ยังไม่มี roster สำหรับตอบรายชื่อ/GPA รายคน'}${rows}`;
 }
 
 function budgetContext(options = {}) {

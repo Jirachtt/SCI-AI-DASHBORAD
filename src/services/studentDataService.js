@@ -39,6 +39,7 @@ let _usesLocalOnlyData = false;
 let _sourceMeta = null;
 let _loadPromise = null;
 let _unsubscribeLive = null;
+let _latestOfficialSnapshot = null;
 const _listeners = new Set();
 
 function toNumber(value, fallback = 0) {
@@ -187,16 +188,46 @@ async function getLatestOfficialScienceStudentSnapshot() {
     } = await import('./dashboardLiveDataService');
     const fromStudentStats = extractOfficialScienceFromStudentStats(getDashboardDatasetSync('student_stats') || {});
     const fromDashboard = extractOfficialScienceFromDashboardSummary(getDashboardDatasetSync('dashboard_summary') || {});
-    const official = fromStudentStats || fromDashboard;
+    const candidates = [fromStudentStats, fromDashboard]
+        .filter(candidate => candidate?.total)
+        .map(candidate => ({
+            ...candidate,
+            meta: getDashboardDatasetMetaSync(candidate.datasetId),
+        }))
+        .sort((a, b) => {
+            const liveDelta = Number(Boolean(b.meta?.isLive)) - Number(Boolean(a.meta?.isLive));
+            if (liveDelta) return liveDelta;
+            const updatedDelta = (readTimestamp(b.meta?.updatedAt)?.getTime() || 0)
+                - (readTimestamp(a.meta?.updatedAt)?.getTime() || 0);
+            if (updatedDelta) return updatedDelta;
+            return a.datasetId === 'student_stats' ? -1 : 1;
+        });
+    const official = candidates[0];
     if (!official) return null;
-    const meta = getDashboardDatasetMetaSync(official.datasetId);
-    return {
-        ...official,
+    const { meta = {}, ...officialData } = official;
+    const snapshot = {
+        ...officialData,
         total: Math.round(official.total),
         updatedAt: meta.updatedAt || null,
         sourceType: meta.sourceType || 'fallback',
         isLive: Boolean(meta.isLive),
     };
+    _latestOfficialSnapshot = snapshot;
+    return snapshot;
+}
+
+function isGeneratedRosterOutOfSync(data = {}, rows = []) {
+    if (!isGeneratedMockSource(data) || !_latestOfficialSnapshot?.total) return false;
+    // A manual adjustment is an intentional overlay on the last synced
+    // baseline. Keep it until an explicit Sync writes a fresh generated roster.
+    if (
+        isManualAdjustedMockSource(data)
+        && Number(data.officialTotal || 0) === _latestOfficialSnapshot.total
+    ) {
+        return false;
+    }
+    return rows.length !== _latestOfficialSnapshot.total
+        || Number(data.officialTotal || 0) !== _latestOfficialSnapshot.total;
 }
 
 function shouldReplaceWithGeneratedRoster(data = {}, rows = []) {
@@ -207,7 +238,7 @@ function shouldReplaceWithGeneratedRoster(data = {}, rows = []) {
     return false;
 }
 
-async function writeGeneratedRoster(rows, official, { uid, who, reason } = {}) {
+async function writeGeneratedRoster(rows, official, { uid, who, reason, persist = true } = {}) {
     const payload = {
         rows,
         rowCount: rows.length,
@@ -223,13 +254,13 @@ async function writeGeneratedRoster(rows, official, { uid, who, reason } = {}) {
         reconcileReason: reason || 'mju_sync',
     };
 
-    if (db && !isBypassUid(uid)) {
+    if (persist && db && !isBypassUid(uid)) {
         await setDoc(studentDocRef(), {
             ...payload,
             updatedAt: serverTimestamp(),
         }, { merge: true });
         _usesLocalOnlyData = false;
-    } else {
+    } else if (persist) {
         const localPayload = {
             ...payload,
             updatedAt: new Date().toISOString(),
@@ -237,16 +268,31 @@ async function writeGeneratedRoster(rows, official, { uid, who, reason } = {}) {
         };
         saveDemoDataset(localPayload);
         _usesLocalOnlyData = true;
+    } else {
+        // Read-only sessions still need every page to show the same count as
+        // the latest synced Overview. Keep this alignment in memory and let an
+        // authorized Sync action persist the generated roster centrally.
+        payload.updatedAt = official.updatedAt || new Date().toISOString();
+        payload.updatedBy = 'overview-reconcile';
+        _usesLocalOnlyData = true;
     }
 
     _cache = rows;
     _isLive = true;
-    setSourceMeta(payload, rows, { storage: db && !isBypassUid(uid) ? 'firestore' : 'local_demo' });
+    setSourceMeta(payload, rows, {
+        storage: persist && db && !isBypassUid(uid) ? 'firestore' : (persist ? 'local_demo' : 'memory_aligned'),
+    });
     _loadPromise = Promise.resolve(getStudentListSync());
     notify();
 }
 
-export async function reconcileGeneratedRosterWithLatestOfficialTotal({ uid, who, reason = 'mju_sync', force = false } = {}) {
+export async function reconcileGeneratedRosterWithLatestOfficialTotal({
+    uid,
+    who,
+    reason = 'mju_sync',
+    force = false,
+    persist = true,
+} = {}) {
     const official = await getLatestOfficialScienceStudentSnapshot();
     if (!official?.total) {
         return { status: 'no_official_total', rowCount: getStudentListSync().length };
@@ -254,7 +300,7 @@ export async function reconcileGeneratedRosterWithLatestOfficialTotal({ uid, who
 
     let data = _sourceMeta || {};
     let rows = getStudentListSync();
-    if (db && !isBypassUid(uid)) {
+    if (persist && db && !isBypassUid(uid)) {
         try {
             const snap = await getDoc(studentDocRef());
             if (snap.exists()) {
@@ -264,12 +310,43 @@ export async function reconcileGeneratedRosterWithLatestOfficialTotal({ uid, who
         } catch (err) {
             console.warn('[studentDataService] reconcile read failed, using cached rows:', err?.message || err);
         }
-    } else {
+    } else if (persist) {
         const demo = loadDemoDataset();
         if (Array.isArray(demo?.rows)) {
             data = demo;
             rows = demo.rows;
         }
+    }
+
+    if (
+        !persist
+        && !force
+        && isManualAdjustedMockSource(data)
+        && Number(data.officialTotal || 0) === official.total
+    ) {
+        return {
+            status: 'manual_overlay_preserved',
+            rowCount: rows.length,
+            officialTotal: official.total,
+            difference: official.total - rows.length,
+            persisted: false,
+        };
+    }
+
+    if (
+        !persist
+        && !force
+        && isGeneratedMockSource(data)
+        && rows.length === official.total
+        && Number(data.officialTotal || 0) === official.total
+    ) {
+        return {
+            status: 'generated_roster_matches',
+            rowCount: rows.length,
+            officialTotal: official.total,
+            difference: 0,
+            persisted: false,
+        };
     }
 
     if (!force && !shouldReplaceWithGeneratedRoster(data, rows)) {
@@ -285,32 +362,46 @@ export async function reconcileGeneratedRosterWithLatestOfficialTotal({ uid, who
         total: official.total,
         byLevel: official.byLevel,
     });
-    await writeGeneratedRoster(generated, official, { uid, who, reason });
-    writeAuditLog({
-        action: 'reconcile_generated_student_roster',
-        who: who || uid || 'mju-sync',
-        fileName: 'generated-mock-roster-aligned-to-mju-sync.json',
-        rowCount: generated.length,
-        version: 1,
-        meta: {
-            reason,
-            officialTotal: official.total,
-            officialSourceLabel: official.sourceLabel,
-        },
-    });
+    await writeGeneratedRoster(generated, official, { uid, who, reason, persist });
+    if (persist) {
+        writeAuditLog({
+            action: 'reconcile_generated_student_roster',
+            who: who || uid || 'mju-sync',
+            fileName: 'generated-mock-roster-aligned-to-mju-sync.json',
+            rowCount: generated.length,
+            version: 1,
+            meta: {
+                reason,
+                officialTotal: official.total,
+                officialSourceLabel: official.sourceLabel,
+            },
+        });
+    }
     return {
         status: 'generated_roster_rebuilt',
         rowCount: generated.length,
         officialTotal: official.total,
         difference: 0,
+        persisted: persist,
     };
+}
+
+/**
+ * Align a generated/demo roster to the current Overview snapshot without
+ * requiring write access. Uploaded/official rosters are never overwritten.
+ */
+export async function ensureStudentRosterAlignedWithOverview(options = {}) {
+    return reconcileGeneratedRosterWithLatestOfficialTotal({
+        ...options,
+        persist: false,
+        reason: options.reason || 'app_boot_overview_alignment',
+    });
 }
 
 /**
  * Add a single student manually. Real signed-in dean sessions persist to
  * Firestore so every device receives the realtime update. Admin-bypass/demo
- * sessions do not mutate local student counts because that would diverge
- * between devices.
+ * sessions keep the same behavior locally for presentation testing.
  */
 export async function addStudent(student, { uid, who } = {}) {
     if (!student?.id) throw new Error('student.id is required');
@@ -511,12 +602,31 @@ function applySnapshot(snap) {
     if (snap.exists()) {
         const data = snap.data();
         const rows = Array.isArray(data.rows) ? data.rows : [];
-        if (isStaleGeneratedDataset(data, rows)) {
+        if (isStaleGeneratedDataset(data, rows) || isGeneratedRosterOutOfSync(data, rows)) {
             console.warn(
                 `[studentDataService] Ignoring stale generated Firestore roster (${rows.length} rows); ` +
-                `using bundled ${scienceStudentList.length}-row generated mock until a real upload arrives.`
+                `keeping the roster aligned to the latest Overview total.`
             );
-            setBundledFallback();
+            if (_latestOfficialSnapshot?.total) {
+                const generated = generateScienceMockRoster({
+                    total: _latestOfficialSnapshot.total,
+                    byLevel: _latestOfficialSnapshot.byLevel,
+                });
+                _cache = generated;
+                _isLive = true;
+                _usesLocalOnlyData = true;
+                setSourceMeta({
+                    sourceTrust: 'generated_mock',
+                    sourceLabel: 'Generated mock roster aligned to latest MJU sync',
+                    fileName: 'generated-mock-roster-aligned-to-mju-sync.json',
+                    officialTotal: _latestOfficialSnapshot.total,
+                    officialSourceLabel: _latestOfficialSnapshot.sourceLabel,
+                    lastWriteSource: 'memory_overview_reconcile',
+                    updatedAt: _latestOfficialSnapshot.updatedAt,
+                }, generated, { storage: 'memory_aligned' });
+            } else {
+                setBundledFallback();
+            }
             return;
         }
         if (isTrustedLiveRows(rows) || data.allowSmallDataset === true) {
@@ -541,7 +651,9 @@ async function readAuthoritativeRows() {
     if (snap.exists()) {
         const data = snap.data();
         const rows = Array.isArray(data.rows) ? data.rows : [];
-        if (isStaleGeneratedDataset(data, rows)) return _cache || scienceStudentList;
+        if (isStaleGeneratedDataset(data, rows) || isGeneratedRosterOutOfSync(data, rows)) {
+            return _cache || scienceStudentList;
+        }
         if (isTrustedLiveRows(rows) || data.allowSmallDataset === true) return rows;
     }
     return _cache || scienceStudentList;
@@ -712,12 +824,16 @@ export function getStudentDataSourceStatus() {
 export function getStudentRosterTrustStatus() {
     const source = getStudentDataSourceStatus();
     const canAnswerIndividual = Boolean(source.isUploaded && !source.isBundledSample);
+    const canAnswerDemoIndividual = Boolean(source.isGeneratedMock && source.rowCount > 0);
+    const canUseForChatRows = canAnswerIndividual || canAnswerDemoIndividual;
     const isOfficialRoster = source.mode === 'firestore';
     const isUserUploadedRoster = source.mode === 'local_upload';
 
     return {
         ...source,
         canAnswerIndividual,
+        canAnswerDemoIndividual,
+        canUseForChatRows,
         canUseForOfficialRoster: canAnswerIndividual,
         canUseForDerivedStats: canAnswerIndividual,
         isOfficialRoster,
@@ -727,7 +843,9 @@ export function getStudentRosterTrustStatus() {
             : 'Generated mock roster',
         warning: canAnswerIndividual
             ? ''
-            : 'รายชื่อ bundled เป็น sample/generated จึงห้ามใช้ยืนยันรายชื่อจริงหรือ GPA รายคน',
+            : canAnswerDemoIndividual
+                ? 'รายชื่อเป็น generated mock ใช้สาธิตการค้นหาแบบ realtime ได้ แต่ห้ามอ้างว่าเป็นรายชื่อหรือ GPA จริงจาก Reg'
+                : 'ยังไม่มี roster ที่ใช้ตอบรายชื่อรายคนได้',
     };
 }
 

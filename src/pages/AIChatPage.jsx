@@ -50,6 +50,10 @@ import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 import { usageKindLabel } from '../utils/aiTokenUsage';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
+import {
+    findStudentRowsForAI,
+    isStudentRosterLookupQuestion,
+} from '../services/studentAiLookupService';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, BarElement, Filler, ArcElement, BarController, LineController, PieController, DoughnutController, RadarController, PolarAreaController, ScatterController, BubbleController, zoomPlugin, themeAdaptorPlugin);
 
@@ -584,15 +588,15 @@ export const getAllStudents = () => {
 };
 
 function hasTrustedStudentRowsForChat() {
-    return _uploadedStudentRows.length > 0 || getStudentRosterTrustStatus().canAnswerIndividual;
+    return _uploadedStudentRows.length > 0 || getStudentRosterTrustStatus().canUseForChatRows;
 }
 
 function getTrustedStudentsForRows() {
     if (_uploadedStudentRows.length > 0) {
-        if (getStudentRosterTrustStatus().canAnswerIndividual) return getAllStudents();
+        if (getStudentRosterTrustStatus().canUseForChatRows) return getAllStudents();
         return _uploadedStudentRows;
     }
-    return getStudentRosterTrustStatus().canAnswerIndividual ? getStudentListSync() : [];
+    return getStudentRosterTrustStatus().canUseForChatRows ? getStudentListSync() : [];
 }
 
 function getTrustedStudentsForAdvice() {
@@ -604,15 +608,7 @@ function getTrustedStudentsForAdvice() {
 }
 
 function isStudentRowLookupQuestion(question = '') {
-    const text = String(question || '').toLowerCase();
-    if (/\b6\d{9}\b/.test(text)) return true;
-    if (/(?:รหัส|id)\s*\d{2,}/i.test(text)) return true;
-    if (/(ค้นหานักศึกษา|หานักศึกษา|ชื่อนักศึกษา|ชื่อนิสิต)/.test(text)) return true;
-    if (/รายชื่อ/.test(text) && /(นักศึกษา|นิสิต|รหัส|gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย|ชั้นปี|สาขา|รอพินิจ|เสี่ยง|เกียรตินิยม)/.test(text)) return true;
-    if (/(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย).*(สูงสุด|มากสุด|มากที่สุด|top|ต่ำสุด|น้อยสุด|น้อยที่สุด|รอพินิจ|เสี่ยง|ต่ำ)/.test(text)) return true;
-    if (/(สูงสุด|มากสุด|มากที่สุด|top|ต่ำสุด|น้อยสุด|น้อยที่สุด).*(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย)/.test(text)) return true;
-    if (/(รอพินิจ|เกรดต่ำ|กลุ่มเสี่ยง|เสี่ยงพ้นสภาพ)/.test(text)) return true;
-    return false;
+    return isStudentRosterLookupQuestion(question);
 }
 
 function parseStudentLookupLimit(question = '', fallback = 10) {
@@ -922,98 +918,11 @@ function buildStudentRowsUnavailableChatResult(topic = 'รายชื่อห
 
 // ==================== Smart Student Search ====================
 function searchStudents(query) {
-    const ALL_STUDENTS = getTrustedStudentsForRows();
-    if (ALL_STUDENTS.length === 0) return buildStudentRowsUnavailableChatResult('รายชื่อรายคน');
-    const q = query.toLowerCase();
-    let limit = 0;
-    const limitMatch = q.match(/(\d+)\s*(คน|ราย|รายการ)/);
-    if (limitMatch) limit = parseInt(limitMatch[1]);
-    const limitMatch2 = q.match(/(?:แค่|ขอ|เอา|แสดง|โชว์)\s*(\d+)/);
-    if (!limit && limitMatch2) limit = parseInt(limitMatch2[1]);
-
-    let results = [];
-    let searchDesc = '';
-    const wantsTopGpa = /(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย).*(สูงสุด|มากสุด|มากที่สุด|top)|(?:สูงสุด|มากสุด|มากที่สุด|top).*(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย)/.test(q);
-    const wantsLowGpa = /(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย).*(ต่ำสุด|น้อยสุด|น้อยที่สุด|ต่ำ|รอพินิจ|เสี่ยง)|(?:ต่ำสุด|น้อยสุด|น้อยที่สุด).*(gpa|เกรด|คะแนนเฉลี่ย|เกรดเฉลี่ย)|รอพินิจ|เกรดต่ำ|กลุ่มเสี่ยง|เสี่ยงพ้นสภาพ/.test(q);
-
-    if (wantsTopGpa || wantsLowGpa) {
-        const direction = wantsLowGpa ? 'asc' : 'desc';
-        results = ALL_STUDENTS
-            .filter(student => Number.isFinite(Number(student.gpa)))
-            .sort((a, b) => {
-                const diff = direction === 'asc' ? Number(a.gpa) - Number(b.gpa) : Number(b.gpa) - Number(a.gpa);
-                if (diff !== 0) return diff;
-                return String(a.id || '').localeCompare(String(b.id || ''), 'th');
-            });
-        searchDesc = wantsLowGpa ? 'GPA ต่ำสุด' : 'GPA สูงสุด';
-        if (!limit) limit = parseStudentLookupLimit(q, 10);
-    }
-
-    // Full 10-digit ID first (exact match), then prefix-based search
-    const fullIdMatch = results.length === 0 ? q.match(/\b(6\d{9})\b/) : null;
-    if (fullIdMatch) {
-        const fullId = fullIdMatch[1];
-        results = ALL_STUDENTS.filter(s => s.id === fullId);
-        searchDesc = `รหัสนักศึกษา "${fullId}"`;
-    }
-    if (results.length === 0) {
-        const idPrefixMatch = q.match(/(?:รหัส|id)\s*(\d{2,8})/i) || q.match(/\b(6[0-9]\d{0,6})\b/);
-        if (idPrefixMatch) {
-            const prefix = idPrefixMatch[1];
-            results = ALL_STUDENTS.filter(s => s.id.startsWith(prefix));
-            searchDesc = `รหัสขึ้นต้นด้วย "${prefix}"`;
-        }
-    }
-
-    if (results.length === 0) {
-        const namePatterns = ['ชื่อ', 'หา', 'ค้นหา'];
-        for (const p of namePatterns) {
-            const idx = q.indexOf(p);
-            if (idx !== -1) {
-                const searchTerm = q.slice(idx + p.length).trim().split(/\s+/)[0];
-                if (searchTerm.length >= 2) {
-                    results = ALL_STUDENTS.filter(s => s.name.includes(searchTerm));
-                    searchDesc = `ชื่อ "${searchTerm}"`;
-                    break;
-                }
-            }
-        }
-    }
-
-    const majorKeywords = { 'คอม': 'วิทยาการคอมพิวเตอร์', 'ไอที': 'เทคโนโลยีสารสนเทศ', 'it': 'เทคโนโลยีสารสนเทศ', 'คณิต': 'คณิตศาสตร์', 'เคมี': 'เคมี', 'ฟิสิกส์': 'ฟิสิกส์ประยุกต์', 'ชีว': 'เทคโนโลยีชีวภาพ', 'วัสดุ': 'วัสดุศาสตร์', 'สิ่งทอ': 'เคมีอุตสาหกรรมและเทคโนโลยีสิ่งทอ', 'สถิติ': 'สถิติ' };
-    if (results.length === 0) {
-        for (const [kw, major] of Object.entries(majorKeywords)) {
-            if (q.includes(kw) && (q.includes('สาขา') || q.includes('นักศึกษา') || q.includes('นิสิต') || q.includes('คน') || q.includes('รายชื่อ') || q.includes('ใคร'))) {
-                results = ALL_STUDENTS.filter(s => s.major === major);
-                searchDesc = `สาขา${major}`;
-                break;
-            }
-        }
-    }
-
-    if (results.length === 0) {
-        const yearMatch = q.match(/(?:ชั้นปี|ปี)\s*(\d)/);
-        if (yearMatch && (q.includes('นักศึกษา') || q.includes('นิสิต') || q.includes('รายชื่อ') || q.includes('คน') || q.includes('ใคร'))) {
-            const yr = parseInt(yearMatch[1]);
-            results = ALL_STUDENTS.filter(s => s.year === yr);
-            searchDesc = `ชั้นปี ${yr}`;
-        }
-    }
-
-    if (results.length === 0) {
-        if (q.includes('รอพินิจ') || q.includes('เกรดต่ำ') || q.includes('เสี่ยง')) {
-            results = ALL_STUDENTS.filter(s => s.gpa < 2.0);
-            searchDesc = 'สถานะรอพินิจ (GPA < 2.00)';
-        } else if (q.includes('เกรดสูง') || q.includes('เกียรตินิยม') || q.includes('gpa สูง')) {
-            results = ALL_STUDENTS.filter(s => s.gpa >= 3.5).sort((a, b) => b.gpa - a.gpa);
-            searchDesc = 'GPA สูง (≥ 3.50)';
-        }
-    }
-
+    const allStudents = getTrustedStudentsForRows();
+    if (allStudents.length === 0) return buildStudentRowsUnavailableChatResult('รายชื่อรายคน');
+    const lookup = findStudentRowsForAI(query, allStudents);
+    const { results, total, description: searchDesc, limit } = lookup;
     if (results.length === 0) return null;
-
-    const total = results.length;
-    if (limit > 0) results = results.slice(0, limit);
 
     let text = `**พบนักศึกษา ${searchDesc}** จำนวน ${total} คน`;
     if (limit > 0 && total > limit) text += ` (แสดง ${limit} คน)`;
@@ -1021,7 +930,7 @@ function searchStudents(query) {
 
     results.forEach((s, i) => {
         const gpaColor = s.gpa >= 3.5 ? '[ดีมาก]' : s.gpa >= 2.5 ? '[ดี]' : s.gpa >= 2.0 ? '[พอใช้]' : '[ต่ำ]';
-        text += `**${i + 1}.** \`${s.id}\` ${s.name}\n`;
+        text += `**${i + 1}.** \`${s.id}\` ${studentDisplayName(s)}\n`;
         text += `   ${s.major} | ชั้นปี ${s.year} | ${gpaColor} GPA ${s.gpa} | ${s.status}\n`;
     });
 
@@ -1058,6 +967,18 @@ export function tryLocalResponse(question, userContext = {}) {
 
     const chartPlanResult = createPlannedChartAnswer(question, userContext);
     if (chartPlanResult) return chartPlanResult;
+
+    // Structured roster lookups must read the current in-memory/Firestore
+    // snapshot before any broad instant summary can capture the question.
+    // This makes a newly added student searchable on the next request.
+    const isStudentLookup = isStudentRowLookupQuestion(question);
+    if (isStudentLookup) {
+        if (!canAIUseInternalSection(userContext, 'student_list')) {
+            return buildAIAccessDeniedResult(userContext, ['student_list']);
+        }
+        const studentResult = searchStudents(q);
+        return withStudentSourceNote(studentResult || buildStudentRowsUnavailableChatResult('รายชื่อหรือ GPA รายคน'));
+    }
 
     const instantResult = tryInstantAnswer(question, userContext);
     if (instantResult) return instantResult;
@@ -1098,17 +1019,6 @@ export function tryLocalResponse(question, userContext = {}) {
         }
         const result = buildStudentClassYearChartResponse(question);
         if (result) return withStudentSourceNote(result);
-    }
-
-    // 5. Student search — only for specific structured lookups (ID, name, GPA filter)
-    const isStudentLookup = isStudentRowLookupQuestion(question);
-
-    if (isStudentLookup) {
-        if (!canAIUseInternalSection(userContext, 'student_list')) {
-            return buildAIAccessDeniedResult(userContext, ['student_list']);
-        }
-        const studentResult = searchStudents(q);
-        return withStudentSourceNote(studentResult || buildStudentRowsUnavailableChatResult('รายชื่อหรือ GPA รายคน'));
     }
 
     return null; // Let AI handle everything else
@@ -1200,10 +1110,12 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
         context += '[ACCESS LIMITED]\nRole นี้ไม่มีสิทธิ์อ่านข้อมูลนักศึกษาภายในจากระบบ ห้ามแนบ/เดารายชื่อนักศึกษา GPA หรือสถิติภายใน ให้ตอบเฉพาะข้อมูลสาธารณะหรือแจ้งว่าต้องใช้สิทธิ์สูงกว่า\n\n';
     }
     if (isStudentQ && canUseStudentStats) {
-        context += `[STUDENT OFFICIAL AGGREGATE]\nยอดรวม/สถิติรวมต้องอ้าง MJU Dashboard ก่อน: officialTotal=${studentReconcile.officialTotal ?? 'unknown'}, source=${studentReconcile.officialSourceLabel}, status=${studentReconcile.officialIsLive ? 'live' : 'reference/fallback'}\n`;
-        context += `studentRows=${studentReconcile.localTotal}, rowSource=${studentReconcile.studentSourceLabel}, rowTrust=${studentReconcile.studentRosterAccuracyLabel}, canUseRowsForRealRoster=${studentRosterTrust.canAnswerIndividual || _uploadedStudentRows.length > 0}, reconcile=${studentReconcile.studentRowsSummary}\n`;
-        if (!studentRosterTrust.canAnswerIndividual && _uploadedStudentRows.length === 0) {
-            context += 'สำคัญ: รายชื่อในระบบตอนนี้เป็น sample/generated ห้ามใช้ยืนยันรายชื่อจริง, GPA รายคน, กลุ่มเสี่ยงรายคน หรือกราฟจากรายชื่อจริง ให้ตอบยอดรวมจาก MJU Dashboard และบอกให้ผู้ใช้อัปโหลดไฟล์จริงจาก Reg/คณะหากต้องใช้รายคน\n\n';
+        context += `[STUDENT OFFICIAL AGGREGATE]\nยอด Sync จาก MJU Dashboard: officialTotal=${studentReconcile.officialTotal ?? 'unknown'}, currentDashboardTotal=${studentReconcile.currentDashboardTotal ?? 'unknown'}, manualOverlay=${studentReconcile.manualOverlayActive}, source=${studentReconcile.officialSourceLabel}, status=${studentReconcile.officialIsLive ? 'live' : 'reference/fallback'}\n`;
+        context += `studentRows=${studentReconcile.localTotal}, rowSource=${studentReconcile.studentSourceLabel}, rowTrust=${studentReconcile.studentRosterAccuracyLabel}, canUseRowsForRealRoster=${studentRosterTrust.canAnswerIndividual || _uploadedStudentRows.length > 0}, canUseRowsForDemo=${studentRosterTrust.canAnswerDemoIndividual}, reconcile=${studentReconcile.studentRowsSummary}\n`;
+        if (studentRosterTrust.canAnswerDemoIndividual && _uploadedStudentRows.length === 0) {
+            context += 'สำคัญ: ใช้ generated mock ตอบการค้นหารายชื่อ/GPA เพื่อสาธิตแบบ realtime ได้ แต่ทุกคำตอบต้องระบุว่าเป็นข้อมูลจำลอง ห้ามอ้างว่าเป็นรายชื่อจริงจาก Reg/MJU\n\n';
+        } else if (!studentRosterTrust.canUseForChatRows && _uploadedStudentRows.length === 0) {
+            context += 'สำคัญ: ยังไม่มี roster ที่ใช้ตอบรายชื่อรายคนได้ ให้ตอบเฉพาะยอดรวมและแนะนำให้อัปโหลดไฟล์จริงจาก Reg/คณะ\n\n';
         }
     }
     if (isStudentQ && canUseStudentStats && allStudents.length > 0) {
@@ -1227,7 +1139,9 @@ export function buildAIChatPrompt(question, uploadedFileData = null, dashboardMe
 
         const studentSourceLabel = adviceMode
             ? (isLiveData() && _uploadedStudentRows.length > 0 ? 'ข้อมูล live/realtime + ไฟล์ที่ผู้ใช้อัปโหลด' : isLiveData() ? 'ข้อมูล live/realtime' : 'ไฟล์ที่ผู้ใช้อัปโหลด')
-            : 'ข้อมูลระบบ + ข้อมูลที่อัปโหลด';
+            : studentRosterTrust.canAnswerDemoIndividual && _uploadedStudentRows.length === 0
+                ? 'generated mock ที่ sync จำนวนกับ Overview; ใช้เพื่อสาธิตเท่านั้น'
+                : 'ข้อมูลระบบ + ข้อมูลที่อัปโหลด';
         context += `[บริบทนักศึกษา: ข้อมูลรวม ${allStudents.length} คน (${studentSourceLabel})\n`;
         context += `สรุปตามสาขา:\n${majorStats}\n`;
         context += `สรุปตามชั้นปี: ${yearStats}\n`;

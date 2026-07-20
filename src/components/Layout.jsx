@@ -5,8 +5,15 @@ import AIChat from './AIChat';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Menu, Sun, Moon } from 'lucide-react';
-import { ensureStudentList } from '../services/studentDataService';
-import { ensureDashboardLiveData, startDashboardAutoSync } from '../services/dashboardLiveDataService';
+import {
+    ensureStudentList,
+    ensureStudentRosterAlignedWithOverview,
+} from '../services/studentDataService';
+import {
+    ensureDashboardLiveData,
+    onDashboardLiveDataChange,
+    startDashboardAutoSync,
+} from '../services/dashboardLiveDataService';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 import useDashboardMotion from '../hooks/useDashboardMotion';
 
@@ -24,8 +31,37 @@ export default function Layout() {
     // Gemini + page consumers read it synchronously after this resolves;
     // falls back to mock silently if Firestore doesn't have the doc.
     useEffect(() => {
-        ensureStudentList();
-        ensureDashboardLiveData();
+        let cancelled = false;
+        let alignmentInFlight = false;
+        const alignRoster = async () => {
+            if (cancelled || alignmentInFlight) return;
+            alignmentInFlight = true;
+            try {
+                await ensureStudentRosterAlignedWithOverview();
+            } finally {
+                alignmentInFlight = false;
+            }
+        };
+        Promise.all([
+            ensureStudentList(),
+            ensureDashboardLiveData(),
+        ]).then(async () => {
+            if (cancelled) return;
+            await alignRoster();
+        }).catch(error => {
+            console.warn('[Layout] Student roster alignment skipped:', error?.message || error);
+        });
+        const unsubscribe = onDashboardLiveDataChange(event => {
+            if (event?.id === 'student_stats' || event?.id === 'dashboard_summary') {
+                alignRoster().catch(error => {
+                    console.warn('[Layout] Realtime roster alignment skipped:', error?.message || error);
+                });
+            }
+        });
+        return () => {
+            cancelled = true;
+            unsubscribe();
+        };
     }, []);
 
     useEffect(() => {

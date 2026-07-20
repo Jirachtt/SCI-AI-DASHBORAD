@@ -78,8 +78,11 @@ function sourceLine() {
     if (roster.canAnswerIndividual && roster.isUserUploadedRoster) {
         return 'แหล่งข้อมูล: ไฟล์รายชื่อนักศึกษาที่อัปโหลดล่าสุด';
     }
-    if (!roster.canAnswerIndividual) {
-        return 'แหล่งข้อมูล: ยอดรวมใช้ MJU Dashboard; รายชื่อรายคนยังเป็น sample/generated จนกว่าจะอัปโหลดไฟล์จริง';
+    if (roster.canAnswerDemoIndividual) {
+        return 'แหล่งข้อมูล: ยอดรวมใช้ MJU Dashboard; รายชื่อ/GPA เป็น generated mock ที่ปรับจำนวนตาม Overview และใช้สาธิตแบบ realtime ไม่ใช่ข้อมูล Reg จริง';
+    }
+    if (!roster.canUseForChatRows) {
+        return 'แหล่งข้อมูล: ยอดรวมใช้ MJU Dashboard; ยังไม่มี roster สำหรับตอบรายชื่อรายคน';
     }
     return isLiveData()
         ? 'แหล่งข้อมูล: ข้อมูลนักศึกษา live/realtime จาก Firestore หรือไฟล์อัปโหลดล่าสุด'
@@ -87,7 +90,7 @@ function sourceLine() {
 }
 
 function hasTrustedStudentRows() {
-    return getStudentRosterTrustStatus().canAnswerIndividual;
+    return getStudentRosterTrustStatus().canUseForChatRows;
 }
 
 function buildStudentRowsUnavailableAnswer(topic = 'รายชื่อหรือ GPA รายคน') {
@@ -96,7 +99,7 @@ function buildStudentRowsUnavailableAnswer(topic = 'รายชื่อหร�
         ? 'ยังไม่พบยอดรวมทางการจาก MJU Dashboard'
         : `ยอดรวมทางการจาก MJU Dashboard คือ **${formatNumber(rec.officialTotal)} คน**`;
     return {
-        text: `ตอนนี้ยังยืนยัน${topic}จากข้อมูลจริงไม่ได้ครับ เพราะรายชื่อในระบบยังเป็น **sample/generated** ไม่ใช่รายชื่อจริงจาก Reg/คณะ\n\n${officialText}\n\nถ้าต้องการให้ AI ตอบรายชื่อรายคน, GPA รายคน, กลุ่มเสี่ยง GPA < 2.00 หรือกราฟที่ใช้ GPA จริง ให้ใช้ไฟล์ CSV/XLSX export จาก Reg/คณะ แล้วอัปโหลดเข้า Admin Data Upload ก่อน ระบบจะใช้ไฟล์นั้นแทน sample ทันที\n\n_แหล่งข้อมูล: ยอดรวมใช้ MJU Dashboard; รายชื่อรายคนในระบบตอนนี้ = ${rec.studentSourceLabel} (${rec.studentRosterAccuracyLabel}); ${rec.studentRowsSummary}_`,
+        text: `ตอนนี้ยังตอบ${topic}ไม่ได้ เพราะยังไม่มี roster ที่อ่านได้ในระบบ\n\n${officialText}\n\nให้อัปโหลดไฟล์ CSV/XLSX จาก Reg/คณะ หรือกด Sync เพื่อสร้าง generated mock สำหรับสาธิตก่อน\n\n_แหล่งข้อมูล: ยอดรวมใช้ MJU Dashboard; roster ตอนนี้ = ${rec.studentSourceLabel} (${rec.studentRosterAccuracyLabel}); ${rec.studentRowsSummary}_`,
         chart: null,
     };
 }
@@ -140,7 +143,7 @@ function getOfficialScienceStudentStats() {
     const facultyRow = findScienceFacultyRow(summary.faculties);
     return {
         rec,
-        total: rec.officialTotal ?? (Number(science.total || facultyRow?.totalStudents || facultyRow?.total || 0) || null),
+        total: rec.currentDashboardTotal ?? rec.officialTotal ?? (Number(science.total || facultyRow?.totalStudents || facultyRow?.total || 0) || null),
         byLevel: Array.isArray(science.byLevel) ? science.byLevel : [],
         byEnrollmentYear: Array.isArray(science.byEnrollmentYear) ? science.byEnrollmentYear : [],
         byMajor: Array.isArray(science.byMajor) ? science.byMajor : [],
@@ -156,7 +159,9 @@ function buildOfficialStudentAggregateAnswer(q) {
     if (asksGpaOrRisk) return buildStudentRowsUnavailableAnswer('GPA รายคนหรือกลุ่มเสี่ยง');
 
     let text = `**จำนวนนักศึกษาคณะวิทยาศาสตร์**\n\n`;
-    text += `จากยอดรวมทางการของ MJU Dashboard คณะวิทยาศาสตร์มีนักศึกษารวม **${formatNumber(official.total)} คน**\n`;
+    text += official.rec.manualOverlayActive
+        ? `จากยอด Sync ของ MJU Dashboard และรายการที่เพิ่มด้วยมือ หน้า Dashboard ปัจจุบันมีนักศึกษารวม **${formatNumber(official.total)} คน** (ยอด Sync เดิม ${formatNumber(official.rec.officialTotal)} คน)\n`
+        : `จากยอดรวมทางการของ MJU Dashboard คณะวิทยาศาสตร์มีนักศึกษารวม **${formatNumber(official.total)} คน**\n`;
     if (official.avgGPA != null) text += `- GPA เฉลี่ยระดับคณะจาก Dashboard: **${formatNumber(official.avgGPA, 2)}**\n`;
     if (official.graduationRate != null) text += `- อัตราสำเร็จการศึกษาจาก Dashboard: **${formatNumber(official.graduationRate, 1)}%**\n`;
 
