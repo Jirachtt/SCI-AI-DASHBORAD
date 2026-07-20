@@ -516,12 +516,13 @@ function DashboardHomeContent() {
             </div>
 
             {/* Quick Stats Grid */}
-            <div className="stats-grid">
+            <div className="stats-grid dashboard-summary-grid">
                 {cardOrder.map((orderIdx, displayIdx) => {
                     const card = statCards[orderIdx];
                     const sciData = scienceSubData[orderIdx];
                     return (
                         <div key={orderIdx}
+                            className="dashboard-summary-card"
                             draggable={isEditMode}
                             onDragStart={() => { dragItem.current = displayIdx; }}
                             onDragEnter={() => { dragOverItem.current = displayIdx; }}
@@ -551,7 +552,7 @@ function DashboardHomeContent() {
                                 <div className="stat-card-value"><AnimatedMetricValue value={card.value} /></div>
                                 <div className="stat-card-label">{card.label}</div>
                             </div>
-                            <div style={{
+                            <div className="dashboard-summary-detail" style={{
                                 background: 'var(--bg-secondary)',
                                 border: '1px solid var(--border-color)', borderTop: '1px dashed var(--border-color)',
                                 borderBottomLeftRadius: 16, borderBottomRightRadius: 16,
@@ -567,14 +568,14 @@ function DashboardHomeContent() {
                                     </div>
                                     <div style={{ fontSize: 20, fontWeight: 700, color: legacyColorToVar(sciData.color) }}>{sciData.value}</div>
                                 </div>
-                                <div style={{ display: 'flex', gap: 8 }}>
+                                <div className="dashboard-summary-detail-content" style={{ display: 'flex', gap: 8 }}>
                                     {sciData.details.length > 0 ? sciData.details.map((d, j) => (
                                         <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '10px 8px', textAlign: 'center', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
                                             <div style={{ fontSize: 18, fontWeight: 700, color: d.color }}>{d.value}</div>
                                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{d.label}</div>
                                         </div>
                                     )) : (
-                                        <div style={{ width: '100%', color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
+                                        <div className="dashboard-summary-empty" style={{ width: '100%', color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
                                             ยังไม่มีชุดข้อมูลต้นทางที่ผ่านการตรวจสอบสำหรับตัวชี้วัดนี้
                                         </div>
                                     )}
