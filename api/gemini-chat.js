@@ -65,7 +65,6 @@ function apiKey() {
   return process.env.GEMINI_API_KEY
     || process.env.GOOGLE_GEMINI_API_KEY
     || process.env.GOOGLE_API_KEY
-    || process.env.VITE_GEMINI_API_KEY
     || '';
 }
 
@@ -110,6 +109,52 @@ function responseOutputTokens(body) {
   return estimateTokens(text);
 }
 
+export function parseGeminiStreamPayloads(rawStream) {
+  return String(rawStream || '')
+    .split(/\r?\n\r?\n/)
+    .flatMap(block => {
+      const data = block
+        .split(/\r?\n/)
+        .filter(line => line.startsWith('data:'))
+        .map(line => line.slice(5).trim())
+        .filter(Boolean)
+        .join('\n');
+      if (!data || data === '[DONE]') return [];
+      try {
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        return [];
+      }
+    });
+}
+
+function streamUsageMetadata(rawStream) {
+  const payloads = parseGeminiStreamPayloads(rawStream);
+  for (let index = payloads.length - 1; index >= 0; index -= 1) {
+    if (payloads[index]?.usageMetadata) return payloads[index].usageMetadata;
+  }
+  return null;
+}
+
+function streamOutputTokens(rawStream) {
+  const text = parseGeminiStreamPayloads(rawStream)
+    .flatMap(payload => payload?.candidates?.[0]?.content?.parts || [])
+    .map(part => part?.text || '')
+    .join('');
+  return estimateTokens(text);
+}
+
+function configuredContextLimit(model) {
+  try {
+    const limits = JSON.parse(process.env.AI_MODEL_CONTEXT_LIMITS_JSON || '{}');
+    const value = Number(limits?.[model]);
+    return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+  } catch {
+    return null;
+  }
+}
+
 function cleanup(now = Date.now()) {
   usageState.minuteEvents = usageState.minuteEvents.filter(event => now - event.at < WINDOW_MS);
   usageState.dayEvents = usageState.dayEvents.filter(event => now - event.at < DAY_MS);
@@ -125,7 +170,7 @@ function sumTokens(events, predicate) {
 
 function dayTokenTotal() {
   return usageState.dayEvents.reduce(
-    (sum, event) => sum + Number(event.inputTokens || 0) + Number(event.outputTokens || 0),
+    (sum, event) => sum + (event.status === 'completed' ? Number(event.totalTokens || 0) : 0),
     0
   );
 }
@@ -168,7 +213,9 @@ function snapshot(model) {
       globalRpm: Math.max(0, LIMITS.globalRpm - globalMinuteRequests),
       globalTpm: Math.max(0, LIMITS.globalTpm - globalMinuteInputTokens),
       globalRpd: Math.max(0, LIMITS.globalRpd - dayRequests),
-      dailyTokenBudget: Math.max(0, LIMITS.dailyTokenBudget - dailyTokens),
+      dailyTokenBudget: Number.isFinite(Number(LIMITS.dailyTokenBudget)) && Number(LIMITS.dailyTokenBudget) > 0
+        ? Math.max(0, Number(LIMITS.dailyTokenBudget) - dailyTokens)
+        : null,
       modelRpm: Math.max(0, modelLimit.rpm - modelMinuteRequests),
       modelTpm: Math.max(0, modelLimit.tpm - modelMinuteInputTokens),
       modelRpd: Math.max(0, modelLimit.rpd - modelDayRequests),
@@ -199,7 +246,9 @@ function rejectIfLimited({ req, model, inputTokens }) {
     ['model_tpm', modelMinuteInputTokens + inputTokens > modelLimit.tpm],
     ['global_rpd', dayRequests + 1 > LIMITS.globalRpd],
     ['model_rpd', modelDayRequests + 1 > modelLimit.rpd],
-    ['daily_token_budget', projectedDailyTokens > LIMITS.dailyTokenBudget],
+    ['daily_token_budget', Number.isFinite(Number(LIMITS.dailyTokenBudget))
+      && Number(LIMITS.dailyTokenBudget) > 0
+      && projectedDailyTokens > Number(LIMITS.dailyTokenBudget)],
   ];
   const failed = checks.find(([, isLimited]) => isLimited);
   if (!failed) return null;
@@ -212,31 +261,58 @@ function rejectIfLimited({ req, model, inputTokens }) {
   };
 }
 
-function recordStart({ req, model, inputTokens }) {
+function recordStart({ req, model, inputTokens, requestId = '' }) {
   const event = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    id: requestId || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     at: Date.now(),
     clientKey: clientKey(req),
     model,
     inputTokens,
     outputTokens: 0,
+    totalTokens: 0,
+    status: 'in_progress',
   };
   usageState.minuteEvents.push(event);
   usageState.dayEvents.push(event);
   return event;
 }
 
+function findMemoryEvent(requestId) {
+  if (!requestId) return null;
+  return usageState.dayEvents.find(event => event.id === requestId) || null;
+}
+
+function finalizeMemoryEvent(event, usage, ok) {
+  if (!event) return;
+  if (!ok) {
+    event.status = 'error';
+    event.inputTokens = 0;
+    event.outputTokens = 0;
+    event.totalTokens = 0;
+    return;
+  }
+  event.status = 'completed';
+  event.inputTokens = Number(usage?.inputTokens || 0);
+  event.outputTokens = Number(usage?.outputTokens || 0);
+  event.totalTokens = Number(usage?.totalTokens || (event.inputTokens + event.outputTokens));
+}
+
 function headersFor(model, usageSnapshot = null, requestUsage = null) {
   const current = snapshot(model);
   const remainingPercent = Math.round((current.remaining.globalRpm / current.limits.globalRpm) * 100);
-  const tokenPercent = Math.round((current.remaining.dailyTokenBudget / current.limits.dailyTokenBudget) * 100);
+  const hasDailyBudget = Number.isFinite(Number(current.limits.dailyTokenBudget))
+    && Number(current.limits.dailyTokenBudget) > 0;
+  const tokenPercent = hasDailyBudget
+    ? Math.round((current.remaining.dailyTokenBudget / current.limits.dailyTokenBudget) * 100)
+    : null;
   return {
     'X-AI-Model': model,
+    'X-AI-Usage-Source': usageSnapshot?.source || 'memory',
     'X-AI-RateLimit-Limit': current.limits.globalRpm,
     'X-AI-RateLimit-Remaining': current.remaining.globalRpm,
     'X-AI-RateLimit-Remaining-Percent': remainingPercent,
-    'X-AI-Token-Budget': current.limits.dailyTokenBudget,
-    'X-AI-Token-Remaining': current.remaining.dailyTokenBudget,
+    'X-AI-Token-Budget': hasDailyBudget ? current.limits.dailyTokenBudget : null,
+    'X-AI-Token-Remaining': hasDailyBudget ? current.remaining.dailyTokenBudget : null,
     'X-AI-Token-Remaining-Percent': tokenPercent,
     ...(usageSnapshot ? usageHeaders(usageSnapshot) : {}),
     ...(requestUsage ? tokenUsageHeaders(requestUsage) : {}),
@@ -311,6 +387,7 @@ export default async function handler(req, res) {
   }
 
   const inputTokens = requestInputTokens(requestBody);
+  const requestId = String(payload?.requestId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 96);
   let reservation = null;
   let memoryEvent = null;
   try {
@@ -321,7 +398,12 @@ export default async function handler(req, res) {
       limits: LIMITS,
       modelDefaults: MODEL_DEFAULTS,
       usagePayload: payload?.usageUser || {},
-      usageMeta: payload?.usageMeta || {},
+      usageMeta: {
+        ...(payload?.usageMeta || {}),
+        requestId,
+        sessionId: payload?.sessionId || payload?.usageMeta?.sessionId || '',
+        route: payload?.route || payload?.usageMeta?.route || '',
+      },
     });
   } catch (error) {
     if (isProductionUsageRequired()) {
@@ -348,7 +430,27 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (reservation?.duplicate) {
+    sendJson(res, 409, {
+      error: 'AI_DUPLICATE_REQUEST',
+      message: 'This AI request is already being processed or has completed.',
+      requestId: reservation.reservationId,
+      status: reservation.duplicateStatus,
+    }, headersFor(model, reservation.snapshot));
+    return;
+  }
+
   if (!reservation) {
+    const duplicateMemoryEvent = findMemoryEvent(requestId);
+    if (duplicateMemoryEvent) {
+      sendJson(res, 409, {
+        error: 'AI_DUPLICATE_REQUEST',
+        message: 'This AI request is already being processed or has completed.',
+        requestId: duplicateMemoryEvent.id,
+        status: duplicateMemoryEvent.status,
+      }, headersFor(model));
+      return;
+    }
     const limited = rejectIfLimited({ req, model, inputTokens });
     if (limited) {
       sendJson(res, 429, {
@@ -364,7 +466,7 @@ export default async function handler(req, res) {
       });
       return;
     }
-    memoryEvent = recordStart({ req, model, inputTokens });
+    memoryEvent = recordStart({ req, model, inputTokens, requestId });
   }
 
   try {
@@ -386,26 +488,41 @@ export default async function handler(req, res) {
         rawStream += buffer.toString('utf8');
         res.write(buffer);
       }
-      const outputTokens = estimateTokens(rawStream);
-      const streamUsage = normalizeTokenUsage({}, {
+      const outputTokens = streamOutputTokens(rawStream);
+      const providerStreamUsage = streamUsageMetadata(rawStream);
+      const streamUsage = normalizeTokenUsage(providerStreamUsage || {}, {
         provider: 'gemini',
         model,
         requestId: reservation?.reservationId || memoryEvent?.id || '',
         fallbackInputTokens: inputTokens,
         fallbackOutputTokens: outputTokens,
-        source: 'stream_server_estimate',
+        contextLimit: configuredContextLimit(model),
+        route: payload?.route || payload?.usageMeta?.route || '',
+        sessionId: payload?.sessionId || payload?.usageMeta?.sessionId || '',
+        sourceDetail: providerStreamUsage ? 'gemini_stream_usage_metadata' : 'stream_server_estimate',
       });
-      if (memoryEvent) memoryEvent.outputTokens = outputTokens;
+      finalizeMemoryEvent(memoryEvent, streamUsage, true);
+      let completedSnapshot = null;
       if (reservation) {
-        completeAIUsage({
+        completedSnapshot = await completeAIUsage({
           reservation,
           ok: true,
           totalTokens: streamUsage.totalTokens,
-          outputTokens,
-          providerMeasured: false,
+          outputTokens: streamUsage.outputTokens,
+          providerMeasured: streamUsage.source === 'provider',
           tokenUsage: streamUsage,
-        }).catch(err => console.warn('[AI usage] stream completion failed:', err?.message || err));
+        }).catch(err => {
+          console.warn('[AI usage] stream completion failed:', err?.message || err);
+          return null;
+        });
       }
+      res.write(`\nevent: sci_usage\ndata: ${JSON.stringify({
+        sciUsage: streamUsage,
+        usageSnapshot: completedSnapshot ? {
+          usedTokens: completedSnapshot.used?.usedTokens ?? null,
+          requestCount: completedSnapshot.used?.requestCount ?? null,
+        } : null,
+      })}\n\n`);
       res.end();
       return;
     }
@@ -419,6 +536,10 @@ export default async function handler(req, res) {
         requestId,
         fallbackInputTokens: inputTokens,
         fallbackOutputTokens: responseOutputTokens(body),
+        contextLimit: configuredContextLimit(model),
+        route: payload?.route || payload?.usageMeta?.route || '',
+        sessionId: payload?.sessionId || payload?.usageMeta?.sessionId || '',
+        sourceDetail: body?.usageMetadata ? 'gemini_usage_metadata' : 'server_estimate',
       })
       : normalizeTokenUsage({}, {
         provider: 'gemini',
@@ -426,16 +547,18 @@ export default async function handler(req, res) {
         requestId,
         fallbackInputTokens: 0,
         fallbackOutputTokens: 0,
-        source: 'error_no_usage',
+        allowEstimate: false,
+        status: 'error',
+        sourceDetail: 'error_no_usage',
       });
-    if (memoryEvent) memoryEvent.outputTokens = tokenUsage.outputTokens;
+    finalizeMemoryEvent(memoryEvent, tokenUsage, response.ok);
     const completedSnapshot = reservation
       ? await completeAIUsage({
         reservation,
         ok: response.ok,
         totalTokens: tokenUsage.totalTokens,
         outputTokens: tokenUsage.outputTokens,
-        providerMeasured: !tokenUsage.isEstimated,
+        providerMeasured: tokenUsage.source === 'provider',
         tokenUsage,
       }).catch(err => {
         console.warn('[AI usage] completion failed:', err?.message || err);
@@ -443,8 +566,9 @@ export default async function handler(req, res) {
       })
       : null;
 
-    sendJson(res, response.status, body, headersFor(model, completedSnapshot || reservation?.snapshot, tokenUsage));
+    sendJson(res, response.status, response.ok ? { ...body, sciUsage: tokenUsage } : body, headersFor(model, completedSnapshot || reservation?.snapshot, tokenUsage));
   } catch (err) {
+    finalizeMemoryEvent(memoryEvent, null, false);
     if (reservation) {
       completeAIUsage({
         reservation,

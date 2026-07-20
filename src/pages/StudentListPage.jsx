@@ -113,7 +113,7 @@ export default function StudentListPage() {
     }));
 
     const getWorkbookReportSheets = () => ({
-        Summary: [
+        'Filter Summary': [
             { metric: 'total_students', value: students.length },
             { metric: 'filtered_students', value: filtered.length },
             { metric: 'search', value: searchTerm || '-' },
@@ -122,7 +122,7 @@ export default function StudentListPage() {
             { metric: 'source', value: dataSourceText },
             { metric: 'exported_at', value: new Date().toISOString() },
         ],
-        'Student Rows': filtered.map((s, idx) => ({
+        'Filtered Student Rows': filtered.map((s, idx) => ({
             row: idx + 1,
             id: s.id || '',
             prefix: s.prefix || '',

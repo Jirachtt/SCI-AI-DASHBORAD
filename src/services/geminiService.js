@@ -73,7 +73,7 @@ import {
 const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_PROXY_ENDPOINT || '/api/gemini-chat';
 const AI_USAGE_ENDPOINT = import.meta.env.VITE_AI_USAGE_ENDPOINT || '/api/ai-usage';
 if (!GEMINI_PROXY_ENDPOINT) {
-    console.warn('[Gemini] ⚠️ VITE_GEMINI_API_KEY is not set.');
+    console.warn('[AI] Server proxy endpoint is not configured.');
 }
 
 // Models ordered for decision-support quality first, with lite models kept near
@@ -115,11 +115,7 @@ const AI_SETTINGS_KEY = 'sci-ai-dashboard:ai-settings';
 const AI_TOKEN_STATS_KEY = 'sci-ai-dashboard:ai-token-stats';
 const AI_RATE_EVENTS_KEY = 'sci-ai-dashboard:ai-rate-events';
 const AI_MEMORY_KEY = 'sci-ai-dashboard:ai-user-memory';
-const DEFAULT_AI_TOKEN_BUDGET = 1_000_000;
-const AI_TOKEN_BUDGET = Math.max(
-    1,
-    Number(import.meta.env.VITE_AI_TOKEN_BUDGET || import.meta.env.VITE_AI_MONTHLY_TOKEN_LIMIT || DEFAULT_AI_TOKEN_BUDGET)
-);
+const AI_USAGE_SESSION_ID_KEY = 'sci-ai-dashboard:ai-usage-session-id';
 let aiUsageSnapshotCache = null;
 
 const DEFAULT_AI_SETTINGS = {
@@ -252,49 +248,97 @@ export function getAITokenStats() {
 }
 
 function normalizeAIUsageSnapshot(value = {}) {
-    const budgetTokens = Math.max(1, Number(value.budgetTokens || value.limits?.dailyTokenBudget || AI_TOKEN_BUDGET));
-    const usedTokens = Math.max(0, Number(value.usedTokens || 0));
-    const remainingTokens = Math.max(0, Number(value.remainingTokens ?? (budgetTokens - usedTokens)));
+    const numberOrNull = (raw) => {
+        if (raw === null || raw === undefined || raw === '') return null;
+        const number = Number(raw);
+        return Number.isFinite(number) && number >= 0 ? number : null;
+    };
+    const serverBacked = value.serverBacked === true;
+    const budgetTokens = numberOrNull(value.budgetTokens ?? value.limits?.dailyTokenBudget);
+    const usedTokens = numberOrNull(value.usedTokens);
+    const remainingTokens = numberOrNull(value.remainingTokens);
+    const remainingPercent = numberOrNull(value.remainingPercent);
+    const budgetPolicyAvailable = serverBacked
+        && value.policy?.dailyTokenBudgetEnforced === true
+        && budgetTokens !== null;
     return {
         budgetTokens,
         usedTokens,
-        inFlightInputTokens: Math.max(0, Number(value.inFlightInputTokens || 0)),
+        inFlightInputTokens: numberOrNull(value.inFlightInputTokens),
         remainingTokens,
-        remainingPercent: Math.max(0, Math.min(100, Number(value.remainingPercent ?? Math.round((remainingTokens / budgetTokens) * 100)))),
-        requests: Number(value.requests || 0),
-        completedRequests: Number(value.completedRequests || 0),
-        failedRequests: Number(value.failedRequests || 0),
-        providerTokens: Math.max(0, Number(value.providerTokens || 0)),
-        estimatedTokens: Math.max(0, Number(value.estimatedTokens || 0)),
-        inputTokens: Math.max(0, Number(value.inputTokens || 0)),
-        outputTokens: Math.max(0, Number(value.outputTokens || 0)),
-        remainingRequests: Number(value.remainingRequests || 0),
+        remainingPercent: remainingPercent === null ? null : Math.max(0, Math.min(100, remainingPercent)),
+        requests: numberOrNull(value.requests),
+        attempts: numberOrNull(value.attempts),
+        completedRequests: numberOrNull(value.completedRequests),
+        failedRequests: numberOrNull(value.failedRequests),
+        providerTokens: numberOrNull(value.providerTokens),
+        estimatedTokens: numberOrNull(value.estimatedTokens),
+        inputTokens: numberOrNull(value.inputTokens),
+        outputTokens: numberOrNull(value.outputTokens),
+        thinkingTokens: numberOrNull(value.thinkingTokens),
+        cachedTokens: numberOrNull(value.cachedTokens),
+        toolTokens: numberOrNull(value.toolTokens),
+        remainingRequests: numberOrNull(value.remainingRequests),
         resetAt: value.resetAt || null,
-        resetLabel: value.resetLabel || '00:00 น.',
-        source: value.source || 'server',
-        status: value.status || 'ready',
-        isServerBacked: value.serverBacked !== false,
+        resetLabel: value.resetLabel || null,
+        source: value.source || 'unavailable',
+        status: value.status || (serverBacked ? 'ready' : 'unavailable'),
+        isServerBacked: serverBacked,
+        policy: value.policy || null,
+        budgetPolicyAvailable,
+        providerQuota: value.providerQuota || {
+            available: false,
+            message: 'ผู้ให้บริการไม่ได้ส่งข้อมูล quota หรือ reset time',
+        },
         updatedAt: value.updatedAt || null,
         lastRequest: value.lastRequest || null,
+        message: value.message || '',
     };
+}
+
+function createUsageId(prefix = 'ai') {
+    const random = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `${prefix}_${random}`.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 96);
+}
+
+function getAIUsageSessionId() {
+    if (typeof sessionStorage === 'undefined') return createUsageId('session');
+    try {
+        const existing = sessionStorage.getItem(AI_USAGE_SESSION_ID_KEY);
+        if (existing) return existing;
+        const created = createUsageId('session');
+        sessionStorage.setItem(AI_USAGE_SESSION_ID_KEY, created);
+        return created;
+    } catch {
+        return createUsageId('session');
+    }
 }
 
 function syncingAIUsageSnapshot(status = 'syncing') {
     return {
-        budgetTokens: AI_TOKEN_BUDGET,
-        usedTokens: 0,
-        inFlightInputTokens: 0,
-        remainingTokens: 0,
-        remainingPercent: 0,
-        requests: 0,
-        completedRequests: 0,
-        failedRequests: 0,
-        remainingRequests: 0,
+        budgetTokens: null,
+        usedTokens: null,
+        inFlightInputTokens: null,
+        remainingTokens: null,
+        remainingPercent: null,
+        requests: null,
+        attempts: null,
+        completedRequests: null,
+        failedRequests: null,
+        remainingRequests: null,
         resetAt: null,
-        resetLabel: '00:00 น.',
-        source: 'server',
+        resetLabel: null,
+        source: 'unavailable',
         status,
         isServerBacked: false,
+        policy: null,
+        budgetPolicyAvailable: false,
+        providerQuota: {
+            available: false,
+            message: 'ผู้ให้บริการไม่ได้ส่งข้อมูล quota หรือ reset time',
+        },
         updatedAt: null,
         lastRequest: null,
     };
@@ -331,6 +375,8 @@ export async function refreshAITokenBudgetSnapshot() {
 
 function updateAITokenBudgetFromHeaders(headers) {
     if (!headers?.get) return null;
+    const source = headers.get('X-AI-Usage-Source') || 'unknown';
+    if (source !== 'firestore') return null;
     const budget = Number(headers.get('X-AI-Token-Budget') || 0);
     const remaining = Number(headers.get('X-AI-Token-Remaining') || 0);
     if (!budget) return null;
@@ -347,9 +393,13 @@ function updateAITokenBudgetFromHeaders(headers) {
         requests: Number(headers.get('X-AI-Requests-Used') || 0),
         remainingRequests: Number(headers.get('X-AI-Requests-Remaining') || 0),
         resetAt: headers.get('X-AI-Usage-Reset-At') || null,
-        resetLabel: '00:00 น.',
-        source: headers.get('X-AI-Usage-Source') || 'server',
+        resetLabel: null,
+        source,
         serverBacked: true,
+        policy: {
+            dailyTokenBudgetEnforced: true,
+            requestLimitsEnforced: true,
+        },
         updatedAt: new Date().toISOString(),
     });
 }
@@ -613,6 +663,67 @@ function localContextSourceLines(localContexts = []) {
         });
 }
 
+function normalizeModelResponseTokenUsage({
+    response,
+    data,
+    model,
+    fallbackInputText,
+    fallbackOutputText,
+    selectedDatasets = [],
+    contextChars = 0,
+    contextCount = 0,
+    latencyMs = null,
+    wantsStreaming = false,
+    success = true,
+}) {
+    const normalizedServerUsage = data?.sciUsage || null;
+    const providerUsage = data?.usageMetadata || {};
+    const headerUsage = {
+        promptTokenCount: Number(response.headers.get('X-AI-Request-Input-Tokens') || 0) || undefined,
+        candidatesTokenCount: Number(response.headers.get('X-AI-Request-Output-Tokens') || 0) || undefined,
+        totalTokenCount: Number(response.headers.get('X-AI-Request-Total-Tokens') || 0) || undefined,
+        cachedContentTokenCount: Number(response.headers.get('X-AI-Request-Cached-Tokens') || 0) || undefined,
+        thoughtsTokenCount: Number(response.headers.get('X-AI-Request-Thinking-Tokens') || response.headers.get('X-AI-Request-Reasoning-Tokens') || 0) || undefined,
+        toolTokenCount: Number(response.headers.get('X-AI-Request-Tool-Tokens') || 0) || undefined,
+        contextTokens: Number(response.headers.get('X-AI-Request-Context-Tokens') || 0) || undefined,
+        contextLimit: Number(response.headers.get('X-AI-Request-Context-Limit') || 0) || undefined,
+    };
+    const headerHasUsage = Number(headerUsage.totalTokenCount || 0) > 0;
+    const providerHasUsage = providerUsage && Object.values(providerUsage).some(value => Number.isFinite(Number(value)));
+    const headerEstimated = response.headers.get('X-AI-Request-Usage-Estimated') === 'true';
+    let tokenUsage = normalizeTokenUsage(
+        normalizedServerUsage || (providerHasUsage ? providerUsage : (headerHasUsage ? headerUsage : providerUsage)),
+        {
+            provider: 'gemini',
+            model,
+            requestId: normalizedServerUsage?.requestId || response.headers.get('X-AI-Request-Id') || '',
+            fallbackInputText,
+            fallbackOutputText,
+            selectedDatasets,
+            contextChars,
+            contextCount,
+            latencyMs,
+            success,
+            allowEstimate: success,
+            contextTokens: normalizedServerUsage?.contextTokens || headerUsage.contextTokens,
+            contextLimit: normalizedServerUsage?.contextLimit || headerUsage.contextLimit,
+            source: normalizedServerUsage?.source || (providerHasUsage ? 'provider' : undefined),
+            sourceDetail: normalizedServerUsage?.sourceDetail
+                || response.headers.get('X-AI-Request-Usage-Source')
+                || (wantsStreaming ? 'stream_client_estimate' : 'client_estimate'),
+        }
+    );
+    if (!normalizedServerUsage && !providerHasUsage && headerHasUsage && headerEstimated) {
+        tokenUsage = {
+            ...tokenUsage,
+            isEstimated: true,
+            source: 'estimated',
+            sourceDetail: response.headers.get('X-AI-Request-Usage-Source') || 'server_estimate',
+        };
+    }
+    return tokenUsage;
+}
+
 function safeMarkdownLinkLabel(text) {
     return String(text || 'Source')
         .replace(/[[\]\n\r]+/g, ' ')
@@ -840,7 +951,7 @@ function isStudentPrivateLookupQuery(msg) {
 
 function isMaejoPublicFallbackQuery(msg) {
     const q = String(msg || '').toLowerCase();
-    const publicTopic = /tcas|admission|รับสมัคร|สมัคร|เปิดรับ|รอบ\s*[1-4]|portfolio|quota|โควตา|direct\s*admit|directadmit|รับเข้า|แรกเข้า|ค่าเทอม|ค่าธรรมเนียม|ค่าเล่าเรียน|ชำระ|ค้างจ่าย|ค้างชำระ|กำหนดการ|ปฏิทิน|ประกาศ|ข่าว|หลักสูตร|เกณฑ์|คะแนน|ทะเบียน|reg\.mju|registrar|งบประมาณ|งบ|รายรับ|รายจ่าย|budget|ยุทธศาสตร์|กลยุทธ์|แผนพัฒนา|แผนปฏิบัติ|คำรับรอง|kpi|okr|ตัวชี้วัด|รายงานประจำปี/.test(q);
+    const publicTopic = /tcas|admission|รับสมัคร|สมัคร|เปิดรับ|รอบ\s*[1-4]|portfolio|quota|โควตา|direct\s*admit|directadmit|รับเข้า|แรกเข้า|ค่าเทอม|ค่าธรรมเนียม|ค่าเล่าเรียน|ชำระ|ค้างจ่าย|ค้างชำระ|กำหนดการ|ปฏิทิน|ประกาศ|ข่าว|หลักสูตร|เกณฑ์|คะแนน|ทะเบียน|reg\.mju|registrar|งบประมาณ|งบ|รายรับ|รายจ่าย|budget|ยุทธศาสตร์|กลยุทธ์|แผนพัฒนา|แผนปฏิบัติ|คำรับรอง|kpi|okr|ตัวชี้วัด|รายงานประจำปี|ขาย|จำหน่าย|ซื้อ|ร้าน|ผลิตภัณฑ์|สินค้า|กัญชา|สมุนไพร|เกษตร|ฟาร์ม|บริการ/.test(q);
     const maejoSignal = /แม่โจ้|maejo|mju|มจ\.?|มหาวิทยาลัย|คณะวิทยาศาสตร์|คณะวิทย์|ภาคเรียน|เทอม|[12]\s*\/\s*\d{2}|นักศึกษา|นิสิต/.test(q);
     return publicTopic && maejoSignal;
 }
@@ -964,37 +1075,40 @@ async function fetchWithTimeout(url, options) {
     }
 }
 
-// Retry only on 5xx server errors, NOT on 429 quota
 async function fetchSmart(url, options) {
-    const response = await fetchWithTimeout(url, options);
-
-    // 429 = quota/rate limit — do NOT retry, just return so caller can try next model
-    if (response.status === 429) return response;
-
-    // 5xx = server error — retry once after 2s
-    if (response.status >= 500) {
-        console.warn(`[Gemini] Server error ${response.status}, retrying once...`);
-        await new Promise(r => setTimeout(r, 2000));
-        return fetchWithTimeout(url, options);
-    }
-
-    return response;
+    // A provider request is never replayed implicitly. This keeps request IDs,
+    // billing usage and audit events idempotent; the model router can still
+    // choose a different model after a failed response.
+    return fetchWithTimeout(url, options);
 }
 
 async function postGeminiModel(model, requestBody, options = {}) {
+    const requestId = options.requestId || createUsageId('req');
+    const sessionId = options.sessionId || getAIUsageSessionId();
+    const route = options.route || (typeof window !== 'undefined' ? window.location.pathname : '');
     return fetchSmart(GEMINI_PROXY_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'X-AI-Request-Id': requestId,
+        },
         body: JSON.stringify({
+            requestId,
+            sessionId,
+            route,
             model,
             requestBody,
             stream: options.stream === true,
             usageUser: options.user ? {
                 uid: options.user.uid || '',
                 role: options.user.role || '',
-                email: options.user.email || '',
             } : undefined,
-            usageMeta: options.usageMeta || undefined,
+            usageMeta: {
+                ...(options.usageMeta || {}),
+                requestId,
+                sessionId,
+                route,
+            },
         }),
     });
 }
@@ -1022,10 +1136,15 @@ async function readGeminiStream(response, onChunk) {
     let buffer = '';
     let text = '';
     let lastData = null;
+    let streamUsage = null;
 
     const handleEvent = (eventText) => {
         const data = parseGeminiSseEvent(eventText);
         if (!data || data.done) return;
+        if (data.sciUsage) {
+            streamUsage = data.sciUsage;
+            return;
+        }
         lastData = data;
         const delta = responseText(data);
         if (!delta) return;
@@ -1044,7 +1163,10 @@ async function readGeminiStream(response, onChunk) {
 
     buffer += decoder.decode();
     if (buffer.trim()) handleEvent(buffer);
-    return { text, data: lastData };
+    return {
+        text,
+        data: streamUsage ? { ...(lastData || {}), sciUsage: streamUsage } : lastData,
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1756,6 +1878,31 @@ export function getAITokenUsageSessionSummary() {
     return getTokenUsageSessionSummary();
 }
 
+export function recordLocalAnswerUsage({
+    selectedDatasets = [],
+    contextCount = 0,
+    route = '',
+    source = 'local',
+} = {}) {
+    const usage = normalizeTokenUsage({}, {
+        provider: source,
+        model: source,
+        requestId: createUsageId(source),
+        sessionId: getAIUsageSessionId(),
+        route: route || (typeof window !== 'undefined' ? window.location.pathname : ''),
+        fallbackInputTokens: 0,
+        fallbackOutputTokens: 0,
+        selectedDatasets,
+        contextCount,
+        source,
+        isLocal: source === 'local',
+        isCache: source === 'cache',
+        status: source,
+    });
+    recordTokenUsageSession(usage);
+    return usage;
+}
+
 function strategicContext(options = {}) {
     const live = liveDatasetContext('strategic', 'ยุทธศาสตร์และ OKR', options);
     if (!live.data) return live.missing;
@@ -2185,6 +2332,8 @@ ${executiveRecommendationInstruction}
 TOKEN SAVING RULES:
 - Maejo public web mode: ถ้าคำถามเป็นเรื่องทั่วไปหรือข้อมูลสาธารณะของมหาวิทยาลัยแม่โจ้ เช่น ประวัติ คณะ หลักสูตร รับสมัคร TCAS ค่าเทอม ค่าธรรมเนียม งบประมาณ แผนยุทธศาสตร์ KPI ข่าว หน่วยงาน เบอร์ติดต่อ หรือสถานที่ ให้ตรวจ RETRIEVED CONTEXTS ของเว็บเราก่อน แล้วค่อยใช้ Google Search/เว็บทางการเมื่อข้อมูลไม่ครบ
 - ห้ามตอบว่า “ไม่พบข้อมูล” ทันทีใน Maejo public web mode จนกว่าจะใช้ทั้ง context ในเว็บเราและ trusted external fallback แล้ว
+- คำถามที่ระบุคำว่า แม่โจ้, Maejo หรือ MJU ถือว่าอยู่ในขอบเขตข้อมูลสาธารณะของมหาวิทยาลัย แม้หัวข้อจะไม่อยู่ใน FAQ ที่เตรียมไว้ ให้ค้นเว็บทางการ/แหล่งน่าเชื่อถือก่อน ห้ามปฏิเสธว่าอยู่นอกขอบเขตโดยอัตโนมัติ
+- ถ้าค้นแล้วไม่พบหลักฐานที่ยืนยันได้ ให้ตอบว่า “ยังไม่พบข้อมูลยืนยันจากแหล่งทางการที่ตรวจสอบได้” พร้อมระบุสิ่งที่ค้นและแหล่งที่ตรวจ ห้ามแต่งสถานที่จำหน่าย สถานะทางกฎหมาย ราคา หรือรายละเอียดผลิตภัณฑ์
 - ถ้าถามจำนวนรับเข้า TCAS/แต่ละรอบ/ประกาศล่าสุด ให้ค้นจากเว็บทางการล่าสุด และแยกให้ชัดว่า “ข้อมูลในเว็บเรา” กับ “ข้อมูลจากแหล่งภายนอกทางการ”
 - ถ้าถามรายชื่อหรือสถานะค้างจ่ายค่าธรรมเนียมรายบุคคล ให้ใช้เฉพาะข้อมูลในระบบที่มีสิทธิ์เท่านั้น ห้ามเดารายชื่อและห้ามอ้างว่าเว็บสาธารณะมีข้อมูลรายบุคคล; ถ้าเว็บเรายังไม่มี field ชำระเงิน ให้บอกว่าไม่มีข้อมูลส่วนนี้ในระบบ พร้อมเสนอว่าต้องเชื่อมฐานทะเบียน/การเงิน แต่สามารถให้ข้อมูลประกาศ/กำหนดการชำระค่าธรรมเนียมจากแหล่งทางการได้
 - ถ้าเป็นข้อมูลที่อาจเปลี่ยนบ่อย ต้องบอกตามข้อมูลล่าสุดที่ค้นได้ และถ้าไม่พบหลักฐานให้บอกว่าไม่พบข้อมูลล่าสุดแทนการเดา
@@ -2419,6 +2568,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
 
             console.log(`[Gemini] Trying model: ${model}...`);
             if (wantsStreaming) options.onChunk?.('', { reset: true, model });
+            const modelRequestStartedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
             const response = await postGeminiModel(model, requestBody, {
                 stream: wantsStreaming,
                 user: options.user,
@@ -2462,6 +2612,18 @@ async function _sendMessageImpl(userMessage, options = {}) {
             if (!response.ok) {
                 allQuotaExhausted = false;
                 const errorData = await response.json().catch(() => ({}));
+                recordTokenUsageSession(normalizeModelResponseTokenUsage({
+                    response,
+                    data: errorData,
+                    model,
+                    fallbackInputText: '',
+                    fallbackOutputText: '',
+                    selectedDatasets,
+                    contextChars: contextSlimming.usedChars || 0,
+                    contextCount: retrievedContextCount,
+                    latencyMs: Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - modelRequestStartedAt),
+                    success: false,
+                }));
                 console.warn(`[Gemini] ${model} failed: ${response.status}`);
                 lastError = new Error(`${model}: HTTP ${response.status} - ${errorData?.error?.message || 'Unknown'}`);
                 continue;
@@ -2481,6 +2643,23 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 data = await response.json();
                 rawAiText = responseText(data);
             }
+            const latencyMs = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - modelRequestStartedAt);
+            const tokenUsage = normalizeModelResponseTokenUsage({
+                response,
+                data,
+                model,
+                fallbackInputText: `${systemText}\n${JSON.stringify(conversationHistory)}`,
+                fallbackOutputText: rawAiText,
+                selectedDatasets,
+                contextChars: contextSlimming.usedChars || 0,
+                contextCount: retrievedContextCount,
+                latencyMs,
+                wantsStreaming,
+                success: true,
+            });
+            // Record every provider attempt, including an answer later discarded by
+            // quality escalation. The accepted answer upserts the same requestId.
+            recordTokenUsageSession(tokenUsage);
             if (!String(rawAiText || '').trim()) {
                 console.warn(`[Gemini] ${model} empty response`);
                 lastError = new Error(`${model}: Empty response`);
@@ -2508,36 +2687,6 @@ async function _sendMessageImpl(userMessage, options = {}) {
 
             console.log(`[Gemini] ✅ ${model} OK`);
             onModelSuccess(model);
-            const latencyMs = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - requestStartedAt);
-            const providerUsage = data?.usageMetadata || {};
-            const headerUsage = {
-                promptTokenCount: Number(response.headers.get('X-AI-Request-Input-Tokens') || 0) || undefined,
-                candidatesTokenCount: Number(response.headers.get('X-AI-Request-Output-Tokens') || 0) || undefined,
-                totalTokenCount: Number(response.headers.get('X-AI-Request-Total-Tokens') || 0) || undefined,
-                cachedContentTokenCount: Number(response.headers.get('X-AI-Request-Cached-Tokens') || 0) || undefined,
-                thoughtsTokenCount: Number(response.headers.get('X-AI-Request-Reasoning-Tokens') || 0) || undefined,
-            };
-            const headerHasUsage = Number(headerUsage.totalTokenCount || 0) > 0;
-            const headerEstimated = response.headers.get('X-AI-Request-Usage-Estimated') === 'true';
-            let tokenUsage = normalizeTokenUsage(
-                providerUsage?.totalTokenCount ? providerUsage : (headerHasUsage ? headerUsage : providerUsage),
-                {
-                provider: 'gemini',
-                model,
-                requestId: response.headers.get('X-AI-Request-Id') || '',
-                fallbackInputText: `${systemText}\n${JSON.stringify(conversationHistory)}`,
-                fallbackOutputText: aiText,
-                selectedDatasets,
-                contextChars: contextSlimming.usedChars || 0,
-                contextCount: retrievedContextCount,
-                latencyMs,
-                success: true,
-                source: providerUsage?.totalTokenCount ? '' : (response.headers.get('X-AI-Request-Usage-Source') || (wantsStreaming ? 'stream_client_estimate' : 'client_estimate')),
-                }
-            );
-            if (!providerUsage?.totalTokenCount && headerHasUsage && headerEstimated) {
-                tokenUsage = { ...tokenUsage, isEstimated: true, source: response.headers.get('X-AI-Request-Usage-Source') || 'server_estimate' };
-            }
             emitAIDebugMetadata({
                 cached: false,
                 intent,

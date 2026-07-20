@@ -50,6 +50,11 @@ export default defineConfig(({ mode }) => {
   for (const [key, value] of Object.entries(env)) {
     if (process.env[key] === undefined) process.env[key] = value
   }
+  // Transitional local-only compatibility: keep the legacy VITE-prefixed key
+  // on the Node dev server without reading it from browser application code.
+  if (mode === 'development' && !process.env.GEMINI_API_KEY && env.VITE_GEMINI_API_KEY) {
+    process.env.GEMINI_API_KEY = env.VITE_GEMINI_API_KEY
+  }
 
   return {
     plugins: [react(), localApiDev()],

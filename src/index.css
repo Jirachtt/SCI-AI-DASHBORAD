@@ -4364,7 +4364,7 @@ html {
 .settings-token-card {
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--accent-success) 18%, transparent);
-  border-radius: 14px;
+  border-radius: 8px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent-success) 12%, transparent), color-mix(in srgb, var(--accent-gold) 8%, transparent));
 }
 
@@ -4384,8 +4384,10 @@ html {
 }
 
 .settings-token-value-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--text-primary);
-  font-size: 1.42rem;
+  font-size: 1.08rem;
   font-weight: 850;
   line-height: 1;
 }
@@ -4413,6 +4415,11 @@ html {
   line-height: 1;
 }
 
+.settings-token-value-row span.is-estimated {
+  background: color-mix(in srgb, var(--accent-warning) 14%, transparent);
+  color: var(--accent-warning);
+}
+
 .settings-token-bar {
   margin: 0 0 8px;
 }
@@ -4423,6 +4430,43 @@ html {
   gap: 12px;
   color: var(--text-muted);
   font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.settings-usage-components {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 9px;
+}
+
+.settings-usage-components span {
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid color-mix(in srgb, var(--surface-border) 76%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface-panel) 76%, transparent);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.settings-budget-policy {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--surface-border) 72%, transparent);
+}
+
+.settings-budget-policy .settings-token-bar {
+  margin: 6px 0;
+}
+
+.settings-provider-quota {
+  margin-top: 9px;
+  color: var(--text-muted);
+  font-size: 0.69rem;
   line-height: 1.35;
 }
 
@@ -7910,6 +7954,21 @@ button.composition-pie-legend-row:focus-visible {
   padding: 16px 16px 12px;
   height: 320px;
   position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ai-page-chart-canvas-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.ai-page-chart-canvas-shell.expanded {
+  min-height: 520px;
 }
 
 /* Chart canvas glow effect */
@@ -8826,7 +8885,10 @@ button.composition-pie-legend-row:focus-visible {
   width: 100%;
   padding: 20px 24px 12px;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Chart canvas in modal — subtle glow */
@@ -13991,6 +14053,18 @@ button,
   }
 }
 
+.admin-ai-policy-block {
+  margin-top: 16px;
+}
+
+.admin-ai-usage-caption {
+  display: block;
+  margin-top: -3px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
 .print-report-metadata {
   display: none;
 }
@@ -17306,6 +17380,12 @@ body,
   line-height: 1.25;
 }
 
+.ai-chat-page-input-wrapper.standard .ai-chat-command-menu {
+  top: auto;
+  bottom: calc(100% + 12px);
+  max-height: min(520px, calc(100dvh - 190px));
+}
+
 /* Keep the authentication surface inside narrow mobile viewports. Earlier
    login rules used content-box sizing, so a 100% card plus padding overflowed. */
 .login-page,
@@ -18779,6 +18859,12 @@ body {
   border-color: color-mix(in srgb, var(--accent-cyan) 34%, transparent);
   background: color-mix(in srgb, var(--accent-cyan) 12%, transparent);
   color: var(--accent-cyan);
+}
+
+.ai-token-badge.local {
+  border-color: color-mix(in srgb, var(--accent-blue) 34%, transparent);
+  background: color-mix(in srgb, var(--accent-blue) 11%, transparent);
+  color: var(--accent-blue);
 }
 
 .ai-answer-action-btn {

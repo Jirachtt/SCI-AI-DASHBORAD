@@ -20,28 +20,41 @@ function publicSnapshot(snapshot) {
   const limits = snapshot.limits || AI_USAGE_LIMITS;
   const used = snapshot.used || {};
   const remaining = snapshot.remaining || {};
+  const hasDailyBudget = snapshot.policy?.dailyTokenBudgetEnforced === true
+    && Number.isFinite(Number(limits.dailyTokenBudget))
+    && Number(limits.dailyTokenBudget) > 0;
   return {
     source: snapshot.source || 'firestore',
     serverBacked: snapshot.serverBacked !== false,
     dayKey: snapshot.dayKey,
     timezone: snapshot.timezone || 'Asia/Bangkok',
     resetAt: snapshot.resetAt,
-    resetLabel: snapshot.resetLabel || '00:00 น.',
-    budgetTokens: Number(limits.dailyTokenBudget || 0),
+    resetLabel: hasDailyBudget ? (snapshot.resetLabel || null) : null,
+    budgetTokens: hasDailyBudget ? Number(limits.dailyTokenBudget) : null,
     usedTokens: Number(used.usedTokens || 0),
     providerTokens: Number(used.providerTokens || 0),
     estimatedTokens: Number(used.estimatedTokens || 0),
     inputTokens: Number(used.inputTokens || 0),
     outputTokens: Number(used.outputTokens || 0),
+    thinkingTokens: Number(used.thinkingTokens || 0),
+    cachedTokens: Number(used.cachedTokens || 0),
+    toolTokens: Number(used.toolTokens || 0),
     inFlightInputTokens: Number(used.inFlightInputTokens || 0),
-    remainingTokens: Number(remaining.dailyTokenBudget || 0),
-    remainingPercent: Number(snapshot.remainingPercent ?? 100),
+    remainingTokens: hasDailyBudget ? Number(remaining.dailyTokenBudget) : null,
+    remainingPercent: hasDailyBudget ? Number(snapshot.remainingPercent) : null,
     requests: Number(used.requestCount || 0),
+    attempts: Number(used.attemptCount || 0),
     completedRequests: Number(used.completedRequests || 0),
     failedRequests: Number(used.failedRequests || 0),
     remainingRequests: Number(remaining.globalRpd || 0),
     limits,
+    policy: snapshot.policy || null,
+    providerQuota: snapshot.providerQuota || {
+      available: false,
+      message: 'ผู้ให้บริการไม่ได้ส่งข้อมูล quota หรือ reset time ผ่าน usage metadata',
+    },
     updatedAt: snapshot.updatedAt || null,
+    lastRequest: snapshot.lastRequest || null,
   };
 }
 
@@ -75,15 +88,20 @@ export default async function handler(req, res) {
     sendJson(res, 200, {
       source: 'unavailable',
       serverBacked: false,
-      status: 'syncing',
+      status: 'unavailable',
       message: error.message || 'AI usage tracking is not configured in local development.',
-      budgetTokens: AI_USAGE_LIMITS.dailyTokenBudget,
-      usedTokens: 0,
-      remainingTokens: AI_USAGE_LIMITS.dailyTokenBudget,
-      remainingPercent: 100,
-      requests: 0,
-      resetLabel: '00:00 น.',
-      limits: AI_USAGE_LIMITS,
+      budgetTokens: null,
+      usedTokens: null,
+      remainingTokens: null,
+      remainingPercent: null,
+      requests: null,
+      resetLabel: null,
+      limits: null,
+      policy: null,
+      providerQuota: {
+        available: false,
+        message: 'ผู้ให้บริการไม่ได้ส่งข้อมูล quota หรือ reset time ผ่าน usage metadata',
+      },
       updatedAt: null,
     });
   }

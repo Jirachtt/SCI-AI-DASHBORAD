@@ -355,6 +355,57 @@ export function chartToRows(chart, chartName = 'Chart') {
     return pointRows;
 }
 
+export function chartToMatrixRows(chart, chartName = 'Chart') {
+    const labels = Array.isArray(chart?.data?.labels) ? chart.data.labels : [];
+    const datasets = Array.isArray(chart?.data?.datasets) ? chart.data.datasets : [];
+    const rowCount = Math.max(labels.length, ...datasets.map(dataset => Array.isArray(dataset?.data) ? dataset.data.length : 0), 0);
+    if (!rowCount || !datasets.length) return [];
+
+    const usedSeriesNames = new Map();
+    const series = datasets.map((dataset, index) => {
+        const base = String(dataset?.label || `Series ${index + 1}`).trim() || `Series ${index + 1}`;
+        const count = (usedSeriesNames.get(base) || 0) + 1;
+        usedSeriesNames.set(base, count);
+        return { dataset, name: count === 1 ? base : `${base} (${count})` };
+    });
+
+    return Array.from({ length: rowCount }, (_, index) => {
+        const row = {
+            row: index + 1,
+            chart: chartName,
+            category: labels[index] ?? '',
+        };
+        series.forEach(({ dataset, name }) => {
+            const point = Array.isArray(dataset?.data) ? dataset.data[index] : undefined;
+            if (point && typeof point === 'object' && !Array.isArray(point)) {
+                row[`${name} label`] = point.label ?? point.major ?? point.faculty ?? labels[index] ?? '';
+                Object.entries(point).forEach(([key, value]) => {
+                    if (value == null || ['string', 'number', 'boolean'].includes(typeof value)) {
+                        row[`${name} ${key}`] = value ?? '';
+                    }
+                });
+            } else {
+                row[name] = point ?? '';
+            }
+        });
+        return row;
+    });
+}
+
+export function chartSeriesRows(chart, chartName = 'Chart') {
+    const datasets = Array.isArray(chart?.data?.datasets) ? chart.data.datasets : [];
+    return datasets.map((dataset, index) => ({
+        row: index + 1,
+        chart: chartName,
+        series: dataset?.label || `Series ${index + 1}`,
+        type: dataset?.type || chart?.chartType || chart?.type || 'bar',
+        axis: dataset?.yAxisID || dataset?.xAxisID || 'default',
+        points: Array.isArray(dataset?.data) ? dataset.data.length : 0,
+        unit: dataset?.unit || '',
+        hidden: dataset?.hidden === true ? 'yes' : 'no',
+    }));
+}
+
 function addSheet(sheets, name, rows) {
     const normalized = normalizeRows(rows).filter(row =>
         Object.values(row).some(value => value !== '' && value != null)
@@ -368,6 +419,20 @@ function addSheet(sheets, name, rows) {
         i += 1;
     }
     sheets[finalName] = normalized;
+}
+
+function mergeExportSheetMaps(baseSheets = {}, extraSheets = {}, extraSuffix = 'Custom') {
+    const merged = { ...(baseSheets || {}) };
+    Object.entries(extraSheets || {}).forEach(([name, value]) => {
+        let finalName = String(name || 'Data');
+        let index = 2;
+        while (Object.prototype.hasOwnProperty.call(merged, finalName)) {
+            finalName = index === 2 ? `${name} ${extraSuffix}` : `${name} ${extraSuffix} ${index}`;
+            index += 1;
+        }
+        merged[finalName] = value;
+    });
+    return merged;
 }
 
 function exportValue(value) {
@@ -2422,8 +2487,9 @@ async function collectChartSheets(root = document) {
         ...instanceCanvases,
     ])).filter(isVisibleElement);
 
-    canvases.forEach((canvas, idx) => {
-        if (seen.has(canvas)) return;
+    for (let idx = 0; idx < canvases.length; idx += 1) {
+        const canvas = canvases[idx];
+        if (seen.has(canvas)) continue;
         seen.add(canvas);
         const chart = ChartJS.getChart(canvas);
         chart?.update?.('none');
@@ -2431,15 +2497,25 @@ async function collectChartSheets(root = document) {
         const source = nearestReadableSource(canvas);
         const rows = chart ? chartToRows(chart, title) : [];
         try {
+            const sourceConfig = chart?.config?._config || chart?.config || {};
+            const highResolutionImage = chart
+                ? await renderChartImageDataUrl({
+                    chartType: sourceConfig.type || chart.config?.type || 'bar',
+                    data: sourceConfig.data || chart.data,
+                    options: sourceConfig.options || {},
+                    title,
+                    source,
+                })
+                : '';
             chartSheets.push({
                 name: title,
                 rows,
-                imageDataUrl: canvasToDataUrl(canvas, { title, source }),
+                imageDataUrl: highResolutionImage || canvasToDataUrl(canvas, { title, source }),
             });
         } catch (error) {
             console.warn('[exportUtils] Unable to capture canvas chart:', error);
         }
-    });
+    }
 
     const svgs = Array.from(root.querySelectorAll('.recharts-wrapper svg, svg.recharts-surface')).filter(isVisibleElement);
     for (let idx = 0; idx < svgs.length; idx += 1) {
@@ -2619,8 +2695,10 @@ export async function exportExcelReportWorkbook(title = 'page-export', sheets = 
         downloadProfessionalWorkbook(standardReportFileBase(`${title}_professional_dashboard`), buildHrProfessionalWorkbookSheets(title));
         return;
     }
+    const pageSheets = typeof document !== 'undefined' ? extractPageExportData(document).sheets : {};
+    const completeSheets = mergeExportSheetMaps(pageSheets, sheets, 'Filtered');
     const chartSheets = await collectChartSheets();
-    await exportWorkbook(standardReportFileBase(title), singleFileReportSheets(title, sheets, chartSheets));
+    await exportWorkbook(standardReportFileBase(title), singleFileReportSheets(title, completeSheets, chartSheets));
 }
 
 export async function exportCSVReportWorkbook(title = 'page-export', sheets = {}) {
@@ -2636,8 +2714,7 @@ export async function exportPageAsCSVReport(title = 'page-export') {
 }
 
 export async function exportPageAsExcelReport(title = 'page-export') {
-    const { sheets } = extractPageExportData();
-    await exportExcelReportWorkbook(title, sheets);
+    await exportExcelReportWorkbook(title);
 }
 
 export async function exportPageAsExcel(title = 'page-export') {
@@ -2666,14 +2743,39 @@ export async function exportChartAsCSVReport(title, chart) {
 export async function exportChartAsExcel(title, chart) {
     const chartTitle = title || 'Chart';
     const imageDataUrl = await renderChartImageDataUrl(chart);
+    const matrixRows = chartToMatrixRows(chart, chartTitle);
+    const longRows = chartToRows(chart, chartTitle);
+    const seriesRows = chartSeriesRows(chart, chartTitle);
+    const sourceValues = [
+        ...(Array.isArray(chart?.sources) ? chart.sources : []),
+        chart?.source,
+        chart?.subtitle,
+    ].filter(Boolean);
     const chartSheet = {
         name: chartTitle,
-        rows: chartToRows(chart, chartTitle),
+        rows: longRows,
         imageDataUrl,
+    };
+    const reportSheets = {
+        'Chart Summary': [
+            { field: 'ชื่อกราฟ', value: chartTitle },
+            { field: 'ชนิดกราฟ', value: chart?.chartType || chart?.type || 'bar' },
+            { field: 'จำนวนหมวด/จุด', value: matrixRows.length },
+            { field: 'จำนวนชุดข้อมูล', value: seriesRows.length },
+            { field: 'จำนวนค่าข้อมูลรวม', value: longRows.length },
+            { field: 'วันที่ Export', value: generatedAtText() },
+            { field: 'ขอบเขตหน้า', value: routeScope() },
+        ],
+        'Chart Matrix': matrixRows,
+        'Chart Data': longRows,
+        'Series Metadata': seriesRows,
+        Sources: sourceValues.length
+            ? sourceValues.map((source, index) => ({ row: index + 1, source: exportValue(source) }))
+            : [{ row: 1, source: 'แหล่งข้อมูลตามคำตอบและ context ที่แสดงใน AI Chat' }],
     };
     await exportWorkbook(
         standardReportFileBase(chartTitle, 'chart'),
-        singleFileReportSheets(chartTitle, { 'Chart Data': chartSheet.rows }, [chartSheet])
+        singleFileReportSheets(chartTitle, reportSheets, [chartSheet])
     );
 }
 

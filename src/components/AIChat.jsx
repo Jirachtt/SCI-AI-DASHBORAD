@@ -4,7 +4,7 @@ import { Bot, FileSpreadsheet, Maximize2, MessageCircle, Mic, MicOff, Paperclip,
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ensureStudentList, onStudentDataChange } from '../services/studentDataService';
-import { getAIModelSettings, getAITokenStats, getWaitSeconds, resetConversation, sendMessageToGemini } from '../services/geminiService';
+import { getAIModelSettings, getAITokenStats, getWaitSeconds, recordLocalAnswerUsage, resetConversation, sendMessageToGemini } from '../services/geminiService';
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { AI_ASSISTANT_NAME, APP_NAME_TH } from '../config/appBrand';
 import { tryInstantAnswer } from '../services/aiInstantAnswerService';
@@ -281,7 +281,8 @@ export default function AIChat() {
         const reasoningMode = isAnalyticalReasoningIntent(question);
         const instantResult = reasoningMode ? null : tryInstantAnswer(question, user);
         if (instantResult) {
-            setMessages(prev => [...prev, { role: 'bot', text: instantResult.text, chart: instantResult.chart }]);
+            const tokenUsage = recordLocalAnswerUsage();
+            setMessages(prev => [...prev, { role: 'bot', text: instantResult.text, chart: instantResult.chart, tokenUsage }]);
             return;
         }
 
@@ -291,7 +292,8 @@ export default function AIChat() {
             : null;
         const localResult = reasoningMode ? null : tools.tryLocalResponse(question, user);
         if (localResult) {
-            setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
+            const tokenUsage = recordLocalAnswerUsage();
+            setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart, tokenUsage }]);
             return;
         }
 

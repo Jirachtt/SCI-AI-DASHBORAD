@@ -475,6 +475,9 @@ function buildDashboardFacultyCompareAnswer(question, userContext) {
     const text = q(question);
     const wantsGpa = /gpa|เกรด|grade/.test(text);
     const labels = rows.map(row => row.name || row.faculty).filter(Boolean);
+    const gpaValues = rows.map(row => number(row.avgGPA ?? row.avgGpa, null));
+    const hasGpa = gpaValues.some(value => Number.isFinite(value) && value > 0 && value <= 4);
+    if (wantsGpa && !hasGpa) return null;
     const datasets = [
         {
             type: 'bar',
@@ -490,7 +493,7 @@ function buildDashboardFacultyCompareAnswer(question, userContext) {
         datasets.push({
             type: 'line',
             label: 'GPA เฉลี่ย',
-            data: rows.map(row => number(row.avgGPA ?? row.avgGpa)),
+            data: gpaValues,
             borderColor: 'var(--accent-purple)',
             backgroundColor: 'color-mix(in srgb, var(--accent-purple) 13%, transparent)',
             tension: 0.35,

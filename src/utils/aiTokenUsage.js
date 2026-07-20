@@ -1,97 +1,52 @@
+import { estimateTextTokens, normalizeAIUsage } from '../../shared/aiUsageSchema.js';
+
 const TOKEN_USAGE_SESSION_KEY = 'sci-ai-dashboard:ai-token-usage-session';
 
-function numberValue(value) {
-    if (value === null || value === undefined || value === '') return null;
-    const n = Number(value);
-    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
-}
+export const estimateTokens = estimateTextTokens;
 
-export function estimateTokens(value) {
-    const text = String(value || '');
-    if (!text.trim()) return 0;
-    return Math.ceil(text.length / 3.6);
-}
-
-export function normalizeTokenUsage(rawUsage = {}, {
-    provider = 'unknown',
-    model = 'unknown',
-    requestId = '',
-    fallbackInputText = '',
-    fallbackOutputText = '',
-    fallbackInputTokens = null,
-    fallbackOutputTokens = null,
-    selectedDatasets = [],
-    contextChars = 0,
-    contextCount = 0,
-    latencyMs = null,
-    success = true,
-    error = '',
-    source = '',
-    createdAt = new Date().toISOString(),
-} = {}) {
-    const isOpenAI = provider === 'openai' || rawUsage.prompt_tokens != null || rawUsage.completion_tokens != null;
-    const inputTokens = numberValue(rawUsage.promptTokenCount)
-        ?? numberValue(rawUsage.inputTokenCount)
-        ?? numberValue(rawUsage.prompt_tokens)
-        ?? numberValue(rawUsage.input_tokens);
-    const outputTokens = numberValue(rawUsage.candidatesTokenCount)
-        ?? numberValue(rawUsage.outputTokenCount)
-        ?? numberValue(rawUsage.completion_tokens)
-        ?? numberValue(rawUsage.output_tokens);
-    const totalTokens = numberValue(rawUsage.totalTokenCount)
-        ?? numberValue(rawUsage.total_tokens)
-        ?? (inputTokens != null || outputTokens != null ? Number(inputTokens || 0) + Number(outputTokens || 0) : null);
-    const cachedTokens = numberValue(rawUsage.cachedContentTokenCount)
-        ?? numberValue(rawUsage.cached_tokens)
-        ?? numberValue(rawUsage.prompt_tokens_details?.cached_tokens);
-    const reasoningTokens = numberValue(rawUsage.thoughtsTokenCount)
-        ?? numberValue(rawUsage.reasoningTokenCount)
-        ?? numberValue(rawUsage.completion_tokens_details?.reasoning_tokens);
-
-    const hasActualUsage = totalTokens != null && totalTokens > 0;
-    const resolvedInput = hasActualUsage && inputTokens == null && outputTokens != null
-        ? Math.max(0, totalTokens - outputTokens)
-        : inputTokens;
-    const resolvedOutput = hasActualUsage && outputTokens == null && inputTokens != null
-        ? Math.max(0, totalTokens - inputTokens)
-        : outputTokens;
-    const estimatedInput = numberValue(fallbackInputTokens) ?? estimateTokens(fallbackInputText);
-    const estimatedOutput = numberValue(fallbackOutputTokens) ?? estimateTokens(fallbackOutputText);
-
-    return {
-        provider,
-        model,
-        inputTokens: hasActualUsage ? (resolvedInput ?? null) : estimatedInput,
-        outputTokens: hasActualUsage ? (resolvedOutput ?? null) : estimatedOutput,
-        totalTokens: hasActualUsage ? totalTokens : estimatedInput + estimatedOutput,
-        cachedTokens: cachedTokens ?? null,
-        reasoningTokens: reasoningTokens ?? null,
-        isEstimated: !hasActualUsage,
-        source: source || (hasActualUsage
-            ? (isOpenAI ? 'provider_usage_metadata:openai' : 'provider_usage_metadata:gemini')
-            : 'client_estimate'),
-        requestId,
-        createdAt,
-        selectedDatasets: Array.isArray(selectedDatasets) ? selectedDatasets.slice(0, 12) : [],
-        contextChars: Number(contextChars || 0),
-        contextCount: Number(contextCount || 0),
-        latencyMs: latencyMs == null ? null : Number(latencyMs),
-        success: Boolean(success),
-        error: String(error || '').slice(0, 160),
-    };
+export function normalizeTokenUsage(rawUsage = {}, options = {}) {
+    return normalizeAIUsage(rawUsage, {
+        ...options,
+        status: options.status || (options.success === false ? 'error' : 'success'),
+        sourceDetail: options.sourceDetail || (
+            options.source && !['provider', 'count-api', 'estimated', 'local', 'cache'].includes(options.source)
+                ? options.source
+                : ''
+        ),
+        source: ['provider', 'count-api', 'estimated', 'local', 'cache'].includes(options.source)
+            ? options.source
+            : undefined,
+    });
 }
 
 export function usageKindLabel(usage) {
-    if (!usage) return 'Waiting';
+    if (!usage) return 'รอข้อมูล';
+    if (usage.source === 'local') return 'Local answer';
     if (usage.source === 'cache') return 'Cache';
-    return usage.isEstimated ? 'Estimated' : 'Actual';
+    if (usage.source === 'count-api') return 'Estimated (count API)';
+    return usage.isEstimated ? 'Estimated' : 'ข้อมูลจริงจาก Provider';
 }
 
 function readSessionRecords() {
     try {
         const raw = sessionStorage.getItem(TOKEN_USAGE_SESSION_KEY);
         const parsed = raw ? JSON.parse(raw) : [];
-        return Array.isArray(parsed) ? parsed : [];
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(item => {
+            const legacySource = String(item?.source || '');
+            const source = legacySource.startsWith('provider_usage_metadata')
+                ? 'provider'
+                : /estimate/i.test(legacySource)
+                    ? 'estimated'
+                    : legacySource || (item?.isEstimated ? 'estimated' : 'provider');
+            return {
+                ...item,
+                source,
+                sourceDetail: item?.sourceDetail || (source !== legacySource ? legacySource : ''),
+                thinkingTokens: item?.thinkingTokens ?? item?.reasoningTokens ?? null,
+                requestCount: item?.requestCount ?? (['local', 'cache'].includes(source) ? 0 : 1),
+            };
+        });
     } catch {
         return [];
     }
@@ -108,7 +63,13 @@ function writeSessionRecords(records) {
 export function recordTokenUsageSession(usage) {
     if (!usage) return getTokenUsageSessionSummary();
     const records = readSessionRecords();
-    const next = [...records, usage].slice(-120);
+    const requestId = String(usage.requestId || '');
+    const existingIndex = requestId
+        ? records.findIndex(item => String(item.requestId || '') === requestId)
+        : -1;
+    const next = existingIndex >= 0
+        ? records.map((item, index) => index === existingIndex ? usage : item).slice(-120)
+        : [...records, usage].slice(-120);
     writeSessionRecords(next);
     const summary = getTokenUsageSessionSummary(next);
     if (typeof window !== 'undefined') {
@@ -124,8 +85,13 @@ export function resetTokenUsageSession() {
 
 export function getTokenUsageSessionSummary(records = readSessionRecords()) {
     const safeRecords = Array.isArray(records) ? records : [];
-    const requestCount = safeRecords.length;
-    const totalTokens = safeRecords.reduce((sum, item) => sum + Number(item.totalTokens || 0), 0);
+    const modelRequests = safeRecords.filter(item => item.requestCount !== 0 && !['local', 'cache'].includes(item.source));
+    const requestCount = modelRequests.length;
+    const totalTokens = safeRecords.reduce((sum, item) => sum + Number(item.totalTokens ?? 0), 0);
+    const inputTokens = safeRecords.reduce((sum, item) => sum + Number(item.inputTokens ?? 0), 0);
+    const outputTokens = safeRecords.reduce((sum, item) => sum + Number(item.outputTokens ?? 0), 0);
+    const thinkingTokens = safeRecords.reduce((sum, item) => sum + Number(item.thinkingTokens ?? item.reasoningTokens ?? 0), 0);
+    const cachedTokens = safeRecords.reduce((sum, item) => sum + Number(item.cachedTokens ?? 0), 0);
     const actualTokens = safeRecords
         .filter(item => !item.isEstimated && item.source !== 'cache')
         .reduce((sum, item) => sum + Number(item.totalTokens || 0), 0);
@@ -133,6 +99,7 @@ export function getTokenUsageSessionSummary(records = readSessionRecords()) {
         .filter(item => item.isEstimated)
         .reduce((sum, item) => sum + Number(item.totalTokens || 0), 0);
     const cacheHits = safeRecords.filter(item => item.source === 'cache').length;
+    const localAnswers = safeRecords.filter(item => item.source === 'local').length;
     const last = safeRecords[safeRecords.length - 1] || null;
     const datasetCounts = new Map();
     safeRecords.forEach(item => {
@@ -146,14 +113,20 @@ export function getTokenUsageSessionSummary(records = readSessionRecords()) {
 
     return {
         requestCount,
+        interactionCount: safeRecords.length,
+        localAnswers,
         totalTokens,
+        inputTokens,
+        outputTokens,
+        thinkingTokens,
+        cachedTokens,
         actualTokens,
         estimatedTokens,
         cacheHits,
-        averageTokens: requestCount ? Math.round(totalTokens / requestCount) : 0,
+        averageTokens: requestCount ? Math.round(totalTokens / requestCount) : null,
         last,
         topDataset,
-        actualCount: safeRecords.filter(item => !item.isEstimated && item.source !== 'cache').length,
+        actualCount: safeRecords.filter(item => item.source === 'provider').length,
         estimatedCount: safeRecords.filter(item => item.isEstimated).length,
         records: safeRecords.slice(-20),
     };

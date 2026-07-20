@@ -143,6 +143,9 @@ export function decideAIRetrievalPolicy({
     } else if (explicitWebRequest) {
         useWebSearch = true;
         reason = 'user_requested_trusted_web_verification_after_local';
+    } else if ((intent === 'maejo_public' || intent === 'student_faq') && evidence.directContextCount === 0) {
+        useWebSearch = true;
+        reason = 'no_direct_local_public_answer';
     } else if (evidence.coverage === 'none') {
         useWebSearch = true;
         reason = 'no_relevant_local_evidence';

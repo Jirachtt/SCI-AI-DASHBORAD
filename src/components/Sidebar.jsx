@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
-import { getAIModelRuntimeStatus, getAITokenBudgetSnapshot, refreshAITokenBudgetSnapshot } from '../services/geminiService';
+import { getAIModelRuntimeStatus, getAITokenBudgetSnapshot, getAITokenUsageSessionSummary, refreshAITokenBudgetSnapshot } from '../services/geminiService';
+import { usageKindLabel } from '../utils/aiTokenUsage';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
 import { LogOut, Clock, Bot, Settings, UserRound, Palette, Activity, X } from 'lucide-react';
 import {
@@ -19,6 +20,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [tokenBudget, setTokenBudget] = useState(() => getAITokenBudgetSnapshot());
     const [modelRuntime, setModelRuntime] = useState(() => getAIModelRuntimeStatus());
+    const [tokenSession, setTokenSession] = useState(() => getAITokenUsageSessionSummary());
 
     const handleLogout = async () => {
         setSettingsOpen(false);
@@ -31,19 +33,23 @@ export default function Sidebar({ isOpen, onClose }) {
         const refresh = () => {
             setTokenBudget(getAITokenBudgetSnapshot());
             setModelRuntime(getAIModelRuntimeStatus());
+            setTokenSession(getAITokenUsageSessionSummary());
             refreshAITokenBudgetSnapshot()
                 .then(setTokenBudget)
                 .catch(() => setTokenBudget(getAITokenBudgetSnapshot()));
         };
         const handleUsageUpdate = (event) => setTokenBudget(event.detail || getAITokenBudgetSnapshot());
         const handleTokenStatsUpdate = () => setModelRuntime(getAIModelRuntimeStatus());
+        const handleSessionUsageUpdate = () => setTokenSession(getAITokenUsageSessionSummary());
         refresh();
         window.addEventListener('sci-ai-usage-updated', handleUsageUpdate);
         window.addEventListener('sci-ai-token-stats-updated', handleTokenStatsUpdate);
+        window.addEventListener('sci-ai-token-usage-session-updated', handleSessionUsageUpdate);
         const interval = setInterval(refresh, 15000);
         return () => {
             window.removeEventListener('sci-ai-usage-updated', handleUsageUpdate);
             window.removeEventListener('sci-ai-token-stats-updated', handleTokenStatsUpdate);
+            window.removeEventListener('sci-ai-token-usage-session-updated', handleSessionUsageUpdate);
             clearInterval(interval);
         };
     }, [settingsOpen]);
@@ -64,12 +70,20 @@ export default function Sidebar({ isOpen, onClose }) {
     const canViewFeatured = Boolean(featuredItem && getVisibleNavigationCategories(user, { includeFeatured: true })
         .some(group => group.items.some(item => item.id === featuredItem.id)));
     const visibleMenuGroups = getVisibleNavigationCategories(user);
-    const tokenSyncing = !tokenBudget.isServerBacked && tokenBudget.status !== 'ready';
-    const tokenRemainingLabel = tokenSyncing ? 'กำลังซิงก์' : tokenBudget.remainingTokens.toLocaleString();
-    const tokenUsedLabel = tokenSyncing ? 'รอข้อมูลจาก server' : `ใช้ไป ${tokenBudget.usedTokens.toLocaleString()} tokens`;
-    const tokenRequestLabel = `รีเซ็ต ${tokenBudget.resetLabel || '00:00 น.'}`;
-    const tokenPercentLabel = tokenSyncing ? 'sync' : `${tokenBudget.remainingPercent}%`;
-    const tokenBarWidth = tokenSyncing ? 0 : tokenBudget.remainingPercent;
+    const latestUsage = tokenSession.last || tokenBudget.lastRequest || null;
+    const latestUsageLabel = latestUsage?.totalTokens == null
+        ? 'รอข้อมูลจาก Provider'
+        : `${Number(latestUsage.totalTokens).toLocaleString('th-TH')} tokens`;
+    const latestUsageKind = latestUsage ? usageKindLabel(latestUsage) : 'ยังไม่มีคำขอ AI';
+    const sessionUsageLabel = tokenSession.requestCount
+        ? `แชทนี้ ${tokenSession.totalTokens.toLocaleString('th-TH')} tokens · ${tokenSession.requestCount} คำขอ`
+        : tokenSession.localAnswers
+            ? `Local answer ${tokenSession.localAnswers} ครั้ง · ไม่ใช้ token`
+            : 'ส่งคำถาม AI เพื่อเริ่มวัดการใช้งาน';
+    const budgetAvailable = tokenBudget.budgetPolicyAvailable === true
+        && tokenBudget.remainingPercent != null
+        && tokenBudget.remainingTokens != null;
+    const tokenBarWidth = budgetAvailable ? tokenBudget.remainingPercent : 0;
     const modelModeLabel = modelRuntime.mode === 'auto' ? 'Auto escalation' : 'Manual';
     const modelLastLabel = modelRuntime.lastModelLabel || modelRuntime.lastModel || '-';
 
@@ -235,24 +249,45 @@ export default function Sidebar({ isOpen, onClose }) {
                         </div>
 
                         <div className="settings-popover-section">
-                            <div className="settings-token-card" aria-label={`AI token คงเหลือ ${tokenPercentLabel}`}>
+                            <div className="settings-token-card" aria-label="สถานะการใช้งาน AI">
                                 <div className="settings-token-head">
-                                    <span className="settings-menu-icon"><Activity size={15} /></span>
+                                    <span className="settings-menu-icon" title="Token usage แยกจาก context window และ provider quota"><Activity size={15} /></span>
                                     <span className="settings-menu-main">
-                                        <span>AI token คงเหลือ</span>
-                                        <small>สำหรับการตอบคำถามของเว็บ</small>
+                                        <span>การใช้งาน AI</span>
+                                        <small>ข้อมูลต่อคำตอบและในแชทนี้</small>
                                     </span>
                                 </div>
                                 <div className="settings-token-value-row">
-                                    <strong>{tokenRemainingLabel}</strong>
-                                    <span>{tokenPercentLabel}</span>
-                                </div>
-                                <div className="settings-rate-bar settings-token-bar" aria-hidden="true">
-                                    <span style={{ width: `${tokenBarWidth}%` }} />
+                                    <strong>{latestUsageLabel}</strong>
+                                    <span className={latestUsage?.isEstimated ? 'is-estimated' : ''}>{latestUsageKind}</span>
                                 </div>
                                 <div className="settings-token-meta">
-                                    <span>{tokenUsedLabel}</span>
-                                    <span>{tokenRequestLabel}</span>
+                                    <span>{sessionUsageLabel}</span>
+                                </div>
+                                {latestUsage && latestUsage.source !== 'local' && latestUsage.source !== 'cache' && (
+                                    <div className="settings-usage-components">
+                                        <span>Input {latestUsage.inputTokens == null ? '-' : Number(latestUsage.inputTokens).toLocaleString('th-TH')}</span>
+                                        <span>Output {latestUsage.outputTokens == null ? '-' : Number(latestUsage.outputTokens).toLocaleString('th-TH')}</span>
+                                        <span>Thinking {latestUsage.thinkingTokens == null ? '-' : Number(latestUsage.thinkingTokens).toLocaleString('th-TH')}</span>
+                                    </div>
+                                )}
+                                {budgetAvailable && (
+                                    <div className="settings-budget-policy" title="งบ token ที่ระบบ SCI AI บังคับใช้ ไม่ใช่ quota คงเหลือของผู้ให้บริการ">
+                                        <div className="settings-token-meta">
+                                            <span>งบระบบรายวันเหลือ {tokenBudget.remainingTokens.toLocaleString('th-TH')}</span>
+                                            <span>{tokenBudget.remainingPercent}%</span>
+                                        </div>
+                                        <div className="settings-rate-bar settings-token-bar" aria-hidden="true">
+                                            <span style={{ width: `${tokenBarWidth}%` }} />
+                                        </div>
+                                        <div className="settings-token-meta">
+                                            <span>ใช้แล้ว {Number(tokenBudget.usedTokens || 0).toLocaleString('th-TH')}</span>
+                                            <span>{tokenBudget.resetLabel ? `รีเซ็ต ${tokenBudget.resetLabel}` : 'เวลารอข้อมูลจากระบบ'}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="settings-provider-quota" title="Gemini usage metadata ส่งจำนวน token ต่อคำตอบ แต่ไม่ส่ง quota บัญชีหรือเวลา reset">
+                                    Provider quota: {tokenBudget.providerQuota?.available ? 'พร้อมใช้งาน' : 'ผู้ให้บริการไม่ได้ส่งข้อมูล'}
                                 </div>
                             </div>
                             <div className="settings-token-card settings-model-card" aria-label={`AI model ล่าสุด ${modelLastLabel}`}>
@@ -265,11 +300,11 @@ export default function Sidebar({ isOpen, onClose }) {
                                 </div>
                                 <div className="settings-token-value-row compact">
                                     <strong>{modelLastLabel}</strong>
-                                    <span>{modelRuntime.totalRequests.toLocaleString('th-TH')} req</span>
+                                    <span>{latestUsage?.source === 'provider' ? 'Actual' : latestUsage?.isEstimated ? 'Estimated' : 'Standby'}</span>
                                 </div>
                                 <div className="settings-token-meta">
                                     <span>contexts ล่าสุด {modelRuntime.lastContextCount.toLocaleString('th-TH')}</span>
-                                    <span>{modelRuntime.lastIntent}</span>
+                                    <span>{latestUsage?.contextTokens == null ? 'context รอข้อมูล' : `${Number(latestUsage.contextTokens).toLocaleString('th-TH')} tokens`}</span>
                                 </div>
                             </div>
                             <button type="button" className="settings-logout-row" onClick={handleLogout}>

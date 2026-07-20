@@ -22,6 +22,7 @@ import {
     getAIModelSettings,
     getAITokenBudgetSnapshot,
     getAITokenUsageSessionSummary,
+    recordLocalAnswerUsage,
     refreshAITokenBudgetSnapshot,
 } from '../services/geminiService';
 import { getRoleTermCoverage } from '../utils/roleValidity';
@@ -84,6 +85,7 @@ function formatTokenCount(value) {
 
 function tokenUsageBadgeClass(usage) {
     if (!usage) return 'idle';
+    if (usage.source === 'local') return 'local';
     if (usage.source === 'cache') return 'cache';
     return usage.isEstimated ? 'estimated' : 'actual';
 }
@@ -1822,6 +1824,7 @@ function normalizeStudentGpaComboChart(chart) {
     if (!combo) return chart;
 
     const { countDs, gpaDs } = combo;
+    const originalGpaType = gpaDs.type || chart.chartType;
     const useLineForGpa = isTimeSeriesChart(chart);
     chart.chartType = 'bar';
     chart.options = chart.options || {};
@@ -1839,7 +1842,11 @@ function normalizeStudentGpaComboChart(chart) {
     gpaDs.yAxisID = 'y1';
     gpaDs.order = 1;
     gpaDs.borderColor = gpaDs.borderColor || 'var(--accent-purple)';
-    gpaDs.backgroundColor = gpaDs.backgroundColor || (useLineForGpa ? 'color-mix(in srgb, var(--accent-purple) 18%, transparent)' : 'color-mix(in srgb, var(--accent-purple) 72%, transparent)');
+    gpaDs.backgroundColor = !useLineForGpa && originalGpaType === 'line'
+        ? 'color-mix(in srgb, var(--accent-purple) 72%, transparent)'
+        : (gpaDs.backgroundColor || (useLineForGpa
+            ? 'color-mix(in srgb, var(--accent-purple) 18%, transparent)'
+            : 'color-mix(in srgb, var(--accent-purple) 72%, transparent)'));
     if (useLineForGpa) {
         gpaDs.pointBackgroundColor = gpaDs.pointBackgroundColor || 'var(--accent-purple)';
         gpaDs.pointBorderColor = gpaDs.pointBorderColor || 'var(--text-on-accent)';
@@ -1966,35 +1973,27 @@ function buildStudentGpaScatterChart(originalChart) {
     if (!combo) return chart;
 
     const labels = chart.data?.labels || [];
-    const counts = labels
-        .map((_, idx) => Number(combo.countDs.data?.[idx]))
-        .filter(value => Number.isFinite(value) && value > 0);
-    const minCount = counts.length ? Math.min(...counts) : 0;
-    const maxCount = counts.length ? Math.max(...counts) : 1;
-    const radiusForCount = (value) => {
-        if (!Number.isFinite(value) || value <= 0) return 5;
-        if (maxCount === minCount) return 9;
-        const normalized = (Math.sqrt(value) - Math.sqrt(minCount)) / Math.max(1, Math.sqrt(maxCount) - Math.sqrt(minCount));
-        return Math.round((6 + normalized * 10) * 10) / 10;
-    };
     const points = labels.map((label, idx) => {
         const x = Number(combo.countDs.data?.[idx]);
         const y = Number(combo.gpaDs.data?.[idx]);
-        return Number.isFinite(x) && Number.isFinite(y) && y > 0
-            ? { x: idx + 1, y, r: radiusForCount(x), count: x, major: String(label) }
+        return Number.isFinite(x) && x > 0 && Number.isFinite(y) && y > 0 && y <= 4
+            ? { x, y, faculty: String(label) }
             : null;
     }).filter(Boolean);
 
+    if (!points.length) return normalizeStudentGpaComboChart(chart);
+
     return {
         ...chart,
-        chartType: 'bubble',
+        chartType: 'scatter',
         data: {
             datasets: [{
-                label: 'GPA เฉลี่ย (ขนาดจุด = จำนวนนักศึกษา)',
+                label: 'จำนวนนักศึกษาเทียบ GPA เฉลี่ย',
                 data: points,
                 backgroundColor: 'color-mix(in srgb, var(--accent-success) 72%, transparent)',
                 borderColor: 'var(--accent-success)',
                 borderWidth: 2,
+                pointRadius: 7,
                 pointHoverRadius: 10,
                 hoverBorderWidth: 3,
             }],
@@ -2006,16 +2005,12 @@ function buildStudentGpaScatterChart(originalChart) {
                 x: {
                     type: 'linear',
                     position: 'bottom',
-                    min: 0.5,
-                    max: Math.max(1.5, labels.length + 0.5),
-                    title: { display: true, text: 'คณะ/สาขา' },
+                    beginAtZero: true,
+                    title: { display: true, text: 'จำนวนนักศึกษา (คน)' },
                     ticks: {
                         color: 'var(--chart-muted)',
-                        font: { size: 10 },
-                        stepSize: 1,
-                        maxRotation: 35,
-                        minRotation: 20,
-                        callback: value => labels[Number(value) - 1] || '',
+                        font: { size: 11 },
+                        callback: value => Number(value).toLocaleString('th-TH'),
                     },
                     grid: { color: 'var(--chart-grid)' },
                 },
@@ -2032,7 +2027,8 @@ function buildStudentGpaScatterChart(originalChart) {
                 ...(chart.options?.plugins || {}),
                 legend: {
                     ...(chart.options?.plugins?.legend || {}),
-                    display: false,
+                    display: true,
+                    position: 'top',
                 },
                 tooltip: {
                     ...(chart.options?.plugins?.tooltip || {}),
@@ -2040,13 +2036,24 @@ function buildStudentGpaScatterChart(originalChart) {
                     callbacks: {
                         label: ctx => {
                             const raw = ctx.raw || {};
-                            return `${raw.major || 'สาขา'}: ${Number(raw.count || 0).toLocaleString('th-TH')} คน, GPA ${Number(raw.y || 0).toFixed(2)}`;
+                            return `${raw.faculty || 'คณะ/สาขา'}: ${Number(raw.x || 0).toLocaleString('th-TH')} คน, GPA ${Number(raw.y || 0).toFixed(2)}`;
                         },
                     },
                 },
             },
         },
     };
+}
+
+function countStudentGpaPairs(chart) {
+    const combo = getStudentGpaDatasets(chart);
+    if (!combo) return 0;
+    const labels = chart?.data?.labels || [];
+    return labels.reduce((total, _, index) => {
+        const count = Number(combo.countDs.data?.[index]);
+        const gpa = Number(combo.gpaDs.data?.[index]);
+        return total + (Number.isFinite(count) && count > 0 && Number.isFinite(gpa) && gpa > 0 && gpa <= 4 ? 1 : 0);
+    }, 0);
 }
 
 function buildGpaRateScatterChart(originalChart) {
@@ -2241,7 +2248,7 @@ function computeChartHeight(uiType, categoryCount = 0) {
         return Math.min(900, Math.max(320, categoryCount * 28 + 110));
     }
     if (uiType === 'bar' && categoryCount > 12) {
-        return 380;
+        return Math.min(520, 380 + Math.ceil((categoryCount - 12) / 4) * 34);
     }
     if (uiType === 'scatter' || uiType === 'bubble') {
         return Math.min(520, Math.max(360, categoryCount * 20 + 180));
@@ -2250,6 +2257,71 @@ function computeChartHeight(uiType, categoryCount = 0) {
         return 380;
     }
     return 320;
+}
+
+function compactChartAxisLabel(value, maxChars = 18, maxLines = 3) {
+    const text = String(value ?? '').trim();
+    if (!text || text.length <= maxChars) return text;
+    const normalized = text.replace(/\s*[—–-]\s*/g, ' - ').replace(/\s+/g, ' ');
+    const lines = [];
+    let remaining = normalized;
+    while (remaining && lines.length < maxLines) {
+        if (remaining.length <= maxChars) {
+            lines.push(remaining);
+            remaining = '';
+            break;
+        }
+        const candidate = remaining.slice(0, maxChars + 1);
+        const splitAt = Math.max(candidate.lastIndexOf(' '), candidate.lastIndexOf('/'));
+        const take = splitAt >= Math.floor(maxChars * 0.55) ? splitAt : maxChars;
+        lines.push(remaining.slice(0, take).trim());
+        remaining = remaining.slice(take).replace(/^[\s/]+/, '');
+    }
+    if (remaining && lines.length) lines[lines.length - 1] = `${lines[lines.length - 1].replace(/…$/, '')}…`;
+    return lines;
+}
+
+function computeChartMinWidth(uiType, categoryCount = 0, expanded = false) {
+    if (uiType === 'hbar' || uiType === 'scatter' || uiType === 'bubble') return '100%';
+    if (['pie', 'doughnut', 'radar'].includes(uiType)) return '100%';
+    const pixelsPerCategory = expanded ? 78 : 68;
+    return categoryCount > 10 ? `${Math.max(expanded ? 1080 : 880, categoryCount * pixelsPerCategory)}px` : '100%';
+}
+
+function applyDenseCategoryReadability(options, uiType, categoryCount, expanded) {
+    if (categoryCount <= 8 || !['bar', 'hbar', 'line'].includes(uiType)) return options;
+    const horizontal = uiType === 'hbar';
+    const axisKey = horizontal ? 'y' : 'x';
+    const axis = options.scales?.[axisKey] || {};
+    const existingTicks = axis.ticks || {};
+    const existingCallback = existingTicks.callback;
+    options.scales = {
+        ...(options.scales || {}),
+        [axisKey]: {
+            ...axis,
+            ticks: {
+                ...existingTicks,
+                autoSkip: false,
+                maxRotation: horizontal ? 0 : (expanded ? 28 : 34),
+                minRotation: horizontal ? 0 : (expanded ? 14 : 20),
+                padding: 8,
+                callback: function callback(value, index, ticks) {
+                    const label = typeof existingCallback === 'function'
+                        ? existingCallback.call(this, value, index, ticks)
+                        : this?.getLabelForValue?.(value) ?? value;
+                    return compactChartAxisLabel(label, expanded ? 22 : 18, expanded ? 3 : 2);
+                },
+            },
+        },
+    };
+    options.layout = {
+        ...(typeof options.layout === 'object' && options.layout ? options.layout : {}),
+        padding: {
+            ...(typeof options.layout?.padding === 'object' && options.layout.padding ? options.layout.padding : {}),
+            bottom: expanded ? 10 : 6,
+        },
+    };
+    return options;
 }
 
 function isCartesianChartType(chartType) {
@@ -2290,18 +2362,26 @@ function chartOptionsForRender(chart, uiType, expanded = false) {
     const chartType = realChartType(uiType || chart.chartType);
     const data = JSON.parse(JSON.stringify(chart.data || {}));
     sanitizeChartDatasetColors({ chartType, data });
+    const categoryCount = data.labels?.length || data.datasets?.[0]?.data?.length || 0;
+    const options = {
+        ...(chart.options || {}),
+        scales: { ...(chart.options?.scales || {}) },
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            ...(chart.options?.plugins || {}),
+            legend: {
+                ...(chart.options?.plugins?.legend || {}),
+                position: categoryCount > 8 ? 'top' : (chart.options?.plugins?.legend?.position || 'bottom'),
+            },
+            zoom: chartZoomOptions(chart, uiType, expanded),
+        },
+    };
+    applyDenseCategoryReadability(options, uiType, categoryCount, expanded);
     return {
         ...chart,
         data,
-        options: {
-            ...(chart.options || {}),
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                ...(chart.options?.plugins || {}),
-                zoom: chartZoomOptions(chart, uiType, expanded),
-            },
-        },
+        options,
     };
 }
 
@@ -2313,10 +2393,9 @@ function availableChartTypes(chart) {
     const isPoint = chart.chartType === 'scatter' || chart.chartType === 'bubble';
     if (isPoint) return []; // scatter/bubble don't switch sensibly
     if (isStudentGpaComboChart(chart)) {
-        return [
-            { id: 'bar', label: isTimeSeriesChart(chart) ? 'ผสม' : 'แท่งคู่', icon: BarChart3 },
-            { id: 'bubble', label: 'จุด', icon: CircleDot },
-        ];
+        const options = [{ id: 'bar', label: isTimeSeriesChart(chart) ? 'ผสม' : 'แท่งคู่', icon: BarChart3 }];
+        if (countStudentGpaPairs(chart) > 0) options.push({ id: 'scatter', label: 'จุด', icon: CircleDot });
+        return options;
     }
     if (isGpaRateComboChart(chart)) {
         return [
@@ -2368,12 +2447,13 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
     const initialUiType = getInitialUiChartType(msg.chart);
     const [chartType, setChartType] = useState(initialUiType);
     const renderedChart = deriveChartConfig(msg.chart, chartType);
-    const renderType = realChartType(chartType);
+    const renderType = realChartType(renderedChart?.chartType || chartType);
     const switchOptions = availableChartTypes(msg.chart);
     const categoryCount = renderedChart?.data?.labels?.length
         || renderedChart?.data?.datasets?.[0]?.data?.length
         || 0;
     const wrapperHeight = computeChartHeight(chartType, categoryCount);
+    const chartMinWidth = computeChartMinWidth(chartType, categoryCount, false);
     const chartRef = useRef(null);
 
     if (msg.role === 'user') {
@@ -2445,7 +2525,11 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
                             {usageKindLabel(tokenUsage)}
                         </span>
                         <span>{formatTokenCount(tokenUsage.totalTokens)} tokens</span>
-                        <span>in {formatTokenCount(tokenUsage.inputTokens)} / out {formatTokenCount(tokenUsage.outputTokens)}</span>
+                        {tokenUsage.source !== 'local' && tokenUsage.source !== 'cache' && (
+                            <span>in {formatTokenCount(tokenUsage.inputTokens)} / out {formatTokenCount(tokenUsage.outputTokens)}</span>
+                        )}
+                        {Number(tokenUsage.thinkingTokens || 0) > 0 && <span>thinking {formatTokenCount(tokenUsage.thinkingTokens)}</span>}
+                        {Number(tokenUsage.cachedTokens || 0) > 0 && <span>cached {formatTokenCount(tokenUsage.cachedTokens)}</span>}
                         <span>{tokenUsage.model || tokenUsage.provider || 'AI'}</span>
                     </div>
                 )}
@@ -2497,13 +2581,15 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
                             </button>
                         </div>
                         <div className="ai-page-chart-wrapper" style={{ height: wrapperHeight }}>
-                            <ReactChart
-                                ref={chartRef}
-                                type={renderType}
-                                data={chartData.data}
-                                options={chartData.options}
-                                redraw={false}
-                            />
+                            <div className="ai-page-chart-canvas-shell" style={{ minWidth: chartMinWidth }}>
+                                <ReactChart
+                                    ref={chartRef}
+                                    type={renderType}
+                                    data={chartData.data}
+                                    options={chartData.options}
+                                    redraw={false}
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -2728,10 +2814,6 @@ function AIChatPageContent() {
     const uploadedFileLabel = uploadedFileData
         ? `${uploadedFileData.rowCount.toLocaleString('th-TH')} แถว`
         : 'ยังไม่มีไฟล์แนบ';
-    const tokenBudgetReady = tokenBudget.isServerBacked || tokenBudget.status === 'ready';
-    const tokenBudgetLabel = tokenBudgetReady
-        ? `${tokenBudget.remainingPercent}%`
-        : 'sync';
     const lastTokenUsage = lastAIMetadata?.tokenUsage || tokenSession.last || null;
     const lastTokenLabel = lastTokenUsage
         ? `${formatTokenCount(lastTokenUsage.totalTokens)}`
@@ -2756,8 +2838,8 @@ function AIChatPageContent() {
         { icon: Gauge, label: 'AI Context', value: selectedDatasetLabel, detail: selectedDatasetDetail, color: 'var(--accent-cyan)' },
         { icon: FileSpreadsheet, label: 'ไฟล์วิเคราะห์', value: uploadedFileLabel, detail: uploadedFileData ? 'พร้อมนำไปรวมบริบท' : 'CSV / Excel', color: 'var(--accent-orange)' },
         { icon: Bot, label: 'Model ล่าสุด', value: aiRuntimeStatus.lastModelLabel, detail: aiRuntimeStatus.mode === 'auto' ? 'ต่ำไปสูงอัตโนมัติ' : 'manual override', color: 'var(--accent-purple)' },
-        { icon: Gauge, label: 'Token คงเหลือ', value: tokenBudgetLabel, detail: tokenBudgetReady ? `${tokenBudget.remainingTokens.toLocaleString('th-TH')} tokens` : 'กำลังซิงก์ server', color: 'var(--accent-cyan)' },
-        { icon: Gauge, label: 'Token รอบล่าสุด', value: lastTokenLabel, detail: lastTokenDetail, color: lastTokenUsage?.isEstimated ? 'var(--accent-warning)' : 'var(--accent-success)' },
+        { icon: Gauge, label: 'Usage ล่าสุด', value: lastTokenLabel, detail: lastTokenDetail, color: lastTokenUsage?.isEstimated ? 'var(--accent-warning)' : 'var(--accent-success)' },
+        { icon: Gauge, label: 'Context ล่าสุด', value: lastTokenUsage?.contextTokens == null ? 'รอข้อมูล' : formatTokenCount(lastTokenUsage.contextTokens), detail: lastTokenUsage?.contextLimit ? `limit ${formatTokenCount(lastTokenUsage.contextLimit)}` : 'Provider ไม่ได้ส่ง context limit', color: 'var(--accent-cyan)' },
     ];
     const answerVerification = lastAIMetadata?.answerVerification;
     const contextSlimming = lastAIMetadata?.contextSlimming || {};
@@ -2768,10 +2850,11 @@ function AIChatPageContent() {
         { label: 'Datasets', value: selectedDatasetLabel, detail: selectedDatasetDetail, state: lastAIMetadata ? 'ready' : 'idle' },
         { label: 'Denied', value: lastAIMetadata?.deniedDatasets?.length ? lastAIMetadata.deniedDatasets.slice(0, 3).join(', ') : 'none', detail: 'role policy', state: lastAIMetadata?.deniedDatasets?.length ? 'warn' : 'ready' },
         { label: 'Verification', value: answerVerification?.status || 'waiting', detail: answerVerification?.warningCount ? `${answerVerification.warningCount} warning` : `${answerVerification?.answerNumberCount || 0} numbers`, state: verificationState },
-        { label: 'Context budget', value: contextSlimming.usedChars ? `${contextSlimming.usedChars.toLocaleString('th-TH')} chars` : 'waiting', detail: contextSlimming.originalChars ? `from ${contextSlimming.originalChars.toLocaleString('th-TH')}` : 'selected per intent', state: contextSlimming.trimmedContextCount ? 'warn' : (lastAIMetadata ? 'ready' : 'idle') },
+        { label: 'Context window', value: lastTokenUsage?.contextTokens == null ? 'waiting' : `${formatTokenCount(lastTokenUsage.contextTokens)} tokens`, detail: lastTokenUsage?.contextLimit ? `verified limit ${formatTokenCount(lastTokenUsage.contextLimit)}` : 'provider did not report a context limit', state: lastTokenUsage ? 'ready' : 'idle' },
+        { label: 'Context selection', value: contextSlimming.usedChars ? `${contextSlimming.usedChars.toLocaleString('th-TH')} chars` : 'waiting', detail: contextSlimming.originalChars ? `from ${contextSlimming.originalChars.toLocaleString('th-TH')}` : 'selected per intent', state: contextSlimming.trimmedContextCount ? 'warn' : (lastAIMetadata ? 'ready' : 'idle') },
         { label: 'Token usage', value: lastTokenUsage ? `${formatTokenCount(lastTokenUsage.totalTokens)}` : '-', detail: lastTokenUsage ? `${usageKindLabel(lastTokenUsage)} • in ${formatTokenCount(lastTokenUsage.inputTokens)} / out ${formatTokenCount(lastTokenUsage.outputTokens)}` : 'waiting', state: lastTokenUsage?.isEstimated ? 'warn' : (lastTokenUsage ? 'ready' : 'idle') },
         { label: 'Session total', value: tokenSession.requestCount ? `${formatTokenCount(tokenSession.totalTokens)}` : '-', detail: tokenSession.requestCount ? `${tokenSession.requestCount} req • avg ${formatTokenCount(tokenSession.averageTokens)}` : 'this browser session', state: tokenSession.estimatedCount ? 'warn' : (tokenSession.requestCount ? 'ready' : 'idle') },
-        { label: 'Token source', value: lastTokenUsage ? usageKindLabel(lastTokenUsage) : 'waiting', detail: lastTokenUsage?.source || 'provider metadata when available', state: lastTokenUsage?.isEstimated ? 'warn' : (lastTokenUsage ? 'ready' : 'idle') },
+        { label: 'Token source', value: lastTokenUsage ? usageKindLabel(lastTokenUsage) : 'waiting', detail: lastTokenUsage?.sourceDetail || lastTokenUsage?.source || 'provider metadata when available', state: lastTokenUsage?.isEstimated ? 'warn' : (lastTokenUsage ? 'ready' : 'idle') },
         { label: 'Latency', value: lastAIMetadata?.latencyMs ? `${lastAIMetadata.latencyMs}ms` : '-', detail: lastAIMetadata?.cached ? 'cache hit' : 'fresh response', state: lastAIMetadata ? 'ready' : 'idle' },
         { label: 'Model route', value: lastAIMetadata?.modelName || aiRuntimeStatus.lastModelLabel, detail: lastAIMetadata?.useSearch ? 'trusted web fallback' : 'local-first', state: 'ready' },
     ];
@@ -3294,7 +3377,8 @@ function AIChatPageContent() {
             // Try local response first (forecast, student search)
             const localResult = reasoningMode ? null : tryLocalResponse(userMsg, user);
             if (localResult) {
-                setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
+                const tokenUsage = recordLocalAnswerUsage();
+                setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart, tokenUsage }]);
                 setTyping(false);
                 return;
             }
@@ -3343,7 +3427,8 @@ function AIChatPageContent() {
             // Try local response first (forecast, student search)
             const localResult = reasoningMode ? null : tryLocalResponse(query, user);
             if (localResult) {
-                setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart }]);
+                const tokenUsage = recordLocalAnswerUsage();
+                setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart, tokenUsage }]);
                 setTyping(false);
                 return;
             }
@@ -3950,24 +4035,34 @@ function AIChatPageContent() {
                             </div>
                             <div className="ai-token-monitor-grid">
                                 <div className="ai-token-monitor-card">
-                                    <span>ใช้ในแชทนี้</span>
-                                    <strong>{formatTokenCount(tokenSession.totalTokens)}</strong>
-                                    <small>{tokenSession.requestCount} requests</small>
+                                    <span>คำตอบล่าสุด</span>
+                                    <strong>{lastTokenUsage?.totalTokens == null ? 'รอข้อมูล' : formatTokenCount(lastTokenUsage.totalTokens)}</strong>
+                                    <small>{lastTokenUsage ? `${usageKindLabel(lastTokenUsage)} · ${lastTokenUsage.model || lastTokenUsage.provider}` : 'รอข้อมูล usage จาก Provider'}</small>
                                 </div>
                                 <div className="ai-token-monitor-card actual">
-                                    <span>Actual จาก provider</span>
-                                    <strong>{formatTokenCount(tokenSession.actualTokens)}</strong>
-                                    <small>{tokenSession.actualCount || 0} responses</small>
+                                    <span>แชทนี้</span>
+                                    <strong>{formatTokenCount(tokenSession.totalTokens)}</strong>
+                                    <small>{tokenSession.requestCount} model requests · {tokenSession.localAnswers || 0} local</small>
                                 </div>
                                 <div className="ai-token-monitor-card estimated">
-                                    <span>Estimated</span>
-                                    <strong>{formatTokenCount(tokenSession.estimatedTokens)}</strong>
-                                    <small>ใช้เมื่อ provider ไม่ส่ง usage</small>
+                                    <span>รอบปัจจุบันของระบบ</span>
+                                    <strong>{tokenBudget.isServerBacked && tokenBudget.usedTokens != null ? formatTokenCount(tokenBudget.usedTokens) : 'รอ server'}</strong>
+                                    <small>{tokenBudget.isServerBacked ? `${tokenBudget.requests ?? 0} completed requests` : 'ไม่ใช้เลข local แทน Firestore'}</small>
                                 </div>
                                 <div className="ai-token-monitor-card">
-                                    <span>Context ที่ใช้เยอะสุด</span>
-                                    <strong>{tokenSession.topDataset?.dataset || '-'}</strong>
-                                    <small>{tokenSession.topDataset ? `${formatTokenCount(tokenSession.topDataset.tokens)} tokens` : 'รอข้อมูล'}</small>
+                                    <span>องค์ประกอบในแชทนี้</span>
+                                    <strong>{formatTokenCount(tokenSession.inputTokens)} / {formatTokenCount(tokenSession.outputTokens)}</strong>
+                                    <small>input / output · thinking {formatTokenCount(tokenSession.thinkingTokens)}</small>
+                                </div>
+                                <div className="ai-token-monitor-card">
+                                    <span>Context window ล่าสุด</span>
+                                    <strong>{lastTokenUsage?.contextTokens == null ? 'รอข้อมูล' : formatTokenCount(lastTokenUsage.contextTokens)}</strong>
+                                    <small>{lastTokenUsage?.contextLimit ? `limit ${formatTokenCount(lastTokenUsage.contextLimit)}` : 'ผู้ให้บริการไม่ได้ส่ง context limit'}</small>
+                                </div>
+                                <div className="ai-token-monitor-card">
+                                    <span>งบระบบ / Provider quota</span>
+                                    <strong>{tokenBudget.budgetPolicyAvailable ? `${tokenBudget.remainingPercent}%` : 'ไม่แสดงตัวเลขเดา'}</strong>
+                                    <small>{tokenBudget.budgetPolicyAvailable ? `งบระบบเหลือ ${formatTokenCount(tokenBudget.remainingTokens)} · ${tokenBudget.resetLabel || 'รอ reset time'}` : 'Provider ไม่ได้ส่ง quota/reset'}</small>
                                 </div>
                             </div>
                             {answerVerification?.unsupportedNumbers?.length > 0 && (
@@ -4075,7 +4170,7 @@ export function ExpandedChartModal({ chart, onClose }) {
     const initialUiType = getInitialUiChartType(chart);
     const [chartType, setChartType] = useState(initialUiType);
     const renderedChart = deriveChartConfig(chart, chartType);
-    const renderType = realChartType(chartType);
+    const renderType = realChartType(renderedChart?.chartType || chartType);
     const switchOptions = availableChartTypes(chart);
 
     useEffect(() => {
@@ -4124,13 +4219,17 @@ export function ExpandedChartModal({ chart, onClose }) {
     // Enhanced options for expanded view — larger fonts, better grid
     const expandedChart = chartOptionsForRender(renderedChart, chartType, true);
     const expandedChartExportTitle = readableChartExportTitle(expandedChart, 'AI chart expanded');
+    const expandedCategoryCount = expandedChart?.data?.labels?.length
+        || expandedChart?.data?.datasets?.[0]?.data?.length
+        || 0;
+    const expandedChartMinWidth = computeChartMinWidth(chartType, expandedCategoryCount, true);
     const expandedOptions = expandedChart ? {
         ...expandedChart.options,
         animation: { duration: 600, easing: 'easeOutQuart' },
         plugins: {
             ...(expandedChart.options?.plugins || {}),
             legend: {
-                position: 'bottom',
+                position: expandedCategoryCount > 8 ? 'top' : 'bottom',
                 labels: {
                     color: 'var(--chart-muted)',
                     padding: 18,
@@ -4198,14 +4297,16 @@ export function ExpandedChartModal({ chart, onClose }) {
 
                 <div className="ai-page-chart-modal-body">
                     {expandedChart && (
-                        <ReactChart
-                            key={`${renderType}-${modalKey}`}
-                            ref={chartRef}
-                            type={renderType}
-                            data={expandedChart.data}
-                            options={expandedOptions}
-                            redraw
-                        />
+                        <div className="ai-page-chart-canvas-shell expanded" style={{ minWidth: expandedChartMinWidth }}>
+                            <ReactChart
+                                key={`${renderType}-${modalKey}`}
+                                ref={chartRef}
+                                type={renderType}
+                                data={expandedChart.data}
+                                options={expandedOptions}
+                                redraw
+                            />
+                        </div>
                     )}
                 </div>
                 <div className="ai-page-chart-modal-hint">
