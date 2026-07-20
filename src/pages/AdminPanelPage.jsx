@@ -479,10 +479,11 @@ export default function AdminPanelPage() {
             </div>
 
             {/* Tabs */}
-            <div className="admin-tabs">
+            <div className="admin-tabs" role="navigation" aria-label="เมนูจัดการระบบ">
                 <button
                     className={`admin-tab ${activeTab === 'pending' ? 'active' : ''}`}
                     onClick={() => setActiveTab('pending')}
+                    aria-pressed={activeTab === 'pending'}
                 >
                     <Clock size={16} /> รออนุมัติ
                     {stats.pending > 0 && <span className="admin-tab-badge">{stats.pending}</span>}
@@ -490,6 +491,7 @@ export default function AdminPanelPage() {
                 <button
                     className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
                     onClick={() => setActiveTab('users')}
+                    aria-pressed={activeTab === 'users'}
                 >
                     <UserCog size={16} /> ผู้ใช้ทั้งหมด
                     <span className="admin-tab-badge neutral">{stats.total}</span>
@@ -497,24 +499,28 @@ export default function AdminPanelPage() {
                 <button
                     className={`admin-tab ${activeTab === 'audit' ? 'active' : ''}`}
                     onClick={() => setActiveTab('audit')}
+                    aria-pressed={activeTab === 'audit'}
                 >
                     <ScrollText size={16} /> ประวัติการเปลี่ยนแปลง
                 </button>
                 <button
                     className={`admin-tab ${activeTab === 'auto_sync' ? 'active' : ''}`}
                     onClick={() => setActiveTab('auto_sync')}
+                    aria-pressed={activeTab === 'auto_sync'}
                 >
                     <DatabaseZap size={16} /> Auto Sync
                 </button>
                 <button
                     className={`admin-tab ${activeTab === 'data_accuracy' ? 'active' : ''}`}
                     onClick={() => setActiveTab('data_accuracy')}
+                    aria-pressed={activeTab === 'data_accuracy'}
                 >
                     <ShieldCheck size={16} /> Data Accuracy
                 </button>
                 <button
                     className={`admin-tab ${activeTab === 'ai_usage' ? 'active' : ''}`}
                     onClick={() => setActiveTab('ai_usage')}
+                    aria-pressed={activeTab === 'ai_usage'}
                 >
                     <Activity size={16} /> AI Usage
                 </button>
@@ -774,11 +780,17 @@ export default function AdminPanelPage() {
             {/* Confirm modal */}
             {confirmAction && (
                 <div className="admin-modal-overlay" onClick={() => setConfirmAction(null)}>
-                    <div className="admin-modal" onClick={e => e.stopPropagation()}>
+                    <div
+                        className="admin-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="admin-confirm-title"
+                        onClick={e => e.stopPropagation()}
+                    >
                         <div className={`admin-modal-icon ${confirmAction.type}`}>
                             {confirmAction.type === 'approve' ? <CheckCircle size={32} /> : <AlertTriangle size={32} />}
                         </div>
-                        <h2>
+                        <h2 id="admin-confirm-title">
                             {confirmAction.type === 'approve' ? 'ยืนยันการอนุมัติ?' : 'ยืนยันการปฏิเสธคำขอ?'}
                         </h2>
                         <p>
@@ -797,6 +809,7 @@ export default function AdminPanelPage() {
                                 className={confirmAction.type === 'approve' ? 'admin-btn-approve' : 'admin-btn-reject'}
                                 onClick={() => confirmAction.type === 'approve' ? handleApprove(confirmAction.user) : handleReject(confirmAction.user)}
                                 disabled={!!savingUid}
+                                aria-busy={!!savingUid}
                             >
                                 {savingUid ? 'กำลังบันทึก...' : (confirmAction.type === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ')}
                             </button>
@@ -807,7 +820,7 @@ export default function AdminPanelPage() {
 
             {/* Toast */}
             {toast && (
-                <div className={`admin-toast ${toast.type}`}>
+                <div className={`admin-toast ${toast.type}`} role="status" aria-live="polite">
                     {toast.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
                     <span>{toast.message}</span>
                 </div>
