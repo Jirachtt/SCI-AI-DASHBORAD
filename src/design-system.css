@@ -1683,6 +1683,417 @@ a,
   }
 }
 
+/* Checkpoint 4: AI, authentication, and operational admin polish */
+.ai-chat-page-header-left,
+.ai-chat-page-header-left > div,
+.ai-page-msg-content,
+.chat-history-item-main {
+  min-width: 0;
+}
+
+.ai-chat-page-header-left h1,
+.ai-chat-page-header-left h2 {
+  margin: 0 !important;
+  color: var(--text-primary) !important;
+  font-weight: 760 !important;
+  line-height: 1.25 !important;
+}
+
+.ai-chat-page-header-meta {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 6px !important;
+  margin-top: 6px !important;
+}
+
+.ai-chat-page-header-actions {
+  flex: 0 0 auto;
+  gap: 8px !important;
+}
+
+.ai-chat-page-history-btn,
+.ai-chat-page-new-chat,
+.ai-chat-page-system-btn {
+  min-height: 42px !important;
+  border: 1px solid var(--surface-border) !important;
+  border-radius: var(--ds-radius-control) !important;
+  background: var(--surface-control) !important;
+  color: var(--text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.ai-chat-page-history-btn:hover,
+.ai-chat-page-new-chat:hover,
+.ai-chat-page-system-btn:hover {
+  border-color: var(--surface-border-strong) !important;
+  background: var(--surface-control-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.ai-page-msg {
+  gap: 10px !important;
+}
+
+.ai-page-msg-avatar {
+  display: grid !important;
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent-success) 22%, var(--surface-border)) !important;
+  border-radius: 9px !important;
+  background: color-mix(in srgb, var(--accent-success) 10%, var(--surface-card)) !important;
+}
+
+.ai-page-msg-bubble {
+  max-width: min(780px, 100%) !important;
+  padding: 13px 15px !important;
+  color: var(--text-secondary) !important;
+  font-size: 0.92rem !important;
+  line-height: 1.7 !important;
+  overflow-wrap: anywhere;
+}
+
+.ai-page-msg-bubble.bot {
+  border-left: 2px solid color-mix(in srgb, var(--accent-success) 72%, transparent) !important;
+  background: color-mix(in srgb, var(--surface-card) 94%, var(--accent-success) 6%) !important;
+}
+
+.ai-page-msg-bubble.user {
+  border-color: color-mix(in srgb, var(--accent-success) 76%, var(--surface-border)) !important;
+  color: #ffffff !important;
+}
+
+.ai-answer-action-row {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 7px !important;
+  margin-top: 8px !important;
+}
+
+.ai-answer-action-btn {
+  min-height: 36px !important;
+  padding-inline: 12px !important;
+  font-size: 0.78rem !important;
+}
+
+.ai-chat-page-input-wrapper {
+  isolation: isolate;
+}
+
+.ai-chat-page-input-area,
+.ai-chat-input-area {
+  padding: 6px !important;
+  background: color-mix(in srgb, var(--surface-card) 96%, var(--accent-success) 4%) !important;
+}
+
+.ai-chat-page-input-area :where(input, textarea),
+.ai-chat-input-area :where(input, textarea) {
+  min-width: 0;
+  color: var(--text-primary) !important;
+  caret-color: var(--accent-success);
+  outline: none !important;
+}
+
+.ai-chat-page-input-area :where(input, textarea)::placeholder,
+.ai-chat-input-area :where(input, textarea)::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.9;
+}
+
+.ai-chat-page-send:not(:disabled):hover,
+.ai-chat-send:not(:disabled):hover {
+  background: var(--accent-success) !important;
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--accent-success) 20%, transparent) !important;
+}
+
+.ai-chat-page-send:disabled,
+.ai-chat-send:disabled {
+  background: var(--surface-control) !important;
+  color: var(--text-subtle) !important;
+  opacity: 0.72 !important;
+}
+
+.chat-history-drawer {
+  width: min(390px, 92vw) !important;
+  border-radius: 0 !important;
+  background: var(--surface-raised) !important;
+}
+
+.chat-history-header {
+  min-height: 68px;
+  padding: 14px 16px !important;
+  border-bottom: 1px solid var(--surface-border) !important;
+  background: var(--surface-card) !important;
+}
+
+.chat-history-body {
+  padding: 12px !important;
+}
+
+.chat-history-new-btn,
+.chat-history-clear-all-btn {
+  min-height: 42px !important;
+  border-radius: var(--ds-radius-control) !important;
+}
+
+.chat-history-list {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px !important;
+}
+
+.chat-history-item {
+  min-height: 62px;
+  padding: 10px 11px !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+}
+
+.chat-history-item:hover,
+.chat-history-item.active {
+  border-color: var(--surface-border) !important;
+  background: var(--surface-control-hover) !important;
+}
+
+.chat-history-item.active {
+  box-shadow: inset 3px 0 0 var(--accent-success) !important;
+}
+
+.ai-system-info-panel,
+.ai-chat-page-sidebar {
+  background: var(--surface-raised) !important;
+}
+
+.ai-context-source,
+.ai-chat-page-feature-card {
+  min-height: 72px;
+  padding: 11px !important;
+}
+
+.login-form label,
+.signup-form label {
+  color: var(--text-secondary) !important;
+  font-weight: 680 !important;
+}
+
+.login-form input:hover,
+.signup-form :where(input, select, textarea):hover {
+  border-color: var(--surface-border-strong) !important;
+  background: var(--surface-control-hover) !important;
+}
+
+.login-form input:disabled,
+.signup-form :where(input, select, textarea):disabled {
+  cursor: not-allowed;
+  background: var(--surface-sunken) !important;
+  color: var(--text-subtle) !important;
+  opacity: 0.78;
+}
+
+.login-error,
+.signup-error,
+.form-error {
+  border: 1px solid color-mix(in srgb, var(--accent-danger) 34%, var(--surface-border)) !important;
+  border-radius: 10px !important;
+  background: color-mix(in srgb, var(--accent-danger) 8%, var(--surface-card)) !important;
+  color: var(--accent-danger) !important;
+  line-height: 1.55 !important;
+}
+
+.login-btn:not(:disabled):hover {
+  background: var(--accent-success) !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent-success) 18%, transparent) !important;
+}
+
+.login-btn:disabled {
+  cursor: wait;
+  background: var(--surface-control) !important;
+  color: var(--text-muted) !important;
+  opacity: 0.82 !important;
+}
+
+.google-login-btn,
+.mju-login-btn {
+  min-height: 48px !important;
+  border: 1px solid var(--surface-border-strong) !important;
+  background: var(--surface-control) !important;
+  color: var(--text-primary) !important;
+}
+
+.google-login-btn:hover,
+.mju-login-btn:hover {
+  transform: translateY(-1px) !important;
+  border-color: color-mix(in srgb, var(--accent-success) 48%, var(--surface-border)) !important;
+  background: var(--surface-control-hover) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.login-admin-btn {
+  min-height: 40px;
+  color: var(--text-muted) !important;
+}
+
+.login-admin-btn:hover {
+  color: var(--text-primary) !important;
+}
+
+.admin-panel-header {
+  align-items: center !important;
+  gap: 14px !important;
+  margin-bottom: 16px !important;
+}
+
+.admin-panel-title,
+.admin-panel-title > div:last-child {
+  min-width: 0;
+}
+
+.admin-panel-title h1 {
+  color: var(--text-primary) !important;
+  font-weight: 760 !important;
+  line-height: 1.25 !important;
+}
+
+.admin-stats-grid {
+  align-items: stretch;
+}
+
+.admin-stat-card {
+  min-height: 92px;
+  height: 100%;
+}
+
+.admin-stat-label {
+  color: var(--text-muted) !important;
+  line-height: 1.35 !important;
+}
+
+.admin-stat-value {
+  color: var(--text-primary) !important;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.admin-tabs {
+  display: flex !important;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.admin-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-tab {
+  position: relative;
+  flex: 0 0 auto;
+  padding-inline: 14px !important;
+  color: var(--text-muted) !important;
+  white-space: nowrap;
+}
+
+.admin-tab:hover {
+  color: var(--text-primary) !important;
+  background: var(--surface-control-hover) !important;
+}
+
+.admin-tab.active {
+  color: var(--accent-success) !important;
+  box-shadow: inset 0 -2px 0 var(--accent-success) !important;
+}
+
+.admin-pending-grid {
+  align-items: stretch;
+}
+
+.admin-pending-card {
+  display: flex !important;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.admin-pending-header,
+.admin-pending-body,
+.admin-pending-actions {
+  padding-inline: 16px !important;
+}
+
+.admin-pending-actions {
+  margin-top: auto !important;
+  padding-block: 12px 16px !important;
+  border-top: 1px solid var(--surface-border) !important;
+}
+
+.admin-btn-approve,
+.admin-btn-reject,
+.admin-btn-ghost,
+.admin-refresh-btn,
+.admin-data-btn {
+  min-height: 42px !important;
+  border-radius: var(--ds-radius-control) !important;
+}
+
+.admin-role-select,
+.admin-role-time-actions input {
+  min-height: 40px !important;
+  border: 1px solid var(--surface-border) !important;
+  border-radius: var(--ds-radius-control) !important;
+  background: var(--surface-control) !important;
+  color: var(--text-primary) !important;
+}
+
+.admin-role-select:focus,
+.admin-role-time-actions input:focus {
+  border-color: var(--ds-focus) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+  outline: none !important;
+}
+
+.admin-modal {
+  width: min(460px, calc(100vw - 32px)) !important;
+  padding: 22px !important;
+  background: var(--surface-raised) !important;
+}
+
+.admin-toast {
+  border: 1px solid var(--surface-border) !important;
+  border-radius: 10px !important;
+  background: var(--surface-raised) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+@media (max-width: 768px) {
+  .ai-chat-page-header {
+    align-items: flex-start !important;
+  }
+
+  .ai-chat-page-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .ai-page-msg-bubble {
+    max-width: 100% !important;
+  }
+
+  .admin-panel-header,
+  .admin-panel-title {
+    align-items: flex-start !important;
+  }
+
+  .admin-panel-actions {
+    width: 100%;
+  }
+
+  .admin-panel-actions > * {
+    flex: 1 1 auto;
+  }
+}
+
 /* Premium motion system
  * One restrained timing language for route changes, data surfaces and AI.
  * Individual transforms never change layout dimensions.
