@@ -786,7 +786,86 @@ a,
 .dashboard-summary-empty {
   display: flex;
   min-height: 64px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  text-align: left;
+  align-items: flex-start;
+}
+
+.dashboard-summary-empty strong {
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.dashboard-summary-empty span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.dashboard-summary-context {
+  display: flex;
+  min-height: 52px;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.dashboard-summary-context strong {
+  flex: 0 0 auto;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 750;
+}
+
+.dashboard-metric-status {
+  display: inline-flex;
+  min-height: 24px;
+  max-width: min(58%, 220px);
+  align-items: center;
+  margin-inline-start: auto;
+  padding: 3px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-metric-status.is-verified {
+  border-color: color-mix(in srgb, var(--accent-success) 28%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-success) 9%, var(--bg-card));
+  color: var(--accent-success-deep);
+}
+
+.dashboard-metric-status.is-calculated {
+  border-color: color-mix(in srgb, var(--accent-info) 28%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-info) 9%, var(--bg-card));
+  color: var(--accent-info);
+}
+
+.dashboard-metric-status.is-missing {
+  border-color: color-mix(in srgb, var(--accent-gold) 32%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-gold) 8%, var(--bg-card));
+  color: color-mix(in srgb, var(--accent-gold) 78%, var(--text-primary));
+}
+
+.dashboard-summary-card.is-missing .stat-card-value.is-pending {
+  font-size: clamp(1rem, 1.7vw, 1.2rem) !important;
+  font-weight: 650 !important;
+  letter-spacing: 0;
 }
 
 @media (min-width: 1200px) {
@@ -2092,6 +2171,34 @@ a,
   .admin-panel-actions > * {
     flex: 1 1 auto;
   }
+}
+
+/* Tuition source attribution stays available without competing with the data. */
+.tuition-source-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 18px;
+  padding: 11px 2px 0;
+  border-top: 1px solid color-mix(in srgb, var(--surface-border) 78%, transparent);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.tuition-source-note svg {
+  flex: 0 0 14px;
+  margin-top: 2px;
+  color: var(--text-subtle);
+}
+
+.tuition-source-note p {
+  margin: 0;
+}
+
+.tuition-source-note strong {
+  color: var(--text-secondary);
+  font-weight: 680;
 }
 
 /* Premium motion system

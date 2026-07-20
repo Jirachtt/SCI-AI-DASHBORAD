@@ -4,7 +4,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Lock, Mail, ShieldCheck, X, Sun, Moon, Landmark } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
-import { OFFICIAL_STUDENT_TOTAL } from '../data/mjuOfficialStudentSnapshot';
+import {
+    OFFICIAL_SCIENCE_STUDENT_TOTAL,
+    OFFICIAL_STUDENT_TOTAL,
+} from '../data/mjuOfficialStudentSnapshot';
 
 export default function LoginPage() {
     const { user, loginWithEmail, loginWithGoogle, loginWithMjuSso, loginWithAdminCode } = useAuth();
@@ -148,12 +151,12 @@ export default function LoginPage() {
                                         <span>นักศึกษาทั้งหมด</span>
                                     </div>
                                     <div>
-                                        <strong>847</strong>
-                                        <span>รายวิชาเปิดสอน</span>
+                                        <strong>{OFFICIAL_SCIENCE_STUDENT_TOTAL.toLocaleString('th-TH')}</strong>
+                                        <span>นักศึกษาคณะวิทยาศาสตร์</span>
                                     </div>
                                     <div>
-                                        <strong>89.5%</strong>
-                                        <span>อัตราสำเร็จ</span>
+                                        <strong>MJU</strong>
+                                        <span>ข้อมูลผ่านการตรวจสอบ</span>
                                     </div>
                                 </div>
 

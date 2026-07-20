@@ -162,7 +162,7 @@ export default function AdminAutoSyncPanel({ onToast }) {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <h3>สรุปแหล่งข้อมูลที่ใช้ในระบบ</h3>
-                        <p>รวมสถานะข้อมูลจริง/ไฟล์อ้างอิง/ข้อมูลที่ยังรอ API ไว้ในหน้านี้ เพื่อให้หน้าผู้ใช้ทั่วไปสะอาดและดูเป็น dashboard สำหรับพรีเซน</p>
+                        <p>รวมสถานะข้อมูลจริง/ไฟล์อ้างอิง/ข้อมูลที่ยังรอ API ไว้ในหน้านี้ หน้า Dashboard จะเลือกข้อมูลที่ Sync ล่าสุดก่อน และใช้ชุดข้อมูลในระบบเติมตัวชี้วัดที่ยังรอ endpoint โดยไม่แสดงป้ายแหล่งข้อมูลบนหน้าหลัก</p>
                     </div>
                     <span className="admin-data-badge live">
                         {sourceSummary.official.length}/{featureCompletionDataSummary.length} usable

@@ -14,6 +14,7 @@
     "audit:roles": "node scripts/validate-role-access-matrix.mjs",
     "audit:navigation": "node scripts/validate-navigation-config.mjs",
     "audit:data": "node scripts/validate-data-consistency.mjs",
+    "audit:overview": "node scripts/validate-overview-metrics.mjs",
     "audit:ai-retrieval": "node scripts/validate-ai-retrieval-policy.mjs",
     "audit:student-realtime": "node scripts/validate-student-realtime-consistency.mjs",
     "audit:sync": "node scripts/validate-dashboard-sync.mjs",
@@ -21,7 +22,7 @@
     "audit:ai-usage": "node scripts/validate-ai-usage-meter.mjs",
     "audit:ai-usage:live": "node scripts/validate-ai-usage-meter.mjs --live",
     "smoke:vercel": "node scripts/smoke-vercel-production.mjs",
-    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:ai-retrieval && npm run audit:student-realtime && npm run audit:sync && npm run audit:roles && npm run audit:navigation && npm run audit:data && npm run smoke:presentation"
+    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:ai-retrieval && npm run audit:student-realtime && npm run audit:sync && npm run audit:roles && npm run audit:navigation && npm run audit:data && npm run audit:overview && npm run smoke:presentation"
   },
   "dependencies": {
     "chart.js": "^4.5.1",

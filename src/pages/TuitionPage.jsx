@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
-import { ArrowLeft, CreditCard } from 'lucide-react';
+import { ArrowLeft, CreditCard, Info } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement,
@@ -238,16 +238,6 @@ export default function TuitionPage() {
                 </div>
             </div>
 
-            {/* Note */}
-            <div className="info-box">
-                <h3>หมายเหตุ</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.7 }}>
-                    {isOfficialTuition
-                        ? 'ข้อมูลนี้มาจากไฟล์คำนวณประมาณการปี 70_Ver5.xlsx แสดงค่าธรรมเนียมใหม่ปี 2570 รายหลักสูตรของคณะวิทยาศาสตร์ และจำนวนแผนรับนักศึกษาในปีถัดไป'
-                        : 'สาขาคอมพิวเตอร์มักจะมีค่าบำรุงห้องปฏิบัติการ (Lab) รวมอยู่ด้วย ทำให้สูงกว่าสาขาวิทย์ทั่วไปเล็กน้อย ค่าธรรมเนียมแรกเข้า (ปี 1 เทอม 1) บวกเพิ่มประมาณ 2,000 - 3,000 บาท (ค่าขึ้นทะเบียนนักศึกษา, ค่าบัตร ฯลฯ)'}
-                </p>
-            </div>
-
             {/* Charts */}
             {showDetail && (
                 <div className="charts-grid">
@@ -346,6 +336,16 @@ export default function TuitionPage() {
                     </table>
                 </div>
             )}
+
+            <footer className="tuition-source-note" aria-label="แหล่งข้อมูลและหมายเหตุ">
+                <Info size={14} aria-hidden="true" />
+                <p>
+                    <strong>{isOfficialTuition ? 'แหล่งข้อมูล:' : 'หมายเหตุ:'}</strong>{' '}
+                    {isOfficialTuition
+                        ? 'ไฟล์คำนวณประมาณการปี 70_Ver5.xlsx — ค่าธรรมเนียมใหม่ปี 2570 รายหลักสูตรของคณะวิทยาศาสตร์และแผนรับนักศึกษาในปีถัดไป'
+                        : 'สาขาคอมพิวเตอร์อาจมีค่าบำรุงห้องปฏิบัติการรวมอยู่ด้วย และเทอมแรกอาจมีค่าธรรมเนียมแรกเข้าเพิ่มเติมประมาณ 2,000–3,000 บาท'}
+                </p>
+            </footer>
         </div>
     );
 }

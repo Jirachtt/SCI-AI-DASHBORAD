@@ -204,7 +204,7 @@ expect(
 expect(
   'Student totals are locked to current MJU Dashboard aggregate',
   /OFFICIAL_SCIENCE_STUDENT_TOTAL\s*=\s*1759/.test(officialStudentSnapshot)
-    && /OFFICIAL_STUDENT_TOTAL\s*=\s*22344/.test(officialStudentSnapshot)
+    && /OFFICIAL_STUDENT_TOTAL\s*=\s*22343/.test(officialStudentSnapshot)
     && /dashboardSummary\.totalStudents\s*=\s*OFFICIAL_STUDENT_TOTAL/.test(mockData)
     && /scienceFallback\.total\s*=\s*OFFICIAL_SCIENCE_STUDENT_TOTAL/.test(mockData),
   'Aggregate student totals must use MJU Dashboard official values, not roster row counts.'

@@ -13,6 +13,7 @@ import useDashboardDataset from '../hooks/useDashboardDataset';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 import AnimatedMetricValue from '../components/AnimatedMetricValue';
+import { resolveOverviewMetrics } from '../utils/overviewMetricResolver';
 
 const topics = [
     {
@@ -79,8 +80,10 @@ const topics = [
 
 function DashboardHomeContent() {
     const { user } = useAuth();
-    const { data: dashboardSummary } = useDashboardDataset('dashboard_summary');
-    const { data: studentStatsData } = useDashboardDataset('student_stats');
+    const { data: dashboardSummary, meta: dashboardMeta } = useDashboardDataset('dashboard_summary');
+    const { data: studentStatsData, meta: studentStatsMeta } = useDashboardDataset('student_stats');
+    const { data: courseAnalyticsData, meta: courseAnalyticsMeta } = useDashboardDataset('course_analytics');
+    const { data: graduationData, meta: graduationMeta } = useDashboardDataset('graduation');
     const { data: hrData } = useDashboardDataset('hr');
     const { data: researchData } = useDashboardDataset('research');
     const { data: scienceBudgetData } = useDashboardDataset('science_budget');
@@ -107,7 +110,17 @@ function DashboardHomeContent() {
                 };
             })()
             : null);
-    const totalStudents = Number(studentStatsData?.current?.total || dashboardSummary?.totalStudents || 0);
+    const overviewMetrics = resolveOverviewMetrics({
+        dashboardSummary,
+        dashboardMeta,
+        studentStats: studentStatsData,
+        studentMeta: studentStatsMeta,
+        courseAnalytics: courseAnalyticsData,
+        courseMeta: courseAnalyticsMeta,
+        graduation: graduationData,
+        graduationMeta,
+    });
+    const totalStudents = Number(overviewMetrics.students.value || studentStatsData?.current?.total || dashboardSummary?.totalStudents || 0);
     const scienceStudentTotal = Number(liveScienceFaculty?.total || sci.totalStudents || 0);
     const scienceLevelDetails = (liveScienceFaculty?.byLevel || [])
         .map(item => ({
@@ -124,13 +137,15 @@ function DashboardHomeContent() {
     const dragItem = useRef(null);
     const dragOverItem = useRef(null);
     const scienceSharePct = totalStudents ? ((scienceStudentTotal / totalStudents) * 100).toFixed(1) : '0.0';
-    const finiteNumber = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
-    const universityCourseTotal = finiteNumber(dashboardSummary?.totalCourses) ? Number(dashboardSummary.totalCourses) : null;
-    const scienceCourseTotal = finiteNumber(sci?.totalCourses) ? Number(sci.totalCourses) : null;
-    const universityAvgGpa = finiteNumber(dashboardSummary?.avgGPA) ? Number(dashboardSummary.avgGPA) : null;
-    const scienceAvgGpa = finiteNumber(sci?.avgGPA) ? Number(sci.avgGPA) : null;
-    const universityGraduationRate = finiteNumber(dashboardSummary?.graduationRate) ? Number(dashboardSummary.graduationRate) : null;
-    const scienceGraduationRate = finiteNumber(sci?.graduationRate) ? Number(sci.graduationRate) : null;
+    const universityCourseTotal = overviewMetrics.courses.scope === 'university' ? overviewMetrics.courses.value : null;
+    const scienceCourseTotal = overviewMetrics.courses.scienceValue
+        ?? (overviewMetrics.courses.scope === 'science' ? overviewMetrics.courses.value : null);
+    const universityAvgGpa = overviewMetrics.gpa.scope === 'university' ? overviewMetrics.gpa.value : null;
+    const scienceAvgGpa = overviewMetrics.gpa.scienceValue
+        ?? (overviewMetrics.gpa.scope === 'science' ? overviewMetrics.gpa.value : null);
+    const universityGraduationRate = overviewMetrics.graduation.scope === 'university' ? overviewMetrics.graduation.value : null;
+    const scienceGraduationRate = overviewMetrics.graduation.scienceValue
+        ?? (overviewMetrics.graduation.scope === 'science' ? overviewMetrics.graduation.value : null);
     const insights = [
         `คณะวิทยาศาสตร์มีนักศึกษา ${scienceStudentTotal.toLocaleString('th-TH')} คน คิดเป็น ${scienceSharePct}% ของนักศึกษาทั้งมหาวิทยาลัย`,
         scienceGraduationRate !== null && universityGraduationRate !== null
@@ -151,57 +166,69 @@ function DashboardHomeContent() {
             ]
         },
         {
-            key: 'courses', value: scienceCourseTotal ?? '—', label: 'รายวิชาคณะวิทยาศาสตร์',
+            key: 'courses', value: scienceCourseTotal ?? 0, label: 'รายวิชาคณะวิทยาศาสตร์',
             pct: scienceCourseTotal !== null && universityCourseTotal ? ((scienceCourseTotal / universityCourseTotal) * 100).toFixed(1) : null,
             color: 'var(--accent-info)',
-            details: []
+            details: [],
         },
         {
-            key: 'gpa', value: scienceAvgGpa ?? '—', label: 'GPA คณะวิทยาศาสตร์',
+            key: 'gpa', value: scienceAvgGpa ?? 0, label: 'GPA คณะวิทยาศาสตร์',
             pct: null, color: 'var(--accent-gold)',
             comparison: scienceAvgGpa !== null && universityAvgGpa !== null
                 ? { label: scienceAvgGpa >= universityAvgGpa ? 'สูงกว่ามหาวิทยาลัย' : 'ต่ำกว่ามหาวิทยาลัย', diff: `${scienceAvgGpa >= universityAvgGpa ? '+' : ''}${(scienceAvgGpa - universityAvgGpa).toFixed(2)}` }
                 : null,
-            details: []
+            details: [],
         },
         {
-            key: 'graduation', value: scienceGraduationRate !== null ? `${scienceGraduationRate}%` : '—', label: 'อัตราสำเร็จ คณะวิทยาศาสตร์',
+            key: 'graduation', value: scienceGraduationRate !== null ? `${scienceGraduationRate}%` : '0%', label: 'อัตราสำเร็จ คณะวิทยาศาสตร์',
             pct: null, color: 'var(--accent-pink)',
             comparison: scienceGraduationRate !== null && universityGraduationRate !== null
                 ? { label: scienceGraduationRate >= universityGraduationRate ? 'สูงกว่ามหาวิทยาลัย' : 'ต่ำกว่ามหาวิทยาลัย', diff: `${scienceGraduationRate >= universityGraduationRate ? '+' : ''}${(scienceGraduationRate - universityGraduationRate).toFixed(1)}%` }
                 : null,
-            details: []
+            details: [],
         }
     ];
 
     const statCards = [
-        { icon: <GraduationCap size={22} />, gradient: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))', value: totalStudents.toLocaleString('th-TH'), label: 'นักศึกษาทั้งหมด', trend: null },
-        { icon: <BookOpen size={22} />, gradient: 'linear-gradient(135deg, var(--accent-info), var(--accent-info))', value: universityCourseTotal ?? '—', label: 'รายวิชาเปิดสอน', trend: null },
-        { icon: <TrendingUp size={22} />, gradient: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))', value: universityAvgGpa ?? '—', label: 'เกรดเฉลี่ยรวม (GPA)', trend: null },
-        { icon: <Users size={22} />, gradient: 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))', value: universityGraduationRate !== null ? `${universityGraduationRate}%` : '—', label: 'อัตราสำเร็จการศึกษา', trend: null }
+        { icon: <GraduationCap size={22} />, gradient: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))', ...overviewMetrics.students, trend: null },
+        { icon: <BookOpen size={22} />, gradient: 'linear-gradient(135deg, var(--accent-info), var(--accent-info))', ...overviewMetrics.courses, trend: null },
+        { icon: <TrendingUp size={22} />, gradient: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))', ...overviewMetrics.gpa, trend: null },
+        { icon: <Users size={22} />, gradient: 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))', ...overviewMetrics.graduation, trend: null }
     ];
 
     const actualStudentTrendRows = (studentStatsData?.trend || []).filter(row => row.type !== 'forecast');
     const latestStudentTrend = actualStudentTrendRows[actualStudentTrendRows.length - 1];
-    const nextStudentForecast = (studentStatsData?.trend || []).find(row => row.type === 'forecast')
-        || (studentStatsData?.trend || [])[studentStatsData?.trend?.length - 1];
-    const forecastStudentTotal = Number(nextStudentForecast?.total || latestStudentTrend?.total || totalStudents);
-    const forecastStudentTrend = latestStudentTrend?.total
+    const studentForecastRows = (studentStatsData?.trend || []).filter(row => row.type === 'forecast');
+    const nextStudentForecast = studentForecastRows[studentForecastRows.length - 1];
+    const forecastStudentTotal = Number(nextStudentForecast?.total || 0);
+    const forecastStudentTrend = latestStudentTrend?.total && forecastStudentTotal
         ? `${forecastStudentTotal >= latestStudentTrend.total ? '+' : ''}${(((forecastStudentTotal - latestStudentTrend.total) / latestStudentTrend.total) * 100).toFixed(1)}%`
-        : '+0.0%';
+        : null;
     const latestScienceBudget = (scienceBudgetData?.yearly || []).filter(row => row.type !== 'forecast').slice(-1)[0];
-    const forecastScienceBudget = (scienceBudgetData?.yearly || []).find(row => row.type === 'forecast') || latestScienceBudget;
-    const scienceBudgetTrend = latestScienceBudget?.revenue
+    const forecastScienceBudget = (scienceBudgetData?.yearly || []).filter(row => row.type === 'forecast').slice(-1)[0];
+    const scienceBudgetTrend = latestScienceBudget?.revenue && forecastScienceBudget?.revenue
         ? `${Number(forecastScienceBudget?.revenue || 0) >= latestScienceBudget.revenue ? '+' : ''}${(((Number(forecastScienceBudget?.revenue || 0) - latestScienceBudget.revenue) / latestScienceBudget.revenue) * 100).toFixed(1)}%`
-        : '+0.0%';
+        : null;
+    const actualResearchRows = (researchData?.publicationTrend || []).filter(row => row.type !== 'forecast');
+    const researchForecastRows = (researchData?.publicationTrend || []).filter(row => row.type === 'forecast');
+    const latestResearchActual = actualResearchRows[actualResearchRows.length - 1];
+    const latestResearchForecast = researchForecastRows[researchForecastRows.length - 1];
+    const researchForecastTrend = latestResearchActual?.scopus && latestResearchForecast?.scopus
+        ? `${latestResearchForecast.scopus >= latestResearchActual.scopus ? '+' : ''}${(((latestResearchForecast.scopus - latestResearchActual.scopus) / latestResearchActual.scopus) * 100).toFixed(1)}%`
+        : null;
 
-    // Forecast data with lucide icons instead of emojis
+    // Only surface forecasts that have both a real baseline and an explicit forecast row.
     const forecasts = [
-        { label: `นักศึกษาปี ${nextStudentForecast?.year || 'ถัดไป'}`, actual: (latestStudentTrend?.total || totalStudents).toLocaleString('th-TH'), forecast: forecastStudentTotal.toLocaleString('th-TH'), trend: forecastStudentTrend, color: 'var(--accent-success-deep)', FcIcon: GraduationCap },
-        { label: `งบคณะวิทย์ปี ${forecastScienceBudget?.year || 'ถัดไป'} (ล้าน฿)`, actual: `${Number(latestScienceBudget?.revenue || 0).toLocaleString('th-TH')}`, forecast: `${Number(forecastScienceBudget?.revenue || 0).toLocaleString('th-TH')}`, trend: scienceBudgetTrend, color: 'var(--accent-gold)', FcIcon: Wallet },
-        { label: 'ผลงาน Scopus ปี 2569', actual: '78', forecast: '92', trend: '+17.9%', color: 'var(--accent-info)', FcIcon: FileBarChart2 },
-        { label: 'อัตราสำเร็จการศึกษา', actual: '89.5%', forecast: '92.1%', trend: '+2.6%', color: 'var(--accent-pink)', FcIcon: TrendingUp },
-    ];
+        latestStudentTrend?.total && nextStudentForecast?.total && forecastStudentTrend
+            ? { label: `นักศึกษาปี ${nextStudentForecast.year}`, actual: Number(latestStudentTrend.total).toLocaleString('th-TH'), forecast: forecastStudentTotal.toLocaleString('th-TH'), trend: forecastStudentTrend, color: 'var(--accent-success-deep)', FcIcon: GraduationCap }
+            : null,
+        latestScienceBudget?.revenue && forecastScienceBudget?.revenue && scienceBudgetTrend
+            ? { label: `งบคณะวิทย์ปี ${forecastScienceBudget.year} (ล้าน฿)`, actual: Number(latestScienceBudget.revenue).toLocaleString('th-TH'), forecast: Number(forecastScienceBudget.revenue).toLocaleString('th-TH'), trend: scienceBudgetTrend, color: 'var(--accent-gold)', FcIcon: Wallet }
+            : null,
+        latestResearchActual?.scopus && latestResearchForecast?.scopus && researchForecastTrend
+            ? { label: `ผลงาน Scopus ปี ${latestResearchForecast.year}`, actual: Number(latestResearchActual.scopus).toLocaleString('th-TH'), forecast: Number(latestResearchForecast.scopus).toLocaleString('th-TH'), trend: researchForecastTrend, color: 'var(--accent-info)', FcIcon: FileBarChart2 }
+            : null,
+    ].filter(Boolean);
     const topicCards = topics.map(topic => {
         if (topic.id === 'student-stats') {
             return { ...topic, stats: `${totalStudents.toLocaleString('th-TH')} คน` };
@@ -276,11 +303,11 @@ function DashboardHomeContent() {
                                 <LineChart size={18} color="var(--accent-success)" /> Predictive Analytics
                             </h3>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: 4 }}>
-                                Linear Regression จากข้อมูลย้อนหลัง 4 ปี — พยากรณ์ล่วงหน้า 2 ปี
+                                แสดงเฉพาะตัวชี้วัดที่มีข้อมูลจริงย้อนหลังและค่าพยากรณ์จากชุดข้อมูลเดียวกัน
                             </p>
                         </div>
                         <span style={{ fontSize: '1rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '4px 12px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
-                            Forecast FY2569
+                            {forecasts.length} ตัวชี้วัด
                         </span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, alignItems: 'stretch' }}>
@@ -549,7 +576,9 @@ function DashboardHomeContent() {
                                     <div className="stat-card-icon" style={{ background: card.gradient }}>{card.icon}</div>
                                     {card.trend && <span className="stat-card-trend up">{card.trend}</span>}
                                 </div>
-                                <div className="stat-card-value"><AnimatedMetricValue value={card.value} /></div>
+                                <div className="stat-card-value">
+                                    <AnimatedMetricValue value={card.displayValue ?? card.value} />
+                                </div>
                                 <div className="stat-card-label">{card.label}</div>
                             </div>
                             <div className="dashboard-summary-detail" style={{
@@ -575,8 +604,9 @@ function DashboardHomeContent() {
                                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{d.label}</div>
                                         </div>
                                     )) : (
-                                        <div className="dashboard-summary-empty" style={{ width: '100%', color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
-                                            ยังไม่มีชุดข้อมูลต้นทางที่ผ่านการตรวจสอบสำหรับตัวชี้วัดนี้
+                                        <div className="dashboard-summary-context" style={{ width: '100%' }}>
+                                            <span>{sciData.comparison?.label || (sciData.pct !== null ? 'สัดส่วนเทียบมหาวิทยาลัย' : 'ค่าปัจจุบัน')}</span>
+                                            <strong>{sciData.comparison?.diff || (sciData.pct !== null ? `${sciData.pct}%` : sciData.value)}</strong>
                                         </div>
                                     )}
                                 </div>

@@ -1,9 +1,9 @@
-export const OFFICIAL_STUDENT_SNAPSHOT_DATE = '2026-07-11';
+export const OFFICIAL_STUDENT_SNAPSHOT_DATE = '2026-07-21';
 export const OFFICIAL_STUDENT_SOURCE_URL = 'https://dashboard.mju.ac.th/student';
 
 export const OFFICIAL_STUDENT_LEVELS = [
     { key: 'certificate', level: 'ประกาศนียบัตร', count: 87, color: 'var(--accent-success)', icon: 'Cert' },
-    { key: 'bachelor', level: 'ปริญญาตรี', count: 21462, color: 'var(--accent-success-deep)', icon: 'BSc' },
+    { key: 'bachelor', level: 'ปริญญาตรี', count: 21461, color: 'var(--accent-success-deep)', icon: 'BSc' },
     { key: 'master', level: 'ปริญญาโท', count: 547, color: 'var(--accent-info)', icon: 'MSc' },
     { key: 'doctoral', level: 'ปริญญาเอก', count: 248, color: 'var(--accent-pink)', icon: 'PhD' },
 ];
@@ -39,7 +39,7 @@ export const LEGACY_STUDENT_FACULTY_ROWS = [
 
 export const OFFICIAL_STUDENT_FACULTY_ROWS = [
     { name: 'คณะบริหารธุรกิจ', certificate: 0, bachelor: 4855, master: 81, doctoral: 10, total: 4946 },
-    { name: 'คณะผลิตกรรมการเกษตร', certificate: 0, bachelor: 2443, master: 97, doctoral: 99, total: 2639 },
+    { name: 'คณะผลิตกรรมการเกษตร', certificate: 0, bachelor: 2442, master: 97, doctoral: 99, total: 2638 },
     { name: 'คณะสารสนเทศและการสื่อสาร', certificate: 0, bachelor: 1791, master: 0, doctoral: 0, total: 1791 },
     { name: 'คณะวิทยาศาสตร์', certificate: 0, bachelor: 1735, master: 19, doctoral: 5, total: 1759 },
     { name: 'มหาวิทยาลัยแม่โจ้ - แพร่ เฉลิมพระเกียรติ', certificate: 0, bachelor: 1329, master: 71, doctoral: 0, total: 1400 },
@@ -47,11 +47,11 @@ export const OFFICIAL_STUDENT_FACULTY_ROWS = [
     { name: 'คณะศิลปศาสตร์', certificate: 0, bachelor: 1249, master: 0, doctoral: 0, total: 1249 },
     { name: 'คณะเศรษฐศาสตร์', certificate: 0, bachelor: 1140, master: 13, doctoral: 15, total: 1168 },
     { name: 'คณะพัฒนาการท่องเที่ยว', certificate: 0, bachelor: 1118, master: 11, doctoral: 13, total: 1142 },
-    { name: 'วิทยาลัยพลังงานทดแทน', certificate: 0, bachelor: 1037, master: 51, doctoral: 14, total: 1102 },
+    { name: 'วิทยาลัยพลังงานทดแทน', certificate: 0, bachelor: 1038, master: 51, doctoral: 14, total: 1103 },
     { name: 'คณะวิศวกรรมและอุตสาหกรรมเกษตร', certificate: 0, bachelor: 899, master: 12, doctoral: 5, total: 916 },
     { name: 'คณะสัตวศาสตร์และเทคโนโลยี', certificate: 0, bachelor: 883, master: 29, doctoral: 3, total: 915 },
     { name: 'คณะเทคโนโลยีการประมงและทรัพยากรทางน้ำ', certificate: 0, bachelor: 543, master: 13, doctoral: 5, total: 561 },
-    { name: 'คณะสถาปัตยกรรมศาสตร์และการออกแบบสิ่งแวดล้อม', certificate: 0, bachelor: 486, master: 12, doctoral: 12, total: 510 },
+    { name: 'คณะสถาปัตยกรรมศาสตร์และการออกแบบสิ่งแวดล้อม', certificate: 0, bachelor: 485, master: 12, doctoral: 12, total: 509 },
     { name: 'มหาวิทยาลัยแม่โจ้-ชุมพร', certificate: 0, bachelor: 333, master: 0, doctoral: 0, total: 333 },
     { name: 'คณะสัตวแพทยศาสตร์', certificate: 0, bachelor: 198, master: 0, doctoral: 0, total: 198 },
     { name: 'คณะพยาบาลศาสตร์', certificate: 0, bachelor: 176, master: 0, doctoral: 0, total: 176 },
@@ -61,12 +61,12 @@ export const OFFICIAL_STUDENT_FACULTY_ROWS = [
 
 export const OFFICIAL_STUDENT_ENROLLMENT_ROWS = [
     { year: '2569', certificate: 14, bachelor: 6123, master: 176, doctoral: 52, total: 6365 },
-    { year: '2568', certificate: 12, bachelor: 5058, master: 162, doctoral: 33, total: 5265 },
-    { year: '2567', certificate: 12, bachelor: 4856, master: 120, doctoral: 62, total: 5050 },
+    { year: '2568', certificate: 12, bachelor: 5057, master: 162, doctoral: 33, total: 5264 },
+    { year: '2567', certificate: 12, bachelor: 4855, master: 120, doctoral: 62, total: 5049 },
     { year: '2566', certificate: 18, bachelor: 4161, master: 29, doctoral: 43, total: 4251 },
     { year: '2565', certificate: 21, bachelor: 943, master: 48, doctoral: 23, total: 1035 },
     { year: '2564', certificate: 10, bachelor: 221, master: 10, doctoral: 22, total: 263 },
-    { year: '2563', certificate: 0, bachelor: 57, master: 0, doctoral: 9, total: 66 },
+    { year: '2563', certificate: 0, bachelor: 58, master: 0, doctoral: 9, total: 67 },
     { year: '2562', certificate: 0, bachelor: 37, master: 1, doctoral: 2, total: 40 },
     { year: '2561', certificate: 0, bachelor: 4, master: 0, doctoral: 1, total: 5 },
     { year: '2560', certificate: 0, bachelor: 2, master: 1, doctoral: 1, total: 4 },
@@ -91,7 +91,7 @@ export const OFFICIAL_SCIENCE_ROSTER_YEAR_TARGETS = [
     { cohortCode: '69', year: 1, target: 417 },
 ];
 
-export const OFFICIAL_STUDENT_TOTAL = 22344;
+export const OFFICIAL_STUDENT_TOTAL = 22343;
 export const OFFICIAL_SCIENCE_STUDENT_TOTAL = 1759;
 
 const STALE_SCIENCE_TOTALS = new Set([1383, 1390, 1398, 1399, 1451, 1452, 1528]);

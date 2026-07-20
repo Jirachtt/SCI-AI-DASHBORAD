@@ -188,6 +188,14 @@ export const featureCompletionDataSummary = [
         usedIn: 'Overview, Student Stats, AI aggregate, Export',
     },
     {
+        feature: 'Overview: รายวิชา / GPA / สำเร็จการศึกษา',
+        currentSource: 'MJU Dashboard, MJU Reg และชุดข้อมูลการศึกษาที่มีอยู่ในระบบ',
+        status: 'approved_reference',
+        displayStatus: 'ใช้ค่าที่ Sync ก่อน และใช้ชุดข้อมูลในระบบเมื่อ endpoint ต้นทางยังไม่พร้อม',
+        owner: 'MJU Dashboard / Reg / ข้อมูลคณะวิทยาศาสตร์',
+        usedIn: 'Overview, AI aggregate, Export',
+    },
+    {
         feature: 'รายชื่อนักศึกษา / GPA รายคน',
         currentSource: 'Generated roster aligned to latest synced total, unless uploaded roster exists',
         status: 'generated_until_upload',
