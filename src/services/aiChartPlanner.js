@@ -595,6 +595,115 @@ function buildScienceMajorStudentChartAnswer(question, userContext) {
     });
 }
 
+function buildPopulationForecastChartAnswer(question, userContext) {
+    const accessDenied = denyIfNoAccess(userContext, ['student_stats']);
+    if (accessDenied) return accessDenied;
+
+    const stats = sharedDataset('student_stats', studentStatsData);
+    const forecast = stats?.populationForecast;
+    const rows = Array.isArray(forecast?.scenario)
+        ? forecast.scenario
+            .map(row => ({
+                year: row.year,
+                youthPopulationIndex: number(row.youthPopulationIndex, null),
+                expectedScienceDemandIndex: number(row.expectedScienceDemandIndex, null),
+            }))
+            .filter(row => row.year && Number.isFinite(row.youthPopulationIndex) && Number.isFinite(row.expectedScienceDemandIndex))
+            .sort((a, b) => Number(a.year) - Number(b.year))
+        : [];
+
+    // Deterministic charts must not present bundled demo scenarios as current evidence.
+    if (!rows.length || forecast?.sourceTrust !== 'uploaded_file') return null;
+
+    const source = sourceLabel('student_stats', forecast.sourceLabel || 'Population forecast dataset');
+    return asResult({
+        text: 'สร้างกราฟแนวโน้มประชากรวัยเรียนและอุปสงค์ต่อคณะวิทยาศาสตร์จากข้อมูลที่นำเข้าแล้วครับ',
+        chart: {
+            chartType: 'line',
+            data: {
+                labels: rows.map(row => String(row.year)),
+                datasets: [
+                    {
+                        label: 'ดัชนีประชากรวัยเรียน',
+                        data: rows.map(row => row.youthPopulationIndex),
+                        borderColor: 'var(--accent-blue)',
+                        backgroundColor: 'color-mix(in srgb, var(--accent-blue) 12%, transparent)',
+                        tension: 0.3,
+                        fill: false,
+                    },
+                    {
+                        label: 'ดัชนีความต้องการคณะวิทยาศาสตร์',
+                        data: rows.map(row => row.expectedScienceDemandIndex),
+                        borderColor: 'var(--accent-success)',
+                        backgroundColor: 'color-mix(in srgb, var(--accent-success) 12%, transparent)',
+                        tension: 0.3,
+                        fill: false,
+                    },
+                ],
+            },
+            options: {
+                plugins: {
+                    title: { display: true, text: 'แนวโน้มประชากรวัยเรียนและอุปสงค์ต่อคณะวิทยาศาสตร์' },
+                    legend: { position: 'bottom' },
+                },
+                scales: {
+                    y: { beginAtZero: false, title: { display: true, text: 'ดัชนี' } },
+                    x: { title: { display: true, text: 'ปีการศึกษา' } },
+                },
+            },
+        },
+        sources: [source],
+    });
+}
+
+function buildStudentAwardsChartAnswer(question, userContext) {
+    const accessDenied = denyIfNoAccess(userContext, ['student_stats']);
+    if (accessDenied) return accessDenied;
+
+    const stats = sharedDataset('student_stats', studentStatsData);
+    const rows = Array.isArray(stats?.studentAwards)
+        ? stats.studentAwards.filter(row => row && row.sourceTrust !== 'generated_mock')
+        : [];
+    if (!rows.length) return null;
+
+    const text = q(question);
+    const field = /สาขา|major/.test(text) ? 'major' : (/ระดับ|level/.test(text) ? 'level' : 'category');
+    const label = field === 'major' ? 'สาขาวิชา' : (field === 'level' ? 'ระดับรางวัล' : 'ประเภทรางวัล');
+    const counts = new Map();
+    rows.forEach(row => {
+        const key = String(row[field] || 'ไม่ระบุ').trim() || 'ไม่ระบุ';
+        counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+
+    return asResult({
+        text: `สร้างกราฟจำนวนรางวัลนักศึกษาแยกตาม${label}จากทะเบียนรางวัลที่นำเข้าแล้วครับ`,
+        chart: {
+            chartType: 'bar',
+            data: {
+                labels: ranked.map(([name]) => name),
+                datasets: [{
+                    label: 'จำนวนรางวัล',
+                    data: ranked.map(([, count]) => count),
+                    backgroundColor: ranked.map((_, index) => PALETTE[index % PALETTE.length]),
+                    borderRadius: 8,
+                }],
+            },
+            options: {
+                indexAxis: ranked.length > 6 ? 'y' : 'x',
+                plugins: {
+                    title: { display: true, text: `รางวัลนักศึกษาแยกตาม${label}` },
+                    legend: { position: 'bottom' },
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0 } },
+                },
+            },
+        },
+        sources: [sourceLabel('student_stats', 'Student awards register')],
+    });
+}
+
 export function createPlannedChartAnswer(question, userContext = {}) {
     if (!hasChartIntent(question)) return null;
     const text = q(question);
@@ -604,6 +713,12 @@ export function createPlannedChartAnswer(question, userContext = {}) {
     }
     if (/รายวิชา|วิชา|course|เกรดรายวิชา|กระจายเกรด|วิชาไหน|grade distribution/.test(text)) {
         return buildCourseChartAnswer(question, userContext);
+    }
+    if (/รางวัล|award/.test(text)) {
+        return buildStudentAwardsChartAnswer(question, userContext);
+    }
+    if (/นักศึกษา|นิสิต|student/.test(text) && /ประชากร|population|พยากรณ์|forecast/.test(text)) {
+        return buildPopulationForecastChartAnswer(question, userContext);
     }
     if (/งบ|budget|รายรับ|รายจ่าย/.test(text) && /นักศึกษา|นิสิต|student/.test(text)) {
         return buildBudgetStudentCompareAnswer(question, userContext);

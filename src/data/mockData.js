@@ -1,7 +1,7 @@
 // Mock data for the MJU Dashboard
 // อ้างอิงข้อมูลจากมหาวิทยาลัยแม่โจ้ (mju.ac.th)
-import { SCIENCE_ACTIVITY_REQUIREMENT, scienceActivityEvents } from './scienceActivitiesData';
-import { officialFinancialData, officialScienceBudgetData, officialTuitionData } from './officialPlanningData';
+import { SCIENCE_ACTIVITY_REQUIREMENT, scienceActivityEvents } from './scienceActivitiesData.js';
+import { officialFinancialData, officialScienceBudgetData, officialTuitionData } from './officialPlanningData.js';
 import {
     OFFICIAL_SCIENCE_ENROLLMENT_ROWS,
     OFFICIAL_SCIENCE_STUDENT_LEVELS,
@@ -12,7 +12,7 @@ import {
     OFFICIAL_STUDENT_SNAPSHOT_DATE,
     OFFICIAL_STUDENT_SOURCE_URL,
     OFFICIAL_STUDENT_TOTAL,
-} from './mjuOfficialStudentSnapshot';
+} from './mjuOfficialStudentSnapshot.js';
 
 const fallbackTuitionData = {
     flatRate: {
@@ -629,17 +629,28 @@ const fallbackScienceFacultyBudgetData = {
     name: 'คณะวิทยาศาสตร์'
 };
 
-const officialScienceBudgetYears = new Set((officialScienceBudgetData.yearly || []).map(item => String(item.year)));
+const hasOfficialScienceBudget = Array.isArray(officialScienceBudgetData.yearly)
+    && officialScienceBudgetData.yearly.length > 0;
 
+// Keep the old presentation series available only as an explicit sample. It
+// must not be merged into the workbook-derived forecast because that presents
+// mock 2564-2569 figures as actuals beside the official 2570-2573 plan.
 export const scienceFacultyBudgetData = {
-    ...fallbackScienceFacultyBudgetData,
-    ...officialScienceBudgetData,
-    yearly: [
-        ...fallbackScienceFacultyBudgetData.yearly.filter(item => !officialScienceBudgetYears.has(String(item.year))),
-        ...(officialScienceBudgetData.yearly || []),
-    ].sort((a, b) => Number(a.year) - Number(b.year)),
-    summary: {
-        ...fallbackScienceFacultyBudgetData.summary,
-        ...Object.fromEntries(Object.entries(officialScienceBudgetData.summary || {}).filter(([, value]) => value != null)),
-    },
+    ...(hasOfficialScienceBudget ? officialScienceBudgetData : fallbackScienceFacultyBudgetData),
+    yearly: (hasOfficialScienceBudget
+        ? officialScienceBudgetData.yearly
+        : fallbackScienceFacultyBudgetData.yearly
+    ).map(row => ({
+        ...row,
+        ...(hasOfficialScienceBudget ? {} : { isMock: true, sourceType: 'mock' }),
+    })),
+    summary: hasOfficialScienceBudget
+        ? officialScienceBudgetData.summary
+        : fallbackScienceFacultyBudgetData.summary,
+    sourceType: hasOfficialScienceBudget ? 'internal_file' : 'mock',
+    historicalSample: fallbackScienceFacultyBudgetData.yearly.map(row => ({
+        ...row,
+        isMock: true,
+        sourceType: 'mock',
+    })),
 };

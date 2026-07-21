@@ -201,10 +201,12 @@ expect(
 
 expect(
   'Firestore datasets are write-protected',
-  /callerCanManageDashboardData/.test(rules)
+  /callerCanManageDashboardDataset/.test(rules)
     && /match \/datasets\/\{datasetId\}/.test(rules)
-    && /allow write: if callerCanManageDashboardData\(\)/.test(rules),
-  'Shared dashboard data must be writable only by approved operational roles.'
+    && /allow write: if callerCanManageDashboardDataset\(datasetId\)/.test(rules)
+    && /callerHasApprovedRole\(\['dean', 'staff'\]\)/.test(rules)
+    && /callerHasApprovedRole\(\['chair'\]\)/.test(rules),
+  'Shared dashboard data must be writable only by approved roles and dataset scope.'
 );
 
 expect(

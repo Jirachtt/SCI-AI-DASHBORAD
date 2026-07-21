@@ -40,7 +40,22 @@ service cloud.firestore {
     }
 
     function callerCanManageDashboardData() {
-      return callerHasApprovedRole(['dean', 'staff']);
+      return callerHasApprovedRole(['dean', 'chair', 'staff']);
+    }
+
+    function callerCanManageDashboardDataset(datasetId) {
+      return callerHasApprovedRole(['dean', 'staff'])
+        || (
+          callerHasApprovedRole(['chair'])
+          && datasetId in [
+            'students',
+            'student_stats',
+            'tcas_admissions',
+            'course_analytics',
+            'student_life',
+            'graduation'
+          ]
+        );
     }
 
     function hasMjuSsoClaim() {
@@ -172,11 +187,11 @@ service cloud.firestore {
 
     match /datasets/{datasetId} {
       allow read: if isSignedIn();
-      allow write: if callerCanManageDashboardData();
+      allow write: if callerCanManageDashboardDataset(datasetId);
 
       match /history/{historyId} {
         allow read: if isSignedIn();
-        allow write: if callerCanManageDashboardData();
+        allow write: if callerCanManageDashboardDataset(datasetId);
       }
     }
 

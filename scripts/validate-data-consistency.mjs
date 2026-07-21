@@ -36,6 +36,7 @@ import {
 } from '../src/data/graduationData.js';
 import { hrData } from '../src/data/hrData.js';
 import { researchData } from '../src/data/researchData.js';
+import { scienceFacultyBudgetData } from '../src/data/mockData.js';
 
 const results = [];
 
@@ -213,6 +214,14 @@ assert(
 assert(
     officialScienceBudgetData.yearly.every(row => closeTo(row.revenue - row.expense, row.surplus, 0.02)),
     'Budget yearly revenue minus expense equals surplus',
+);
+assert(
+    scienceFacultyBudgetData.yearly.every(row => /^ประมาณการ-\d+$/u.test(String(row.source || ''))),
+    'Science budget display excludes unsourced mock history when workbook forecasts exist',
+);
+assert(
+    scienceFacultyBudgetData.unit === 'million baht' && scienceFacultyBudgetData.yearly[0]?.year === '2570',
+    'Science budget display keeps workbook unit and starts at the first sourced forecast year',
 );
 const estimate = officialFinancialData.officialEstimate;
 assert(

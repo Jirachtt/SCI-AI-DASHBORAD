@@ -21,7 +21,7 @@ export const AI_DATASET_REGISTRY = [
         domain: 'students',
         sections: ['student_stats'],
         keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|ชั้นปี|คงอยู่|retention|ลดลง|ลาออก|พ้นสภาพ|รอพินิจ|เสี่ยง|อัตราสำเร็จ|สำเร็จการศึกษา|ความพร้อมจบ/i,
-        chartableFields: ['total', 'byLevel', 'byEnrollmentYear', 'byMajor', 'newStudentIntake', 'trend'],
+        chartableFields: ['total', 'byLevel', 'byEnrollmentYear', 'byMajor', 'newStudentIntake', 'trend', 'studentAwards', 'populationForecast'],
     },
     {
         id: 'tcas_admissions',

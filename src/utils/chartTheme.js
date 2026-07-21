@@ -67,7 +67,7 @@ export function getCurrentChartTheme(theme = activeThemeName()) {
         tooltipBody: isLight
             ? cssVarValue('--chart-muted', 'var(--text-muted)')
             : cssVarValue('--chart-text', 'var(--text-primary)'),
-        tooltipBorder: cssVarValue('--accent-border-soft', 'var(--border-color)'),
+        tooltipBorder: cssVarValue('--chart-tooltip-border', cssVarValue('--accent-border-soft', 'var(--border-color)')),
     };
 }
 
@@ -153,15 +153,22 @@ function chartLinearGradient(context, fallbackHex, topAlpha, bottomAlpha, horizo
     const chart = context?.chart;
     const area = chart?.chartArea;
     const ctx = chart?.ctx;
-    if (!ctx || !area) return rgbaFromHex(fallbackHex, topAlpha);
+    if (!ctx || !area) return rgbaFromColor(fallbackHex, fallbackHex, topAlpha);
 
     const gradient = horizontal
         ? ctx.createLinearGradient(area.left, 0, area.right, 0)
         : ctx.createLinearGradient(0, area.top, 0, area.bottom);
-    gradient.addColorStop(0, rgbaFromHex(fallbackHex, topAlpha));
-    gradient.addColorStop(0.58, rgbaFromHex(fallbackHex, Math.max(bottomAlpha + 0.10, topAlpha * 0.58)));
-    gradient.addColorStop(1, rgbaFromHex(fallbackHex, bottomAlpha));
+    gradient.addColorStop(0, rgbaFromColor(fallbackHex, fallbackHex, topAlpha));
+    gradient.addColorStop(0.58, rgbaFromColor(fallbackHex, fallbackHex, Math.max(bottomAlpha + 0.10, topAlpha * 0.58)));
+    gradient.addColorStop(1, rgbaFromColor(fallbackHex, fallbackHex, bottomAlpha));
     return gradient;
+}
+
+function chartBarGradient(context, fallbackColor, theme, horizontal = false, hover = false) {
+    const isDark = theme === 'dark';
+    const startAlpha = hover ? 1 : (isDark ? 0.98 : 0.94);
+    const endAlpha = hover ? 0.90 : (isDark ? 0.72 : 0.66);
+    return chartLinearGradient(context, fallbackColor, startAlpha, endAlpha, horizontal);
 }
 
 function isNearBlackColor(value) {
@@ -363,13 +370,16 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
                     dataset.borderColor = 'transparent';
                     dataset.hoverBorderColor = 'transparent';
                     dataset.borderRadius = stackedBarBorderRadius;
-                } else if (!Array.isArray(dataset.backgroundColor)) {
-                    dataset.backgroundColor = rgbaFromColor(originalBackground, fallback, themeConfig.theme === 'dark' ? 0.90 : 0.84);
-                    dataset.hoverBackgroundColor = rgbaFromColor(originalBackground, fallback, 0.98);
+                } else if (!Array.isArray(originalBackground)) {
+                    const horizontal = chart?.config?.options?.indexAxis === 'y';
+                    dataset.backgroundColor = context => chartBarGradient(context, fallback, themeConfig.theme, horizontal, false);
+                    dataset.hoverBackgroundColor = context => chartBarGradient(context, fallback, themeConfig.theme, horizontal, true);
                 }
-                if (dataset.borderRadius == null) dataset.borderRadius = 6;
+                if (dataset.borderRadius == null) dataset.borderRadius = 8;
                 if (dataset.borderSkipped == null) dataset.borderSkipped = false;
-                if (dataset.maxBarThickness == null) dataset.maxBarThickness = 54;
+                if (dataset.maxBarThickness == null) dataset.maxBarThickness = 42;
+                if (dataset.categoryPercentage == null) dataset.categoryPercentage = 0.72;
+                if (dataset.barPercentage == null) dataset.barPercentage = 0.82;
             }
             if (isSlice) {
                 dataset.borderColor = themeConfig.surface;
@@ -384,15 +394,20 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
 
         if (isLine || isPointChart) {
             if (isLine && dataset.fill && !Array.isArray(dataset.backgroundColor)) {
-                dataset.backgroundColor = (context) => chartLinearGradient(context, fallback, themeConfig.theme === 'dark' ? 0.30 : 0.22, 0.02);
+                dataset.backgroundColor = (context) => chartLinearGradient(
+                    context,
+                    fallback,
+                    themeConfig.theme === 'dark' ? 0.28 : 0.20,
+                    themeConfig.theme === 'dark' ? 0.015 : 0.008,
+                );
             }
             dataset.pointBackgroundColor = adaptColorValue(originalPointBackground || originalBorder, fallback, themeConfig, 1, 0, 2.8);
             dataset.pointHoverBackgroundColor = adaptColorValue(dataset.pointBackgroundColor, fallback, themeConfig, 1, 0, 2.8);
             dataset.pointBorderColor = themeConfig.surface;
             if (dataset.pointBorderWidth == null) dataset.pointBorderWidth = 2;
-            if (dataset.borderWidth == null) dataset.borderWidth = themeConfig.theme === 'dark' ? 2.8 : 2.4;
-            if (dataset.tension == null) dataset.tension = 0.34;
-            if (dataset.pointRadius == null) dataset.pointRadius = isPointChart ? 4.8 : 3.6;
+            if (dataset.borderWidth == null) dataset.borderWidth = themeConfig.theme === 'dark' ? 2.6 : 2.25;
+            if (dataset.tension == null) dataset.tension = 0.40;
+            if (dataset.pointRadius == null) dataset.pointRadius = isPointChart ? 4.8 : 2.8;
             if (dataset.pointHoverRadius == null) dataset.pointHoverRadius = isPointChart ? 7 : 6;
             if (dataset.pointHitRadius == null) dataset.pointHitRadius = 12;
         }
@@ -603,7 +618,7 @@ export const themeAdaptorPlugin = {
             ...(options.elements.point || {}),
         };
         options.elements.bar = {
-            borderRadius: 6,
+            borderRadius: 8,
             borderSkipped: false,
             ...(options.elements.bar || {}),
         };
@@ -620,9 +635,11 @@ export const themeAdaptorPlugin = {
             if (scale.grid && scale.grid.display !== false) {
                 scale.grid.color = themeConfig.grid;
                 if (scale.grid.lineWidth == null) scale.grid.lineWidth = 0.5;
+                if (scale.grid.drawTicks == null) scale.grid.drawTicks = false;
             }
             if (scale.border) {
                 scale.border.color = themeConfig.axis;
+                if (scale.border.display == null) scale.border.display = false;
             }
             if (scale.angleLines) {
                 scale.angleLines.color = themeConfig.grid;
@@ -646,8 +663,8 @@ export const themeAdaptorPlugin = {
             tooltip.bodyColor = themeConfig.tooltipBody;
             tooltip.borderColor = themeConfig.tooltipBorder;
             tooltip.borderWidth = 1;
-            if (!tooltip.cornerRadius) tooltip.cornerRadius = 10;
-            if (!tooltip.padding) tooltip.padding = 12;
+            if (!tooltip.cornerRadius) tooltip.cornerRadius = 8;
+            if (!tooltip.padding) tooltip.padding = 13;
             tooltip.titleFont = withDashboardFont(tooltip.titleFont, '600');
             tooltip.bodyFont = withDashboardFont(tooltip.bodyFont, '500');
             if (tooltip.displayColors == null) tooltip.displayColors = true;
@@ -672,7 +689,7 @@ export const themeAdaptorPlugin = {
             legend.labels.pointStyle = legend.labels.pointStyle || 'roundedRect';
             legend.labels.boxWidth = legend.labels.boxWidth ?? 10;
             legend.labels.boxHeight = legend.labels.boxHeight ?? 10;
-            legend.labels.padding = Math.max(Number(legend.labels.padding) || 0, 14);
+            legend.labels.padding = Math.max(Number(legend.labels.padding) || 0, 16);
         }
 
         const title = options.plugins?.title;
@@ -689,6 +706,18 @@ export const themeAdaptorPlugin = {
     },
     afterUpdate(chart) {
         chart.$mjuHasAnimated = true;
+    },
+    beforeTooltipDraw(chart) {
+        const themeConfig = getCurrentChartTheme();
+        chart.ctx.save();
+        chart.ctx.shadowColor = themeConfig.theme === 'dark'
+            ? 'rgba(0, 0, 0, 0.46)'
+            : 'rgba(15, 23, 42, 0.18)';
+        chart.ctx.shadowBlur = 18;
+        chart.ctx.shadowOffsetY = 8;
+    },
+    afterTooltipDraw(chart) {
+        chart.ctx.restore();
     },
     afterEvent(chart, args) {
         const eventType = args?.event?.type;

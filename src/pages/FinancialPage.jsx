@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
@@ -12,6 +12,7 @@ import {
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ProductPageHeader from '../components/ProductPageHeader';
+import DatasetImportButton from '../components/DatasetImportButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
@@ -27,8 +28,12 @@ export default function FinancialPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
     const { data: financialData } = useDashboardDataset('financial');
-    const paymentLedgerDemo = useMemo(() => buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 48 }), []);
-    const paymentLedgerSummary = useMemo(() => summarizeStudentPaymentLedgerDemo(paymentLedgerDemo), [paymentLedgerDemo]);
+    const paymentLedgerRows = (
+        Array.isArray(financialData?.studentPayments) && financialData.studentPayments.length > 0
+            ? financialData.studentPayments
+            : buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 48 })
+    );
+    const paymentLedgerSummary = summarizeStudentPaymentLedgerDemo(paymentLedgerRows);
 
     if (!canAccess(user?.role, 'financial')) return <AccessDenied />;
 
@@ -95,7 +100,16 @@ export default function FinancialPage() {
                 title="การเงินและงานทะเบียน"
                 subtitle="ภาพรวมรายรับ ภาระการชำระ และข้อมูลประกอบการบริหาร"
                 tone="amber"
-                actions={<ExportPDFButton title="การเงินและงานทะเบียน" />}
+                actions={(
+                    <>
+                        <DatasetImportButton
+                            importTypes={['student_payments']}
+                            currentData={financialData}
+                            buttonLabel="นำเข้ารายการชำระ"
+                        />
+                        <ExportPDFButton title="การเงินและงานทะเบียน" />
+                    </>
+                )}
             />
 
             {/* Current Status */}
@@ -205,7 +219,7 @@ export default function FinancialPage() {
                 <div className="stats-grid" style={{ marginBottom: 16 }}>
                     <div className="stat-card">
                         <div className="stat-card-value">{paymentLedgerSummary.totalRows.toLocaleString('th-TH')}</div>
-                        <div className="stat-card-label">รายการใน demo ledger</div>
+                        <div className="stat-card-label">รายการชำระที่ระบบมี</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-card-value" style={{ color: 'var(--danger)' }}>{paymentLedgerSummary.overdue.toLocaleString('th-TH')}</div>
@@ -217,7 +231,7 @@ export default function FinancialPage() {
                     </div>
                     <div className="stat-card">
                         <div className="stat-card-value">{paymentLedgerSummary.totalRemaining.toLocaleString('th-TH')}</div>
-                        <div className="stat-card-label">ยอดคงค้าง demo (บาท)</div>
+                        <div className="stat-card-label">ยอดคงค้าง (บาท)</div>
                     </div>
                 </div>
 
@@ -236,7 +250,7 @@ export default function FinancialPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {paymentLedgerDemo.slice(0, 12).map(row => (
+                            {paymentLedgerRows.slice(0, 12).map(row => (
                                 <tr key={row.studentId}>
                                     <td>{row.studentId}</td>
                                     <td>{row.major}</td>

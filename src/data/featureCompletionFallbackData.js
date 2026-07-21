@@ -52,14 +52,15 @@ export const executiveCompensationDemo = [
 export function getExecutiveCompensationSummary(rows = executiveCompensationDemo) {
     const totalGross = rows.reduce((sum, row) => sum + Number(row.grossMonthly || 0), 0);
     const totalDeductions = rows.reduce((sum, row) => sum + Number(row.totalDeductions || 0), 0);
+    const isUploaded = rows.length > 0 && rows.every(row => row.sourceTrust === 'uploaded_file');
     return {
         positions: rows.length,
         totalGross,
         totalDeductions,
         netEstimate: totalGross - totalDeductions,
-        sourceTrust: 'generated_mock',
-        sourceLabel: 'Demo payroll structure - not official salary data',
-        note: FEATURE_COMPLETION_FALLBACK_NOTE,
+        sourceTrust: isUploaded ? 'uploaded_file' : 'generated_mock',
+        sourceLabel: isUploaded ? 'Authorized HR/Payroll uploaded file' : 'Demo payroll structure - not official salary data',
+        note: isUploaded ? '' : FEATURE_COMPLETION_FALLBACK_NOTE,
     };
 }
 
@@ -103,6 +104,7 @@ export function buildStudentPaymentLedgerDemo(students = [], { limit = 80 } = {}
 }
 
 export function summarizeStudentPaymentLedgerDemo(rows = []) {
+    const isUploaded = rows.length > 0 && rows.every(row => row.sourceTrust === 'uploaded_file');
     const summary = rows.reduce((acc, row) => {
         acc.totalRows += 1;
         acc.totalFee += Number(row.feeAmount || 0);
@@ -118,10 +120,10 @@ export function summarizeStudentPaymentLedgerDemo(rows = []) {
         paid: 0,
         late: 0,
         overdue: 0,
-        sourceTrust: 'generated_mock',
-        sourceLabel: 'Generated payment ledger demo - not official finance data',
+        sourceTrust: isUploaded ? 'uploaded_file' : 'generated_mock',
+        sourceLabel: isUploaded ? 'Authorized Finance/Reg uploaded file' : 'Generated payment ledger demo - not official finance data',
     });
-    summary.note = FEATURE_COMPLETION_FALLBACK_NOTE;
+    summary.note = isUploaded ? '' : FEATURE_COMPLETION_FALLBACK_NOTE;
     return summary;
 }
 

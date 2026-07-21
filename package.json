@@ -23,8 +23,9 @@
     "audit:ai-usage:live": "node scripts/validate-ai-usage-meter.mjs --live",
     "audit:ai-models": "node scripts/validate-ai-model-routing.mjs",
     "audit:mju-connected": "node scripts/validate-mju-connected-data.mjs",
+    "audit:imports": "node scripts/validate-dataset-imports.mjs",
     "smoke:vercel": "node scripts/smoke-vercel-production.mjs",
-    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:ai-models && npm run audit:ai-retrieval && npm run audit:student-realtime && npm run audit:sync && npm run audit:roles && npm run audit:navigation && npm run audit:data && npm run audit:overview && npm run audit:mju-connected && npm run smoke:presentation"
+    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:ai-models && npm run audit:ai-retrieval && npm run audit:student-realtime && npm run audit:sync && npm run audit:roles && npm run audit:navigation && npm run audit:data && npm run audit:overview && npm run audit:mju-connected && npm run audit:imports && npm run smoke:presentation"
   },
   "dependencies": {
     "chart.js": "^4.5.1",

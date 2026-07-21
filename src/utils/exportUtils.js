@@ -625,8 +625,14 @@ function buildStudentStatsSheets() {
     addSheet(sheets, 'Science Gender', rowsFromObject(science.byGender, 'คณะวิทยาศาสตร์ตามเพศ'));
     addSheet(sheets, 'Science Ratio', rowsFromRecords(science.studentFacultyRatio?.comparison, { section: 'อัตราส่วนนักศึกษาต่ออาจารย์' }));
     addSheet(sheets, 'Student Rows', compactStudentRows(students, { section: 'รายชื่อนักศึกษาที่ระบบใช้คำนวณ' }));
-    addSheet(sheets, 'Student Awards Demo', rowsFromRecords(studentAwardRecordsDemo, { section: 'นักศึกษาที่ได้รับรางวัล (demo)' }));
-    addSheet(sheets, 'Population Forecast Demo', rowsFromRecords(populationForecastReference.scenario, { section: 'พยากรณ์ประชากรประเทศ (demo)' }));
+    const awardRows = Array.isArray(data.studentAwards) && data.studentAwards.length > 0
+        ? data.studentAwards
+        : studentAwardRecordsDemo;
+    const populationRows = Array.isArray(data.populationForecast?.scenario) && data.populationForecast.scenario.length > 0
+        ? data.populationForecast.scenario
+        : populationForecastReference.scenario;
+    addSheet(sheets, 'Student Awards', rowsFromRecords(awardRows, { section: 'นักศึกษาที่ได้รับรางวัล' }));
+    addSheet(sheets, 'Population Forecast', rowsFromRecords(populationRows, { section: 'พยากรณ์ประชากรประเทศ' }));
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['student_stats', 'dashboard_summary']));
     return sheets;
 }
@@ -689,8 +695,11 @@ function buildHrSheets() {
     addSheet(sheets, 'Diversity Nationality', rowsFromRecords(science.diversity?.nationality, { section: 'ความหลากหลายสัญชาติ' }));
     addSheet(sheets, 'Diversity Age', rowsFromRecords(science.diversity?.ageGroup, { section: 'ช่วงอายุ' }));
     addSheet(sheets, 'Student Faculty Ratio', rowsFromRecords(science.studentFacultyRatio, { section: 'อัตราส่วนนักศึกษาต่ออาจารย์' }));
-    addSheet(sheets, 'Executive Pay Demo', rowsFromRecords(executiveCompensationDemo, { section: 'ค่าตอบแทนผู้บริหาร (demo)' }));
-    addSheet(sheets, 'Executive Pay Summary', rowsFromObject(getExecutiveCompensationSummary(), 'สรุปค่าตอบแทนผู้บริหาร (demo)'));
+    const compensationRows = Array.isArray(data.executiveCompensation) && data.executiveCompensation.length > 0
+        ? data.executiveCompensation
+        : executiveCompensationDemo;
+    addSheet(sheets, 'Executive Pay', rowsFromRecords(compensationRows, { section: 'ค่าตอบแทนผู้บริหาร' }));
+    addSheet(sheets, 'Executive Pay Summary', rowsFromObject(getExecutiveCompensationSummary(compensationRows), 'สรุปค่าตอบแทนผู้บริหาร'));
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['hr']));
     return sheets;
 }
@@ -713,7 +722,9 @@ function buildResearchSheets() {
 function buildFinancialSheets() {
     const sheets = {};
     const data = getDataset('financial', financialData) || {};
-    const paymentLedgerDemo = buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 80 });
+    const paymentLedgerRows = Array.isArray(data.studentPayments) && data.studentPayments.length > 0
+        ? data.studentPayments
+        : buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 80 });
     addSheet(sheets, 'Tuition Status', rowsFromRecords(data.tuitionStatus, { section: 'สถานะค่าเทอม' }));
     addSheet(sheets, 'Payment History', rowsFromRecords(data.paymentHistory, { section: 'ประวัติการชำระเงิน' }));
     addSheet(sheets, 'Scholarship', rowsFromRecords(data.scholarship, { section: 'ทุนการศึกษา' }));
@@ -722,8 +733,8 @@ function buildFinancialSheets() {
     addSheet(sheets, 'Official Top Majors', rowsFromRecords(data.officialEstimate?.topMajors, { section: 'รายหลักสูตรตามประมาณการ' }));
     addSheet(sheets, 'Faculty Budget Summary', rowsFromObject(data.facultyBudget, 'งบประมาณคณะ'));
     addSheet(sheets, 'Faculty Budget Categories', rowsFromRecords(data.facultyBudget?.categories, { section: 'หมวดงบประมาณคณะ' }));
-    addSheet(sheets, 'Payment Ledger Demo', rowsFromRecords(paymentLedgerDemo, { section: 'ค่าธรรมเนียมรายคน (demo)' }));
-    addSheet(sheets, 'Payment Summary Demo', rowsFromObject(summarizeStudentPaymentLedgerDemo(paymentLedgerDemo), 'สรุปสถานะค่าธรรมเนียมรายคน (demo)'));
+    addSheet(sheets, 'Payment Ledger', rowsFromRecords(paymentLedgerRows, { section: 'ค่าธรรมเนียมรายคน' }));
+    addSheet(sheets, 'Payment Summary', rowsFromObject(summarizeStudentPaymentLedgerDemo(paymentLedgerRows), 'สรุปสถานะค่าธรรมเนียมรายคน'));
     addSheet(sheets, 'Dataset Meta', datasetMetaRows(['financial']));
     return sheets;
 }

@@ -30,6 +30,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import ExportPDFButton from '../components/ExportPDFButton';
+import DatasetImportButton from '../components/DatasetImportButton';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import {
@@ -251,7 +252,15 @@ export default function TcasPlanningPage() {
                 subtitle="แผนรับย้อนหลัง 5 ปี เป้าหมายรอบถัดไป และผลกระทบต่อรายได้ค่าเล่าเรียน"
                 tone="emerald"
                 className="tcas-page-header"
-                actions={<ExportPDFButton title="แผนรับนักศึกษา TCAS" />}
+                actions={(
+                    <>
+                        <DatasetImportButton
+                            importTypes={['tcas_history', 'tcas_plan']}
+                            currentData={data}
+                        />
+                        <ExportPDFButton title="แผนรับนักศึกษา TCAS" />
+                    </>
+                )}
             />
 
             <section className="tcas-source-banner">

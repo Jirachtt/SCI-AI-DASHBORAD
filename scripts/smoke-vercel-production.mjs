@@ -30,7 +30,7 @@ function okStatus(status, allowProtected = false) {
   return false;
 }
 
-async function checkRoute({ baseUrl, path, method = 'GET', body = null, allowProtected = false, expectJson = false }) {
+async function checkRoute({ baseUrl, path, method = 'GET', body = null, allowProtected = false, expectJson = false, timeoutMs = 15000 }) {
   const url = `${baseUrl}${path}`;
   const started = Date.now();
   try {
@@ -39,7 +39,7 @@ async function checkRoute({ baseUrl, path, method = 'GET', body = null, allowPro
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
       redirect: 'follow',
-    });
+    }, timeoutMs);
     const ms = Date.now() - started;
     const contentType = response.headers.get('content-type') || '';
     const ok = okStatus(response.status, allowProtected) && (!expectJson || contentType.includes('application/json'));
@@ -76,7 +76,7 @@ function minimalAIRequest(model) {
       ],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 80,
+        maxOutputTokens: 256,
       },
     },
     usageUser: {
@@ -107,6 +107,9 @@ async function main() {
       body: minimalAIRequest(model),
       allowProtected: false,
       expectJson: true,
+      // A cold Vercel Function plus provider reasoning can legitimately exceed
+      // the 15-second budget used for ordinary HTTP health checks.
+      timeoutMs: 60000,
     });
   }
 

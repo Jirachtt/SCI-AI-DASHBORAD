@@ -74,7 +74,9 @@ function buildStudentRows(parsed, mapping) {
         if (!row.level) row.level = 'ปริญญาตรี';
         if (!row.status) row.status = 'กำลังศึกษา';
         if (row.year == null) row.year = 0;
-        if (row.gpa == null) row.gpa = 0;
+        // A missing GPA is unknown, not zero. Treating it as 0 would create
+        // false at-risk alerts and misleading aggregate calculations.
+        if (row.gpa == null) row.gpa = null;
         out.push(row);
     });
     return { rows: out, errors };

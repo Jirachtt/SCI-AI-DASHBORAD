@@ -1511,3 +1511,263 @@ html[data-theme="dark"] {
     transition: none !important;
   }
 }
+/* Authorized CSV/XLSX imports for datasets that do not yet have an MJU API. */
+.dataset-import-trigger {
+    white-space: nowrap;
+}
+
+.dataset-import-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: color-mix(in srgb, var(--text-primary) 38%, transparent);
+    backdrop-filter: blur(4px);
+}
+
+.dataset-import-dialog {
+    width: min(860px, 100%);
+    max-height: min(780px, calc(100vh - 40px));
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: 0 24px 70px color-mix(in srgb, var(--text-primary) 24%, transparent);
+}
+
+.dataset-import-header,
+.dataset-import-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-color: var(--border-color);
+}
+
+.dataset-import-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dataset-import-footer {
+    justify-content: flex-end;
+    border-top: 1px solid var(--border-color);
+}
+
+.dataset-import-header h2 {
+    margin: 3px 0 2px;
+    font-size: 1.1rem;
+    line-height: 1.35;
+    letter-spacing: 0;
+}
+
+.dataset-import-header p,
+.dataset-import-schema p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.83rem;
+    line-height: 1.5;
+}
+
+.dataset-import-kicker {
+    color: var(--accent-success);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0;
+}
+
+.dataset-import-body {
+    overflow-y: auto;
+    padding: 18px 20px;
+    display: grid;
+    gap: 14px;
+}
+
+.dataset-import-field {
+    display: grid;
+    gap: 7px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.dataset-import-field select {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font: inherit;
+}
+
+.dataset-import-schema {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    background: var(--bg-secondary);
+}
+
+.dataset-import-dropzone {
+    min-height: 104px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 5px;
+    padding: 16px;
+    border: 1px dashed color-mix(in srgb, var(--accent-success) 48%, var(--border-color));
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--accent-success) 5%, var(--bg-card));
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.dataset-import-dropzone:hover {
+    border-color: var(--accent-success);
+    background: color-mix(in srgb, var(--accent-success) 9%, var(--bg-card));
+}
+
+.dataset-import-dropzone svg {
+    color: var(--accent-success);
+}
+
+.dataset-import-dropzone span {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-weight: 700;
+}
+
+.dataset-import-dropzone small {
+    color: var(--text-muted);
+}
+
+.dataset-import-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 10px 12px;
+    border: 1px solid;
+    border-radius: 7px;
+    font-size: 0.83rem;
+    line-height: 1.5;
+}
+
+.dataset-import-message--error {
+    border-color: color-mix(in srgb, var(--accent-danger) 38%, var(--border-color));
+    background: color-mix(in srgb, var(--accent-danger) 8%, var(--bg-card));
+    color: var(--accent-danger);
+}
+
+.dataset-import-message--success {
+    border-color: color-mix(in srgb, var(--accent-success) 38%, var(--border-color));
+    background: color-mix(in srgb, var(--accent-success) 8%, var(--bg-card));
+    color: var(--accent-success-deep);
+}
+
+.dataset-import-preview {
+    display: grid;
+    gap: 10px;
+}
+
+.dataset-import-preview-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.dataset-import-preview-summary > div {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    background: var(--bg-secondary);
+}
+
+.dataset-import-preview-summary strong,
+.dataset-import-preview-summary span {
+    display: block;
+}
+
+.dataset-import-preview-summary strong {
+    font-size: 1rem;
+}
+
+.dataset-import-preview-summary span {
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+.dataset-import-table-wrap {
+    overflow: auto;
+    max-height: 230px;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+}
+
+.dataset-import-table-wrap table {
+    width: 100%;
+    min-width: 620px;
+    border-collapse: collapse;
+    font-size: 0.76rem;
+}
+
+.dataset-import-table-wrap th,
+.dataset-import-table-wrap td {
+    max-width: 220px;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-color);
+    overflow-wrap: anywhere;
+}
+
+.dataset-import-table-wrap th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.dataset-import-warning {
+    margin: 0;
+    color: var(--accent-warning);
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+    .dataset-import-backdrop {
+        padding: 8px;
+    }
+
+    .dataset-import-dialog {
+        max-height: calc(100vh - 16px);
+    }
+
+    .dataset-import-header,
+    .dataset-import-body,
+    .dataset-import-footer {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .dataset-import-schema {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .dataset-import-preview-summary {
+        grid-template-columns: 1fr;
+    }
+}

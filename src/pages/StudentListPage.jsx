@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap, Users, AlertTriangle } from 'lucide-react';
+import { Search, UserPlus, X, ChevronLeft, ChevronRight, GraduationCap, Users, AlertTriangle, Upload } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import AdminDataUpload from '../components/AdminDataUpload';
 import { canAccess, hasStudentDataWriteAccess } from '../utils/accessControl';
 
 /* ────────────── Student Data (live from Firestore, mock fallback) ────────────── */
@@ -84,6 +85,8 @@ export default function StudentListPage() {
     const [page, setPage] = useState(1);
     const [showAll, setShowAll] = useState(false);
     const [showModal, setShowModal] = useState(false);
+    const [showRosterImport, setShowRosterImport] = useState(false);
+    const [importToast, setImportToast] = useState(null);
     const [newStudent, setNewStudent] = useState({ id: '', name: '', major: MAJORS[0], year: '1', gpa: '' });
     const [savingStudent, setSavingStudent] = useState(false);
     const [studentSaveMessage, setStudentSaveMessage] = useState('');
@@ -188,14 +191,14 @@ export default function StudentListPage() {
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.7 }}>
                         หน้ารายชื่อนักศึกษามีข้อมูลส่วนบุคคล (ชื่อ-นามสกุล, รหัส, ผลการเรียน)<br />
                         ตาม <strong style={{ color: 'var(--accent-warning)' }}>พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)</strong><br />
-                        เฉพาะคณบดีเท่านั้นที่สามารถเข้าถึงได้
+                        เฉพาะผู้ได้รับสิทธิ์ดูข้อมูลนักศึกษาตามนโยบายส่วนกลางเท่านั้นที่สามารถเข้าถึงได้
                     </p>
                     <div style={{
                         marginTop: 20, padding: '12px 24px', borderRadius: '10px',
                         background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
                         fontSize: '0.82rem', color: 'var(--text-muted)'
                     }}>
-                        🔑 กรุณาเข้าสู่ระบบด้วยรหัสคณบดี
+                        🔑 กรุณาใช้บัญชีที่ได้รับสิทธิ์จากผู้ดูแลระบบ
                     </div>
                 </div>
             </div>
@@ -216,6 +219,15 @@ export default function StudentListPage() {
                 <div className="section-header-actions">
                     <ExportPDFButton title="รายชื่อนักศึกษา" label="PDF" getWorkbookReportSheets={getWorkbookReportSheets} />
                     {canManage && (
+                        <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => { setImportToast(null); setShowRosterImport(true); }}
+                        >
+                            <Upload size={16} /> นำเข้ารายชื่อ
+                        </button>
+                    )}
+                    {canManage && (
                         <button onClick={() => { setStudentSaveMessage(''); setShowModal(true); }} style={{
                             display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px',
                             borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))',
@@ -226,6 +238,44 @@ export default function StudentListPage() {
                     )}
                 </div>
             </div>
+
+            {showRosterImport && (
+                <div style={{ ...modalOverlay, zIndex: 12000 }} onMouseDown={event => {
+                    if (event.target === event.currentTarget) setShowRosterImport(false);
+                }}>
+                    <div style={{
+                        ...modalBox,
+                        width: 'min(1000px, 96vw)',
+                        maxWidth: '1000px',
+                        maxHeight: '92vh',
+                        overflowY: 'auto',
+                        padding: '22px',
+                        borderRadius: '8px',
+                    }}>
+                        <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => setShowRosterImport(false)}
+                            aria-label="ปิดหน้าต่างนำเข้ารายชื่อ"
+                            style={{ position: 'absolute', right: 14, top: 14 }}
+                        >
+                            <X size={18} />
+                        </button>
+                        <div style={{ paddingRight: 42, marginBottom: 16 }}>
+                            <h2 style={{ margin: 0, fontSize: '1.15rem' }}>นำเข้ารายชื่อจาก Reg/คณะ</h2>
+                            <p style={{ margin: '5px 0 0', color: 'var(--text-secondary)', fontSize: '0.84rem' }}>
+                                รองรับ CSV/XLSX พร้อมจับคู่คอลัมน์ ตรวจรหัสซ้ำ และเทียบจำนวนกับยอด Sync ล่าสุดก่อนบันทึก
+                            </p>
+                        </div>
+                        {importToast?.message && (
+                            <div className={`dataset-import-message dataset-import-message--${importToast.type === 'success' ? 'success' : 'error'}`} style={{ marginBottom: 14 }}>
+                                {importToast.type === 'success' ? '✓' : '!'} <span>{importToast.message}</span>
+                            </div>
+                        )}
+                        <AdminDataUpload onToast={(type, message) => setImportToast({ type, message })} />
+                    </div>
+                </div>
+            )}
 
 
 

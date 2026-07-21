@@ -1,0 +1,159 @@
+/*
+ * Premium Chart System
+ * Loaded last so every analytics surface shares the same calm, high-contrast
+ * palette without changing chart data or page-specific behavior.
+ */
+
+:root,
+[data-theme="light"] {
+  --chart-1: #2563eb;
+  --chart-2: #0891b2;
+  --chart-3: #7c3aed;
+  --chart-4: #059669;
+  --chart-5: #d97706;
+  --chart-6: #e11d48;
+  --chart-7: #0f766e;
+  --chart-8: #4f46e5;
+  --chart-9: #ea580c;
+  --chart-10: #a21caf;
+  --chart-11: #475569;
+  --chart-12: #65a30d;
+  --chart-surface: #ffffff;
+  --chart-text: #172033;
+  --chart-muted: #596579;
+  --chart-grid: rgba(30, 41, 59, 0.075);
+  --chart-axis: rgba(30, 41, 59, 0.14);
+  --chart-tooltip-bg: rgba(255, 255, 255, 0.97);
+  --chart-tooltip-text: #111827;
+  --chart-tooltip-border: rgba(37, 99, 235, 0.22);
+  --chart-card-border: rgba(30, 41, 59, 0.11);
+  --chart-card-shadow: 0 16px 38px -30px rgba(15, 23, 42, 0.34);
+}
+
+[data-theme="dark"] {
+  --chart-1: #60a5fa;
+  --chart-2: #22d3ee;
+  --chart-3: #a78bfa;
+  --chart-4: #34d399;
+  --chart-5: #fbbf24;
+  --chart-6: #fb7185;
+  --chart-7: #2dd4bf;
+  --chart-8: #818cf8;
+  --chart-9: #fb923c;
+  --chart-10: #f472b6;
+  --chart-11: #cbd5e1;
+  --chart-12: #a3e635;
+  --chart-surface: #101722;
+  --chart-text: #f8fafc;
+  --chart-muted: #cbd5e1;
+  --chart-grid: rgba(203, 213, 225, 0.085);
+  --chart-axis: rgba(203, 213, 225, 0.16);
+  --chart-tooltip-bg: rgba(12, 18, 28, 0.97);
+  --chart-tooltip-text: #ffffff;
+  --chart-tooltip-border: rgba(96, 165, 250, 0.28);
+  --chart-card-border: rgba(148, 163, 184, 0.16);
+  --chart-card-shadow: 0 18px 44px -32px rgba(0, 0, 0, 0.72);
+}
+
+.app-layout :is(.chart-card:has(canvas), .ai-page-chart-container, .chat-chart-container) {
+  border-color: var(--chart-card-border) !important;
+  box-shadow: var(--chart-card-shadow) !important;
+  isolation: isolate;
+}
+
+.app-layout .chart-card:has(canvas) {
+  padding: clamp(14px, 1.3vw, 18px) !important;
+}
+
+.app-layout .chart-card:has(canvas) .chart-card-header {
+  margin-bottom: 14px !important;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--chart-grid);
+}
+
+.app-layout .chart-card:has(canvas) :is(.chart-card-title, h2, h3) {
+  color: var(--chart-text) !important;
+  font-weight: 750 !important;
+  letter-spacing: 0 !important;
+}
+
+.app-layout .chart-card:has(canvas) .chart-card-subtitle {
+  color: var(--chart-muted) !important;
+  line-height: 1.55;
+}
+
+.app-layout :is(
+  .chart-container,
+  .tcas-chart,
+  .course-grade-chart,
+  .ai-page-chart-wrapper,
+  .chat-chart-container
+) {
+  min-width: 0;
+  overflow: visible;
+}
+
+.app-layout :is(
+  .chart-card:has(canvas) canvas,
+  .chart-container canvas,
+  .tcas-chart canvas,
+  .course-grade-chart canvas,
+  .ai-page-chart-wrapper canvas,
+  .chat-chart-container canvas
+) {
+  filter: saturate(1.08) contrast(1.025) !important;
+  transition: filter 180ms ease, opacity 180ms ease;
+}
+
+[data-theme="dark"] .app-layout :is(
+  .chart-card:has(canvas) canvas,
+  .chart-container canvas,
+  .tcas-chart canvas,
+  .course-grade-chart canvas,
+  .ai-page-chart-wrapper canvas,
+  .chat-chart-container canvas
+) {
+  filter: saturate(1.12) brightness(1.04) contrast(1.035) !important;
+}
+
+@media (hover: hover) {
+  .app-layout :is(.chart-card:has(canvas), .ai-page-chart-container):hover {
+    border-color: color-mix(in srgb, var(--chart-1) 30%, var(--chart-card-border)) !important;
+  }
+
+  .app-layout :is(.chart-card:has(canvas), .ai-page-chart-container):hover canvas {
+    filter: saturate(1.13) contrast(1.035) !important;
+  }
+
+  [data-theme="dark"] .app-layout :is(.chart-card:has(canvas), .ai-page-chart-container):hover canvas {
+    filter: saturate(1.17) brightness(1.055) contrast(1.04) !important;
+  }
+}
+
+.app-layout :is(.composition-pie-legend-row, .smart-chart-status-row) {
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+@media (max-width: 640px) {
+  .app-layout .chart-card:has(canvas) {
+    padding: 12px !important;
+  }
+
+  .app-layout .chart-card:has(canvas) .chart-card-header {
+    margin-bottom: 10px !important;
+    padding-bottom: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-layout :is(
+    .chart-card:has(canvas) canvas,
+    .chart-container canvas,
+    .tcas-chart canvas,
+    .course-grade-chart canvas,
+    .ai-page-chart-wrapper canvas,
+    .chat-chart-container canvas
+  ) {
+    transition: none !important;
+  }
+}

@@ -1121,8 +1121,6 @@ function normalizeAIProxyError(errorData, status, model) {
 
     const fatalCodes = new Set([
         'GEMINI_API_KEY_MISSING',
-        'GEMINI_PROXY_FAILED',
-        'GEMINI_TIMEOUT',
         'AI_USAGE_UNAVAILABLE',
     ]);
     const isServerConfigurationError = code === 'GEMINI_API_KEY_MISSING'
@@ -1880,11 +1878,17 @@ function researchContext(options = {}) {
 
 function hrContext(options = {}) {
     const live = liveDatasetContext('hr', 'บุคลากร', options);
-    const compensationContext = `\nExecutive compensation and deduction fallback (sourceTrust=generated_mock, not official payroll):\n${JSON.stringify({
-        summary: getExecutiveCompensationSummary(),
-        rows: executiveCompensationDemo,
-        rule: 'Use only as demo workflow. Do not claim this is real salary data. Real payroll requires authorized HR/Payroll export or API.',
-        note: FEATURE_COMPLETION_FALLBACK_NOTE,
+    const compensationRows = Array.isArray(live.data?.executiveCompensation) && live.data.executiveCompensation.length > 0
+        ? live.data.executiveCompensation
+        : executiveCompensationDemo;
+    const compensationSummary = getExecutiveCompensationSummary(compensationRows);
+    const compensationContext = `\nExecutive compensation and deductions (sourceTrust=${compensationSummary.sourceTrust}):\n${JSON.stringify({
+        summary: compensationSummary,
+        rows: compensationRows,
+        rule: compensationSummary.sourceTrust === 'uploaded_file'
+            ? 'Authorized uploaded HR/Payroll data. Use only within the current role permission.'
+            : 'Use only as demo workflow. Do not claim this is real salary data. Real payroll requires authorized HR/Payroll export or API.',
+        note: compensationSummary.note || '',
     })}`;
     if (!live.data) return `${live.missing}${compensationContext}`;
     const source = live.data;
@@ -1974,24 +1978,41 @@ function academicRulesContext() {
 
 function tuitionContext(options = {}) {
     const live = liveDatasetContext('tuition', 'ค่าเล่าเรียน', options);
-    const paymentLedger = buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 60 });
-    const paymentContext = `\nStudent payment ledger fallback (sourceTrust=generated_mock, not official finance data):\n${JSON.stringify({
-        summary: summarizeStudentPaymentLedgerDemo(paymentLedger),
+    const financial = liveDatasetContext('financial', 'การเงินรายคน', options);
+    const paymentLedger = Array.isArray(financial.data?.studentPayments) && financial.data.studentPayments.length > 0
+        ? financial.data.studentPayments
+        : buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 60 });
+    const paymentSummary = summarizeStudentPaymentLedgerDemo(paymentLedger);
+    const paymentContext = `\nStudent payment ledger (sourceTrust=${paymentSummary.sourceTrust}):\n${JSON.stringify({
+        summary: paymentSummary,
         rows: paymentLedger.slice(0, 20),
-        rule: 'Use only to demonstrate tuition/late-payment workflow. Real overdue/paid-at dates require MJU Reg/Finance export or API.',
-        note: FEATURE_COMPLETION_FALLBACK_NOTE,
+        rule: paymentSummary.sourceTrust === 'uploaded_file'
+            ? 'Authorized uploaded Finance/Reg data. Do not disclose rows beyond the current role permission.'
+            : 'Use only to demonstrate tuition/late-payment workflow. Real overdue/paid-at dates require MJU Reg/Finance export or API.',
+        note: paymentSummary.note || '',
     })}`;
     if (!live.data) return `${live.missing}${paymentContext}`;
     const tuitionData = live.data;
     return `ค่าเล่าเรียน (${live.sourceLabel}):\n${JSON.stringify(tuitionData)}${paymentContext}`;
 }
 
-function studentAwardsAndPopulationContext() {
-    return `Student awards and population forecast fallback context (sourceTrust=generated_mock):\n${JSON.stringify({
-        awards: studentAwardRecordsDemo,
-        populationForecast: populationForecastReference,
-        rule: 'Use as demo/reference only. Say clearly that awards and population scenario are waiting for official Student Affairs and population feeds before production use.',
-        note: FEATURE_COMPLETION_FALLBACK_NOTE,
+function studentAwardsAndPopulationContext(options = {}) {
+    const live = liveDatasetContext('student_stats', 'รางวัลนักศึกษาและพยากรณ์ประชากร', options);
+    const data = live.data || {};
+    const hasUploadedAwards = Array.isArray(data.studentAwards) && data.studentAwards.length > 0;
+    const hasUploadedPopulation = Array.isArray(data.populationForecast?.scenario)
+        && data.populationForecast.scenario.length > 0;
+    const awards = hasUploadedAwards ? data.studentAwards : studentAwardRecordsDemo;
+    const populationForecast = hasUploadedPopulation ? data.populationForecast : populationForecastReference;
+
+    return `Student awards and population forecast context:\n${JSON.stringify({
+        awards,
+        awardsSourceTrust: hasUploadedAwards ? 'uploaded_file' : 'generated_mock',
+        populationForecast,
+        populationSourceTrust: hasUploadedPopulation ? 'uploaded_file' : 'generated_mock',
+        sourceLabel: live.sourceLabel,
+        rule: 'Prefer uploaded_file data. Any generated_mock part is demo/reference only and must never be described as official or real.',
+        note: hasUploadedAwards && hasUploadedPopulation ? null : FEATURE_COMPLETION_FALLBACK_NOTE,
     })}`;
 }
 
@@ -2073,11 +2094,11 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
         { id: 'tcas', sections: ['tcas_admissions'], keywords: /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|รอบ\s*tcas|portfolio|quota|ผลกระทบ|ออกกี่คน|ค่าเทอมรวม/i, text: () => tcasContext(contextOptions) },
         { id: 'course_analytics', sections: ['course_analytics'], keywords: /รายวิชา|วิชา|course|เกรดรายวิชา|กระจายเกรด|แผนเรียน|ข้ามสาขา|จุดเด่นสาขา|เชี่ยวชาญ|expertise/i, text: () => courseAnalyticsContext(contextOptions) },
         { id: 'academic_rules', sections: ['academic_rules', 'graduation_check', 'graduation_stats'], keywords: /กฎ|กฏ|ระเบียบ|ข้อบังคับ|เกียรตินิยม|เรียนดี|สำเร็จการศึกษา|พ้นสภาพ|หน่วยกิต|คะแนนความประพฤติ|f\s*หรือ\s*u|gpa\s*3\./i, text: academicRulesContext },
-        { id: 'tuition', sections: ['tuition'], keywords: /ค่าเทอม|ค่าเล่าเรียน|tuition|ค่าธรรมเนียม|ชำระ|ค้างจ่าย|ค้างชำระ/, text: () => tuitionContext(contextOptions) },
+        { id: 'tuition', sections: ['tuition'], keywords: /ค่าเทอม|ค่าเล่าเรียน|tuition|ค่าธรรมเนียม|ชำระ|ค้างจ่าย|ค้างชำระ|จ่ายล่าช้า|วันที่ชำระ/, text: () => tuitionContext(contextOptions) },
         { id: 'graduation', sections: ['graduation_check', 'graduation_stats'], keywords: /สำเร็จ|จบ|graduation|เกียรติ|pending|รอพินิจ/, text: () => graduationContext(contextOptions) },
         { id: 'budget', sections: ['budget_forecast', 'financial', 'faculty_budget'], keywords: /งบ|budget|รายรับ|รายจ่าย|เงิน|finance/, text: () => budgetContext(contextOptions) },
         { id: 'research', sections: ['research_overview'], keywords: /วิจัย|research|scopus|citation|สิทธิบัตร|ทุน/, text: () => researchContext(contextOptions) },
-        { id: 'hr', sections: ['hr_overview'], keywords: /บุคลากร|อาจารย์|staff|hr|เกษียณ|ตำแหน่ง/, text: () => hrContext(contextOptions) },
+        { id: 'hr', sections: ['hr_overview'], keywords: /บุคลากร|อาจารย์|staff|hr|เกษียณ|ตำแหน่ง|เงินเดือน|ค่าตอบแทน|หักเงิน|payroll|salary|deduction/, text: () => hrContext(contextOptions) },
         { id: 'strategic', sections: ['strategic_overview'], keywords: /ยุทธศาสตร์|okr|kpi|เป้าหมาย|ตัวชี้วัด/, text: () => strategicContext(contextOptions) },
         { id: 'alerts', sections: ['alert_center'], keywords: /alert|แจ้งเตือน|เตือน|เสี่ยง|วิกฤต|เฝ้าระวัง|threshold|เงื่อนไข/, text: alertCenterContext },
         { id: 'student_life', sections: ['student_life'], keywords: /กิจกรรม|พฤติกรรม|student life|ชั่วโมงกิจกรรม|ชั่วโมงคณะ|รับน้อง|ไหว้ครู|เดือนนี้|เดือนหน้า/, text: () => studentLifeContext(contextOptions) },
@@ -2099,23 +2120,32 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     if (/รางวัล|award|ประชากร|population|พยากรณ์.*นักศึกษา|เงินเดือน|salary|หักเงิน|deduction|ค้างชำระ|จ่ายล่าช้า|paid\s*date/i.test(q)) {
         const fallbackParts = [];
         if (canAIUseAnyInternalSection(role, ['student_stats'])) {
-            fallbackParts.push(studentAwardsAndPopulationContext());
+            fallbackParts.push(studentAwardsAndPopulationContext(contextOptions));
         }
         if (canAIUseAnyInternalSection(role, ['hr_overview'])) {
+            const hrData = getSharedDashboardDatasetSync('hr') || {};
+            const compensationRows = Array.isArray(hrData.executiveCompensation) && hrData.executiveCompensation.length > 0
+                ? hrData.executiveCompensation
+                : executiveCompensationDemo;
+            const compensationSummary = getExecutiveCompensationSummary(compensationRows);
             fallbackParts.push(`Executive compensation fallback:\n${JSON.stringify({
-                summary: getExecutiveCompensationSummary(),
-                rows: executiveCompensationDemo,
-                sourceTrust: 'generated_mock',
-                note: FEATURE_COMPLETION_FALLBACK_NOTE,
+                summary: compensationSummary,
+                rows: compensationRows,
+                sourceTrust: compensationSummary.sourceTrust,
+                note: compensationSummary.note || '',
             })}`);
         }
         if (canAIUseAnyInternalSection(role, ['tuition', 'financial'])) {
-            const ledger = buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 40 });
+            const financialData = getSharedDashboardDatasetSync('financial') || {};
+            const ledger = Array.isArray(financialData.studentPayments) && financialData.studentPayments.length > 0
+                ? financialData.studentPayments
+                : buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 40 });
+            const ledgerSummary = summarizeStudentPaymentLedgerDemo(ledger);
             fallbackParts.push(`Student payment ledger fallback:\n${JSON.stringify({
-                summary: summarizeStudentPaymentLedgerDemo(ledger),
+                summary: ledgerSummary,
                 rows: ledger.slice(0, 16),
-                sourceTrust: 'generated_mock',
-                note: FEATURE_COMPLETION_FALLBACK_NOTE,
+                sourceTrust: ledgerSummary.sourceTrust,
+                note: ledgerSummary.note || '',
             })}`);
         }
         if (fallbackParts.length) {

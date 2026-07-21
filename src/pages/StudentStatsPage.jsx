@@ -6,6 +6,7 @@ import AccessDenied from '../components/AccessDenied';
 import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
 import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText, BarChart3, Microscope, MousePointerClick } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import DatasetImportButton from '../components/DatasetImportButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import CompositionBreakdown from '../components/CompositionBreakdown';
 import ProductPageHeader from '../components/ProductPageHeader';
@@ -187,6 +188,21 @@ const LEVEL_FILTER_LABELS = {
     doctoral: 'ป.เอก',
 };
 
+function isHttpSource(value) {
+    return /^https?:\/\//i.test(String(value || '').trim());
+}
+
+function getPopulationRisk(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (/high|critical|สูง|วิกฤต/.test(normalized)) {
+        return { label: 'เสี่ยงสูง', className: 'rejected' };
+    }
+    if (/low|ต่ำ/.test(normalized)) {
+        return { label: 'ความเสี่ยงต่ำ', className: 'approved' };
+    }
+    return { label: 'เฝ้าระวัง', className: 'warning' };
+}
+
 export default function StudentStatsPage() {
     const { user } = useAuth();
     const [selectedFaculty, setSelectedFaculty] = useState('all');
@@ -208,6 +224,13 @@ export default function StudentStatsPage() {
     const { current, byFaculty, byEnrollmentYear, scienceFaculty } = studentStatsData;
     const studentRows = getStudentListSync();
     const scienceMajorRows = buildScienceMajorRows(scienceFaculty, studentRows);
+    const studentAwardRows = Array.isArray(studentStatsData?.studentAwards) && studentStatsData.studentAwards.length > 0
+        ? studentStatsData.studentAwards
+        : studentAwardRecordsDemo;
+    const populationForecastRows = Array.isArray(studentStatsData?.populationForecast?.scenario)
+        && studentStatsData.populationForecast.scenario.length > 0
+        ? studentStatsData.populationForecast.scenario
+        : populationForecastReference.scenario;
 
     const isFiltered = appliedFaculty !== 'all' || appliedLevel !== 'all';
 
@@ -243,7 +266,7 @@ export default function StudentStatsPage() {
     const levelCompositionItems = current.byLevel.map((item, i) => ({
         label: item.level,
         value: item.count,
-        color: `var(--chart-${(i % 5) + 1})`,
+        color: getStudentLevelColor(item.level, i),
     }));
 
     // MJU exposes the current headcount split by entry year. This is a cohort
@@ -309,7 +332,7 @@ export default function StudentStatsPage() {
         .map((item, i) => ({
             label: item.level,
             value: item.count,
-            color: `var(--chart-${(i % 5) + 1})`,
+            color: getStudentLevelColor(item.level, i),
         }));
 
     const majorBarData = {
@@ -651,7 +674,15 @@ export default function StudentStatsPage() {
                 title="สถิตินิสิตปัจจุบัน"
                 subtitle="ภาพรวมนักศึกษาคณะวิทยาศาสตร์ ระดับการศึกษา สาขา และแนวโน้มล่าสุด"
                 tone="violet"
-                actions={<ExportPDFButton title="สถิตินิสิตปัจจุบัน" />}
+                actions={(
+                    <>
+                        <DatasetImportButton
+                            importTypes={['student_awards', 'population_forecast']}
+                            currentData={studentStatsData}
+                        />
+                        <ExportPDFButton title="สถิตินิสิตปัจจุบัน" />
+                    </>
+                )}
             />
 
             {/* Knowledge Dynamic Dashboard — Filter Bar */}
@@ -1151,10 +1182,11 @@ export default function StudentStatsPage() {
                                         <th>รางวัล</th>
                                         <th>ประเภท</th>
                                         <th>ระดับ</th>
+                                        <th>แหล่งที่มา</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {studentAwardRecordsDemo.map(row => (
+                                    {studentAwardRows.map(row => (
                                         <tr key={row.studentCode}>
                                             <td>{row.year}</td>
                                             <td>{row.displayName}</td>
@@ -1162,6 +1194,13 @@ export default function StudentStatsPage() {
                                             <td>{row.award}</td>
                                             <td>{row.category}</td>
                                             <td>{row.level}</td>
+                                            <td>
+                                                {isHttpSource(row.source) ? (
+                                                    <a href={row.source} target="_blank" rel="noreferrer" className="table-link">
+                                                        เปิดแหล่งอ้างอิง
+                                                    </a>
+                                                ) : (row.source || '-')}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -1182,12 +1221,14 @@ export default function StudentStatsPage() {
                             </div>
                         </div>
                         <div style={{ display: 'grid', gap: 10 }}>
-                            {populationForecastReference.scenario.map(row => (
-                                <div key={row.year} style={{ padding: 12, borderRadius: 12, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+                            {populationForecastRows.map(row => {
+                                const risk = getPopulationRisk(row.riskLevel);
+                                return (
+                                <div key={row.year} style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
                                         <strong style={{ color: 'var(--text-primary)' }}>ปี {row.year}</strong>
-                                        <span className={`status-badge ${row.riskLevel === 'high' ? 'rejected' : 'warning'}`}>
-                                            {row.riskLevel === 'high' ? 'เสี่ยงสูง' : 'เฝ้าระวัง'}
+                                        <span className={`status-badge ${risk.className}`}>
+                                            {risk.label}
                                         </span>
                                     </div>
                                     <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
@@ -1195,7 +1236,8 @@ export default function StudentStatsPage() {
                                         <span>ดัชนีความต้องการคณะวิทย์ {row.expectedScienceDemandIndex}</span>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

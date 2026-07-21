@@ -12,6 +12,7 @@ import {
     CheckCircle, XCircle, Clock, Search, Download
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import DatasetImportButton from '../components/DatasetImportButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import ProductPageHeader from '../components/ProductPageHeader';
 import { Bar, Line, Doughnut } from 'react-chartjs-2';
@@ -511,7 +512,15 @@ export default function GraduationStatsPage() {
                 title="สถิติการสำเร็จการศึกษา"
                 subtitle={`ผลลัพธ์การศึกษาและสถานะผู้มีสิทธิ์สำเร็จ ปีการศึกษา ${stats.academicYear}`}
                 tone="violet"
-                actions={<ExportPDFButton title="สถิติการสำเร็จการศึกษา" />}
+                actions={(
+                    <>
+                        <DatasetImportButton
+                            importTypes={['graduation_history']}
+                            currentData={liveGraduationData}
+                        />
+                        <ExportPDFButton title="สถิติการสำเร็จการศึกษา" />
+                    </>
+                )}
             />
 
             {/* Summary Cards — matches Research page compact style */}

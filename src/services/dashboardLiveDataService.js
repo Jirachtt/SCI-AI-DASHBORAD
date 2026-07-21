@@ -209,7 +209,32 @@ function mergePayloadWithFallback(id, payload) {
 }
 
 function displayPayloadForDocument(id, rawPayload) {
-    return mergePayloadWithFallback(id, rawPayload);
+    const payload = mergePayloadWithFallback(id, rawPayload);
+    if (id !== 'science_budget' || !Array.isArray(payload?.yearly)) return payload;
+
+    const hasWorkbookForecastRows = payload.yearly.some(row => /^ประมาณการ-\d+$/u.test(String(row?.source || '')));
+    if (!hasWorkbookForecastRows) return payload;
+
+    const legacyMockSignatures = new Set([
+        '2564|142.5|128.2',
+        '2565|138.8|125.4',
+        '2566|148.2|134.1',
+        '2567|155.6|140.5',
+        '2568|164.2|148',
+        '2569|172.5|156',
+    ]);
+
+    // Older Firestore snapshots may contain the former mock history merged with
+    // the workbook forecast. Remove only the known legacy signatures so a later
+    // official API can still contribute genuine actual rows without row sources.
+    return {
+        ...payload,
+        yearly: payload.yearly.filter(row => !legacyMockSignatures.has([
+            row?.year,
+            Number(row?.revenue),
+            Number(row?.expense),
+        ].join('|'))),
+    };
 }
 
 function normalizeDocPayload(data) {
@@ -292,8 +317,8 @@ function applyDatasetSnapshot(id, snap) {
         isLive: isLiveSource,
         syncMeta: data.syncMeta || null,
         validation,
-        sourceEvidence: data.sourceEvidence || [],
-        sourceUrls: data.sourceUrls || [],
+        sourceEvidence: data.sourceEvidence || data.syncMeta?.sourceEvidence || [],
+        sourceUrls: data.sourceUrls || data.syncMeta?.sourceUrls || [],
         fallbackFields,
         fallbackFieldCount: fallbackFields.length,
         usesFallbackCoverage: fallbackFields.length > 0,

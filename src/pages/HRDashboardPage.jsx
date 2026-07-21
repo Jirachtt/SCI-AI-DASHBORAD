@@ -11,6 +11,7 @@ import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { Users, UserCheck, Award, TrendingUp, Building2, GraduationCap, DollarSign } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ProductPageHeader from '../components/ProductPageHeader';
+import DatasetImportButton from '../components/DatasetImportButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { normalizeThaiText, withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
@@ -666,7 +667,10 @@ export default function HRDashboardPage() {
         { label: 'รศ.+ ผศ.', value: promotedAcademicCount, icon: TrendingUp, color: 'var(--accent-purple)', suffix: 'คน' },
         { label: 'เกษียณใน 5 ปี', value: sci.diversity.retirementIn5Years, icon: Building2, color: 'var(--accent-pink)', suffix: 'คน' },
     ];
-    const compensationSummary = getExecutiveCompensationSummary(executiveCompensationDemo);
+    const compensationRows = Array.isArray(hrData?.executiveCompensation) && hrData.executiveCompensation.length > 0
+        ? hrData.executiveCompensation
+        : executiveCompensationDemo;
+    const compensationSummary = getExecutiveCompensationSummary(compensationRows);
 
     return (
         <div style={{ padding: '0 4px' }}>
@@ -677,7 +681,16 @@ export default function HRDashboardPage() {
                 title="บุคลากรและโครงสร้างองค์กร"
                 subtitle="กำลังคน ตำแหน่งทางวิชาการ และโครงสร้างบุคลากรคณะวิทยาศาสตร์"
                 tone="blue"
-                actions={<ExportPDFButton title="บุคลากรและโครงสร้างองค์กร" />}
+                actions={(
+                    <>
+                        <DatasetImportButton
+                            importTypes={['executive_compensation']}
+                            currentData={hrData}
+                            buttonLabel="นำเข้าค่าตอบแทน"
+                        />
+                        <ExportPDFButton title="บุคลากรและโครงสร้างองค์กร" />
+                    </>
+                )}
             />
 
             {/* Scorecards */}
@@ -715,7 +728,7 @@ export default function HRDashboardPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 14 }}>
                     <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
                         <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{compensationSummary.positions}</div>
-                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>ตำแหน่งใน demo</div>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>ตำแหน่งที่มีข้อมูล</div>
                     </div>
                     <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
                         <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent-success)' }}>{compensationSummary.totalGross.toLocaleString('th-TH')}</div>
@@ -744,7 +757,7 @@ export default function HRDashboardPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {executiveCompensationDemo.map(row => (
+                            {compensationRows.map(row => (
                                 <tr key={row.position}>
                                     <td style={{ fontWeight: 700 }}>{row.position}</td>
                                     <td>{row.scope}</td>
