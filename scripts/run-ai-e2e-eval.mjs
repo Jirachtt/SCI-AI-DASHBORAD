@@ -2,7 +2,7 @@ import { aiExecutiveEvaluationSet } from '../src/data/aiExecutiveEvaluationSet.j
 import { appendFileSync, writeFileSync } from 'node:fs';
 
 const DEFAULT_ENDPOINT = 'https://sci-ai-dashboradmju.vercel.app/api/gemini-chat';
-const DEFAULT_MODEL = 'gemini-2.5-flash-lite';
+const DEFAULT_MODEL = 'gemini-3.5-flash';
 
 function argValue(name, fallback = '') {
   const prefix = `--${name}=`;

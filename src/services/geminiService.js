@@ -61,6 +61,12 @@ import {
     getTokenUsageSessionSummary,
 } from '../utils/aiTokenUsage';
 import {
+    AI_ALLOWED_MODEL_IDS,
+    AI_MODEL_CONFIG,
+    AI_MODEL_ORDER,
+    AI_SEARCH_MODEL_ORDER,
+} from '../../shared/aiModelConfig.js';
+import {
     executiveCompensationDemo,
     getExecutiveCompensationSummary,
     buildStudentPaymentLedgerDemo,
@@ -76,39 +82,16 @@ if (!GEMINI_PROXY_ENDPOINT) {
     console.warn('[AI] Server proxy endpoint is not configured.');
 }
 
-// Models ordered for decision-support quality first, with lite models kept near
-// the front so the shared free-tier quota stays usable during busy sessions.
-const MODELS = [
-    'gemini-2.5-flash-lite',    // fast, cost-efficient, supports google_search
-    'gemini-2.5-flash',         // stronger analysis / chart reasoning
-    'gemini-flash-lite-latest', // alias to latest lite — extra headroom
-    'gemini-flash-latest',      // alias fallback — supports google_search
-    'gemini-2.0-flash-lite',    // older high-RPM fallback
-    'gemini-2.0-flash',         // older search-capable fallback
-];
-
-const LOW_TO_HIGH_MODEL_ORDER = [
-    'gemini-2.5-flash-lite',
-    'gemini-flash-lite-latest',
-    'gemini-2.0-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-flash-latest',
-    'gemini-2.0-flash',
-];
-
-const LOW_TO_HIGH_SEARCH_MODEL_ORDER = [
-    'gemini-2.5-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-flash-latest',
-    'gemini-2.0-flash',
-];
+// Use the strongest stable model first. Flash-Lite remains a fast fallback for
+// quota or transient provider failures, never the default analytical model.
+const MODELS = [...AI_ALLOWED_MODEL_IDS];
+const SELECTABLE_MODELS = [...AI_MODEL_ORDER];
+const PRIMARY_MODEL_ORDER = [...AI_MODEL_ORDER];
+const SEARCH_MODEL_ORDER = [...AI_SEARCH_MODEL_ORDER];
 
 // Models that support Google Search grounding for real-time web data
 const SEARCH_CAPABLE_MODELS = new Set([
-    'gemini-2.5-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-flash-latest',
-    'gemini-2.0-flash',
+    ...AI_SEARCH_MODEL_ORDER,
 ]);
 
 const AI_SETTINGS_KEY = 'sci-ai-dashboard:ai-settings';
@@ -140,32 +123,23 @@ const STATIC_DASHBOARD_DATASETS = {
     strategicData,
 };
 
-const MODEL_INFO = {
-    'gemini-2.0-flash-lite': { tier: 'lite', label: 'Gemini 2.0 Flash Lite', bestFor: 'ค้นหา/ตอบสั้น/ประหยัด token' },
-    'gemini-2.5-flash-lite': { tier: 'lite', label: 'Gemini 2.5 Flash Lite', bestFor: 'ตอบทั่วไปแบบประหยัด' },
-    'gemini-flash-lite-latest': { tier: 'lite', label: 'Gemini Flash Lite Latest', bestFor: 'fallback ประหยัด' },
-    'gemini-2.0-flash': { tier: 'standard', label: 'Gemini 2.0 Flash', bestFor: 'วิเคราะห์/สร้างกราฟ/Google Search' },
-    'gemini-2.5-flash': { tier: 'standard', label: 'Gemini 2.5 Flash', bestFor: 'วิเคราะห์ซับซ้อน' },
-    'gemini-flash-latest': { tier: 'standard', label: 'Gemini Flash Latest', bestFor: 'fallback วิเคราะห์' },
-};
+const MODEL_INFO = Object.fromEntries(
+    MODELS.map(model => [model, {
+        tier: AI_MODEL_CONFIG[model].tier,
+        label: AI_MODEL_CONFIG[model].label,
+        bestFor: AI_MODEL_CONFIG[model].bestFor,
+    }])
+);
 
 const MODEL_TIER_RANK = {
-    'gemini-2.5-flash-lite': 1,
-    'gemini-flash-lite-latest': 1,
-    'gemini-2.0-flash-lite': 1,
+    'gemini-3.1-flash-lite': 1,
+    'gemini-3.5-flash': 2,
     'gemini-2.5-flash': 2,
-    'gemini-flash-latest': 2,
-    'gemini-2.0-flash': 2,
 };
 
-const MODEL_RATE_LIMITS = {
-    'gemini-2.5-flash-lite': 15,
-    'gemini-2.5-flash': 10,
-    'gemini-flash-lite-latest': 15,
-    'gemini-flash-latest': 10,
-    'gemini-2.0-flash-lite': 30,
-    'gemini-2.0-flash': 15,
-};
+const MODEL_RATE_LIMITS = Object.fromEntries(
+    MODELS.map(model => [model, AI_MODEL_CONFIG[model].rateLimits.rpm])
+);
 
 const AI_STRUCTURED_RESPONSE_SCHEMA = {
     type: 'object',
@@ -217,7 +191,7 @@ function writeStorage(key, value) {
 }
 
 export function getAIModelCatalog() {
-    return MODELS.map(model => ({
+    return SELECTABLE_MODELS.map(model => ({
         id: model,
         searchCapable: SEARCH_CAPABLE_MODELS.has(model),
         ...(MODEL_INFO[model] || { tier: 'standard', label: model, bestFor: '-' }),
@@ -225,11 +199,18 @@ export function getAIModelCatalog() {
 }
 
 export function getAIModelSettings() {
-    return { ...DEFAULT_AI_SETTINGS, ...readStorage(AI_SETTINGS_KEY, {}) };
+    const settings = { ...DEFAULT_AI_SETTINGS, ...readStorage(AI_SETTINGS_KEY, {}) };
+    if (settings.modelMode !== 'auto' && !SELECTABLE_MODELS.includes(settings.modelMode)) {
+        settings.modelMode = 'auto';
+    }
+    return settings;
 }
 
 export function saveAIModelSettings(patch = {}) {
     const next = { ...getAIModelSettings(), ...patch };
+    if (next.modelMode !== 'auto' && !SELECTABLE_MODELS.includes(next.modelMode)) {
+        next.modelMode = 'auto';
+    }
     next.maxOutputTokens = Math.min(8192, Math.max(512, Number(next.maxOutputTokens) || DEFAULT_AI_SETTINGS.maxOutputTokens));
     next.temperature = Math.min(1, Math.max(0, Number(next.temperature) || DEFAULT_AI_SETTINGS.temperature));
     next.maxContexts = Math.min(8, Math.max(1, Number(next.maxContexts) || DEFAULT_AI_SETTINGS.maxContexts));
@@ -543,7 +524,10 @@ function recordTokenStats({
 export function getAIModelRuntimeStatus() {
     const settings = getAIModelSettings();
     const stats = getAITokenStats();
-    const lastModel = stats.lastRequest?.model || (settings.modelMode !== 'auto' ? settings.modelMode : LOW_TO_HIGH_MODEL_ORDER[0]);
+    const storedLastModel = stats.lastRequest?.model;
+    const lastModel = MODELS.includes(storedLastModel)
+        ? storedLastModel
+        : (settings.modelMode !== 'auto' ? settings.modelMode : PRIMARY_MODEL_ORDER[0]);
     const catalog = getAIModelCatalog();
     return {
         mode: settings.modelMode || 'auto',
@@ -1614,13 +1598,13 @@ function classifyQueryIntent(msg) {
 }
 
 function modelOrderForIntent(intent, settings) {
-    if (settings.modelMode && settings.modelMode !== 'auto' && MODELS.includes(settings.modelMode)) {
-        return [settings.modelMode, ...MODELS.filter(model => model !== settings.modelMode)];
+    if (settings.modelMode && settings.modelMode !== 'auto' && SELECTABLE_MODELS.includes(settings.modelMode)) {
+        return [settings.modelMode, ...PRIMARY_MODEL_ORDER.filter(model => model !== settings.modelMode)];
     }
     if (intent === 'web_lookup') {
-        return uniqueModels([...LOW_TO_HIGH_SEARCH_MODEL_ORDER, ...LOW_TO_HIGH_MODEL_ORDER]);
+        return uniqueModels([...SEARCH_MODEL_ORDER, ...PRIMARY_MODEL_ORDER]);
     }
-    return uniqueModels(LOW_TO_HIGH_MODEL_ORDER);
+    return uniqueModels(PRIMARY_MODEL_ORDER);
 }
 
 function hasHigherTierRemaining(model, candidateModels = []) {

@@ -21,8 +21,9 @@
     "audit:sync:live": "node scripts/validate-dashboard-sync.mjs --live",
     "audit:ai-usage": "node scripts/validate-ai-usage-meter.mjs",
     "audit:ai-usage:live": "node scripts/validate-ai-usage-meter.mjs --live",
+    "audit:ai-models": "node scripts/validate-ai-model-routing.mjs",
     "smoke:vercel": "node scripts/smoke-vercel-production.mjs",
-    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:ai-retrieval && npm run audit:student-realtime && npm run audit:sync && npm run audit:roles && npm run audit:navigation && npm run audit:data && npm run audit:overview && npm run smoke:presentation"
+    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:ai-models && npm run audit:ai-retrieval && npm run audit:student-realtime && npm run audit:sync && npm run audit:roles && npm run audit:navigation && npm run audit:data && npm run audit:overview && npm run smoke:presentation"
   },
   "dependencies": {
     "chart.js": "^4.5.1",

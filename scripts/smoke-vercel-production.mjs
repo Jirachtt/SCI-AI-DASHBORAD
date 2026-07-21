@@ -90,7 +90,7 @@ function minimalAIRequest(model) {
 async function main() {
   const baseUrl = trimSlash(argValue('base-url', process.env.VERCEL_SMOKE_BASE_URL || process.env.PRODUCTION_BASE_URL || DEFAULT_BASE_URL));
   const includeAI = hasFlag('ai') || process.env.VERCEL_SMOKE_AI === '1';
-  const model = argValue('model', process.env.VERCEL_SMOKE_MODEL || 'gemini-2.5-flash-lite');
+  const model = argValue('model', process.env.VERCEL_SMOKE_MODEL || 'gemini-3.5-flash');
 
   const checks = [
     { baseUrl, path: '/', allowProtected: false },

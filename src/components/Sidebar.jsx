@@ -72,19 +72,19 @@ export default function Sidebar({ isOpen, onClose }) {
     const visibleMenuGroups = getVisibleNavigationCategories(user);
     const latestUsage = tokenSession.last || tokenBudget.lastRequest || null;
     const latestUsageLabel = latestUsage?.totalTokens == null
-        ? 'รอข้อมูลจาก Provider'
+        ? `${tokenSession.requestCount.toLocaleString('th-TH')} คำขอ`
         : `${Number(latestUsage.totalTokens).toLocaleString('th-TH')} tokens`;
-    const latestUsageKind = latestUsage ? usageKindLabel(latestUsage) : 'ยังไม่มีคำขอ AI';
+    const latestUsageKind = latestUsage ? usageKindLabel(latestUsage) : 'พร้อมใช้งาน';
     const sessionUsageLabel = tokenSession.requestCount
-        ? `แชทนี้ ${tokenSession.totalTokens.toLocaleString('th-TH')} tokens · ${tokenSession.requestCount} คำขอ`
+        ? `รวมในแชทนี้ ${tokenSession.totalTokens.toLocaleString('th-TH')} tokens · ${tokenSession.requestCount.toLocaleString('th-TH')} คำขอ`
         : tokenSession.localAnswers
             ? `Local answer ${tokenSession.localAnswers} ครั้ง · ไม่ใช้ token`
-            : 'ส่งคำถาม AI เพื่อเริ่มวัดการใช้งาน';
+            : 'ยังไม่มีการใช้งานในแชทนี้';
     const budgetAvailable = tokenBudget.budgetPolicyAvailable === true
         && tokenBudget.remainingPercent != null
         && tokenBudget.remainingTokens != null;
     const tokenBarWidth = budgetAvailable ? tokenBudget.remainingPercent : 0;
-    const modelModeLabel = modelRuntime.mode === 'auto' ? 'Auto escalation' : 'Manual';
+    const modelModeLabel = modelRuntime.mode === 'auto' ? 'Auto routing' : 'Manual';
     const modelLastLabel = modelRuntime.lastModelLabel || modelRuntime.lastModel || '-';
 
     return (
@@ -251,7 +251,7 @@ export default function Sidebar({ isOpen, onClose }) {
                         <div className="settings-popover-section">
                             <div className="settings-token-card" aria-label="สถานะการใช้งาน AI">
                                 <div className="settings-token-head">
-                                    <span className="settings-menu-icon" title="Token usage แยกจาก context window และ provider quota"><Activity size={15} /></span>
+                                    <span className="settings-menu-icon" title="สถิติการใช้งาน AI ในแชทนี้"><Activity size={15} /></span>
                                     <span className="settings-menu-main">
                                         <span>การใช้งาน AI</span>
                                         <small>ข้อมูลต่อคำตอบและในแชทนี้</small>
@@ -286,9 +286,6 @@ export default function Sidebar({ isOpen, onClose }) {
                                         </div>
                                     </div>
                                 )}
-                                <div className="settings-provider-quota" title="Gemini usage metadata ส่งจำนวน token ต่อคำตอบ แต่ไม่ส่ง quota บัญชีหรือเวลา reset">
-                                    Provider quota: {tokenBudget.providerQuota?.available ? 'พร้อมใช้งาน' : 'ผู้ให้บริการไม่ได้ส่งข้อมูล'}
-                                </div>
                             </div>
                             <div className="settings-token-card settings-model-card" aria-label={`AI model ล่าสุด ${modelLastLabel}`}>
                                 <div className="settings-token-head">
@@ -300,11 +297,15 @@ export default function Sidebar({ isOpen, onClose }) {
                                 </div>
                                 <div className="settings-token-value-row compact">
                                     <strong>{modelLastLabel}</strong>
-                                    <span>{latestUsage?.source === 'provider' ? 'Actual' : latestUsage?.isEstimated ? 'Estimated' : 'Standby'}</span>
+                                    <span>{latestUsage?.source === 'provider' ? 'Actual' : latestUsage?.isEstimated ? 'Estimated' : 'พร้อมใช้งาน'}</span>
                                 </div>
                                 <div className="settings-token-meta">
-                                    <span>contexts ล่าสุด {modelRuntime.lastContextCount.toLocaleString('th-TH')}</span>
-                                    <span>{latestUsage?.contextTokens == null ? 'context รอข้อมูล' : `${Number(latestUsage.contextTokens).toLocaleString('th-TH')} tokens`}</span>
+                                    <span>{modelRuntime.lastContextCount > 0
+                                        ? `contexts ล่าสุด ${modelRuntime.lastContextCount.toLocaleString('th-TH')}`
+                                        : 'เลือก context อัตโนมัติ'}</span>
+                                    {latestUsage?.contextTokens != null && (
+                                        <span>{Number(latestUsage.contextTokens).toLocaleString('th-TH')} tokens</span>
+                                    )}
                                 </div>
                             </div>
                             <button type="button" className="settings-logout-row" onClick={handleLogout}>

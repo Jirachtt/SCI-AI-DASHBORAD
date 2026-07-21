@@ -2841,7 +2841,7 @@ function AIChatPageContent() {
         { icon: ShieldCheck, label: 'สิทธิ์คำตอบ', value: roleLabel, detail: 'อิงตาม role ในระบบ', color: 'var(--accent-purple)' },
         { icon: Gauge, label: 'AI Context', value: selectedDatasetLabel, detail: selectedDatasetDetail, color: 'var(--accent-cyan)' },
         { icon: FileSpreadsheet, label: 'ไฟล์วิเคราะห์', value: uploadedFileLabel, detail: uploadedFileData ? 'พร้อมนำไปรวมบริบท' : 'CSV / Excel', color: 'var(--accent-orange)' },
-        { icon: Bot, label: 'Model ล่าสุด', value: aiRuntimeStatus.lastModelLabel, detail: aiRuntimeStatus.mode === 'auto' ? 'ต่ำไปสูงอัตโนมัติ' : 'manual override', color: 'var(--accent-purple)' },
+        { icon: Bot, label: 'Model ล่าสุด', value: aiRuntimeStatus.lastModelLabel, detail: aiRuntimeStatus.mode === 'auto' ? 'คุณภาพสูง + fallback อัตโนมัติ' : 'manual override', color: 'var(--accent-purple)' },
         { icon: Gauge, label: 'Usage ล่าสุด', value: lastTokenLabel, detail: lastTokenDetail, color: lastTokenUsage?.isEstimated ? 'var(--accent-warning)' : 'var(--accent-success)' },
         { icon: Gauge, label: 'Context ล่าสุด', value: lastTokenUsage?.contextTokens == null ? 'รอข้อมูล' : formatTokenCount(lastTokenUsage.contextTokens), detail: lastTokenUsage?.contextLimit ? `limit ${formatTokenCount(lastTokenUsage.contextLimit)}` : 'Provider ไม่ได้ส่ง context limit', color: 'var(--accent-cyan)' },
     ];

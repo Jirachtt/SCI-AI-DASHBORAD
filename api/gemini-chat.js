@@ -9,29 +9,18 @@ import {
   usageHeaders,
 } from './_ai-usage-store.js';
 import { normalizeTokenUsage, tokenUsageHeaders } from './_token-usage.js';
+import {
+  AI_ALLOWED_MODEL_IDS,
+  getAIModelRateDefaults,
+} from '../shared/aiModelConfig.js';
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 35000);
 const WINDOW_MS = 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const ALLOWED_MODELS = new Set([
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-flash',
-  'gemini-flash-lite-latest',
-  'gemini-flash-latest',
-  'gemini-2.0-flash-lite',
-  'gemini-2.0-flash',
-]);
-
-const MODEL_DEFAULTS = {
-  'gemini-2.5-flash-lite': { rpm: 15, tpm: 250_000, rpd: 1_000 },
-  'gemini-2.5-flash': { rpm: 10, tpm: 250_000, rpd: 250 },
-  'gemini-flash-lite-latest': { rpm: 15, tpm: 250_000, rpd: 1_000 },
-  'gemini-flash-latest': { rpm: 10, tpm: 250_000, rpd: 250 },
-  'gemini-2.0-flash-lite': { rpm: 30, tpm: 1_000_000, rpd: 200 },
-  'gemini-2.0-flash': { rpm: 15, tpm: 1_000_000, rpd: 200 },
-};
+const ALLOWED_MODELS = new Set(AI_ALLOWED_MODEL_IDS);
+const MODEL_DEFAULTS = getAIModelRateDefaults();
 
 const LIMITS = AI_USAGE_LIMITS;
 

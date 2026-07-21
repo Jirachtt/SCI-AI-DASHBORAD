@@ -44,7 +44,7 @@ check('Gemini usageMetadata maps to actual token fields', () => {
     thoughtsTokenCount: 8,
     cachedContentTokenCount: 20,
     totalTokenCount: 168,
-  }, { provider: 'gemini', model: 'gemini-2.5-flash-lite', requestId: 'gemini_actual' });
+  }, { provider: 'gemini', model: 'gemini-3.5-flash', requestId: 'gemini_actual' });
   assert.equal(usage.inputTokens, 120);
   assert.equal(usage.outputTokens, 40);
   assert.equal(usage.thinkingTokens, 8);
@@ -170,7 +170,7 @@ async function callLive(baseUrl, requestId, prompt, stream = false) {
       requestId,
       sessionId: 'usage_audit_session',
       route: '/audit/ai-usage',
-      model: 'gemini-2.5-flash-lite',
+      model: 'gemini-3.5-flash',
       stream,
       requestBody: {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
