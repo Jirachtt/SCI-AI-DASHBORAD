@@ -11,6 +11,7 @@ import {
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import ExportPDFButton from '../components/ExportPDFButton';
+import ProductPageHeader from '../components/ProductPageHeader';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
@@ -88,18 +89,14 @@ export default function FinancialPage() {
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
 
-            <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))' }}>
-                    <DollarSign size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h2>การเงินและงานทะเบียน</h2>
-                    <p>Financial & Administrative</p>
-                </div>
-                <div className="section-header-actions">
-                    <ExportPDFButton title="การเงินและงานทะเบียน" />
-                </div>
-            </div>
+            <ProductPageHeader
+                icon={DollarSign}
+                eyebrow="FINANCIAL OPERATIONS"
+                title="การเงินและงานทะเบียน"
+                subtitle="ภาพรวมรายรับ ภาระการชำระ และข้อมูลประกอบการบริหาร"
+                tone="amber"
+                actions={<ExportPDFButton title="การเงินและงานทะเบียน" />}
+            />
 
             {/* Current Status */}
             <div className="stats-grid">

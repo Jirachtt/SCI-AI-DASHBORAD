@@ -16,6 +16,7 @@ import {
     GraduationCap, Wallet, Microscope, Target, RefreshCw, CheckCircle, Search
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import ProductPageHeader from '../components/ProductPageHeader';
 import { legacyColorToVar, themeGradient } from '../utils/themeTokens';
 
 const SEVERITY_META = {
@@ -140,18 +141,13 @@ export default function AlertCenterPage() {
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
 
-            <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-danger), var(--accent-warning))' }}>
-                    <Bell size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h2>ศูนย์แจ้งเตือน (Alert Center)</h2>
-                    <p>
-                        Early-warning dashboard — รวมสัญญาณเตือนจากทุกโดเมนไว้ในหน้าเดียว
-                        {' '}• ข้อมูลนักศึกษา {studentCount.toLocaleString('th-TH')} คน
-                    </p>
-                </div>
-                <div className="section-header-actions">
+            <ProductPageHeader
+                icon={Bell}
+                eyebrow="EARLY WARNING"
+                title="ศูนย์แจ้งเตือน"
+                subtitle={`รวมสัญญาณเฝ้าระวังจากทุกโดเมน • นักศึกษา ${studentCount.toLocaleString('th-TH')} คน`}
+                tone="rose"
+                actions={<>
                     <ExportPDFButton title="ศูนย์แจ้งเตือน (Alert Center)" />
                     <button
                         className="dashboard-header-action admin-refresh-btn"
@@ -172,8 +168,8 @@ export default function AlertCenterPage() {
                     >
                         <RefreshCw size={15} /> รีเฟรช
                     </button>
-                </div>
-            </div>
+                </>}
+            />
 
             {/* Summary */}
             <div className="stats-grid alert-summary-grid" style={{ marginTop: 12 }}>

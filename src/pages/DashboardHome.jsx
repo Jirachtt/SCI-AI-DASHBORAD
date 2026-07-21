@@ -253,30 +253,20 @@ function DashboardHomeContent() {
     });
 
     return (
-        <div>
-            {/* Welcome Section */}
-            <div className="section-header dashboard-home-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))' }}>
-                    <Sparkles size={22} color="var(--text-on-accent)" />
+        <div className="dashboard-home-page">
+            <section className="dashboard-command-hero">
+                <div className="dashboard-command-copy">
+                    <span className="dashboard-command-kicker"><Sparkles size={14} /> DECISION OVERVIEW</span>
+                    <h1>สวัสดี, {user?.name}</h1>
+                    <p>{APP_NAME_TH}</p>
+                    <small>{APP_NAME_EN}</small>
                 </div>
-                <div>
-                    <h2 style={{
-                        fontSize: '1.7rem', fontWeight: 800, marginBottom: 8, letterSpacing: 0,
-                        background: 'linear-gradient(135deg, var(--text-primary) 30%, var(--accent-success))',
-                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                    }}>
-                        สวัสดี, {user?.name}
-                    </h2>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', letterSpacing: 0 }}>
-                        ยินดีต้อนรับสู่ {APP_NAME_TH}
-                    </p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', letterSpacing: 0, marginTop: 4 }}>
-                        {APP_NAME_EN}
-                    </p>
+                <div className="dashboard-command-context" aria-label="บริบทข้อมูลล่าสุด">
+                    <span><strong>{totalStudents.toLocaleString('th-TH')}</strong> นักศึกษาทั้งมหาวิทยาลัย</span>
+                    <span><strong>{scienceStudentTotal.toLocaleString('th-TH')}</strong> นักศึกษาคณะวิทยาศาสตร์</span>
+                    <span><strong>{topicCards.length}</strong> หมวดข้อมูลพร้อมวิเคราะห์</span>
                 </div>
-
-                {/* Action buttons */}
-                <div className="section-header-actions">
+                <div className="dashboard-command-actions">
                     <ExportPDFButton title={`ภาพรวม ${APP_NAME_TH}`} label="PDF" />
                     <button
                         className={`dashboard-header-action dashboard-header-action-analytics ${showForecast ? 'active' : ''}`}
@@ -286,7 +276,7 @@ function DashboardHomeContent() {
                         Predictive Analytics
                     </button>
                 </div>
-            </div>
+            </section>
 
             {/* Forecast Panel (Toggle) */}
             {showForecast && (
@@ -548,8 +538,8 @@ function DashboardHomeContent() {
                     const card = statCards[orderIdx];
                     const sciData = scienceSubData[orderIdx];
                     return (
-                        <div key={orderIdx}
-                            className="dashboard-summary-card"
+                        <article key={orderIdx}
+                            className={`executive-metric-card ${isEditMode ? 'is-editing' : ''}`}
                             draggable={isEditMode}
                             onDragStart={() => { dragItem.current = displayIdx; }}
                             onDragEnter={() => { dragOverItem.current = displayIdx; }}
@@ -563,70 +553,62 @@ function DashboardHomeContent() {
                                 dragOverItem.current = null;
                             }}
                             onDragOver={(e) => e.preventDefault()}
-                            style={{
-                                display: 'flex', flexDirection: 'column',
-                                cursor: isEditMode ? 'grab' : 'default',
-                                border: isEditMode ? '2px dashed color-mix(in srgb, var(--accent-success) 40%, transparent)' : '2px dashed transparent',
-                                borderRadius: 18, transition: 'border 0.3s',
-                                boxShadow: isEditMode ? '0 0 15px color-mix(in srgb, var(--accent-success) 15%, transparent)' : 'none'
-                            }}
+                            style={{ '--metric-accent': legacyColorToVar(sciData.color) }}
                         >
-                            <div className="stat-card animate-in" style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: 'none', position: 'relative', zIndex: 2 }}>
-                                <div className="stat-card-header">
-                                    <div className="stat-card-icon" style={{ background: card.gradient }}>{card.icon}</div>
-                                    {card.trend && <span className="stat-card-trend up">{card.trend}</span>}
+                            <div className="executive-metric-primary">
+                                <div className="executive-metric-head">
+                                    <span className="executive-metric-icon">{card.icon}</span>
+                                    <span className="executive-metric-scope">มหาวิทยาลัย</span>
                                 </div>
-                                <div className="stat-card-value">
+                                <div className="executive-metric-value">
                                     <AnimatedMetricValue value={card.displayValue ?? card.value} />
                                 </div>
-                                <div className="stat-card-label">{card.label}</div>
+                                <div className="executive-metric-label">{card.label}</div>
                             </div>
-                            <div className="dashboard-summary-detail" style={{
-                                background: 'var(--bg-secondary)',
-                                border: '1px solid var(--border-color)', borderTop: '1px dashed var(--border-color)',
-                                borderBottomLeftRadius: 16, borderBottomRightRadius: 16,
-                                padding: '18px 20px', position: 'relative', display: 'flex', flexDirection: 'column', gap: 14,
-                            }}>
-                                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: sciData.color }} />
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{ width: 28, height: 28, borderRadius: 7, background: themeAlpha(sciData.color, 12), color: legacyColorToVar(sciData.color), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="executive-metric-faculty">
+                                <div className="executive-metric-faculty-head">
+                                    <div className="executive-metric-faculty-label">
+                                        <div className="executive-metric-faculty-icon">
                                             <Microscope size={14} />
                                         </div>
-                                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{sciData.label}</span>
+                                        <span>{sciData.label}</span>
                                     </div>
-                                    <div style={{ fontSize: 20, fontWeight: 700, color: legacyColorToVar(sciData.color) }}>{sciData.value}</div>
+                                    <strong>{sciData.value}</strong>
                                 </div>
-                                <div className="dashboard-summary-detail-content" style={{ display: 'flex', gap: 8 }}>
+                                <div className="executive-metric-breakdown">
                                     {sciData.details.length > 0 ? sciData.details.map((d, j) => (
-                                        <div key={j} style={{ flex: 1, background: 'var(--bg-card)', borderRadius: 8, padding: '10px 8px', textAlign: 'center', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-                                            <div style={{ fontSize: 18, fontWeight: 700, color: d.color }}>{d.value}</div>
-                                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500 }}>{d.label}</div>
-                                        </div>
+                                        <span key={j} className="executive-metric-breakdown-item">
+                                            <strong style={{ color: d.color }}>{d.value}</strong>
+                                            <small>{d.label}</small>
+                                        </span>
                                     )) : (
-                                        <div className="dashboard-summary-context" style={{ width: '100%' }}>
+                                        <div className="executive-metric-comparison">
                                             <span>{sciData.comparison?.label || (sciData.pct !== null ? 'สัดส่วนเทียบมหาวิทยาลัย' : 'ค่าปัจจุบัน')}</span>
                                             <strong>{sciData.comparison?.diff || (sciData.pct !== null ? `${sciData.pct}%` : sciData.value)}</strong>
                                         </div>
                                     )}
                                 </div>
                             </div>
-                        </div>
+                        </article>
                     );
                 })}
             </div>
 
-            {/* Topic Cards — 5 Data Domains */}
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 20, marginTop: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <FileBarChart2 size={18} color="var(--chart-muted)" /> หมวดข้อมูลหลัก 5 ด้าน
-            </h3>
-            <div className="topic-cards-grid">
-                {topicCards.map((topic) => {
+            <section className="dashboard-domain-section">
+                <div className="dashboard-section-heading">
+                    <div>
+                        <span>DECISION DOMAINS</span>
+                        <h2><FileBarChart2 size={19} /> หมวดข้อมูลหลัก</h2>
+                    </div>
+                    <p>เลือกมุมมองเพื่อเจาะรายละเอียดและใช้ AI ช่วยวิเคราะห์ต่อ</p>
+                </div>
+                <div className="topic-cards-grid topic-cards-grid--executive">
+                {topicCards.map((topic, topicIndex) => {
                     const hasAccess = canAccess(user?.role, topic.section);
                     const TopicIcon = topic.Icon;
                     return (
                         <Link key={topic.id} to={hasAccess ? topic.path : '#'}
-                            className="topic-card"
+                            className={`topic-card topic-card--executive ${topicIndex < 2 ? 'topic-card--featured' : ''}`}
                             onClick={(e) => !hasAccess && e.preventDefault()}
                             style={{
                                 opacity: hasAccess ? 1 : 0.5,
@@ -655,7 +637,8 @@ function DashboardHomeContent() {
                         </Link>
                     );
                 })}
-            </div>
+                </div>
+            </section>
         </div>
     );
 }

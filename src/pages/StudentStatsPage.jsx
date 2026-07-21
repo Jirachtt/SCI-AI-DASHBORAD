@@ -8,6 +8,7 @@ import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText,
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import CompositionBreakdown from '../components/CompositionBreakdown';
+import ProductPageHeader from '../components/ProductPageHeader';
 import { Doughnut, Line, Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
@@ -644,18 +645,14 @@ export default function StudentStatsPage() {
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
 
-            <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-purple))' }}>
-                    <BarChart3 size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h2>สถิตินิสิตปัจจุบัน</h2>
-                    <p>Current Student Statistics — อ้างอิง มหาวิทยาลัยแม่โจ้</p>
-                </div>
-                <div className="section-header-actions">
-                    <ExportPDFButton title="สถิตินิสิตปัจจุบัน" />
-                </div>
-            </div>
+            <ProductPageHeader
+                icon={BarChart3}
+                eyebrow="STUDENT INTELLIGENCE"
+                title="สถิตินิสิตปัจจุบัน"
+                subtitle="ภาพรวมนักศึกษาคณะวิทยาศาสตร์ ระดับการศึกษา สาขา และแนวโน้มล่าสุด"
+                tone="violet"
+                actions={<ExportPDFButton title="สถิตินิสิตปัจจุบัน" />}
+            />
 
             {/* Knowledge Dynamic Dashboard — Filter Bar */}
             <div className="filter-bar">

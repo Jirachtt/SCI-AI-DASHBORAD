@@ -11,6 +11,7 @@ import {
 } from 'chart.js';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import ExportPDFButton from '../components/ExportPDFButton';
+import ProductPageHeader from '../components/ProductPageHeader';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
@@ -212,18 +213,14 @@ export default function TuitionPage() {
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
 
-            <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))' }}>
-                    <CreditCard size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h2>ค่าธรรมเนียมการศึกษา</h2>
-                    <p>{isOfficialTuition ? 'Tuition Fees — ข้อมูลจากไฟล์คำนวณประมาณการปี 2570' : 'Tuition Fees — ระบบเหมาจ่าย (Flat Rate)'}</p>
-                </div>
-                <div className="section-header-actions">
-                    <ExportPDFButton title="ค่าธรรมเนียมการศึกษา" />
-                </div>
-            </div>
+            <ProductPageHeader
+                icon={CreditCard}
+                eyebrow="TUITION & PROGRAM COST"
+                title="ค่าธรรมเนียมการศึกษา"
+                subtitle={isOfficialTuition ? 'ค่าธรรมเนียมรายหลักสูตรและประมาณการปี 2570' : 'โครงสร้างค่าใช้จ่ายแบบเหมาจ่ายรายภาคการศึกษา'}
+                tone="emerald"
+                actions={<ExportPDFButton title="ค่าธรรมเนียมการศึกษา" />}
+            />
 
             {user?.mjuVerified && (
                 <>

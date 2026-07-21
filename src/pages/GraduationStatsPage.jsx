@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
+import ProductPageHeader from '../components/ProductPageHeader';
 import { Bar, Line, Doughnut } from 'react-chartjs-2';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
@@ -504,19 +505,14 @@ export default function GraduationStatsPage() {
     return (
         <div className="graduation-stats-page">
             <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
-            {/* Header */}
-            <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-purple))' }}>
-                    <GraduationCap size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h1>สถิติการสำเร็จการศึกษา</h1>
-                    <p>คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้ | ปีการศึกษา {stats.academicYear}</p>
-                </div>
-                <div className="section-header-actions">
-                    <ExportPDFButton title="สถิติการสำเร็จการศึกษา" />
-                </div>
-            </div>
+            <ProductPageHeader
+                icon={GraduationCap}
+                eyebrow="STUDENT OUTCOMES"
+                title="สถิติการสำเร็จการศึกษา"
+                subtitle={`ผลลัพธ์การศึกษาและสถานะผู้มีสิทธิ์สำเร็จ ปีการศึกษา ${stats.academicYear}`}
+                tone="violet"
+                actions={<ExportPDFButton title="สถิติการสำเร็จการศึกษา" />}
+            />
 
             {/* Summary Cards — matches Research page compact style */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 24, alignItems: 'stretch' }}>

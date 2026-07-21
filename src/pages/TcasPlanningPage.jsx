@@ -13,6 +13,7 @@ import {
     TrendingUp,
     Users,
 } from 'lucide-react';
+import ProductPageHeader from '../components/ProductPageHeader';
 import { Bar } from 'react-chartjs-2';
 import {
     BarElement,
@@ -243,18 +244,15 @@ export default function TcasPlanningPage() {
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
 
-            <div className="section-header tcas-page-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))' }}>
-                    <ClipboardList size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h2>แผนรับนักศึกษา TCAS</h2>
-                    <p>TCAS Planning — ย้อนหลัง 5 ปี, รอบถัดไป, และผลกระทบต่อรายได้ค่าเทอม</p>
-                </div>
-                <div className="section-header-actions">
-                    <ExportPDFButton title="แผนรับนักศึกษา TCAS" />
-                </div>
-            </div>
+            <ProductPageHeader
+                icon={ClipboardList}
+                eyebrow="ADMISSION PLANNING"
+                title="แผนรับนักศึกษา TCAS"
+                subtitle="แผนรับย้อนหลัง 5 ปี เป้าหมายรอบถัดไป และผลกระทบต่อรายได้ค่าเล่าเรียน"
+                tone="emerald"
+                className="tcas-page-header"
+                actions={<ExportPDFButton title="แผนรับนักศึกษา TCAS" />}
+            />
 
             <section className="tcas-source-banner">
                 <div>

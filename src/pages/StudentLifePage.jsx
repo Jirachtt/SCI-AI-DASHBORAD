@@ -17,6 +17,7 @@ import {
     Users,
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import ProductPageHeader from '../components/ProductPageHeader';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import {
     formatScienceActivityDate,
@@ -135,18 +136,14 @@ export default function StudentLifePage() {
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
 
-            <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success), var(--accent-info))' }}>
-                    <CalendarDays size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h2>กิจกรรมคณะวิทยาศาสตร์</h2>
-                    <p>Science Faculty Activity Hub — ใช้ชั่วโมงกิจกรรมของคณะวิทยาศาสตร์เป็นหลัก</p>
-                </div>
-                <div className="section-header-actions">
-                    <ExportPDFButton title="กิจกรรมคณะวิทยาศาสตร์" />
-                </div>
-            </div>
+            <ProductPageHeader
+                icon={CalendarDays}
+                eyebrow="STUDENT EXPERIENCE"
+                title="กิจกรรมคณะวิทยาศาสตร์"
+                subtitle="ติดตามชั่วโมงกิจกรรม การมีส่วนร่วม และกิจกรรมแนะนำของคณะ"
+                tone="cyan"
+                actions={<ExportPDFButton title="กิจกรรมคณะวิทยาศาสตร์" />}
+            />
 
             {linkedProfile.isMjuLinked && (
                 <MjuConnectedPagePanel

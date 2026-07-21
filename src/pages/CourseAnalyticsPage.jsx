@@ -22,6 +22,7 @@ import {
     LinearScale,
     Tooltip,
 } from 'chart.js';
+import ProductPageHeader from '../components/ProductPageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
@@ -99,18 +100,15 @@ export default function CourseAnalyticsPage() {
                 <ArrowLeft size={16} /> กลับหน้าหลัก
             </Link>
 
-            <div className="section-header course-page-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-info), var(--accent-purple))' }}>
-                    <BookOpen size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h2>รายวิชา เกรด และจุดเด่นสาขา</h2>
-                    <p>Course & Grade Analytics — แผนเรียนปี 1-4, วิชาข้ามสาขา, grade distribution และ expertise ของสาขา</p>
-                </div>
-                <div className="section-header-actions">
-                    <ExportPDFButton title="รายวิชาและกราฟกระจายเกรด" />
-                </div>
-            </div>
+            <ProductPageHeader
+                icon={BookOpen}
+                eyebrow="ACADEMIC ANALYTICS"
+                title="รายวิชา เกรด และจุดเด่นสาขา"
+                subtitle="แผนเรียนปี 1-4 การกระจายเกรด วิชาข้ามสาขา และความเชี่ยวชาญของแต่ละหลักสูตร"
+                tone="cyan"
+                className="course-page-header"
+                actions={<ExportPDFButton title="รายวิชาและกราฟกระจายเกรด" />}
+            />
 
             {user?.mjuVerified && (
                 <>

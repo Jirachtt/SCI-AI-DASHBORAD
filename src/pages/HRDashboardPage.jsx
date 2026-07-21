@@ -10,6 +10,7 @@ import {
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { Users, UserCheck, Award, TrendingUp, Building2, GraduationCap, DollarSign } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import ProductPageHeader from '../components/ProductPageHeader';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { normalizeThaiText, withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
@@ -670,18 +671,14 @@ export default function HRDashboardPage() {
     return (
         <div style={{ padding: '0 4px' }}>
             <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
-            <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-info), var(--accent-info))' }}>
-                    <Users size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h1>บุคลากรและโครงสร้างองค์กร</h1>
-                    <p>HR & Faculty Profile — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
-                </div>
-                <div className="section-header-actions">
-                    <ExportPDFButton title="บุคลากรและโครงสร้างองค์กร" />
-                </div>
-            </div>
+            <ProductPageHeader
+                icon={Users}
+                eyebrow="PEOPLE & ORGANIZATION"
+                title="บุคลากรและโครงสร้างองค์กร"
+                subtitle="กำลังคน ตำแหน่งทางวิชาการ และโครงสร้างบุคลากรคณะวิทยาศาสตร์"
+                tone="blue"
+                actions={<ExportPDFButton title="บุคลากรและโครงสร้างองค์กร" />}
+            />
 
             {/* Scorecards */}
             <div className="hr-scorecard-grid" style={{ display: 'grid', gap: 12, marginBottom: 24, alignItems: 'stretch' }}>

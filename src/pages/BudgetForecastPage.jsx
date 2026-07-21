@@ -14,6 +14,7 @@ import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
+import ProductPageHeader from '../components/ProductPageHeader';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler, themeAdaptorPlugin);
 
@@ -213,19 +214,14 @@ export default function BudgetForecastPage() {
     return (
         <div className="dashboard-content">
             <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
-            {/* ── Header ── */}
-            <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))' }}>
-                    <BarChart3 size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h1>งบประมาณคณะวิทยาศาสตร์</h1>
-                    <p>ข้อมูลจริง ปีงบประมาณ 2560 – ปัจจุบัน + พยากรณ์ • Faculty of Science Budget</p>
-                </div>
-                <div className="section-header-actions">
-                    <ExportPDFButton title="งบประมาณคณะวิทยาศาสตร์" label="PDF" />
-                </div>
-            </div>
+            <ProductPageHeader
+                icon={BarChart3}
+                eyebrow="FINANCIAL PLANNING"
+                title="งบประมาณคณะวิทยาศาสตร์"
+                subtitle="รายรับ รายจ่าย และแนวโน้มงบประมาณตั้งแต่ปี 2560 ถึงปัจจุบัน"
+                tone="amber"
+                actions={<ExportPDFButton title="งบประมาณคณะวิทยาศาสตร์" label="PDF" />}
+            />
 
             {/* ── Stat Cards ── */}
             <div className="budget-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px', alignItems: 'stretch' }}>

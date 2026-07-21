@@ -10,6 +10,7 @@ import {
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { FileText, DollarSign, Award, BookOpen, Globe2, TrendingUp, Microscope } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
+import ProductPageHeader from '../components/ProductPageHeader';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
@@ -260,18 +261,14 @@ export default function ResearchDashboardPage() {
     return (
         <div style={{ padding: '0 4px' }}>
             <ChartDrilldownModal detail={drillDetail} onClose={() => setDrillDetail(null)} />
-            <div className="section-header">
-                <div className="section-header-icon" style={{ background: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success))' }}>
-                    <Microscope size={22} color="var(--text-on-accent)" />
-                </div>
-                <div>
-                    <h1>การวิจัยและนวัตกรรม</h1>
-                    <p>Research & Innovation — คณะวิทยาศาสตร์ มหาวิทยาลัยแม่โจ้</p>
-                </div>
-                <div className="section-header-actions">
-                    <ExportPDFButton title="การวิจัยและนวัตกรรม" />
-                </div>
-            </div>
+            <ProductPageHeader
+                icon={Microscope}
+                eyebrow="RESEARCH INTELLIGENCE"
+                title="การวิจัยและนวัตกรรม"
+                subtitle="ผลงานตีพิมพ์ โครงการวิจัย การอ้างอิง และทรัพย์สินทางปัญญา"
+                tone="emerald"
+                actions={<ExportPDFButton title="การวิจัยและนวัตกรรม" />}
+            />
 
             {/* Scorecards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24, alignItems: 'stretch' }}>
