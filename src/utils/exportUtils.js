@@ -1187,8 +1187,8 @@ function drawingXml(images = []) {
         // Use an explicit pixel extent instead of a two-cell anchor. Excel's
         // column widths and row heights use different units, so a cell-only
         // anchor can stretch a 16:9 chart into a very wide banner.
-        const widthPx = Math.max(1, Math.round(image.widthPx ?? 960));
-        const heightPx = Math.max(1, Math.round(image.heightPx ?? 540));
+        const widthPx = Math.max(1, Math.round(image.widthPx ?? 560));
+        const heightPx = Math.max(1, Math.round(image.heightPx ?? 315));
         const emuPerPixel = 9525;
         const widthEmu = widthPx * emuPerPixel;
         const heightEmu = heightPx * emuPerPixel;
@@ -2147,22 +2147,33 @@ function numberOr(value, fallback) {
     return Number.isFinite(number) ? number : fallback;
 }
 
-function fitImageToCellBox(image, { maxCols = 8, maxRows = 32, minRows = 12 } = {}) {
+function fitImageToCellBox(image, {
+    maxCols = 5,
+    maxRows = 18,
+    minRows = 10,
+    maxWidthPx = 560,
+    maxHeightPx = 340,
+} = {}) {
     const { width, height } = imageSizeFromDataUrl(image.imageDataUrl);
-    const aspect = width > 0 && height > 0 ? width / height : 16 / 9;
+    const sourceWidthPx = width > 0 ? width : 960;
+    const sourceHeightPx = height > 0 ? height : 540;
     const fromCol = numberOr(image.fromCol, 0);
     const fromRow = numberOr(image.fromRow, 1);
-    const toCol = numberOr(image.toCol, fromCol + maxCols);
-    const columnSpan = Math.max(1, toCol - fromCol);
+    const requestedToCol = numberOr(image.toCol, fromCol + maxCols);
+    const columnSpan = Math.max(1, requestedToCol - fromCol);
 
-    // Keep the image compact for report sheets while preserving its source
-    // aspect ratio. The row span is only used to reserve space for the data
-    // table below; the drawing itself uses the explicit pixel extent above.
-    const boxWidthPx = columnSpan * 126;
-    const boxHeightPx = maxRows * 21;
-    const scale = Math.min(1, boxHeightPx / (boxWidthPx / aspect));
-    const displayWidthPx = Math.max(1, Math.round(boxWidthPx * scale));
-    const displayHeightPx = Math.max(1, Math.round(displayWidthPx / aspect));
+    // Report sheets are intentionally compact. Never enlarge a captured chart,
+    // and fit both dimensions so the image remains inside the report/table area.
+    const boxWidthPx = Math.min(maxWidthPx, columnSpan * 126);
+    const boxHeightPx = Math.min(maxHeightPx, maxRows * 21);
+    const scale = Math.min(
+        1,
+        boxWidthPx / sourceWidthPx,
+        boxHeightPx / sourceHeightPx
+    );
+    const displayWidthPx = Math.max(1, Math.round(sourceWidthPx * scale));
+    const displayHeightPx = Math.max(1, Math.round(sourceHeightPx * scale));
+    const toCol = fromCol + Math.max(1, Math.ceil(displayWidthPx / 126));
     const rowCount = Math.max(minRows, Math.min(maxRows, Math.ceil(displayHeightPx / 21)));
 
     return {
@@ -2195,7 +2206,7 @@ function normalizeSheetImages(source, fallbackName = 'Chart') {
             return {
                 ...fitted,
                 fromCol: numberOr(fitted.fromCol, 0),
-                toCol: numberOr(fitted.toCol, 9),
+                toCol: numberOr(fitted.toCol, 5),
                 fromRow: numberOr(fitted.fromRow, 1 + idx * 18),
                 toRow: numberOr(fitted.toRow, 17 + idx * 18),
             };
@@ -2232,8 +2243,8 @@ function normalizeSheetInput(value, name) {
 function imageDrawingBounds(images = []) {
     if (!images.length) return null;
     return {
-        maxCol: Math.max(...images.map(image => numberOr(image.toCol, 10))) + 1,
-        maxRow: Math.max(...images.map(image => numberOr(image.toRow, 22))) + 1,
+        maxCol: Math.max(...images.map(image => numberOr(image.toCol, 5))) + 1,
+        maxRow: Math.max(...images.map(image => numberOr(image.toRow, 20))) + 1,
     };
 }
 
@@ -2446,7 +2457,7 @@ function canvasToDataUrl(canvas, {
 
     if (title) {
         ctx.fillStyle = textColor;
-        ctx.font = '700 34px Arial, sans-serif';
+        ctx.font = '700 42px Arial, sans-serif';
         ctx.textBaseline = 'top';
         ctx.fillText(title.slice(0, 110), padding, 34);
     }
@@ -2463,7 +2474,7 @@ function canvasToDataUrl(canvas, {
 
     const footerText = source || `${APP_NAME_TH} · exported ${generatedAtText()}`;
     ctx.fillStyle = mutedColor;
-    ctx.font = '500 22px Arial, sans-serif';
+    ctx.font = '500 28px Arial, sans-serif';
     ctx.textBaseline = 'alphabetic';
     ctx.fillText(footerText.slice(0, 140), padding, targetHeight - 30);
     return out.toDataURL('image/png');
@@ -2662,9 +2673,9 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
             name: chartName,
             imageDataUrl: chart.imageDataUrl,
             fromCol: 0,
-            toCol: 9,
+            toCol: 5,
             fromRow,
-        }, { maxCols: 9, maxRows: 32, minRows: 12 });
+        });
         overviewImages.push(fittedImage);
 
         const chartRowSpan = Math.max(1, fittedImage.toRow - fittedImage.fromRow);
@@ -2880,25 +2891,46 @@ function resolveCssColorForCanvas(value) {
 
 function professionalizeChartOptions(options = {}) {
     const next = options;
+    const readableFont = (font, minimumSize) => {
+        const normalized = font && typeof font === 'object' ? font : {};
+        const existingSize = Number(normalized.size);
+        return {
+            ...normalized,
+            size: Number.isFinite(existingSize) ? Math.max(existingSize, minimumSize) : minimumSize,
+        };
+    };
     next.plugins = { ...(next.plugins || {}) };
     next.plugins.legend = {
         ...(next.plugins.legend || {}),
         labels: {
             ...(next.plugins.legend?.labels || {}),
             color: '#334155',
+            font: readableFont(next.plugins.legend?.labels?.font, 22),
         },
     };
     if (next.plugins.title) {
-        next.plugins.title = { ...next.plugins.title, color: '#0f172a' };
+        next.plugins.title = {
+            ...next.plugins.title,
+            color: '#0f172a',
+            font: readableFont(next.plugins.title?.font, 26),
+        };
     }
     next.scales = { ...(next.scales || {}) };
     Object.keys(next.scales).forEach(axisKey => {
         const axis = next.scales[axisKey] || {};
         next.scales[axisKey] = {
             ...axis,
-            ticks: { ...(axis.ticks || {}), color: '#475569' },
+            ticks: {
+                ...(axis.ticks || {}),
+                color: '#475569',
+                font: readableFont(axis.ticks?.font, 22),
+            },
             grid: { ...(axis.grid || {}), color: '#e2e8f0' },
-            title: axis.title ? { ...axis.title, color: '#334155' } : axis.title,
+            title: axis.title ? {
+                ...axis.title,
+                color: '#334155',
+                font: readableFont(axis.title?.font, 22),
+            } : axis.title,
         };
     });
     return next;
