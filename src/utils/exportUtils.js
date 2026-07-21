@@ -1183,21 +1183,27 @@ function docPropsAppXml(sheetCount) {
 function drawingXml(images = []) {
     const anchors = images.map((image, idx) => {
         const fromCol = Math.max(0, Math.round(image.fromCol ?? 0));
-        const toCol = Math.max(fromCol + 1, Math.round(image.toCol ?? 10));
         const fromRow = Math.max(0, Math.round(image.fromRow ?? (1 + idx * 24)));
-        const toRow = Math.max(fromRow + 1, Math.round(image.toRow ?? (22 + idx * 24)));
+        // Use an explicit pixel extent instead of a two-cell anchor. Excel's
+        // column widths and row heights use different units, so a cell-only
+        // anchor can stretch a 16:9 chart into a very wide banner.
+        const widthPx = Math.max(1, Math.round(image.widthPx ?? 960));
+        const heightPx = Math.max(1, Math.round(image.heightPx ?? 540));
+        const emuPerPixel = 9525;
+        const widthEmu = widthPx * emuPerPixel;
+        const heightEmu = heightPx * emuPerPixel;
         const imageName = image.name || `Chart ${idx + 1}`;
 
-        return `<xdr:twoCellAnchor editAs="oneCell">
+        return `<xdr:oneCellAnchor>
 <xdr:from><xdr:col>${fromCol}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${fromRow}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
-<xdr:to><xdr:col>${toCol}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${toRow}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+<xdr:ext cx="${widthEmu}" cy="${heightEmu}"/>
 <xdr:pic>
 <xdr:nvPicPr><xdr:cNvPr id="${idx + 1}" name="${xmlEscape(imageName)}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>
 <xdr:blipFill><a:blip r:embed="rId${idx + 1}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>
 <xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>
 </xdr:pic>
 <xdr:clientData/>
-</xdr:twoCellAnchor>`;
+</xdr:oneCellAnchor>`;
     }).join('');
 
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -2141,7 +2147,7 @@ function numberOr(value, fallback) {
     return Number.isFinite(number) ? number : fallback;
 }
 
-function fitImageToCellBox(image, { maxCols = 10, maxRows = 15, minRows = 8 } = {}) {
+function fitImageToCellBox(image, { maxCols = 8, maxRows = 32, minRows = 12 } = {}) {
     const { width, height } = imageSizeFromDataUrl(image.imageDataUrl);
     const aspect = width > 0 && height > 0 ? width / height : 16 / 9;
     const fromCol = numberOr(image.fromCol, 0);
@@ -2149,11 +2155,15 @@ function fitImageToCellBox(image, { maxCols = 10, maxRows = 15, minRows = 8 } = 
     const toCol = numberOr(image.toCol, fromCol + maxCols);
     const columnSpan = Math.max(1, toCol - fromCol);
 
-    // Approximate Excel geometry: default column width 18 ~= 126 px,
-    // row height 18 pt ~= 24 px. Fit height from width so images keep shape.
+    // Keep the image compact for report sheets while preserving its source
+    // aspect ratio. The row span is only used to reserve space for the data
+    // table below; the drawing itself uses the explicit pixel extent above.
     const boxWidthPx = columnSpan * 126;
-    const desiredHeightPx = boxWidthPx / aspect;
-    const rowCount = Math.max(minRows, Math.min(maxRows, Math.round(desiredHeightPx / 24)));
+    const boxHeightPx = maxRows * 21;
+    const scale = Math.min(1, boxHeightPx / (boxWidthPx / aspect));
+    const displayWidthPx = Math.max(1, Math.round(boxWidthPx * scale));
+    const displayHeightPx = Math.max(1, Math.round(displayWidthPx / aspect));
+    const rowCount = Math.max(minRows, Math.min(maxRows, Math.ceil(displayHeightPx / 21)));
 
     return {
         ...image,
@@ -2161,6 +2171,8 @@ function fitImageToCellBox(image, { maxCols = 10, maxRows = 15, minRows = 8 } = 
         toCol,
         fromRow,
         toRow: fromRow + rowCount,
+        widthPx: displayWidthPx,
+        heightPx: displayHeightPx,
     };
 }
 
@@ -2652,7 +2664,7 @@ function singleFileReportSheets(title, sheets = {}, chartSheets = []) {
             fromCol: 0,
             toCol: 9,
             fromRow,
-        }, { maxCols: 9, maxRows: 14, minRows: 8 });
+        }, { maxCols: 9, maxRows: 32, minRows: 12 });
         overviewImages.push(fittedImage);
 
         const chartRowSpan = Math.max(1, fittedImage.toRow - fittedImage.fromRow);
