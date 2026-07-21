@@ -681,14 +681,17 @@ export const themeAdaptorPlugin = {
             };
         }
 
-        const legend = options.plugins?.legend;
-        if (legend?.labels) {
+        const legend = options.plugins.legend === false
+            ? null
+            : (options.plugins.legend || (options.plugins.legend = {}));
+        if (legend) {
+            legend.labels = legend.labels || {};
             legend.labels.color = themeConfig.text;
             legend.labels.font = withDashboardFont(legend.labels.font, '600');
-            legend.labels.usePointStyle = legend.labels.usePointStyle ?? true;
-            legend.labels.pointStyle = legend.labels.pointStyle || 'roundedRect';
-            legend.labels.boxWidth = legend.labels.boxWidth ?? 10;
-            legend.labels.boxHeight = legend.labels.boxHeight ?? 10;
+            legend.labels.usePointStyle = true;
+            legend.labels.pointStyle = 'circle';
+            legend.labels.boxWidth = legend.labels.boxWidth ?? 9;
+            legend.labels.boxHeight = legend.labels.boxHeight ?? 9;
             legend.labels.padding = Math.max(Number(legend.labels.padding) || 0, 16);
         }
 
