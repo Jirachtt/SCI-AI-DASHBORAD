@@ -284,53 +284,81 @@ function buildBudgetStudentCompareAnswer(question, userContext) {
     const studentTrend = Array.isArray(students?.scienceFaculty?.newStudentIntake)
         ? students.scienceFaculty.newStudentIntake
         : (Array.isArray(students?.trend) ? students.trend : []);
-    if (!budgetRows.length || !studentTrend.length) return null;
+    if (!budgetRows.length) return null;
 
-    const studentByYear = new Map(studentTrend.map(row => [String(row.year), number(row.total ?? row.count)]));
+    const studentByYear = new Map(studentTrend.map(row => [
+        String(row.year),
+        number(row.total ?? row.count, null),
+    ]));
     const rows = budgetRows
-        .map(row => ({
-            year: String(row.year),
-            revenue: number(row.revenue),
-            expense: number(row.expense),
-            students: number(row.students ?? studentByYear.get(String(row.year))),
-        }))
-        .filter(row => row.revenue || row.expense || row.students);
+        .map(row => {
+            const year = String(row.year);
+            const budgetValue = number(row.budget ?? row.allocatedBudget ?? row.revenue, null);
+            const budgetStudentCount = number(row.students, null);
+            const trendStudentCount = studentByYear.get(year) ?? null;
+            return {
+                year,
+                budgetValue,
+                students: budgetStudentCount ?? trendStudentCount,
+                studentSource: budgetStudentCount != null ? 'budget_assumption' : 'student_stats',
+            };
+        })
+        .filter(row => Number.isFinite(row.budgetValue) && Number.isFinite(row.students));
 
-    if (!rows.length) return null;
+    if (!rows.length) {
+        return {
+            text: 'ยังสร้างกราฟเปรียบเทียบงบประมาณกับจำนวนนักศึกษาไม่ได้ เพราะข้อมูลทั้งสองชุดยังไม่มีปีหรือช่วงเวลาเดียวกัน ระบบจึงไม่สร้างกราฟงบประมาณอย่างเดียวแทนคำสั่งนี้ กรุณา Sync ข้อมูลนักศึกษาและงบประมาณแล้วลองอีกครั้ง',
+            chart: null,
+            sources: [
+                sourceLabel('science_budget', 'แผนงบประมาณคณะวิทยาศาสตร์'),
+                sourceLabel('student_stats', 'สถิตินักศึกษา'),
+            ],
+            trustWarnings: ['ต้องมีค่าของงบประมาณและจำนวนนักศึกษาในปีเดียวกันก่อนจึงจะเปรียบเทียบได้อย่างถูกต้อง'],
+            blockedReason: 'comparison_period_mismatch',
+            usageMode: 'deterministic_chart_insufficient_data',
+        };
+    }
+
+    const usesBudgetStudentAssumption = rows.some(row => row.studentSource === 'budget_assumption');
+    const usesStudentStats = rows.some(row => row.studentSource === 'student_stats');
+    const sources = [sourceLabel('science_budget', 'แผนงบประมาณคณะวิทยาศาสตร์')];
+    if (usesStudentStats) sources.push(sourceLabel('student_stats', 'สถิตินักศึกษา'));
+    const trustWarnings = usesBudgetStudentAssumption
+        ? ['จำนวนผู้เรียนเป็นยอดตามฐานคำนวณรายรับในไฟล์แผนงบประมาณ ซึ่งอาจรวมยอดข้ามภาคการศึกษา ไม่ใช่จำนวนนักศึกษาคงอยู่แบบไม่ซ้ำคน ณ วันปัจจุบัน']
+        : [];
 
     return asResult({
-        text: 'สร้างกราฟเปรียบเทียบ **งบประมาณคณะวิทยาศาสตร์** กับ **จำนวนนักศึกษา/นิสิตใหม่ที่เชื่อมได้ในระบบ** ให้แล้วครับ ใช้แกนซ้ายเป็นล้านบาทและแกนขวาเป็นคน',
+        text: `สร้างกราฟเปรียบเทียบ **2 ข้อมูล** ให้แล้วครับ: **ประมาณการรายรับ/งบประมาณคณะวิทยาศาสตร์** กับ **จำนวนผู้เรียน${usesBudgetStudentAssumption ? 'ตามฐานคำนวณในแผนงบประมาณ' : 'จากสถิตินักศึกษา'}** โดยใช้แกนซ้ายเป็นล้านบาทและแกนขวาเป็นจำนวนคน`,
         chart: {
-            chartType: 'line',
+            chartType: 'bar',
             data: {
                 labels: rows.map(row => row.year),
                 datasets: [
                     {
-                        type: 'line',
-                        label: 'รายรับ (ล้านบาท)',
-                        data: rows.map(row => row.revenue),
-                        borderColor: PALETTE[0],
-                        backgroundColor: `${PALETTE[0]}22`,
-                        tension: 0.35,
-                        yAxisID: 'y',
-                    },
-                    {
-                        type: 'line',
-                        label: 'รายจ่าย (ล้านบาท)',
-                        data: rows.map(row => row.expense),
-                        borderColor: PALETTE[3],
-                        backgroundColor: `${PALETTE[3]}22`,
-                        tension: 0.35,
-                        yAxisID: 'y',
-                    },
-                    {
                         type: 'bar',
-                        label: 'นักศึกษา/นิสิตใหม่ (คน)',
+                        label: 'ประมาณการรายรับ/งบประมาณ (ล้านบาท)',
+                        data: rows.map(row => row.budgetValue),
+                        borderColor: PALETTE[0],
+                        backgroundColor: `${PALETTE[0]}B8`,
+                        borderWidth: 1,
+                        borderRadius: 7,
+                        yAxisID: 'y',
+                    },
+                    {
+                        type: 'line',
+                        label: usesBudgetStudentAssumption
+                            ? 'จำนวนผู้เรียนตามฐานคำนวณ (คน)'
+                            : 'จำนวนนักศึกษา (คน)',
                         data: rows.map(row => row.students),
-                        backgroundColor: `${PALETTE[1]}99`,
                         borderColor: PALETTE[1],
-                        borderWidth: 0,
-                        borderRadius: 8,
+                        backgroundColor: `${PALETTE[1]}22`,
+                        pointBackgroundColor: PALETTE[1],
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        borderWidth: 3,
+                        tension: 0.3,
                         yAxisID: 'y1',
                     },
                 ],
@@ -346,10 +374,8 @@ function buildBudgetStudentCompareAnswer(question, userContext) {
                 },
             },
         },
-        sources: [
-            sourceLabel('science_budget', 'Faculty budget dataset'),
-            sourceLabel('student_stats', 'Student statistics dataset'),
-        ],
+        sources,
+        trustWarnings,
     });
 }
 

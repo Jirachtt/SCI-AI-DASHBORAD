@@ -162,12 +162,13 @@ export default function AIChat() {
         const text = await sendMessageToGemini(prompt, {
             user,
             theme,
+            uploadedFileData,
             aiSettings: getAIModelSettings(),
             ...sendOptions,
         });
         getAITokenStats();
         return text;
-    }, [user, theme]);
+    }, [user, theme, uploadedFileData]);
 
     const handleNewChat = useCallback(() => {
         resetConversation();

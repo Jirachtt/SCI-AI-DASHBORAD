@@ -2,7 +2,10 @@ const EXECUTIVE_RECOMMENDATION_PATTERN =
     /ควร|วางแผน|แนะนำ|ทำอะไรต่อ|ผู้บริหาร|คณบดี|ตัดสินใจ|เชิงบริหาร|แนวทาง|รับมือ|แก้ไข|ระวัง|ส่งผล|ผลกระทบ|กระทบ|จุดหลุด|funnel|แคมเปญ|campaign|retention|จุดขาย|เร่ง|ติดตาม|scenario|ภาพรวม|สรุปเชิงบริหาร|brief/i;
 
 const ANALYTICAL_REASONING_PATTERN =
-    /พยากรณ์|คาดการณ์|ประมาณการ|แนวโน้ม|วิเคราะห์|เพราะอะไร|ทำไม|อย่างไร|ควร|แนะนำ|เสี่ยง|ความเสี่ยง|เปรียบเทียบ|สรุปเชิงบริหาร|ตัดสินใจ|ส่งผล|ผลกระทบ|กระทบ|จุดหลุด|funnel|แคมเปญ|campaign|retention|จุดขาย|เร่ง|ติดตาม|scenario|ภาพรวม|confidence|forecast|predict|projection|trend|analy[sz]e|analysis|why|how|recommend|risk|compare/i;
+    /พยากรณ์|คาดการณ์|ประมาณการ|แนวโน้ม|วิเคราะห์|เพราะอะไร|ทำไม|อย่างไร|ควร|แนะนำ|เสี่ยง|ความเสี่ยง|เปรียบเทียบ|เทียบ(?:กับ|กัน|ระหว่าง)?|ต่างกัน|ความแตกต่าง|สรุปเชิงบริหาร|ตัดสินใจ|ส่งผล|ผลกระทบ|กระทบ|จุดหลุด|funnel|แคมเปญ|campaign|retention|จุดขาย|เร่ง|ติดตาม|scenario|ภาพรวม|confidence|forecast|predict|projection|trend|analy[sz]e|analysis|why|how|recommend|risk|compare|comparison|versus|\bvs\.?\b/i;
+
+const COMPARISON_REASONING_PATTERN =
+    /เปรียบเทียบ|เทียบ(?:กับ|กัน|ระหว่าง)?|ต่างกัน|ความแตกต่าง|compare|comparison|versus|\bvs\.?\b/i;
 
 const CONTEXT_OVERVIEW_REASONING_PATTERN =
     /ภาพรวม.*(วิจัย|งบ|นักศึกษา|tcas|kpi|บุคลากร|สำเร็จ|รับเข้า)|research overview|budget overview|student overview|kpi overview/i;
@@ -21,6 +24,10 @@ export function isAnalyticalReasoningIntent(question) {
     return isExecutiveRecommendationIntent(text)
         || ANALYTICAL_REASONING_PATTERN.test(text)
         || CONTEXT_OVERVIEW_REASONING_PATTERN.test(text);
+}
+
+export function isAIComparisonIntent(question) {
+    return COMPARISON_REASONING_PATTERN.test(String(question || '').toLowerCase());
 }
 
 export function isApprovedReferenceForExecutiveAdvice(meta = {}, options = {}) {

@@ -16,6 +16,7 @@
     "audit:data": "node scripts/validate-data-consistency.mjs",
     "audit:overview": "node scripts/validate-overview-metrics.mjs",
     "audit:ai-retrieval": "node scripts/validate-ai-retrieval-policy.mjs",
+    "audit:ai-comparisons": "node scripts/validate-ai-comparison-policy.mjs",
     "audit:student-realtime": "node scripts/validate-student-realtime-consistency.mjs",
     "audit:sync": "node scripts/validate-dashboard-sync.mjs",
     "audit:sync:live": "node scripts/validate-dashboard-sync.mjs --live",
@@ -25,7 +26,7 @@
     "audit:mju-connected": "node scripts/validate-mju-connected-data.mjs",
     "audit:imports": "node scripts/validate-dataset-imports.mjs",
     "smoke:vercel": "node scripts/smoke-vercel-production.mjs",
-    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:ai-models && npm run audit:ai-retrieval && npm run audit:student-realtime && npm run audit:sync && npm run audit:roles && npm run audit:navigation && npm run audit:data && npm run audit:overview && npm run audit:mju-connected && npm run audit:imports && npm run smoke:presentation"
+    "verify:stability": "npm run eval:executive && npm run eval:e2e && npm run audit:ai-models && npm run audit:ai-retrieval && npm run audit:ai-comparisons && npm run audit:student-realtime && npm run audit:sync && npm run audit:roles && npm run audit:navigation && npm run audit:data && npm run audit:overview && npm run audit:mju-connected && npm run audit:imports && npm run smoke:presentation"
   },
   "dependencies": {
     "chart.js": "^4.5.1",

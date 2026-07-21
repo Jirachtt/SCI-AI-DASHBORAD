@@ -1,3 +1,5 @@
+import { isAIComparisonIntent } from '../utils/aiAdvicePolicy.js';
+
 const SENSITIVE_DATA_PATTERN =
     /รายชื่อ|รหัสนักศึกษา|gpa\s*รายคน|เกรดรายคน|ค้างชำระรายคน|จ่ายจริง|วันที่จ่าย|เงินเดือน|รายการหัก|salary|payroll|citizen|เลขบัตร|transcript/i;
 
@@ -12,6 +14,27 @@ const EXPLICIT_WEB_PATTERN =
 
 const TCAS_DETAIL_PATTERN =
     /tcas.*(?:ย้อนหลัง\s*5\s*ปี|แต่ละรอบ|ทุกรอบ|รอบ\s*[124]|funnel|สมัคร.*ผ่าน|รายงานตัว)|(?:ย้อนหลัง\s*5\s*ปี|แต่ละรอบ|ทุกรอบ|รอบ\s*[124]|funnel).*(?:tcas|รับสมัคร|รับเข้า)/i;
+
+const PUBLIC_AGGREGATE_PATTERN =
+    /นักศึกษา|นิสิต|งบ|งบประมาณ|รายรับ|รายจ่าย|tcas|รับเข้า|รายวิชา|เกรด|gpa|สำเร็จการศึกษา|วิจัย|บุคลากร|อาจารย์|student|budget|finance|course|grade|graduation|research|staff|hr/i;
+
+const COMPARISON_TOPIC_PATTERNS = [
+    { id: 'student_count', pattern: /จำนวนนักศึกษา|จำนวนนิสิต|ยอดนักศึกษา|student\s*count|enrollment/i },
+    { id: 'budget', pattern: /งบ(?:ประมาณ)?|วงเงิน|budget/i },
+    { id: 'revenue', pattern: /รายรับ|revenue|income/i },
+    { id: 'expense', pattern: /รายจ่าย|ค่าใช้จ่าย|expense|expenditure/i },
+    { id: 'tcas', pattern: /tcas|admission|รับสมัคร|รับเข้า/i },
+    { id: 'courses', pattern: /จำนวนรายวิชา|รายวิชา|course/i },
+    { id: 'gpa', pattern: /เกรด|gpa|grade/i },
+    { id: 'graduation', pattern: /อัตราสำเร็จ|จำนวนผู้สำเร็จ|สำเร็จการศึกษา|graduation/i },
+    { id: 'hr', pattern: /จำนวนบุคลากร|จำนวนอาจารย์|บุคลากร|staff|hr/i },
+    { id: 'research', pattern: /วิจัย|research/i },
+];
+
+function comparisonTopics(question) {
+    const q = String(question || '');
+    return COMPARISON_TOPIC_PATTERNS.filter(topic => topic.pattern.test(q));
+}
 
 const MISSING_ONLY_PATTERNS = [
     /no direct local faq match/i,
@@ -91,6 +114,23 @@ export function evaluateAILocalEvidence({ question = '', contexts = [], contextB
     const hasTrustedLiveContext = trustedRegistryContexts.some(context =>
         context?.isLive || context?.trustLevel === 'live_official'
     );
+    const comparisonMode = Boolean(contextBundle?.comparisonMode) || isAIComparisonIntent(question);
+    const requestedComparisonTopicList = comparisonTopics(question);
+    const requestedComparisonTopics = requestedComparisonTopicList.length;
+    const evidenceDatasetIds = new Set([
+        ...registryContexts.filter(context => context?.hasData).map(context => context.id),
+        ...directContexts.map(context => context.id),
+    ].filter(Boolean));
+    const evidenceDescriptor = [
+        ...registryContexts.map(context => `${context.id || ''} ${context.domain || ''} ${context.label || ''}`),
+        ...directContexts.map(context => `${context.id || ''} ${contextText(context)}`),
+    ].join('\n');
+    const coveredComparisonTopics = requestedComparisonTopicList
+        .filter(topic => topic.pattern.test(evidenceDescriptor))
+        .map(topic => topic.id);
+    const comparisonEvidenceComplete = !comparisonMode
+        || requestedComparisonTopics < 2
+        || coveredComparisonTopics.length === requestedComparisonTopics;
 
     let coverage = 'none';
     if (trustedRegistryContexts.length > 0 || directContexts.length > 0) coverage = 'sufficient';
@@ -98,6 +138,7 @@ export function evaluateAILocalEvidence({ question = '', contexts = [], contextB
 
     if (hasMissingTcasDetail) coverage = coverage === 'none' ? 'none' : 'partial';
     if (requiresFreshVerification && !hasTrustedLiveContext) coverage = coverage === 'none' ? 'none' : 'partial';
+    if (!comparisonEvidenceComplete) coverage = coverage === 'none' ? 'none' : 'partial';
 
     return {
         coverage,
@@ -107,6 +148,11 @@ export function evaluateAILocalEvidence({ question = '', contexts = [], contextB
         hasTrustedLiveContext,
         requiresFreshVerification,
         hasMissingTcasDetail,
+        comparisonMode,
+        requestedComparisonTopics,
+        coveredComparisonTopics,
+        comparisonEvidenceComplete,
+        evidenceDatasetCount: evidenceDatasetIds.size,
     };
 }
 
@@ -129,6 +175,7 @@ export function decideAIRetrievalPolicy({
         || shouldUseWebFallback
         || intent === 'maejo_public'
         || intent === 'student_faq'
+        || (isAIComparisonIntent(q) && PUBLIC_AGGREGATE_PATTERN.test(q))
         || PUBLIC_MAEJO_PATTERN.test(q);
 
     let useWebSearch = false;
@@ -152,12 +199,15 @@ export function decideAIRetrievalPolicy({
     } else if (evidence.coverage === 'partial' && (
         evidence.requiresFreshVerification
         || evidence.hasMissingTcasDetail
+        || !evidence.comparisonEvidenceComplete
         || explicitWebRequest
         || shouldUseWebFallback
     )) {
         useWebSearch = true;
         reason = evidence.hasMissingTcasDetail
             ? 'local_tcas_detail_incomplete'
+            : !evidence.comparisonEvidenceComplete
+                ? 'local_comparison_evidence_incomplete'
             : evidence.requiresFreshVerification
                 ? 'local_evidence_needs_fresh_official_verification'
                 : 'local_evidence_partial';
@@ -181,6 +231,7 @@ export function formatAIRetrievalPolicyForPrompt(policy = {}) {
         `localCoverage=${policy.coverage || 'none'}`,
         `trustedLocalDatasets=${Number(policy.trustedDatasetCount || 0)}`,
         `directLocalContexts=${Number(policy.directContextCount || 0)}`,
+        `comparisonEvidence=${policy.comparisonMode ? (policy.comparisonEvidenceComplete ? 'complete' : 'incomplete') : 'not_requested'}`,
         `webSearch=${policy.useWebSearch ? 'fallback_after_local' : 'disabled_for_this_request'}`,
         `decisionReason=${policy.reason || 'unknown'}`,
         policy.useWebSearch

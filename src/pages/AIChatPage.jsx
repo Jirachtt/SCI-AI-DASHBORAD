@@ -1,6 +1,6 @@
 ﻿/* eslint-disable react-refresh/only-export-components */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, Database, ShieldCheck, Clock3, Gauge, Layers3, GraduationCap, Copy, CornerDownRight } from 'lucide-react';
+import { MessageCircle, Send, BarChart3, BarChart2, TrendingUp, Maximize2, Mic, MicOff, X, Bot, Sparkles, Search, ChartLine, AudioLines, Zap, RotateCcw, Paperclip, FileSpreadsheet, History, Trash2, MessageSquarePlus, PieChart, Hexagon, CircleDot, ZoomIn, RotateCw, Database, ShieldCheck, Clock3, Gauge, Layers3, GraduationCap, Copy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import {
@@ -2442,7 +2442,7 @@ function readableChartExportTitle(chart, fallback = 'AI chart') {
 }
 
 // ==================== Chat Message Component ====================
-export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
+export function ChatMessage({ msg, onExpand }) {
     // UI chart type — uses 'hbar' as a virtual horizontal-bar value.
     const initialUiType = getInitialUiChartType(msg.chart);
     const [chartType, setChartType] = useState(initialUiType);
@@ -2536,13 +2536,6 @@ export function ChatMessage({ msg, onExpand, onAskFollowUp }) {
                 <div className="ai-answer-action-row">
                     <button className="ai-answer-action-btn" type="button" onClick={handleCopy}>
                         <Copy size={13} /> คัดลอกคำตอบ
-                    </button>
-                    <button
-                        className="ai-answer-action-btn"
-                        type="button"
-                        onClick={() => onAskFollowUp?.(String(msg.text || '').slice(0, 220))}
-                    >
-                        <CornerDownRight size={13} /> ถามต่อจากคำตอบนี้
                     </button>
                 </div>
 
@@ -2913,6 +2906,7 @@ function AIChatPageContent() {
         return sendMessageToGemini(prompt, {
             user,
             theme,
+            uploadedFileData,
             aiSettings: getAIModelSettings(),
             onChunk,
             ...restOptions,
@@ -2921,7 +2915,7 @@ function AIChatPageContent() {
                 onMetadata?.(meta);
             },
         });
-    }, [user, theme]);
+    }, [user, theme, uploadedFileData]);
 
     // ── Ensure the live student dataset is loaded before the user can chat ──
     // Layout already calls this on mount, but if the user lands directly on
@@ -3838,7 +3832,6 @@ function AIChatPageContent() {
                                 key={i}
                                 msg={msg}
                                 onExpand={setExpandedChart}
-                                onAskFollowUp={(seed) => setInput(`ต่อจาก insight นี้ ช่วยขยายให้หน่อย: ${seed}`)}
                             />
                         ))}
                         {typing && (

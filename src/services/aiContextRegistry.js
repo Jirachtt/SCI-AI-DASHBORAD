@@ -4,7 +4,7 @@ import {
     getSharedDashboardDatasetSync,
 } from './sharedDashboardDataService';
 import { getDatasetQualityText } from '../utils/smartChartData';
-import { getExecutiveAdviceTrustLevel } from '../utils/aiAdvicePolicy';
+import { getExecutiveAdviceTrustLevel, isAIComparisonIntent } from '../utils/aiAdvicePolicy';
 
 export const AI_DATASET_REGISTRY = [
     {
@@ -213,11 +213,13 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
     const isBudgetFinanceQuery = BUDGET_PRIORITY_PATTERN.test(q) && !COURSE_EXPLICIT_PATTERN.test(q);
     const matched = [];
     const denied = [];
-    const maxContexts = Number.isFinite(Number(options.maxContexts))
+    const comparisonMode = Boolean(options.comparisonMode) || isAIComparisonIntent(question);
+    const configuredMaxContexts = Number.isFinite(Number(options.maxContexts))
         ? Number(options.maxContexts)
         : options.intent === 'executive_advice'
             ? 6
             : 5;
+    const maxContexts = comparisonMode ? Math.max(6, configuredMaxContexts) : configuredMaxContexts;
 
     for (const item of AI_DATASET_REGISTRY) {
         let score = options.includeAll ? 1 : keywordScore(item, q);
@@ -261,6 +263,7 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
 
     return {
         intentHint: options.intent || 'auto',
+        comparisonMode,
         role,
         contexts: matched.slice(0, maxContexts),
         deniedSections: denied.flatMap(item => item.sections || []),

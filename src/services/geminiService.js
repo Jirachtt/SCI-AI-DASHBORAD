@@ -32,6 +32,7 @@ import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand'
 import {
     executiveAdviceDatasetStatus,
     getExecutiveAdviceTrustLevel,
+    isAIComparisonIntent,
     isAnalyticalReasoningIntent,
     isExecutiveRecommendationIntent,
     isTrustedForExecutiveAdvice,
@@ -1633,7 +1634,7 @@ function needsStudentDetail(msg) {
 
 function classifyQueryIntent(msg) {
     const q = String(msg || '').toLowerCase();
-    if (/กราฟ|chart|plot|แผนภูมิ|เปรียบเทียบ|พยากรณ์|forecast|วิเคราะห์/.test(q)) return 'chart_analysis';
+    if (/กราฟ|chart|plot|แผนภูมิ|พยากรณ์|forecast|วิเคราะห์/.test(q) || isAIComparisonIntent(q)) return 'chart_analysis';
     if (shouldUseWebSearch(q)) return 'web_lookup';
     if (/\b6\d{9}\b/.test(q) || /ชื่อ|รายชื่อ|ค้นหา|หา.*นักศึกษา|student/.test(q)) return 'lookup';
     if (/สรุป|ภาพรวม|insight|แนวโน้ม|เหตุผล|ทำไม/.test(q)) return 'analysis';
@@ -1641,6 +1642,9 @@ function classifyQueryIntent(msg) {
 }
 
 function modelOrderForIntent(intent, settings) {
+    if (intent === 'analysis' || intent === 'chart_analysis') {
+        return uniqueModels(PRIMARY_MODEL_ORDER);
+    }
     if (settings.modelMode && settings.modelMode !== 'auto' && SELECTABLE_MODELS.includes(settings.modelMode)) {
         return [settings.modelMode, ...PRIMARY_MODEL_ORDER.filter(model => model !== settings.modelMode)];
     }
@@ -2079,6 +2083,65 @@ function maejoStudentFaqContext(userMessage) {
 const BUDGET_PRIORITY_PATTERN = /งบ|งบประมาณ|รายรับ|รายจ่าย|การเงิน|ค่าเทอม|ค่าธรรมเนียม|budget|finance|revenue|expense/i;
 const COURSE_EXPLICIT_PATTERN = /รายวิชา|วิชาไหน|เกรดรายวิชา|กระจายเกรด|course|grade distribution/i;
 
+function buildUploadedFileEvidenceContext(fileData) {
+    if (!fileData?.rowCount && !fileData?.rows?.length) return null;
+    const headers = Array.isArray(fileData.headers) ? fileData.headers.slice(0, 40) : [];
+    const rows = Array.isArray(fileData.rows) ? fileData.rows.slice(0, 8) : [];
+    const payload = {
+        fileName: fileData.fileName || 'uploaded-data',
+        sourceType: 'uploaded_file',
+        sourceTrust: 'user_uploaded',
+        rowCount: Number(fileData.rowCount || fileData.rows?.length || 0),
+        originalRowCount: Number(fileData.originalRowCount || fileData.rowCount || fileData.rows?.length || 0),
+        columns: headers,
+        numericColumns: Array.isArray(fileData.numericCols) ? fileData.numericCols.slice(0, 20) : [],
+        dataTypes: fileData.dataTypes || {},
+        missingValues: fileData.missingValues || {},
+        aggregates: fileData.aggregates || {},
+        analysisReadiness: fileData.analysisReadiness || {},
+        qualityWarnings: Array.isArray(fileData.qualityWarnings) ? fileData.qualityWarnings.slice(0, 8) : [],
+        sampleRows: rows,
+        note: 'ไฟล์ที่ผู้ใช้แนบในบทสนทนานี้ ให้ใช้เป็นหลักฐานภายในก่อนค้นเว็บ และห้ามอ้างว่าเป็นข้อมูลจาก MJU API',
+    };
+    return {
+        id: 'uploaded_file',
+        sourceType: 'uploaded_file',
+        text: `Uploaded file evidence (user-provided):\n${JSON.stringify(payload)}`,
+    };
+}
+
+const COMPARISON_COVERAGE_TOPICS = [
+    { id: 'student_count', label: 'จำนวนนักศึกษา', pattern: /จำนวนนักศึกษา|จำนวนนิสิต|ยอดนักศึกษา|student\s*count|enrollment/i },
+    { id: 'budget', label: 'งบประมาณ', pattern: /งบ(?:ประมาณ)?|วงเงิน|budget/i },
+    { id: 'revenue', label: 'รายรับ', pattern: /รายรับ|revenue|income/i },
+    { id: 'expense', label: 'รายจ่าย', pattern: /รายจ่าย|ค่าใช้จ่าย|expense|expenditure/i },
+    { id: 'tcas', label: 'TCAS/การรับเข้า', pattern: /tcas|admission|รับสมัคร|รับเข้า/i },
+    { id: 'courses', label: 'รายวิชา', pattern: /จำนวนรายวิชา|รายวิชา|course/i },
+    { id: 'gpa', label: 'เกรด/GPA', pattern: /เกรด|gpa|grade/i },
+    { id: 'graduation', label: 'การสำเร็จการศึกษา', pattern: /อัตราสำเร็จ|จำนวนผู้สำเร็จ|สำเร็จการศึกษา|graduation/i },
+    { id: 'hr', label: 'บุคลากร', pattern: /จำนวนบุคลากร|จำนวนอาจารย์|บุคลากร|staff|hr/i },
+    { id: 'research', label: 'งานวิจัย', pattern: /วิจัย|research/i },
+];
+
+function verifyComparisonAnswerCoverage(question, answerText) {
+    if (!isAIComparisonIntent(question)) {
+        return { enabled: false, valid: true, requestedTopics: [], missingTopics: [] };
+    }
+    const requestedTopics = COMPARISON_COVERAGE_TOPICS.filter(topic => topic.pattern.test(String(question || '')));
+    if (requestedTopics.length < 2) {
+        return { enabled: true, valid: true, requestedTopics: requestedTopics.map(topic => topic.id), missingTopics: [] };
+    }
+    const answer = String(answerText || '').split(/\n\s*(?:\*\*)?แหล่งข้อมูล(?:ที่ใช้|ที่ระบบใช้จริง)?/i)[0];
+    const missing = requestedTopics.filter(topic => !topic.pattern.test(answer));
+    return {
+        enabled: true,
+        valid: missing.length === 0,
+        requestedTopics: requestedTopics.map(topic => topic.id),
+        missingTopics: missing.map(topic => topic.id),
+        missingLabels: missing.map(topic => topic.label),
+    };
+}
+
 function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) {
     const q = String(userMessage || '').toLowerCase();
     const role = resolveAIRole(userContext);
@@ -2088,6 +2151,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const isBudgetFinanceQuery = BUDGET_PRIORITY_PATTERN.test(q) && !COURSE_EXPLICIT_PATTERN.test(q);
     const isTcasPlanningQuery = /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|portfolio|quota/.test(q);
     const isStudentRecordQuery = /gpa|เกรด|รายชื่อ|รหัส|student\s*id|ชั้นปี|พ้นสภาพ|รอพินิจ|คงอยู่|ลาออก|หายไป|จำนวนนักศึกษาปัจจุบัน/.test(q);
+    const comparisonMode = isAIComparisonIntent(userMessage);
     const candidates = [
         { id: 'maejo_student_faq', sections: [], keywords: /แม่โจ้|maejo|mju|สมัคร|tcas|ลงทะเบียน|ค่าเทอม|ค่าธรรมเนียม|เกียรตินิยม|กฎ|ระเบียบ|กิจกรรม|ชั่วโมง|รายวิชา|วิชา|ที่ตั้ง|ติดต่อ|เบอร์|โทร|คณะวิทย์|คณะวิทยาศาสตร์|เรียนอะไร|เรียนที่ไหน|หอพัก|ปฏิทิน|ประกาศ/i, text: () => maejoStudentFaqContext(userMessage) },
         { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|รายชื่อ|รหัส|ชั้นปี|tcas|admission|รับสมัคร|รับเข้า|รอบ/, text: () => studentAggregateContext(includeStudentRows, contextOptions) },
@@ -2106,7 +2170,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
 
     const scored = candidates
         .filter(c => domainAllowed(role, c.id) || canAIUseAnyInternalSection(role, c.sections))
-        .filter(c => !(c.id === 'students' && isTcasPlanningQuery && !isStudentRecordQuery))
+        .filter(c => !(c.id === 'students' && isTcasPlanningQuery && !isStudentRecordQuery && !comparisonMode))
         .map(c => {
             let score = c.keywords.test(q) ? 10 : 0;
             if (isBudgetFinanceQuery) {
@@ -2170,9 +2234,11 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
         });
     }
 
+    const configuredMaxContexts = Number(settings.maxContexts || DEFAULT_AI_SETTINGS.maxContexts);
+    const maxContexts = comparisonMode ? Math.max(6, configuredMaxContexts) : configuredMaxContexts;
     return scored
         .sort((a, b) => b.score - a.score)
-        .slice(0, settings.maxContexts || DEFAULT_AI_SETTINGS.maxContexts)
+        .slice(0, maxContexts)
         .map(c => ({ id: c.id, text: c.text() }));
 }
 
@@ -2278,7 +2344,9 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
     const role = resolveAIRole(userContext);
     const roleInfo = getRoleInfo(role);
     const memory = getAIUserMemory(userContext);
-    const orchestrationPlan = createAIOrchestrationPlan(userMessage, userContext);
+    const orchestrationPlan = runtime.orchestrationPlan || createAIOrchestrationPlan(userMessage, userContext, {
+        uploadedFileData: runtime.uploadedFileData,
+    });
     const rawLocalContexts = runtime.localContexts || retrieveRelevantContexts(userMessage, userContext, settings);
     const retrievalPolicy = runtime.retrievalPolicy || decideAIRetrievalPolicy({
         question: userMessage,
@@ -2357,6 +2425,15 @@ function buildAgenticRagInstruction(userMessage, userContext = {}, settings = {}
 - ถ้าข้อมูลเป็น snapshot ให้บอกข้อจำกัดสั้นๆ แต่ยังต้องสรุปสัญญาณและแผนบริหารจาก snapshot โดยไม่แต่งตัวเลขใหม่
 `
         : '';
+    const comparisonInstruction = orchestrationPlan.comparisonMode
+        ? `STRICT COMPARISON MODE:
+- Identify every metric/entity explicitly requested by the user before answering. Do not substitute a different metric.
+- Compare only evidence with compatible scope, time period, population, and unit. If they differ, state the mismatch before interpreting it.
+- Use local website, Firestore, synchronized datasets, and the user's uploaded file first. Use Google Search grounding only for public facts that remain missing.
+- The answer must cover every requested side of the comparison. If one side has no evidence, say exactly which side is missing; never silently answer only the available side.
+- For a comparison chart, include one dataset per requested metric/entity, preserve correct units, and use separate y/y1 axes when units differ.
+- Derived values must include a short formula or assumption. Never invent a value merely to complete the comparison.`
+        : '';
     const answerScopeRule = useMaejoWebMode
         ? 'ตอบภาษาไทย กระชับ ใช้ข้อมูลในเว็บ/ระบบนี้ก่อน หากข้อมูลไม่ครบให้ใช้ Google Search จากเว็บทางการหรือแหล่งน่าเชื่อถือเป็น fallback พร้อมบอกแหล่งที่มา และไม่ต้องสร้างกราฟถ้าผู้ใช้ไม่ได้ขอ'
         : 'ตอบภาษาไทย กระชับ อ้างอิงเฉพาะข้อมูลใน RETRIEVED CONTEXTS และห้ามเดาตัวเลข';
@@ -2385,6 +2462,8 @@ ${formatAIContextBundleForPrompt(orchestrationPlan.contextBundle)}
 ${formatAIRetrievalPolicyForPrompt(retrievalPolicy)}
 
 ${reasoningInstruction}
+
+${comparisonInstruction}
 
 ${executiveRecommendationInstruction}
 
@@ -2459,7 +2538,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
     updateAIUserMemory(options.user || {}, originalQuestion);
 
     // Detect chart/graph request keywords and append reminder
-    const chartKeywords = ['กราฟ', 'chart', 'แผนภูมิ', 'แผนภาพ', 'แท่ง', 'เส้น', 'วงกลม', 'radar', 'พยากรณ์', 'คาดการณ์', 'forecast', 'bar chart', 'line chart', 'pie chart', 'กราฟแท่ง', 'กราฟเส้น', 'กราฟวงกลม', 'เปรียบเทียบ', 'สร้างกราฟ', 'แสดงกราฟ', 'วิเคราะห์'];
+    const chartKeywords = ['กราฟ', 'chart', 'แผนภูมิ', 'แผนภาพ', 'แท่ง', 'เส้น', 'วงกลม', 'radar', 'พยากรณ์', 'คาดการณ์', 'forecast', 'bar chart', 'line chart', 'pie chart', 'กราฟแท่ง', 'กราฟเส้น', 'กราฟวงกลม', 'เปรียบเทียบ', 'เทียบกับ', 'เทียบกัน', 'ต่างกัน', 'compare', 'comparison', 'versus', ' vs ', 'สร้างกราฟ', 'แสดงกราฟ', 'วิเคราะห์'];
     const lowerMsg = originalQuestion.toLowerCase();
     const isChartRequest = chartKeywords.some(kw => lowerMsg.includes(kw));
 
@@ -2474,7 +2553,11 @@ async function _sendMessageImpl(userMessage, options = {}) {
 6. ต้องแนบ \`\`\`json_chart\`\`\` block เสมอถ้ามีข้อมูล]`;
     }
 
-    const rawRequestLocalContexts = retrieveRelevantContexts(originalQuestion, options.user || {}, settings);
+    const uploadedFileContext = buildUploadedFileEvidenceContext(options.uploadedFileData);
+    const rawRequestLocalContexts = [
+        ...(uploadedFileContext ? [uploadedFileContext] : []),
+        ...retrieveRelevantContexts(originalQuestion, options.user || {}, settings),
+    ];
     const retrievalPolicy = decideAIRetrievalPolicy({
         question: originalQuestion,
         intent: orchestrationPlan.intent,
@@ -2576,6 +2659,8 @@ async function _sendMessageImpl(userMessage, options = {}) {
     const baseInstruction = buildAgenticRagInstruction(originalQuestion, options.user || {}, settings, {
         localContexts: rawRequestLocalContexts,
         retrievalPolicy,
+        orchestrationPlan,
+        uploadedFileData: options.uploadedFileData,
     });
     const systemText = baseInstruction;
 
@@ -2605,7 +2690,9 @@ async function _sendMessageImpl(userMessage, options = {}) {
 
     // Try each model in order, skip models on cooldown
     const candidateModels = useSearch
-        ? modelOrderForIntent('web_lookup', settings)
+        ? reasoningMode
+            ? uniqueModels([...SEARCH_MODEL_ORDER, ...PRIMARY_MODEL_ORDER])
+            : modelOrderForIntent('web_lookup', settings)
         : modelOrderForIntent(intent, settings);
     const wantsStreaming = typeof options.onChunk === 'function' && !wantsStructuredOutput;
     for (const model of candidateModels) {
@@ -2728,6 +2815,13 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 continue;
             }
             const normalizedAiText = wantsStructuredOutput ? coerceStructuredAIResponse(rawAiText) : rawAiText;
+            const comparisonVerification = verifyComparisonAnswerCoverage(originalQuestion, normalizedAiText);
+            if (!comparisonVerification.valid && model !== candidateModels.at(-1)) {
+                console.warn(`[Gemini] ${model} omitted comparison topics (${comparisonVerification.missingTopics.join(', ')}); retrying...`);
+                lastError = new Error(`${model}: Incomplete comparison answer`);
+                if (wantsStreaming) options.onChunk?.('', { reset: true, model, escalated: true });
+                continue;
+            }
             if (shouldEscalateAnswerQuality(normalizedAiText, model, candidateModels, { blockedReason: orchestrationPlan.blockedReason })) {
                 console.warn(`[Gemini] ${model} answer looked insufficient; escalating to a higher-tier model...`);
                 lastError = new Error(`${model}: Insufficient answer quality`);
@@ -2745,6 +2839,9 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 question: originalQuestion,
                 useSearch,
             });
+            if (!comparisonVerification.valid) {
+                aiText = `ยังไม่สามารถยืนยันคำตอบเปรียบเทียบให้ครบทั้ง ${comparisonVerification.requestedTopics.length} ด้านได้อย่างปลอดภัยจากหลักฐานรอบนี้\n\n**ข้อมูลที่ยังขาดในคำตอบ:** ${comparisonVerification.missingLabels.join(', ')}\n\nกรุณากด Sync ชุดข้อมูลที่เกี่ยวข้องหรือแนบไฟล์ที่มีตัวชี้วัดดังกล่าว แล้วสั่งเปรียบเทียบอีกครั้ง`;
+            }
             const answerVerification = lastAnswerVerificationMetadata;
 
             console.log(`[Gemini] ✅ ${model} OK`);
@@ -2770,6 +2867,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
                 chartRequest: isChartRequest,
                 structuredOutput: wantsStructuredOutput,
                 answerVerification,
+                comparisonVerification,
             }, options.onMetadata);
             recordTokenStats({
                 model,

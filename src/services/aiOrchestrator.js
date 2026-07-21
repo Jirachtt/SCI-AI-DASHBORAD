@@ -1,8 +1,12 @@
-import { isAnalyticalReasoningIntent, isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
+import {
+    isAIComparisonIntent,
+    isAnalyticalReasoningIntent,
+    isExecutiveRecommendationIntent,
+} from '../utils/aiAdvicePolicy';
 import { canAIUseAnyInternalSection, resolveAIRole } from '../utils/aiAccessPolicy';
 import { getAIContextBundle } from './aiContextRegistry';
 
-const CHART_PATTERN = /กราฟ|chart|plot|แผนภูมิ|แผนภาพ|visual|เปรียบเทียบ|แนวโน้ม|trend|กระจาย|distribution/i;
+const CHART_PATTERN = /กราฟ|chart|plot|แผนภูมิ|แผนภาพ|visual|เปรียบเทียบ|เทียบ(?:กับ|กัน|ระหว่าง)?|ต่างกัน|แนวโน้ม|trend|กระจาย|distribution|compare|comparison|versus|\bvs\.?\b/i;
 const STUDENT_FAQ_PATTERN = /เกียรตินิยม|ค่าเทอม|สมัคร|tcas|ลงทะเบียน|รายวิชา|วิชาไหน|วิชาข้าม|ข้ามสาขา|กิจกรรม|ชั่วโมง|ที่ตั้ง|ติดต่อ|เบอร์|หอพัก|ปฏิทิน|ประกาศ/i;
 const MAEJO_PUBLIC_PATTERN = /แม่โจ้|maejo|mju|มหาวิทยาลัย|คณะ|หลักสูตร|รับสมัคร|สถานที่|วิทยาเขต|ประวัติ|ข่าว|หน่วยงาน/i;
 const INTERNAL_LOOKUP_PATTERN = /นักศึกษา|นิสิต|งบ|budget|kpi|okr|บุคลากร|วิจัย|สำเร็จการศึกษา|ตรวจสอบการจบ|เงื่อนไขจบ|จบ|รายชื่อ|gpa|เกรด|ชั่วโมงกิจกรรม/i;
@@ -47,7 +51,8 @@ function sensitiveRequiredSections(question) {
 export function createAIOrchestrationPlan(question, userContext = {}, options = {}) {
     const intent = classifyAIQuestionIntent(question, options);
     const role = resolveAIRole(userContext);
-    const contextBundle = getAIContextBundle(question, role, { intent });
+    const comparisonMode = isAIComparisonIntent(question);
+    const contextBundle = getAIContextBundle(question, role, { intent, comparisonMode });
     const hasDeniedContext = contextBundle.deniedContexts.length > 0;
     const hasAllowedContext = contextBundle.contexts.length > 0;
     const adviceMode = intent === 'executive_advice';
@@ -67,6 +72,7 @@ export function createAIOrchestrationPlan(question, userContext = {}, options = 
         role,
         adviceMode,
         reasoningMode,
+        comparisonMode,
         shouldDisableCache,
         shouldUseWebFallback,
         hasDeniedContext,
@@ -88,7 +94,7 @@ export function formatAIOrchestrationPlanForPrompt(plan) {
     return [
         `AI orchestration: intent=${plan.intent}, usageMode=${plan.usageMode}, role=${plan.role}`,
         `selectedDatasets=${(plan.selectedDatasets || []).join('|') || '-'}, deniedDatasets=${(plan.deniedDatasets || []).join('|') || '-'}`,
-        `reasoningMode=${plan.reasoningMode ? 'true' : 'false'}, cache=${plan.shouldDisableCache ? 'disabled' : 'allowed'}, webFallback=${plan.shouldUseWebFallback ? 'allowed_when_needed' : 'only_if_settings_allow'}`,
+        `reasoningMode=${plan.reasoningMode ? 'true' : 'false'}, comparisonMode=${plan.comparisonMode ? 'true' : 'false'}, cache=${plan.shouldDisableCache ? 'disabled' : 'allowed'}, webFallback=${plan.shouldUseWebFallback ? 'allowed_when_needed' : 'only_if_settings_allow'}`,
         plan.requiresClarification ? 'clarificationPolicy=if selected datasets are empty, state the missing data or ask a targeted follow-up instead of guessing' : '',
         plan.blockedReason ? `blockedSensitive=${plan.blockedReason}` : '',
     ].filter(Boolean).join('\n');
