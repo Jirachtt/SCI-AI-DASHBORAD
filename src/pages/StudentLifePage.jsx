@@ -27,6 +27,7 @@ import {
 } from '../data/scienceActivitiesData';
 import { getMjuLinkedUserAcademicProfile } from '../services/mjuLinkedUserDataService';
 import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
+import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 
 const STATUS_META = {
     open: { label: 'เปิดลงทะเบียน', className: 'open' },
@@ -59,23 +60,34 @@ function eventStatusMeta(event) {
 export default function StudentLifePage() {
     const { user } = useAuth();
     const [activeWindow, setActiveWindow] = useState('thisMonth');
+    const [consentAt, setConsentAt] = useState('');
     const { data: studentLifeData } = useDashboardDataset('student_life');
 
     const accessAllowed = canAccess(user?.role, 'student_life');
     const summary = getScienceActivitySummary();
-    const linkedProfile = getMjuLinkedUserAcademicProfile(user);
+    const connectedUser = consentAt ? { ...user, mjuConsentGrantedAt: consentAt } : user;
+    const linkedProfile = getMjuLinkedUserAcademicProfile(connectedUser);
     const activityHours = linkedProfile.isMjuLinked
         ? linkedProfile.activity
         : (studentLifeData?.activityHours || summary.requirement);
     const requirement = summary.requirement;
-    const targetHours = Number(activityHours.targetHours ?? activityHours.target ?? requirement.targetHours);
-    const completedHours = Number(activityHours.completedHours ?? activityHours.completed ?? requirement.completedHours);
+    const hasPersonalActivity = activityHours.available !== false
+        && activityHours.completedHours != null
+        && Number.isFinite(Number(activityHours.completedHours));
+    const targetHours = linkedProfile.isMjuLinked
+        ? (hasPersonalActivity && activityHours.targetHours != null ? Number(activityHours.targetHours) : null)
+        : Number(activityHours.targetHours ?? activityHours.target ?? requirement.targetHours);
+    const completedHours = linkedProfile.isMjuLinked
+        ? (hasPersonalActivity ? Number(activityHours.completedHours) : null)
+        : Number(activityHours.completedHours ?? activityHours.completed ?? requirement.completedHours);
     const events = (Array.isArray(studentLifeData?.scienceActivities) && studentLifeData.scienceActivities.length
         ? studentLifeData.scienceActivities
         : summary.all)
         .filter(event => event.facultyHours)
         .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-    const missingHours = Math.max(0, targetHours - completedHours);
+    const missingHours = completedHours != null && targetHours != null
+        ? Math.max(0, targetHours - completedHours)
+        : null;
     const currentKey = summary.currentKey;
     const nextKey = summary.nextKey;
     const today = new Date();
@@ -89,7 +101,9 @@ export default function StudentLifePage() {
         : activeWindow === 'nextMonth'
             ? nextMonthEvents
             : events;
-    const recommendation = getRecommendedScienceActivities(missingHours, new Date(), events);
+    const recommendation = missingHours == null
+        ? { selected: [], accumulated: 0, willComplete: false }
+        : getRecommendedScienceActivities(missingHours, new Date(), events);
 
     const typeSummary = Object.entries(events.reduce((acc, event) => {
         const key = event.type || 'อื่นๆ';
@@ -104,7 +118,13 @@ export default function StudentLifePage() {
         { label: 'กิจกรรมเดือนนี้', value: thisMonthEvents.length, detail: summary.currentMonthLabel, icon: CalendarDays, color: 'var(--accent-success)' },
         { label: 'กิจกรรมเดือนหน้า', value: nextMonthEvents.length, detail: summary.nextMonthLabel, icon: Sparkles, color: 'var(--accent-purple)' },
         { label: 'ชั่วโมงที่เปิดให้เก็บ', value: sumScienceActivityHours(upcomingEvents), detail: 'รับชั่วโมงคณะวิทยาศาสตร์', icon: Clock, color: 'var(--accent-blue)' },
-        { label: 'ยังขาดเพื่อครบเกณฑ์', value: missingHours, detail: `${completedHours}/${targetHours} ชั่วโมง`, icon: GraduationCap, color: missingHours > 0 ? 'var(--accent-orange)' : 'var(--accent-success)' },
+        {
+            label: 'ยังขาดเพื่อครบเกณฑ์',
+            value: missingHours,
+            detail: missingHours == null ? 'ยังไม่พบข้อมูลส่วนบุคคลจาก MJU Activity' : `${completedHours}/${targetHours} ชั่วโมง`,
+            icon: GraduationCap,
+            color: missingHours == null || missingHours > 0 ? 'var(--accent-orange)' : 'var(--accent-success)',
+        },
     ];
 
     if (!accessAllowed) return <AccessDenied />;
@@ -128,6 +148,15 @@ export default function StudentLifePage() {
                 </div>
             </div>
 
+            {linkedProfile.isMjuLinked && (
+                <MjuConnectedPagePanel
+                    user={connectedUser}
+                    compact
+                    domainIds={['profile', 'activities']}
+                    onConsentGranted={setConsentAt}
+                />
+            )}
+
             <section className="science-activity-hero">
                 <div>
                     <span className="science-activity-kicker"><CheckCircle2 size={15} /> ข้อมูลกิจกรรมรับชั่วโมงคณะ</span>
@@ -139,8 +168,10 @@ export default function StudentLifePage() {
                 </div>
                 <div className="science-activity-hero-panel">
                     <span>{requirement.scope}</span>
-                    <strong>{completedHours}/{targetHours} ชม.</strong>
-                    <small>อัปเดตล่าสุด {requirement.lastUpdated}</small>
+                    <strong>{completedHours == null ? '--/--' : `${completedHours}/${targetHours ?? '--'}`} ชม.</strong>
+                    <small>{hasPersonalActivity
+                        ? `ข้อมูลจาก ${activityHours.source}`
+                        : (activityHours.message || `อัปเดตล่าสุด ${requirement.lastUpdated}`)}</small>
                 </div>
             </section>
 
@@ -154,7 +185,7 @@ export default function StudentLifePage() {
                                 <Icon size={20} />
                             </div>
                             <div>
-                                <strong style={{ color: accentColor }}>{item.value.toLocaleString('th-TH')}</strong>
+                                <strong style={{ color: accentColor }}>{item.value == null ? '--' : item.value.toLocaleString('th-TH')}</strong>
                                 <span>{item.label}</span>
                                 <small>{item.detail}</small>
                             </div>
@@ -233,7 +264,7 @@ export default function StudentLifePage() {
                         <div className="chart-card-subtitle">คัดจากกิจกรรมคณะวิทยาศาสตร์ที่กำลังจะจัด</div>
                         <div className="science-activity-missing">
                             <span>ยังขาด</span>
-                            <strong>{missingHours}</strong>
+                            <strong>{missingHours == null ? '--' : missingHours}</strong>
                             <span>ชั่วโมง</span>
                         </div>
                         <div className="science-activity-recommend-list">
@@ -246,12 +277,18 @@ export default function StudentLifePage() {
                                     <em>+{event.hours} ชม.</em>
                                 </div>
                             ))}
+                            {missingHours == null && (
+                                <div className="science-activity-empty">
+                                    <AlertCircle size={22} />
+                                    เชื่อม MJU Activity ก่อน ระบบจึงจะแนะนำกิจกรรมตามชั่วโมงที่ขาดจริงได้
+                                </div>
+                            )}
                         </div>
-                        <div className={`science-activity-complete-note ${recommendation.willComplete ? 'complete' : ''}`}>
+                        {missingHours != null && <div className={`science-activity-complete-note ${recommendation.willComplete ? 'complete' : ''}`}>
                             {recommendation.willComplete
                                 ? `เข้าร่วมชุดนี้ได้ ${recommendation.accumulated} ชม. เพียงพอให้ครบเกณฑ์`
                                 : `ชุดนี้ได้ ${recommendation.accumulated} ชม. ยังต้องเพิ่มอีก ${Math.max(0, missingHours - recommendation.accumulated)} ชม.`}
-                        </div>
+                        </div>}
                     </section>
 
                     <section className="chart-card science-activity-breakdown">

@@ -14,6 +14,8 @@ import ExportPDFButton from '../components/ExportPDFButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
+import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
+import { getMjuConnectedDataStatus } from '../services/mjuConnectedDataService';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, themeAdaptorPlugin);
 
@@ -37,14 +39,21 @@ function money(value) {
     return `${Math.round(toNumber(value)).toLocaleString('th-TH')} บาท`;
 }
 
+function connectedMoney(value) {
+    return value == null || value === '' ? '--' : money(value);
+}
+
 export default function TuitionPage() {
     const { user } = useAuth();
     const [drillDetail, setDrillDetail] = useState(null);
+    const [consentAt, setConsentAt] = useState('');
     const { data: tuitionData } = useDashboardDataset('tuition');
 
     if (!canAccess(user?.role, 'tuition')) return <AccessDenied />;
 
     const showDetail = canAccess(user?.role, 'tuition_detail');
+    const connectedUser = consentAt ? { ...user, mjuConsentGrantedAt: consentAt } : user;
+    const financeConnection = getMjuConnectedDataStatus(connectedUser, 'finance');
     const officialMajors = Array.isArray(tuitionData.officialMajors) ? tuitionData.officialMajors : [];
     const facultyRows = Array.isArray(tuitionData.byFaculty) ? tuitionData.byFaculty : [];
     const isOfficialTuition = officialMajors.length > 0;
@@ -215,6 +224,34 @@ export default function TuitionPage() {
                     <ExportPDFButton title="ค่าธรรมเนียมการศึกษา" />
                 </div>
             </div>
+
+            {user?.mjuVerified && (
+                <>
+                    <MjuConnectedPagePanel
+                        user={connectedUser}
+                        compact
+                        domainIds={['profile', 'finance']}
+                        onConsentGranted={setConsentAt}
+                    />
+                    {financeConnection.data && (
+                        <section className="stats-grid mju-personal-summary-grid" aria-label="ข้อมูลค่าธรรมเนียมของฉันจาก MJU">
+                            <article className="stat-card">
+                                <div className="stat-card-value">{connectedMoney(financeConnection.data.tuitionAmount)}</div>
+                                <div className="stat-card-label">ค่าธรรมเนียมของฉัน</div>
+                            </article>
+                            <article className="stat-card">
+                                <div className="stat-card-value">{connectedMoney(financeConnection.data.outstandingAmount)}</div>
+                                <div className="stat-card-label">ยอดค้างชำระ</div>
+                            </article>
+                            <article className="stat-card">
+                                <div className="stat-card-value">{financeConnection.data.paymentStatus || '--'}</div>
+                                <div className="stat-card-label">สถานะชำระเงิน</div>
+                                <small>{financeConnection.data.lastPaymentDate ? `ชำระล่าสุด ${financeConnection.data.lastPaymentDate}` : financeConnection.message}</small>
+                            </article>
+                        </section>
+                    )}
+                </>
+            )}
 
             {/* Info boxes */}
             <div className="stats-grid" style={{ marginBottom: 32 }}>

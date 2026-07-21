@@ -101,11 +101,14 @@ const MJU_CLAIM_PERSIST_KEYS = [
     'titleNameEn', 'firstNameEn', 'lastNameEn', 'faculty',
     'department', 'major', 'majorName', 'program', 'programName', 'curriculum', 'yearLevel', 'year',
     'studentYear', 'classYear', 'position', 'positionName', 'personType', 'gpax', 'gpa', 'gradePointAverage',
-    'earnedCredits', 'totalCredits', 'creditEarned', 'completedCredits', 'requiredCredits',
+    'currentGpa', 'semesterGpa', 'termGpa', 'earnedCredits', 'totalCredits', 'creditEarned', 'completedCredits', 'requiredCredits',
     'creditRequired', 'graduationCredits', 'activityHoursCompleted', 'completedActivityHours',
     'activityHours', 'activityHoursTarget', 'requiredActivityHours', 'completedActivityEvents',
     'activityEventsCompleted', 'requiredActivityEvents', 'activityEventsRequired',
     'minimumGpax', 'requiredGpax', 'academicYear', 'currentSemester', 'graduationStatus',
+    'registeredCredits', 'enrollmentStatus', 'courseCount', 'tuitionAmount', 'outstandingAmount',
+    'paidAmount', 'paymentStatus', 'lastPaymentDate', 'employmentStatus', 'advisorName',
+    'adviseeCount', 'dataUpdatedAt',
 ];
 
 const buildMjuLinkedDataFromClaims = (claims = {}) => {
@@ -123,12 +126,36 @@ const buildMjuLinkedDataFromClaims = (claims = {}) => {
         requiredEvents: firstClaimValue(claims, ['requiredActivityEvents']),
         categoryTargets: Array.isArray(claims.activityCategories) ? claims.activityCategories : null,
     };
+    const mjuEnrollment = {
+        academicYear: firstClaimValue(claims, ['academicYear', 'studyYear']),
+        semester: firstClaimValue(claims, ['currentSemester', 'semester', 'term']),
+        registeredCredits: firstClaimValue(claims, ['registeredCredits', 'enrolledCredits', 'termCredits']),
+        status: firstClaimValue(claims, ['enrollmentStatus', 'registrationStatus', 'studentStatus', 'studyStatus']),
+        courseCount: firstClaimValue(claims, ['courseCount', 'registeredCourseCount', 'enrolledCourseCount']),
+    };
+    const mjuFinance = {
+        tuitionAmount: firstClaimValue(claims, ['tuitionAmount', 'feeAmount', 'totalFee', 'tuitionFee']),
+        outstandingAmount: firstClaimValue(claims, ['outstandingAmount', 'amountDue', 'unpaidAmount', 'balanceDue']),
+        paidAmount: firstClaimValue(claims, ['paidAmount', 'paymentAmount', 'totalPaid']),
+        paymentStatus: firstClaimValue(claims, ['paymentStatus', 'financeStatus', 'tuitionStatus']),
+        lastPaymentDate: firstClaimValue(claims, ['lastPaymentDate', 'paymentDate', 'paidDate']),
+    };
+    const mjuHr = {
+        employmentStatus: firstClaimValue(claims, ['employmentStatus', 'personnelStatus', 'workStatus']),
+        position: firstClaimValue(claims, ['position', 'positionName', 'jobTitle']),
+        department: firstClaimValue(claims, ['department', 'departmentName', 'division']),
+    };
+    const dataUpdatedAt = firstClaimValue(claims, ['dataUpdatedAt', 'updatedAt', 'lastUpdated', 'updateDate']);
     return {
         mjuClaims: Object.fromEntries(MJU_CLAIM_PERSIST_KEYS
             .filter(key => claims[key] != null)
             .map(key => [key, claims[key]])),
         mjuAcademic: Object.fromEntries(Object.entries(mjuAcademic).filter(([, value]) => value != null)),
         mjuActivity: Object.fromEntries(Object.entries(mjuActivity).filter(([, value]) => value != null)),
+        mjuEnrollment: Object.fromEntries(Object.entries(mjuEnrollment).filter(([, value]) => value != null)),
+        mjuFinance: Object.fromEntries(Object.entries(mjuFinance).filter(([, value]) => value != null)),
+        mjuHr: Object.fromEntries(Object.entries(mjuHr).filter(([, value]) => value != null)),
+        ...(dataUpdatedAt ? { mjuDataUpdatedAt: dataUpdatedAt } : {}),
     };
 };
 

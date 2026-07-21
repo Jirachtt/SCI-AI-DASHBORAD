@@ -82,10 +82,42 @@ export function createFirebaseCustomToken(uid, claims = {}) {
   });
 }
 
+const PROFILE_WRAPPER_KEYS = ['data', 'result', 'user', 'profile', 'person', 'student', 'personnel', 'account'];
+
+function isPlainObject(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function profileSources(data = {}) {
+  const sources = [];
+  const queue = Array.isArray(data) ? data.slice(0, 3) : [data];
+  const visited = new Set();
+
+  while (queue.length && sources.length < 16) {
+    const current = queue.shift();
+    if (!isPlainObject(current) || visited.has(current)) continue;
+    visited.add(current);
+    sources.push(current);
+
+    for (const key of PROFILE_WRAPPER_KEYS) {
+      const nested = current[key];
+      if (Array.isArray(nested)) queue.push(...nested.slice(0, 3));
+      else if (isPlainObject(nested)) queue.push(nested);
+    }
+  }
+
+  return sources;
+}
+
 export function firstValue(data, keys) {
-  for (const key of keys) {
-    const value = data?.[key];
-    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+  const sources = profileSources(data);
+  for (const source of sources) {
+    for (const key of keys) {
+      const value = source?.[key];
+      if (value === undefined || value === null || typeof value === 'object') continue;
+      const normalized = String(value).trim();
+      if (normalized) return normalized;
+    }
   }
   return '';
 }
@@ -189,17 +221,30 @@ export function buildClaims(data = {}) {
     titleNameEn: optionalValue(data, ['titleNameEn', 'titleNameEN']),
     firstNameEn: optionalValue(data, ['firstNameEn', 'firstNameEN']),
     lastNameEn: optionalValue(data, ['lastNameEn', 'lastNameEN']),
-    gpax: optionalValue(data, ['gpax', 'gpa', 'gradePointAverage', 'cumGpa', 'cumulativeGpa']),
-    earnedCredits: optionalValue(data, ['earnedCredits', 'totalCredits', 'creditEarned', 'completedCredits']),
-    requiredCredits: optionalValue(data, ['requiredCredits', 'creditRequired', 'graduationCredits']),
+    gpax: optionalValue(data, ['gpax', 'GPAX', 'gpa', 'GPA', 'gradePointAverage', 'cumGpa', 'cumulativeGpa']),
+    currentGpa: optionalValue(data, ['currentGpa', 'semesterGpa', 'termGpa']),
+    earnedCredits: optionalValue(data, ['earnedCredits', 'totalCredits', 'creditEarned', 'completedCredits', 'creditPass', 'sumCredit']),
+    requiredCredits: optionalValue(data, ['requiredCredits', 'creditRequired', 'graduationCredits', 'curriculumCredits']),
+    registeredCredits: optionalValue(data, ['registeredCredits', 'enrolledCredits', 'termCredits']),
+    enrollmentStatus: optionalValue(data, ['enrollmentStatus', 'registrationStatus', 'studentStatus', 'studyStatus']),
+    courseCount: optionalValue(data, ['courseCount', 'registeredCourseCount', 'enrolledCourseCount']),
     minimumGpax: optionalValue(data, ['minimumGpax', 'requiredGpax']),
-    activityHoursCompleted: optionalValue(data, ['activityHoursCompleted', 'completedActivityHours', 'activityHours']),
-    activityHoursTarget: optionalValue(data, ['activityHoursTarget', 'requiredActivityHours']),
+    activityHoursCompleted: optionalValue(data, ['activityHoursCompleted', 'completedActivityHours', 'activityHours', 'activityHour', 'sumActivityHours']),
+    activityHoursTarget: optionalValue(data, ['activityHoursTarget', 'requiredActivityHours', 'activityHoursRequired']),
     completedActivityEvents: optionalValue(data, ['completedActivityEvents', 'activityEventsCompleted']),
     requiredActivityEvents: optionalValue(data, ['requiredActivityEvents', 'activityEventsRequired']),
     academicYear: optionalValue(data, ['academicYear', 'studyYear']),
     currentSemester: optionalValue(data, ['currentSemester', 'semester', 'term']),
     graduationStatus: optionalValue(data, ['graduationStatus', 'graduateStatus', 'completionStatus']),
+    tuitionAmount: optionalValue(data, ['tuitionAmount', 'feeAmount', 'totalFee', 'tuitionFee']),
+    outstandingAmount: optionalValue(data, ['outstandingAmount', 'amountDue', 'unpaidAmount', 'balanceDue']),
+    paidAmount: optionalValue(data, ['paidAmount', 'paymentAmount', 'totalPaid']),
+    paymentStatus: optionalValue(data, ['paymentStatus', 'financeStatus', 'tuitionStatus']),
+    lastPaymentDate: optionalValue(data, ['lastPaymentDate', 'paymentDate', 'paidDate']),
+    employmentStatus: optionalValue(data, ['employmentStatus', 'personnelStatus', 'workStatus']),
+    advisorName: optionalValue(data, ['advisorName', 'adviserName', 'academicAdvisor']),
+    adviseeCount: optionalValue(data, ['adviseeCount', 'studentUnderAdvisementCount']),
+    dataUpdatedAt: optionalValue(data, ['dataUpdatedAt', 'updatedAt', 'lastUpdated', 'updateDate']),
   };
 }
 

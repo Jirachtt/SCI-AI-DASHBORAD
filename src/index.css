@@ -4136,6 +4136,49 @@ html {
 .mju-connected-panel.compact {
   padding: 12px;
   gap: 10px;
+  margin: 0 0 20px;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+  align-items: start;
+}
+
+.sidebar-mju-connected {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-success-deep);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.mju-connected-panel.compact .mju-connected-header,
+.mju-connected-panel.compact .mju-page-status-strip,
+.mju-connected-panel.compact .mju-consent-button,
+.mju-connected-panel.compact .mju-endpoint-todo {
+  grid-column: 1 / -1;
+}
+
+.mju-connected-panel.compact .mju-page-status-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mju-connected-panel.compact .mju-connected-domain-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mju-personal-summary-grid {
+  margin: 0 0 24px;
+}
+
+.mju-personal-summary-grid .stat-card small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+  line-height: 1.45;
 }
 
 .mju-connected-header {
@@ -4418,6 +4461,31 @@ html {
 .settings-token-value-row span.is-estimated {
   background: color-mix(in srgb, var(--accent-warning) 14%, transparent);
   color: var(--accent-warning);
+}
+
+@media (max-width: 900px) {
+  .mju-connected-panel.compact {
+    grid-template-columns: 1fr;
+  }
+
+  .mju-connected-panel.compact .mju-connected-header,
+  .mju-connected-panel.compact .mju-page-status-strip,
+  .mju-connected-panel.compact .mju-consent-button,
+  .mju-connected-panel.compact .mju-endpoint-todo {
+    grid-column: 1;
+  }
+
+  .mju-connected-panel.compact .mju-page-status-strip,
+  .mju-connected-panel.compact .mju-connected-domain-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .mju-connected-panel.compact .mju-page-status-strip,
+  .mju-connected-panel.compact .mju-connected-domain-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .settings-ai-readiness {

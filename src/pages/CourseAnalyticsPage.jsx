@@ -28,6 +28,8 @@ import AccessDenied from '../components/AccessDenied';
 import ExportPDFButton from '../components/ExportPDFButton';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
+import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
+import { getMjuConnectedDataStatus } from '../services/mjuConnectedDataService';
 import {
     courseAnalyticsData,
     getCourseAnalyticsSummary,
@@ -42,11 +44,15 @@ export default function CourseAnalyticsPage() {
     const { data: liveCourseData } = useDashboardDataset('course_analytics');
     const [selectedProgram, setSelectedProgram] = useState('all');
     const [selectedCourseCode, setSelectedCourseCode] = useState('SCI331');
+    const [consentAt, setConsentAt] = useState('');
 
     const hasAccess = canAccess(user?.role, 'course_analytics');
     const data = liveCourseData || courseAnalyticsData;
     const summary = getCourseAnalyticsSummary(data);
     const selectedGrade = data.gradeDistributions.find(course => course.code === selectedCourseCode) || data.gradeDistributions[0];
+    const connectedUser = consentAt ? { ...user, mjuConsentGrantedAt: consentAt } : user;
+    const enrollmentConnection = getMjuConnectedDataStatus(connectedUser, 'enrollment');
+    const gradeConnection = getMjuConnectedDataStatus(connectedUser, 'grades');
 
     const visibleYearPlan = useMemo(() => data.coursePlanByYear.map(year => ({
         ...year,
@@ -105,6 +111,36 @@ export default function CourseAnalyticsPage() {
                     <ExportPDFButton title="รายวิชาและกราฟกระจายเกรด" />
                 </div>
             </div>
+
+            {user?.mjuVerified && (
+                <>
+                    <MjuConnectedPagePanel
+                        user={connectedUser}
+                        compact
+                        domainIds={['profile', 'enrollment', 'grades']}
+                        onConsentGranted={setConsentAt}
+                    />
+                    {(enrollmentConnection.data || gradeConnection.data) && (
+                        <section className="stats-grid mju-personal-summary-grid" aria-label="ข้อมูลการเรียนจากบัญชี MJU">
+                            <article className="stat-card">
+                                <div className="stat-card-value">{gradeConnection.data?.gpax ?? '--'}</div>
+                                <div className="stat-card-label">GPAX ของฉัน</div>
+                                <small>{gradeConnection.source} · {gradeConnection.status === 'connected' ? 'เชื่อมแล้ว' : 'ข้อมูลบางส่วน'}</small>
+                            </article>
+                            <article className="stat-card">
+                                <div className="stat-card-value">{enrollmentConnection.data?.registeredCredits ?? '--'}</div>
+                                <div className="stat-card-label">หน่วยกิตที่ลงทะเบียนภาคนี้</div>
+                                <small>{enrollmentConnection.source} · {enrollmentConnection.data?.academicYear || '-'} / {enrollmentConnection.data?.semester || '-'}</small>
+                            </article>
+                            <article className="stat-card">
+                                <div className="stat-card-value">{enrollmentConnection.data?.courseCount ?? '--'}</div>
+                                <div className="stat-card-label">รายวิชาที่ลงทะเบียน</div>
+                                <small>{enrollmentConnection.data?.enrollmentStatus || enrollmentConnection.message}</small>
+                            </article>
+                        </section>
+                    )}
+                </>
+            )}
 
             <section className="course-source-banner">
                 <div>

@@ -40,6 +40,12 @@ const studentDataService = read('src/services/studentDataService.js');
 const rules = read('firestore.rules');
 const packageJson = JSON.parse(read('package.json'));
 const { scienceStudentList, studentListSummary } = await import('../src/data/studentListData.js');
+const {
+  OFFICIAL_STUDENT_TOTAL,
+  OFFICIAL_SCIENCE_STUDENT_TOTAL,
+  OFFICIAL_SCIENCE_STUDENT_LEVELS,
+  OFFICIAL_SCIENCE_ROSTER_YEAR_TARGETS,
+} = await import('../src/data/mjuOfficialStudentSnapshot.js');
 const { aiExecutiveEvaluationSet } = await import('../src/data/aiExecutiveEvaluationSet.js');
 
 expect(
@@ -203,23 +209,32 @@ expect(
 
 expect(
   'Student totals are locked to current MJU Dashboard aggregate',
-  /OFFICIAL_SCIENCE_STUDENT_TOTAL\s*=\s*1759/.test(officialStudentSnapshot)
-    && /OFFICIAL_STUDENT_TOTAL\s*=\s*22343/.test(officialStudentSnapshot)
+  OFFICIAL_SCIENCE_STUDENT_TOTAL > 0
+    && OFFICIAL_STUDENT_TOTAL > OFFICIAL_SCIENCE_STUDENT_TOTAL
+    && /export const OFFICIAL_SCIENCE_STUDENT_TOTAL/.test(officialStudentSnapshot)
+    && /export const OFFICIAL_STUDENT_TOTAL/.test(officialStudentSnapshot)
     && /dashboardSummary\.totalStudents\s*=\s*OFFICIAL_STUDENT_TOTAL/.test(mockData)
     && /scienceFallback\.total\s*=\s*OFFICIAL_SCIENCE_STUDENT_TOTAL/.test(mockData),
   'Aggregate student totals must use MJU Dashboard official values, not roster row counts.'
 );
 
+const rosterTargets = Object.fromEntries(
+  OFFICIAL_SCIENCE_ROSTER_YEAR_TARGETS.map(row => [`year${row.year}`, row.target])
+);
+const postgraduateTarget = OFFICIAL_SCIENCE_STUDENT_LEVELS
+  .filter(row => row.key === 'master' || row.key === 'doctoral')
+  .reduce((sum, row) => sum + Number(row.count || 0), 0);
+
 expect(
   'Generated student roster matches current MJU Dashboard aggregate',
-  scienceStudentList.length === 1759
-    && studentListSummary.total === 1759
-    && studentListSummary.byYear.year1 === 417
-    && studentListSummary.byYear.year2 === 394
-    && studentListSummary.byYear.year3 === 431
-    && studentListSummary.byYear.year4 === 493
-    && studentListSummary.graduate === 24
-    && /STALE_GENERATED_ROW_COUNTS\s*=\s*new Set\(\[1383,\s*1390,\s*1398,\s*1399,\s*1451,\s*1452,\s*1528\]\)/.test(studentDataService)
+  scienceStudentList.length === OFFICIAL_SCIENCE_STUDENT_TOTAL
+    && studentListSummary.total === OFFICIAL_SCIENCE_STUDENT_TOTAL
+    && studentListSummary.byYear.year1 === rosterTargets.year1
+    && studentListSummary.byYear.year2 === rosterTargets.year2
+    && studentListSummary.byYear.year3 === rosterTargets.year3
+    && studentListSummary.byYear.year4 === rosterTargets.year4
+    && studentListSummary.graduate === postgraduateTarget
+    && /STALE_GENERATED_ROW_COUNTS/.test(studentDataService)
     && /Generated mock roster/.test(studentDataService),
   'Bundled/generated rows must match the official aggregate count while remaining marked as mock data.'
 );

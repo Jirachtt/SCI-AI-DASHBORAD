@@ -359,16 +359,24 @@ studentStatsData.trend = [
     { year: '2566', total: 15225, bachelor: 14620, master: 385, doctoral: 220, type: 'reference' },
     { year: '2567', total: 16100, bachelor: 15440, master: 415, doctoral: 220, type: 'reference' },
     { year: '2568', total: 16392, bachelor: 15693, master: 417, doctoral: 209, type: 'reference' },
-    { year: '2569', total: OFFICIAL_STUDENT_TOTAL, bachelor: 21461, master: 547, doctoral: 248, certificate: 87, type: 'reference' },
+    {
+        year: '2569',
+        total: OFFICIAL_STUDENT_TOTAL,
+        bachelor: OFFICIAL_STUDENT_LEVELS.find(row => row.key === 'bachelor')?.count || 0,
+        master: OFFICIAL_STUDENT_LEVELS.find(row => row.key === 'master')?.count || 0,
+        doctoral: OFFICIAL_STUDENT_LEVELS.find(row => row.key === 'doctoral')?.count || 0,
+        certificate: OFFICIAL_STUDENT_LEVELS.find(row => row.key === 'certificate')?.count || 0,
+        type: 'reference',
+    },
 ];
 studentStatsData.byCampus = [
-    { campus: 'เชียงใหม่', certificate: 87, bachelor: 19800, master: 476, doctoral: 248, total: 20611, count: 20611 },
+    { campus: 'เชียงใหม่', certificate: 87, bachelor: 19800, master: 477, doctoral: 248, total: 20612, count: 20612 },
     { campus: 'แพร่', certificate: 0, bachelor: 1329, master: 71, doctoral: 0, total: 1400, count: 1400 },
     { campus: 'ชุมพร', certificate: 0, bachelor: 333, master: 0, doctoral: 0, total: 333, count: 333 },
 ];
 studentStatsData.byNationality = [
-    { nationality: 'ไทย', count: 21634 },
-    { nationality: 'นานาชาติ', count: 709 },
+    { nationality: 'ไทย', count: 21637 },
+    { nationality: 'นานาชาติ', count: 708 },
 ];
 
 const scienceFallback = studentStatsData.scienceFaculty;

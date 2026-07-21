@@ -3,8 +3,8 @@ export const OFFICIAL_STUDENT_SOURCE_URL = 'https://dashboard.mju.ac.th/student'
 
 export const OFFICIAL_STUDENT_LEVELS = [
     { key: 'certificate', level: 'ประกาศนียบัตร', count: 87, color: 'var(--accent-success)', icon: 'Cert' },
-    { key: 'bachelor', level: 'ปริญญาตรี', count: 21461, color: 'var(--accent-success-deep)', icon: 'BSc' },
-    { key: 'master', level: 'ปริญญาโท', count: 547, color: 'var(--accent-info)', icon: 'MSc' },
+    { key: 'bachelor', level: 'ปริญญาตรี', count: 21462, color: 'var(--accent-success-deep)', icon: 'BSc' },
+    { key: 'master', level: 'ปริญญาโท', count: 548, color: 'var(--accent-info)', icon: 'MSc' },
     { key: 'doctoral', level: 'ปริญญาเอก', count: 248, color: 'var(--accent-pink)', icon: 'PhD' },
 ];
 
@@ -38,7 +38,7 @@ export const LEGACY_STUDENT_FACULTY_ROWS = [
 ];
 
 export const OFFICIAL_STUDENT_FACULTY_ROWS = [
-    { name: 'คณะบริหารธุรกิจ', certificate: 0, bachelor: 4855, master: 81, doctoral: 10, total: 4946 },
+    { name: 'คณะบริหารธุรกิจ', certificate: 0, bachelor: 4856, master: 81, doctoral: 10, total: 4947 },
     { name: 'คณะผลิตกรรมการเกษตร', certificate: 0, bachelor: 2442, master: 97, doctoral: 99, total: 2638 },
     { name: 'คณะสารสนเทศและการสื่อสาร', certificate: 0, bachelor: 1791, master: 0, doctoral: 0, total: 1791 },
     { name: 'คณะวิทยาศาสตร์', certificate: 0, bachelor: 1735, master: 19, doctoral: 5, total: 1759 },
@@ -55,13 +55,13 @@ export const OFFICIAL_STUDENT_FACULTY_ROWS = [
     { name: 'มหาวิทยาลัยแม่โจ้-ชุมพร', certificate: 0, bachelor: 333, master: 0, doctoral: 0, total: 333 },
     { name: 'คณะสัตวแพทยศาสตร์', certificate: 0, bachelor: 198, master: 0, doctoral: 0, total: 198 },
     { name: 'คณะพยาบาลศาสตร์', certificate: 0, bachelor: 176, master: 0, doctoral: 0, total: 176 },
-    { name: 'วิทยาลัยนานาชาติ', certificate: 0, bachelor: 0, master: 51, doctoral: 49, total: 100 },
+    { name: 'วิทยาลัยนานาชาติ', certificate: 0, bachelor: 0, master: 52, doctoral: 49, total: 101 },
     { name: 'โครงการ', certificate: 87, bachelor: 0, master: 0, doctoral: 0, total: 87 },
 ];
 
 export const OFFICIAL_STUDENT_ENROLLMENT_ROWS = [
-    { year: '2569', certificate: 14, bachelor: 6123, master: 176, doctoral: 52, total: 6365 },
-    { year: '2568', certificate: 12, bachelor: 5057, master: 162, doctoral: 33, total: 5264 },
+    { year: '2569', certificate: 14, bachelor: 6123, master: 177, doctoral: 52, total: 6366 },
+    { year: '2568', certificate: 12, bachelor: 5058, master: 162, doctoral: 33, total: 5265 },
     { year: '2567', certificate: 12, bachelor: 4855, master: 120, doctoral: 62, total: 5049 },
     { year: '2566', certificate: 18, bachelor: 4161, master: 29, doctoral: 43, total: 4251 },
     { year: '2565', certificate: 21, bachelor: 943, master: 48, doctoral: 23, total: 1035 },
@@ -91,11 +91,11 @@ export const OFFICIAL_SCIENCE_ROSTER_YEAR_TARGETS = [
     { cohortCode: '69', year: 1, target: 417 },
 ];
 
-export const OFFICIAL_STUDENT_TOTAL = 22343;
+export const OFFICIAL_STUDENT_TOTAL = 22345;
 export const OFFICIAL_SCIENCE_STUDENT_TOTAL = 1759;
 
 const STALE_SCIENCE_TOTALS = new Set([1383, 1390, 1398, 1399, 1451, 1452, 1528]);
-const STALE_CURRENT_TOTALS = new Set([16350, 16392, 16475, 16505, 16506, 16834, 16839, 17773]);
+const STALE_CURRENT_TOTALS = new Set([16350, 16392, 16475, 16505, 16506, 16834, 16839, 17773, 22343]);
 const SCIENCE_MATCH = 'วิทยาศาสตร์';
 
 function clone(value) {

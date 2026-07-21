@@ -96,6 +96,227 @@ function firstNonEmpty(...values) {
     return values.map(safeString).find(Boolean) || '';
 }
 
+function firstDefined(...values) {
+    return values.find(value => value !== undefined && value !== null && value !== '') ?? null;
+}
+
+function toNumberOrNull(value) {
+    if (value === undefined || value === null || value === '') return null;
+    const parsed = Number(String(value).replace(/,/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function compactObject(value = {}) {
+    return Object.fromEntries(Object.entries(value).filter(([, item]) => (
+        item !== undefined && item !== null && item !== ''
+    )));
+}
+
+function firstArray(...values) {
+    return values.find(value => Array.isArray(value) && value.length > 0) || [];
+}
+
+function connectedDataUpdatedAt(user = {}, identity = {}) {
+    return firstDefined(
+        user.mjuDataUpdatedAt,
+        user.mjuClaims?.dataUpdatedAt,
+        user.mjuClaims?.updatedAt,
+        identity.connectedAt,
+    );
+}
+
+function buildDomainPayload(user = {}, domainId, identity = normalizeMjuIdentity(user)) {
+    const claims = user.mjuClaims || {};
+    const academic = user.mjuAcademic || {};
+    const enrollment = user.mjuEnrollment || {};
+    const activity = user.mjuActivity || {};
+    const finance = user.mjuFinance || {};
+    const hr = user.mjuHr || {};
+    const updatedAt = connectedDataUpdatedAt(user, identity);
+
+    if (domainId === 'profile') {
+        const data = compactObject({
+            fullName: identity.fullName,
+            email: identity.email,
+            role: identity.role,
+            faculty: identity.faculty,
+            department: identity.department,
+            major: identity.major,
+            program: identity.program,
+            yearLevel: identity.yearLevel,
+            position: identity.position,
+            userType: identity.userType,
+        });
+        return {
+            data,
+            status: identity.identifiersStatus === 'connected' ? 'connected' : 'partial',
+            lastUpdated: updatedAt,
+            message: identity.identifiersStatus === 'connected'
+                ? 'เชื่อมข้อมูลตัวตนที่ MJU SSO ส่งกลับมาแล้ว'
+                : 'เชื่อมตัวตน MJU แล้ว แต่ identifier ยังไม่ครบ',
+        };
+    }
+
+    if (domainId === 'enrollment') {
+        const courses = firstArray(enrollment.courses, enrollment.registrations, user.mjuCourses);
+        const data = compactObject({
+            academicYear: firstDefined(enrollment.academicYear, claims.academicYear),
+            semester: firstDefined(enrollment.semester, claims.currentSemester),
+            registeredCredits: toNumberOrNull(firstDefined(enrollment.registeredCredits, claims.registeredCredits)),
+            courseCount: toNumberOrNull(firstDefined(enrollment.courseCount, claims.courseCount, courses.length || null)),
+            enrollmentStatus: firstDefined(enrollment.status, claims.enrollmentStatus),
+            courses: courses.length ? courses : null,
+        });
+        if (!Object.keys(data).length) return null;
+        return {
+            data,
+            status: courses.length ? 'connected' : 'partial',
+            lastUpdated: updatedAt,
+            message: courses.length
+                ? `เชื่อมรายการลงทะเบียน ${courses.length.toLocaleString('th-TH')} รายวิชาแล้ว`
+                : 'พบข้อมูลสถานะการศึกษา/ภาคเรียนจาก MJU แต่ยังไม่มีรายการรายวิชาเต็ม',
+        };
+    }
+
+    if (domainId === 'grades') {
+        const gradeItems = firstArray(academic.grades, academic.transcript, user.mjuGrades);
+        const gpax = toNumberOrNull(firstDefined(academic.gpax, academic.gpa, user.gpax, claims.gpax, claims.gpa));
+        const currentGpa = toNumberOrNull(firstDefined(academic.currentGpa, claims.currentGpa));
+        const data = compactObject({ gpax, currentGpa, gradeItems: gradeItems.length ? gradeItems : null });
+        if (!Object.keys(data).length) return null;
+        return {
+            data,
+            status: gradeItems.length ? 'connected' : 'partial',
+            lastUpdated: updatedAt,
+            message: gradeItems.length
+                ? `เชื่อมผลการเรียน ${gradeItems.length.toLocaleString('th-TH')} รายการแล้ว`
+                : 'เชื่อม GPA/GPAX summary ที่ MJU ส่งกลับมาแล้ว แต่ยังไม่มี transcript รายวิชา',
+        };
+    }
+
+    if (domainId === 'activities') {
+        const history = firstArray(activity.history, activity.events, user.mjuActivityHistory);
+        const data = compactObject({
+            completedHours: toNumberOrNull(firstDefined(activity.completedHours, claims.activityHoursCompleted)),
+            targetHours: toNumberOrNull(firstDefined(activity.targetHours, claims.activityHoursTarget)),
+            completedEvents: toNumberOrNull(firstDefined(activity.completedEvents, claims.completedActivityEvents)),
+            requiredEvents: toNumberOrNull(firstDefined(activity.requiredEvents, claims.requiredActivityEvents)),
+            history: history.length ? history : null,
+        });
+        if (!Object.keys(data).length) return null;
+        return {
+            data,
+            status: history.length ? 'connected' : 'partial',
+            lastUpdated: updatedAt,
+            message: history.length
+                ? `เชื่อมประวัติกิจกรรม ${history.length.toLocaleString('th-TH')} รายการแล้ว`
+                : 'เชื่อมยอดชั่วโมงกิจกรรมที่ MJU ส่งกลับมาแล้ว แต่ยังไม่มีประวัติรายกิจกรรม',
+        };
+    }
+
+    if (domainId === 'graduation') {
+        const gpax = toNumberOrNull(firstDefined(academic.gpax, academic.gpa, claims.gpax, claims.gpa));
+        const earnedCredits = toNumberOrNull(firstDefined(academic.earnedCredits, academic.totalCredits, claims.earnedCredits));
+        const requiredCredits = toNumberOrNull(firstDefined(academic.requiredCredits, claims.requiredCredits));
+        const data = compactObject({
+            gpax,
+            minimumGpax: toNumberOrNull(firstDefined(academic.minimumGpax, claims.minimumGpax)),
+            earnedCredits,
+            requiredCredits,
+            activityHoursCompleted: toNumberOrNull(firstDefined(activity.completedHours, claims.activityHoursCompleted)),
+            activityHoursTarget: toNumberOrNull(firstDefined(activity.targetHours, claims.activityHoursTarget)),
+            graduationStatus: firstDefined(user.graduationStatus, claims.graduationStatus),
+        });
+        if (!Object.keys(data).length) return null;
+        const hasCoreRequirement = gpax != null && earnedCredits != null && requiredCredits != null;
+        return {
+            data,
+            status: hasCoreRequirement ? 'connected' : 'partial',
+            lastUpdated: updatedAt,
+            message: hasCoreRequirement
+                ? 'เชื่อมข้อมูลหลักสำหรับตรวจความพร้อมสำเร็จการศึกษาแล้ว'
+                : 'เชื่อมข้อมูลตรวจจบได้บางส่วน ยังต้องมี GPA/หน่วยกิต/เงื่อนไขจาก Reg เพิ่ม',
+        };
+    }
+
+    if (domainId === 'finance') {
+        const data = compactObject({
+            tuitionAmount: toNumberOrNull(firstDefined(finance.tuitionAmount, claims.tuitionAmount)),
+            paidAmount: toNumberOrNull(firstDefined(finance.paidAmount, claims.paidAmount)),
+            outstandingAmount: toNumberOrNull(firstDefined(finance.outstandingAmount, claims.outstandingAmount)),
+            paymentStatus: firstDefined(finance.paymentStatus, claims.paymentStatus),
+            lastPaymentDate: firstDefined(finance.lastPaymentDate, claims.lastPaymentDate),
+        });
+        if (!Object.keys(data).length) return null;
+        return {
+            data,
+            status: data.paymentStatus && data.tuitionAmount != null ? 'connected' : 'partial',
+            lastUpdated: updatedAt,
+            message: 'เชื่อมข้อมูลสรุปค่าธรรมเนียมที่ MJU ส่งกลับมาแล้ว',
+        };
+    }
+
+    if (domainId === 'advisor') {
+        const advisees = firstArray(user.mjuAdvisees, user.mjuAdvisor?.advisees);
+        const data = compactObject({
+            advisorName: firstDefined(user.mjuAdvisor?.advisorName, claims.advisorName),
+            adviseeCount: toNumberOrNull(firstDefined(user.mjuAdvisor?.adviseeCount, claims.adviseeCount, advisees.length || null)),
+            advisees: advisees.length ? advisees : null,
+        });
+        if (!Object.keys(data).length) return null;
+        return {
+            data,
+            status: advisees.length ? 'connected' : 'partial',
+            lastUpdated: updatedAt,
+            message: advisees.length ? 'เชื่อมรายชื่อนักศึกษาในที่ปรึกษาแล้ว' : 'พบข้อมูลที่ปรึกษาแบบสรุป แต่ยังไม่มีรายชื่อเต็ม',
+        };
+    }
+
+    if (domainId === 'hr') {
+        const data = compactObject({
+            employeeCode: identity.employeeCode,
+            position: firstDefined(hr.position, identity.position),
+            department: firstDefined(hr.department, identity.department),
+            employmentStatus: firstDefined(hr.employmentStatus, claims.employmentStatus),
+        });
+        if (!identity.employeeCode && !data.position && !data.employmentStatus) return null;
+        return {
+            data,
+            status: data.employmentStatus ? 'connected' : 'partial',
+            lastUpdated: updatedAt,
+            message: 'เชื่อมโปรไฟล์บุคลากรที่ MJU SSO ส่งกลับมาแล้ว; ภาระงานเชิงลึกยังต้องใช้ MJU HR API',
+        };
+    }
+
+    if (domainId === 'faculty_scope') {
+        const data = user.mjuFacultyScope || user.mjuAggregateScope || null;
+        if (!data || typeof data !== 'object') return null;
+        return {
+            data,
+            status: 'connected',
+            lastUpdated: updatedAt,
+            message: 'เชื่อมขอบเขตข้อมูลภาพรวมสำหรับผู้บริหารแล้ว',
+        };
+    }
+
+    return null;
+}
+
+function safeDomainDataForAI(domainId, data = {}) {
+    const allowedFields = {
+        enrollment: ['academicYear', 'semester', 'registeredCredits', 'courseCount', 'enrollmentStatus'],
+        grades: ['gpax', 'currentGpa'],
+        activities: ['completedHours', 'targetHours', 'completedEvents', 'requiredEvents'],
+        graduation: ['gpax', 'minimumGpax', 'earnedCredits', 'requiredCredits', 'activityHoursCompleted', 'activityHoursTarget', 'graduationStatus'],
+        finance: ['tuitionAmount', 'paidAmount', 'outstandingAmount', 'paymentStatus', 'lastPaymentDate'],
+        advisor: ['adviseeCount'],
+        hr: ['position', 'department', 'employmentStatus'],
+        faculty_scope: ['faculty', 'department', 'scope'],
+    };
+    const keys = allowedFields[domainId] || [];
+    return compactObject(Object.fromEntries(keys.map(key => [key, data?.[key]])));
+}
+
 function normalizeUserType(role, user = {}) {
     if (role === 'admin') return 'admin';
     if (role === 'student' || user.studentCode || user.studentId) return 'student';
@@ -239,27 +460,15 @@ export function getMjuConnectedDataStatus(user = {}, domainId) {
         };
     }
 
-    if (domain.id === 'profile' && identity.mjuVerified) {
-        return {
-            data: {
-                fullName: identity.fullName,
-                email: identity.email,
-                role: identity.role,
-                faculty: identity.faculty,
-                department: identity.department,
-                major: identity.major,
-                program: identity.program,
-                yearLevel: identity.yearLevel,
-                userType: identity.userType,
-            },
-            source: domain.source,
-            lastUpdated: identity.connectedAt,
-            status: identity.identifiersStatus === 'connected' ? 'connected' : 'partial',
-            permissions,
-            message: identity.identifiersStatus === 'connected'
-                ? 'เชื่อมตัวตน MJU สำเร็จ'
-                : 'เชื่อมตัวตน MJU แล้ว แต่ identifier ยังไม่ครบ',
-        };
+    if (identity.mjuVerified) {
+        const payload = buildDomainPayload(user, domain.id, identity);
+        if (payload) {
+            return {
+                ...payload,
+                source: domain.source,
+                permissions,
+            };
+        }
     }
 
     return {
@@ -307,7 +516,15 @@ export function buildMjuConnectedContextForAI(user = {}) {
     const identity = summary.identity;
     const domainLines = summary.domains
         .filter(item => ['connected', 'partial', 'unavailable', 'unauthorized'].includes(item.status))
-        .map(item => `- ${item.id}: status=${item.status}, source=${item.source}, permission=${item.permissions?.allowed ? 'allowed' : 'denied'}, message=${item.message}`)
+        .map(item => {
+            const safeData = ['connected', 'partial'].includes(item.status) && item.permissions?.consentGranted
+                ? safeDomainDataForAI(item.id, item.data)
+                : null;
+            const dataText = safeData && Object.keys(safeData).length
+                ? `, data=${JSON.stringify(safeData)}`
+                : '';
+            return `- ${item.id}: status=${item.status}, source=${item.source}, permission=${item.permissions?.allowed ? 'allowed' : 'denied'}${dataText}, message=${item.message}`;
+        })
         .join('\n');
 
     return `MJU CONNECTED DATA IDENTITY
@@ -316,7 +533,8 @@ studentCode=${identity.studentCode ? 'present' : '-'}, employeeCode=${identity.e
 Connected data domains:
 ${domainLines}
 Rules:
-- ถ้าผู้ใช้ถามข้อมูลส่วนตัว เช่น "เกรดฉัน", "ค่าเทอมฉัน", "ชั่วโมงกิจกรรมฉัน" ให้ใช้เฉพาะ domain ที่ status=connected เท่านั้น
+- ถ้าผู้ใช้ถามข้อมูลส่วนตัว เช่น "เกรดฉัน", "ค่าเทอมฉัน", "ชั่วโมงกิจกรรมฉัน" ให้ใช้เฉพาะ field ที่ปรากฏใน data ของ domain ที่ status=connected/partial และ consent=granted
+- domain ที่ status=partial ใช้อธิบายเฉพาะ field ที่มีอยู่ใน data ได้ แต่ต้องบอกว่าข้อมูลยังไม่ครบ ห้ามอนุมาน field อื่น
 - ถ้า domain เป็น partial/unavailable ให้ตอบตรง ๆ ว่ายังไม่พบข้อมูลจากระบบ MJU และระบุ source ที่รอเชื่อมต่อ ห้ามใช้ mock/dashboard aggregate แทนข้อมูลส่วนตัว
 - ผู้บริหารให้ใช้ aggregate dashboard ตามสิทธิ์ ไม่เปิดเผยข้อมูลรายบุคคลเกินจำเป็น`;
 }

@@ -11,6 +11,7 @@ import {
     GraduationCap,
     Star,
 } from 'lucide-react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
@@ -21,6 +22,7 @@ import {
     getRecommendedScienceActivities,
 } from '../data/scienceActivitiesData';
 import { getMjuLinkedUserAcademicProfile } from '../services/mjuLinkedUserDataService';
+import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
 
 const graduationData = {
     gpa: { current: 3.15, required: 1.75 },
@@ -35,18 +37,38 @@ const graduationData = {
     },
 };
 
-const pct = (current, required) => Math.min(100, Math.round((Number(current || 0) / Number(required || 1)) * 100));
+const pct = (current, required) => {
+    const currentValue = Number(current);
+    const requiredValue = Number(required);
+    if (!Number.isFinite(currentValue) || !Number.isFinite(requiredValue) || requiredValue <= 0) return null;
+    return Math.min(100, Math.round((currentValue / requiredValue) * 100));
+};
+
+const displayNumber = (value, digits = 0) => {
+    if (value === null || value === undefined || value === '') return '--';
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(digits) : '--';
+};
 
 export default function GraduationCheckPage() {
     const { user } = useAuth();
+    const [consentAt, setConsentAt] = useState('');
     if (!canAccess(user?.role, 'graduation_check')) return <AccessDenied />;
 
-    const linkedProfile = getMjuLinkedUserAcademicProfile(user);
+    const connectedUser = consentAt ? { ...user, mjuConsentGrantedAt: consentAt } : user;
+    const linkedProfile = getMjuLinkedUserAcademicProfile(connectedUser);
     const gpaData = linkedProfile.gpa || graduationData.gpa;
     const creditData = linkedProfile.credits || graduationData.credits;
     const activityRequirement = linkedProfile.activity || SCIENCE_ACTIVITY_REQUIREMENT;
-    const missingHours = Math.max(0, activityRequirement.targetHours - activityRequirement.completedHours);
-    const recommendation = getRecommendedScienceActivities(missingHours);
+    const hasGpa = gpaData.available !== false && Number.isFinite(Number(gpaData.current));
+    const hasCredits = creditData.available !== false && Number.isFinite(Number(creditData.current));
+    const hasActivity = activityRequirement.available !== false && Number.isFinite(Number(activityRequirement.completedHours));
+    const missingHours = hasActivity && Number.isFinite(Number(activityRequirement.targetHours))
+        ? Math.max(0, Number(activityRequirement.targetHours) - Number(activityRequirement.completedHours))
+        : null;
+    const recommendation = hasActivity
+        ? getRecommendedScienceActivities(missingHours)
+        : { selected: [], accumulated: 0, willComplete: false };
     const creditPercent = pct(creditData.current, creditData.required);
     const activityPercent = pct(activityRequirement.completedHours, activityRequirement.targetHours);
     return (
@@ -68,34 +90,47 @@ export default function GraduationCheckPage() {
                 </div>
             </div>
 
+            {linkedProfile.isMjuLinked && (
+                <MjuConnectedPagePanel
+                    user={connectedUser}
+                    compact
+                    domainIds={['profile', 'grades', 'activities', 'graduation']}
+                    onConsentGranted={setConsentAt}
+                />
+            )}
+
             <section className="graduation-status-grid">
                 <article className="graduation-status-card">
                     <div className="graduation-status-head">
                         <span><Award size={15} /> เกรดเฉลี่ยสะสม (GPAX)</span>
-                        <CheckCircle size={20} color="var(--accent-success)" />
+                        {hasGpa
+                            ? <CheckCircle size={20} color="var(--accent-success)" />
+                            : <AlertCircle size={20} color="var(--accent-warning)" />}
                     </div>
-                    <strong className="graduation-status-value success">{Number(gpaData.current || 0).toFixed(2)}</strong>
-                    <p>เกณฑ์ขั้นต่ำ {Number(gpaData.required || 0).toFixed(2)} · {gpaData.source}</p>
+                    <strong className="graduation-status-value success">{displayNumber(gpaData.current, 2)}</strong>
+                    <p>{hasGpa
+                        ? `เกณฑ์ขั้นต่ำ ${displayNumber(gpaData.required, 2)} · ${gpaData.source}`
+                        : gpaData.message}</p>
                 </article>
 
                 <article className="graduation-status-card">
                     <div className="graduation-status-head">
                         <span><BookOpen size={15} /> หน่วยกิตรวม</span>
-                        <span className="graduation-mini-badge">{creditPercent}%</span>
+                        <span className="graduation-mini-badge">{creditPercent == null ? 'รอข้อมูล' : `${creditPercent}%`}</span>
                     </div>
-                    <strong className="graduation-status-value info">{creditData.current}/{creditData.required}</strong>
-                    <div className="graduation-progress-track">
+                    <strong className="graduation-status-value info">{displayNumber(creditData.current)}/{displayNumber(creditData.required)}</strong>
+                    {creditPercent != null && <div className="graduation-progress-track">
                         <span style={{ width: `${creditPercent}%`, background: 'var(--accent-info)' }} />
-                    </div>
-                    <div className="graduation-mini-list">
+                    </div>}
+                    {Array.isArray(creditData.details) && creditData.details.length > 0 && <div className="graduation-mini-list">
                         {creditData.details.map(item => (
                             <div key={item.name}>
                                 <span>{item.status === 'complete' ? '✓' : '○'} {item.name}</span>
                                 <strong>{item.current}/{item.required}</strong>
                             </div>
                         ))}
-                    </div>
-                    <p>{creditData.source}</p>
+                    </div>}
+                    <p>{hasCredits ? creditData.source : creditData.message}</p>
                 </article>
 
                 <article className="graduation-status-card">
@@ -103,11 +138,13 @@ export default function GraduationCheckPage() {
                         <span><Clock size={15} /> ชั่วโมงกิจกรรมคณะวิทยาศาสตร์</span>
                         <span className="graduation-mini-badge warning">ชั่วโมงคณะ</span>
                     </div>
-                    <strong className="graduation-status-value warning">{activityRequirement.completedHours}/{activityRequirement.targetHours}</strong>
-                    <div className="graduation-progress-track">
+                    <strong className="graduation-status-value warning">{displayNumber(activityRequirement.completedHours)}/{displayNumber(activityRequirement.targetHours)}</strong>
+                    {activityPercent != null && <div className="graduation-progress-track">
                         <span style={{ width: `${activityPercent}%`, background: 'var(--accent-pink)' }} />
-                    </div>
-                    <p>ยังขาด {missingHours} ชั่วโมง เพื่อครบเกณฑ์ {activityRequirement.programLabel} · {activityRequirement.source}</p>
+                    </div>}
+                    <p>{hasActivity
+                        ? `ยังขาด ${missingHours} ชั่วโมง เพื่อครบเกณฑ์ ${activityRequirement.programLabel} · ${activityRequirement.source}`
+                        : activityRequirement.message}</p>
                 </article>
             </section>
 
@@ -124,20 +161,20 @@ export default function GraduationCheckPage() {
                     <div className="graduation-activity-summary">
                         <div>
                             <span>ทำแล้ว</span>
-                            <strong>{activityRequirement.completedHours} ชม.</strong>
+                            <strong>{displayNumber(activityRequirement.completedHours)} ชม.</strong>
                         </div>
                         <div>
                             <span>เป้าหมาย</span>
-                            <strong>{activityRequirement.targetHours} ชม.</strong>
+                            <strong>{displayNumber(activityRequirement.targetHours)} ชม.</strong>
                         </div>
                         <div>
                             <span>ยังขาด</span>
-                            <strong>{missingHours} ชม.</strong>
+                            <strong>{displayNumber(missingHours)} ชม.</strong>
                         </div>
                     </div>
 
                     <div className="graduation-category-list">
-                        {activityRequirement.categoryTargets.map(item => {
+                        {Array.isArray(activityRequirement.categoryTargets) && activityRequirement.categoryTargets.length > 0 ? activityRequirement.categoryTargets.map(item => {
                             const percent = pct(item.currentHours, item.requiredHours);
                             return (
                                 <div key={item.name} className="graduation-category-row">
@@ -146,12 +183,17 @@ export default function GraduationCheckPage() {
                                         <strong>{item.currentHours}/{item.requiredHours} ชม.</strong>
                                     </div>
                                     <div className="graduation-progress-track">
-                                        <span style={{ width: `${percent}%`, background: item.color }} />
+                                        <span style={{ width: `${percent || 0}%`, background: item.color }} />
                                     </div>
                                     <small>{item.currentEvents}/{item.requiredEvents} กิจกรรม</small>
                                 </div>
                             );
-                        })}
+                        }) : (
+                            <div className="science-activity-empty">
+                                <AlertCircle size={22} />
+                                {activityRequirement.message || 'ยังไม่พบรายละเอียดกิจกรรมจาก MJU Activity'}
+                            </div>
+                        )}
                     </div>
                 </article>
 
@@ -178,14 +220,20 @@ export default function GraduationCheckPage() {
                                 </div>
                             </div>
                         ))}
+                        {!hasActivity && (
+                            <div className="science-activity-empty">
+                                <AlertCircle size={22} />
+                                เชื่อม MJU Activity ก่อน ระบบจึงจะแนะนำกิจกรรมตามชั่วโมงที่ขาดจริงได้
+                            </div>
+                        )}
                     </div>
 
-                    <div className={`graduation-recommend-note ${recommendation.willComplete ? 'complete' : ''}`}>
+                    {hasActivity && <div className={`graduation-recommend-note ${recommendation.willComplete ? 'complete' : ''}`}>
                         <AlertCircle size={16} />
                         {recommendation.willComplete
                             ? `เข้าร่วมชุดนี้จะได้ ${recommendation.accumulated} ชั่วโมง เพียงพอให้ครบเกณฑ์`
                             : `ชุดนี้ได้ ${recommendation.accumulated} ชั่วโมง ยังขาดอีก ${Math.max(0, missingHours - recommendation.accumulated)} ชั่วโมง`}
-                    </div>
+                    </div>}
 
                     <Link to="/dashboard/student-life" className="graduation-activity-link">
                         เปิดปฏิทินกิจกรรมคณะ <ChevronRight size={16} />

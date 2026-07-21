@@ -100,7 +100,7 @@ export const hrData = {
             retirementIn5Years: 20
         },
 
-        // อัตราส่วนนักศึกษาต่ออาจารย์จาก snapshot ปัจจุบัน 1,759 / 113
+        // อัตราส่วนนักศึกษาต่ออาจารย์จาก snapshot ปัจจุบัน 1,528 / 113
         studentFacultyRatio: [
             { year: '2569', ratio: 15.6, type: 'actual' }
         ],

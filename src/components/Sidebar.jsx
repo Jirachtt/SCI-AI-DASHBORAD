@@ -6,7 +6,7 @@ import { getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
 import { getAIModelRuntimeStatus, getAITokenBudgetSnapshot, getAITokenUsageSessionSummary, refreshAITokenBudgetSnapshot } from '../services/geminiService';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
-import { LogOut, Clock, Bot, Settings, UserRound, Palette, Activity, X } from 'lucide-react';
+import { LogOut, Clock, Bot, Settings, UserRound, Palette, Activity, ShieldCheck, X } from 'lucide-react';
 import {
     getFeaturedNavigationItem,
     getVisibleNavigationCategories,
@@ -171,6 +171,9 @@ export default function Sidebar({ isOpen, onClose }) {
                         <span className="sidebar-user-role" style={{ background: `${badgeColor}22`, color: badgeColor }}>
                             {user?.roleLabel}
                         </span>
+                        {user?.mjuVerified && (
+                            <span className="sidebar-mju-connected"><ShieldCheck size={10} /> MJU Connected</span>
+                        )}
                         {user?.isPending && (
                             <span className="sidebar-pending-badge" aria-label="คำขอของคุณรอผู้ดูแลระบบอนุมัติ" data-tooltip="รออนุมัติ">
                                 <Clock size={10} /> รอการอนุมัติ
@@ -216,6 +219,9 @@ export default function Sidebar({ isOpen, onClose }) {
                                 <div className="settings-account-text">
                                     <strong>{user?.name || 'ผู้ใช้'}</strong>
                                     <span style={{ background: `${badgeColor}22`, color: badgeColor }}>{user?.roleLabel || user?.role || 'General'}</span>
+                                    {user?.mjuVerified && (
+                                        <small className="sidebar-mju-connected"><ShieldCheck size={10} /> MJU Connected</small>
+                                    )}
                                 </div>
                             </div>
                         </div>

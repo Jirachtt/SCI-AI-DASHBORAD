@@ -684,7 +684,7 @@ export default function HRDashboardPage() {
             </div>
 
             {/* Scorecards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24, alignItems: 'stretch' }}>
+            <div className="hr-scorecard-grid" style={{ display: 'grid', gap: 12, marginBottom: 24, alignItems: 'stretch' }}>
                 {scorecards.map((sc, i) => {
                     const Icon = sc.icon;
                     const accentColor = legacyColorToVar(sc.color);

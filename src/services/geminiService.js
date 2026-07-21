@@ -1103,6 +1103,45 @@ async function postGeminiModel(model, requestBody, options = {}) {
     });
 }
 
+function normalizeAIProxyError(errorData, status, model) {
+    const nestedError = errorData?.error && typeof errorData.error === 'object'
+        ? errorData.error
+        : null;
+    const code = String(
+        (typeof errorData?.error === 'string' ? errorData.error : '')
+        || nestedError?.status
+        || nestedError?.code
+        || `HTTP_${status}`
+    ).trim();
+    const providerMessage = String(
+        errorData?.message
+        || nestedError?.message
+        || ''
+    ).trim();
+
+    const fatalCodes = new Set([
+        'GEMINI_API_KEY_MISSING',
+        'GEMINI_PROXY_FAILED',
+        'GEMINI_TIMEOUT',
+        'AI_USAGE_UNAVAILABLE',
+    ]);
+    const isServerConfigurationError = code === 'GEMINI_API_KEY_MISSING'
+        || status === 401
+        || status === 403;
+    const message = code === 'GEMINI_API_KEY_MISSING'
+        ? 'บริการ AI ยังไม่พร้อมบนเซิร์ฟเวอร์ กรุณาแจ้งผู้ดูแลระบบให้ตรวจการตั้งค่า AI'
+        : code === 'GEMINI_TIMEOUT'
+            ? 'AI ใช้เวลาวิเคราะห์นานเกินกำหนด กรุณาลองส่งคำถามอีกครั้ง'
+            : code === 'GEMINI_PROXY_FAILED'
+                ? 'ไม่สามารถเชื่อมต่อบริการ AI ได้ชั่วคราว กรุณาลองใหม่อีกครั้ง'
+                : providerMessage || `${model}: HTTP ${status}`;
+    const error = new Error(message);
+    error.code = code;
+    error.httpStatus = status;
+    error.fatalForAllModels = isServerConfigurationError || fatalCodes.has(code);
+    return error;
+}
+
 function parseGeminiSseEvent(eventText) {
     const dataLines = String(eventText || '')
         .split(/\r?\n/)
@@ -2615,7 +2654,10 @@ async function _sendMessageImpl(userMessage, options = {}) {
                     success: false,
                 }));
                 console.warn(`[Gemini] ${model} failed: ${response.status}`);
-                lastError = new Error(`${model}: HTTP ${response.status} - ${errorData?.error?.message || 'Unknown'}`);
+                lastError = normalizeAIProxyError(errorData, response.status, model);
+                // A missing/invalid server credential or failed proxy affects every
+                // model equally. Do not burn quota and latency retrying the model list.
+                if (lastError.fatalForAllModels) break;
                 continue;
             }
 

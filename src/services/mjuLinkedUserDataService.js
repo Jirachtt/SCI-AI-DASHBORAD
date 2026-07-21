@@ -1,5 +1,6 @@
 import { SCIENCE_ACTIVITY_REQUIREMENT } from '../data/scienceActivitiesData';
 import { getStudentListSync } from './studentDataService';
+import { hasMjuConnectedDataConsent } from './mjuConnectedDataService';
 
 const DEFAULT_GRADUATION_CREDITS = {
     current: 112,
@@ -107,10 +108,109 @@ function normalizeActivityCategories(categories, completedHours, targetHours) {
 
 export function getMjuLinkedUserAcademicProfile(user = {}) {
     const isMjuLinked = Boolean(user?.mjuVerified || user?.authProvider === 'mju_sso');
-    const student = resolveMjuLinkedStudent(user);
+    const consentGranted = !isMjuLinked || hasMjuConnectedDataConsent(user);
+    // Generated roster rows are demo data. Never use them as personal records
+    // for a verified MJU account.
+    const student = isMjuLinked ? null : resolveMjuLinkedStudent(user);
     const academic = user.mjuAcademic || {};
     const activity = user.mjuActivity || {};
     const claims = user.mjuClaims || {};
+
+    if (isMjuLinked) {
+        const gpax = firstNumber(
+            academic.gpax,
+            academic.gpa,
+            user.gpax,
+            user.gpa,
+            claims.gpax,
+            claims.gpa,
+            claims.gradePointAverage,
+        );
+        const minimumGpax = firstNumber(academic.minimumGpax, claims.minimumGpax);
+        const currentCredits = firstNumber(
+            academic.earnedCredits,
+            academic.totalCredits,
+            academic.credits?.current,
+            user.earnedCredits,
+            claims.earnedCredits,
+            claims.totalCredits,
+            claims.creditEarned,
+        );
+        const requiredCredits = firstNumber(
+            academic.requiredCredits,
+            academic.credits?.required,
+            user.requiredCredits,
+            claims.requiredCredits,
+            claims.creditRequired,
+        );
+        const completedHours = firstNumber(
+            activity.completedHours,
+            activity.completed,
+            user.activityHoursCompleted,
+            claims.activityHoursCompleted,
+            claims.completedActivityHours,
+            claims.activityHours,
+        );
+        const targetHours = firstNumber(
+            activity.targetHours,
+            activity.target,
+            user.activityHoursTarget,
+            claims.activityHoursTarget,
+            claims.requiredActivityHours,
+        );
+        const completedEvents = firstNumber(activity.completedEvents, claims.completedActivityEvents);
+        const requiredEvents = firstNumber(activity.requiredEvents, claims.requiredActivityEvents);
+        const creditDetails = academic.creditDetails || academic.credits?.details || claims.creditDetails;
+        const activityCategories = activity.categoryTargets || activity.categories || claims.activityCategories;
+        const lockedMessage = 'รอการยืนยัน consent ก่อนแสดงข้อมูลส่วนบุคคลจาก MJU';
+
+        return {
+            isMjuLinked: true,
+            isDemo: false,
+            consentGranted,
+            student: null,
+            identifiers: getMjuUserIdentifiers(user),
+            profileSource: 'mju_sso_verified_claims',
+            identityLabel: user?.name || user?.email || 'MJU User',
+            gpa: {
+                current: consentGranted ? gpax : null,
+                required: consentGranted ? minimumGpax : null,
+                available: consentGranted && gpax != null,
+                source: consentGranted && gpax != null ? 'MJU SSO / MJU Grade summary' : null,
+                message: consentGranted
+                    ? 'MJU SSO ยังไม่ได้ส่ง GPAX ของบัญชีนี้ ต้องเชื่อม MJU Grade API ที่ได้รับอนุญาต'
+                    : lockedMessage,
+            },
+            credits: {
+                current: consentGranted ? currentCredits : null,
+                required: consentGranted ? requiredCredits : null,
+                details: consentGranted && Array.isArray(creditDetails)
+                    ? normalizeCreditDetails(creditDetails, currentCredits, requiredCredits)
+                    : [],
+                available: consentGranted && currentCredits != null,
+                source: consentGranted && currentCredits != null ? 'MJU SSO / MJU Reg summary' : null,
+                message: consentGranted
+                    ? 'MJU SSO ยังไม่ได้ส่งหน่วยกิตของบัญชีนี้ ต้องเชื่อม MJU Reg API ที่ได้รับอนุญาต'
+                    : lockedMessage,
+            },
+            activity: {
+                scope: SCIENCE_ACTIVITY_REQUIREMENT.scope,
+                programLabel: SCIENCE_ACTIVITY_REQUIREMENT.programLabel,
+                completedHours: consentGranted ? completedHours : null,
+                targetHours: consentGranted ? targetHours : null,
+                completedEvents: consentGranted ? completedEvents : null,
+                requiredEvents: consentGranted ? requiredEvents : null,
+                categoryTargets: consentGranted && Array.isArray(activityCategories)
+                    ? normalizeActivityCategories(activityCategories, completedHours, targetHours)
+                    : [],
+                available: consentGranted && completedHours != null,
+                source: consentGranted && completedHours != null ? 'MJU SSO / MJU Activity summary' : null,
+                message: consentGranted
+                    ? 'MJU SSO ยังไม่ได้ส่งชั่วโมงกิจกรรมของบัญชีนี้ ต้องเชื่อม MJU Activity API ที่ได้รับอนุญาต'
+                    : lockedMessage,
+            },
+        };
+    }
 
     const gpax = firstNumber(
         academic.gpax,
@@ -160,7 +260,9 @@ export function getMjuLinkedUserAcademicProfile(user = {}) {
     );
 
     return {
-        isMjuLinked,
+        isMjuLinked: false,
+        isDemo: true,
+        consentGranted: true,
         student,
         identifiers: getMjuUserIdentifiers(user),
         profileSource: isMjuLinked
@@ -170,6 +272,7 @@ export function getMjuLinkedUserAcademicProfile(user = {}) {
         gpa: {
             current: gpax,
             required: firstNumber(academic.minimumGpax, claims.minimumGpax, DEFAULT_GPA.required),
+            available: true,
             source: firstNumber(academic.gpax, academic.gpa, user.gpax, user.gpa, claims.gpax, claims.gpa, null) != null
                 ? 'ข้อมูลจาก MJU SSO/REG'
                 : (student ? 'ข้อมูลจากรายชื่อนักศึกษาที่ผูกได้' : 'ข้อมูลตัวอย่างรอเชื่อม MJU'),
@@ -178,6 +281,7 @@ export function getMjuLinkedUserAcademicProfile(user = {}) {
             current: currentCredits,
             required: requiredCredits,
             details: normalizeCreditDetails(academic.creditDetails || academic.credits?.details || claims.creditDetails, currentCredits, requiredCredits),
+            available: true,
             source: firstNumber(academic.earnedCredits, academic.totalCredits, user.earnedCredits, claims.earnedCredits, null) != null
                 ? 'ข้อมูลจาก MJU SSO/REG'
                 : (student ? 'ประเมินจากรายชื่อนักศึกษาที่ผูกได้' : 'ข้อมูลตัวอย่างรอเชื่อม MJU'),
@@ -189,6 +293,7 @@ export function getMjuLinkedUserAcademicProfile(user = {}) {
             completedEvents: firstNumber(activity.completedEvents, claims.completedActivityEvents, SCIENCE_ACTIVITY_REQUIREMENT.completedEvents),
             requiredEvents: firstNumber(activity.requiredEvents, claims.requiredActivityEvents, SCIENCE_ACTIVITY_REQUIREMENT.requiredEvents),
             categoryTargets: normalizeActivityCategories(activity.categoryTargets || activity.categories || claims.activityCategories, completedHours, targetHours),
+            available: true,
             source: firstNumber(activity.completedHours, activity.completed, user.activityHoursCompleted, claims.activityHoursCompleted, claims.activityHours, null) != null
                 ? 'ข้อมูลกิจกรรมจาก MJU SSO'
                 : 'ใช้เกณฑ์กิจกรรมคณะเป็นค่าเริ่มต้น',
