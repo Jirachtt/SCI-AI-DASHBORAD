@@ -202,7 +202,10 @@ function mergePayloadWithFallback(id, payload) {
             return { ...(matchedFallback || {}), ...faculty };
         });
     }
-    return applyOfficialStudentSnapshot(id, merged);
+    // Firestore/source payloads must retain the exact values returned by the
+    // latest manual Sync. The bundled snapshot is only a no-network fallback;
+    // applying it here can silently replace a newer official MJU value.
+    return merged;
 }
 
 function displayPayloadForDocument(id, rawPayload) {
