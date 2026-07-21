@@ -37,6 +37,13 @@ function hasOfficialSnapshot(payload = {}, path) {
     return fields.includes(path);
 }
 
+function isFallbackFilledField(meta = {}, path) {
+    const fallbackFields = Array.isArray(meta?.fallbackFields) ? meta.fallbackFields : [];
+    return fallbackFields.some(field => (
+        field === path || field.startsWith(`${path}.`) || path.startsWith(`${field}.`)
+    ));
+}
+
 function scienceFacultyRow(payload = {}) {
     const rows = Array.isArray(payload?.faculties) ? payload.faculties : [];
     return rows.find(row => String(row?.name || '').trim() === 'คณะวิทยาศาสตร์')
@@ -48,6 +55,7 @@ function canUseField(payload, meta, path, { allowOfficialSnapshot = false } = {}
     const fieldCoverage = coverage(payload, path);
     if (fieldCoverage === 'unavailable') return false;
     if (allowOfficialSnapshot && hasOfficialSnapshot(payload, path)) return true;
+    if (isFallbackFilledField(meta, path)) return false;
     if (!isValidatedMeta(meta)) return false;
     return fieldCoverage !== 'unavailable';
 }

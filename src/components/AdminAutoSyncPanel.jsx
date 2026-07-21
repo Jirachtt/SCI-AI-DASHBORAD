@@ -232,6 +232,14 @@ export default function AdminAutoSyncPanel({ onToast }) {
                                 {latestHash && (
                                     <div><DatabaseZap size={14} /> <span title={latestHash}>Source SHA-256: {latestHash.slice(0, 12)}...</span></div>
                                 )}
+                                {meta.usesFallbackCoverage && (
+                                    <div>
+                                        <DatabaseZap size={14} />
+                                        <span title={(meta.fallbackFields || []).join(', ')}>
+                                            เติม {meta.fallbackFieldCount || meta.fallbackFields?.length || 0} ช่องข้อมูลจากชุดข้อมูลในระบบ
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             {needsSetup && (
                                 <div className="auto-sync-card-note">

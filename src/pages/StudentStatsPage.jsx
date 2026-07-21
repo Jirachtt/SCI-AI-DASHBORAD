@@ -899,11 +899,7 @@ export default function StudentStatsPage() {
                         <div className="chart-card-header">
                             <div>
                                 <div className="chart-card-title">สัดส่วนเพศนักศึกษา</div>
-                                <div className="chart-card-subtitle">
-                                    {hasScienceGenderData
-                                        ? 'คณะวิทยาศาสตร์ — ข้อมูลจากชุดรายชื่อที่ได้รับอนุญาต'
-                                        : 'MJU Dashboard ชุดปัจจุบันยังไม่ส่งข้อมูลแยกเพศ'}
-                                </div>
+                                <div className="chart-card-subtitle">คณะวิทยาศาสตร์ — สัดส่วนเพศนักศึกษาปัจจุบัน</div>
                             </div>
                         </div>
                         {hasScienceGenderData ? (

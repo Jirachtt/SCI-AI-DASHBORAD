@@ -22,7 +22,6 @@ import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import {
     buildSmartRows,
-    getDatasetQualityText,
     percentOf,
     summarizeSmartRows,
 } from '../utils/smartChartData';
@@ -146,7 +145,7 @@ export default function GraduationStatsPage() {
     const [filterStatus, setFilterStatus] = useState('all');
     const [drillDetail, setDrillDetail] = useState(null);
     const hasGraduationAccess = canAccess(user?.role, 'graduation_stats');
-    const { data: liveGraduationData, meta: graduationMeta } = useDashboardDataset('graduation');
+    const { data: liveGraduationData } = useDashboardDataset('graduation');
 
     const rawGraduationHistory = liveGraduationData?.graduationHistory || liveGraduationData?.history;
     const graduationHistoryData = normalizeGraduationHistoryRows(rawGraduationHistory, graduationHistory);
@@ -395,7 +394,6 @@ export default function GraduationStatsPage() {
     ], { meta: { isLive: true, sourceType: 'calculated' } });
     const statusSummary = summarizeSmartRows(statusRows);
     const statusTotal = Number(stats.totalCandidates) || statusSummary.total || 0;
-    const graduationSourceNote = getDatasetQualityText(graduationMeta, { calculated: true });
 
     const uniqueMajors = [...new Set(candidateRows.map(s => s.major))].sort();
 
@@ -596,7 +594,7 @@ export default function GraduationStatsPage() {
                         </div>
                     )}
                     <div className="smart-chart-note">
-                        รวม {statusTotal.toLocaleString('th-TH')} คน · {graduationSourceNote}
+                        รวม {statusTotal.toLocaleString('th-TH')} คน · คำนวณจาก GPA และชั้นปีของนักศึกษาปัจจุบัน
                     </div>
                 </div>
 

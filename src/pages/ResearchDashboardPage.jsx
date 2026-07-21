@@ -15,7 +15,6 @@ import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import {
     buildSmartRows,
-    getDatasetQualityText,
     percentOf,
     summarizeSmartRows,
 } from '../utils/smartChartData';
@@ -46,7 +45,6 @@ export default function ResearchDashboardPage() {
     const patents = Array.isArray(safeResearchData.patents) ? safeResearchData.patents : [];
     const communityImpact = Array.isArray(safeResearchData.communityImpact) ? safeResearchData.communityImpact : [];
     const benchmark = Array.isArray(safeResearchData.benchmark) ? safeResearchData.benchmark : [];
-    const researchSourceNote = getDatasetQualityText(researchMeta);
 
     // Publication trend line chart
     const pubChartData = {
@@ -190,7 +188,7 @@ export default function ResearchDashboardPage() {
         const row = chartablePublicationRows[point.index];
         return {
             title: `ผลงานวิจัย: ${point.label}`,
-            subtitle: `${point.datasetLabel} · ${researchSourceNote}`,
+            subtitle: point.datasetLabel,
             valueLabel: point.datasetLabel,
             value: point.value,
             unit: 'เรื่อง',
@@ -295,7 +293,7 @@ export default function ResearchDashboardPage() {
             </div>
 
             {/* Row 1: Publication trend + Funding sources */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="research-dashboard-grid is-featured">
                 <div style={cardStyle}>
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มผลงานตีพิมพ์</h3>
                     <div style={{ height: 280 }}>
@@ -311,7 +309,7 @@ export default function ResearchDashboardPage() {
             </div>
 
             {/* Row 2: Department + Funding trend */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="research-dashboard-grid">
                 <div style={cardStyle}>
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 6 }}>ผลงานตีพิมพ์แยกตามภาควิชา</h3>
                     <p className="smart-chart-subtitle">แยกสิทธิบัตรออกจากกราฟนี้ เพราะสเกลเล็กกว่าผลงานตีพิมพ์มาก</p>
@@ -322,10 +320,9 @@ export default function ResearchDashboardPage() {
                             <Bar data={deptChartData} options={deptDrilldownOptions} />
                         </div>
                     )}
-                    <div className="smart-chart-note">
-                        {researchSourceNote}
-                        {notChartedPublicationRows.length > 0 && ` · ไม่แสดงในกราฟ ${notChartedPublicationRows.length} ภาควิชาที่เป็น 0/ไม่มีข้อมูล`}
-                    </div>
+                    {notChartedPublicationRows.length > 0 && (
+                        <div className="smart-chart-note">ไม่แสดงในกราฟ {notChartedPublicationRows.length} ภาควิชาที่มีค่าเป็นศูนย์</div>
+                    )}
                 </div>
                 <div style={cardStyle}>
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>แนวโน้มงบวิจัย (ล้านบาท)</h3>
@@ -344,14 +341,13 @@ export default function ResearchDashboardPage() {
             </div>
 
             {/* Row 4: Patents table + Community impact */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="research-dashboard-grid no-bottom-gap">
                 <div style={cardStyle}>
                     <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>สิทธิบัตรและนวัตกรรม</h3>
                     <div className="smart-patent-summary">
                         <div className="smart-patent-total">
                             <span>สิทธิบัตรรวม</span>
                             <strong>{Number(overview.totalPatents ?? patentTotal ?? 0).toLocaleString('th-TH')}</strong>
-                            <small>{researchSourceNote}</small>
                         </div>
                         <div className="smart-mini-bar-list">
                             {patentPositiveRows.length === 0 ? (

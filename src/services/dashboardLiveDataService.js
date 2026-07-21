@@ -22,6 +22,7 @@ import { strategicData } from '../data/strategicData';
 import { tcasPlanningData } from '../data/tcasAdmissionsData';
 import { courseAnalyticsData } from '../data/courseAnalyticsData';
 import { applyOfficialStudentSnapshot } from '../data/mjuOfficialStudentSnapshot';
+import { mergeDatasetAndReportFallback } from '../utils/datasetFallback';
 
 const SYNC_ENDPOINT = import.meta.env.VITE_MJU_SYNC_ENDPOINT || '/api/mju-dashboard-sync';
 const ADMIN_SYNC_ENDPOINT = import.meta.env.VITE_MJU_ADMIN_SYNC_ENDPOINT || '/api/admin-dashboard-sync';
@@ -186,33 +187,13 @@ function isCompatiblePayload(id, payload) {
     return guard ? Boolean(guard(payload)) : true;
 }
 
-function deepMergeObject(fallback, payload) {
-    if (!payload || Array.isArray(payload) || typeof payload !== 'object') return payload;
-    if (!fallback || Array.isArray(fallback) || typeof fallback !== 'object') return payload;
-
-    const merged = { ...fallback, ...payload };
-    for (const [key, value] of Object.entries(payload)) {
-        if (
-            value &&
-            typeof value === 'object' &&
-            !Array.isArray(value) &&
-            fallback[key] &&
-            typeof fallback[key] === 'object' &&
-            !Array.isArray(fallback[key])
-        ) {
-            merged[key] = deepMergeObject(fallback[key], value);
-        }
-    }
-    return merged;
-}
-
 function mergePayloadWithFallback(id, payload) {
     const fallback = fallbackDataset(id);
     if (!payload || Array.isArray(payload) || typeof payload !== 'object') return payload;
     if (!fallback || Array.isArray(fallback) || typeof fallback !== 'object') return payload;
 
-    const merged = deepMergeObject(fallback, payload);
-    if (id === 'dashboard_summary' && Array.isArray(payload.faculties) && Array.isArray(fallback.faculties)) {
+    const { data: merged } = mergeDatasetAndReportFallback(fallback, payload);
+    if (id === 'dashboard_summary' && Array.isArray(payload.faculties) && payload.faculties.length > 0 && Array.isArray(fallback.faculties)) {
         merged.faculties = payload.faculties.map(faculty => {
             const matchedFallback = fallback.faculties.find(item =>
                 String(item.name || '').includes(String(faculty.name || '').replace(/^คณะ/, '')) ||
@@ -224,19 +205,7 @@ function mergePayloadWithFallback(id, payload) {
     return applyOfficialStudentSnapshot(id, merged);
 }
 
-function isValidatedSourceDocument(data = {}) {
-    return data?.syncMeta?.validation?.valid === true;
-}
-
-function isAuthoritativeSourceType(sourceType = '') {
-    return /mju|api|sync|official|dashboard|file|upload|csv|excel|xlsx|manual/i.test(String(sourceType || ''));
-}
-
-function displayPayloadForDocument(id, rawPayload, data = {}) {
-    const sourceType = data.sourceType || data.lastWriteSource || '';
-    if (isValidatedSourceDocument(data) || isAuthoritativeSourceType(sourceType)) {
-        return rawPayload;
-    }
+function displayPayloadForDocument(id, rawPayload) {
     return mergePayloadWithFallback(id, rawPayload);
 }
 
@@ -281,7 +250,10 @@ function applyDatasetSnapshot(id, snap) {
     const data = snap.data();
     const incomingUpdatedAt = readTimestamp(data.updatedAt);
     const rawPayload = normalizeDocPayload(data);
-    const payload = displayPayloadForDocument(id, rawPayload, data);
+    const payload = displayPayloadForDocument(id, rawPayload);
+    const fallbackFields = rawPayload && typeof rawPayload === 'object' && !Array.isArray(rawPayload)
+        ? mergeDatasetAndReportFallback(fallback, rawPayload).fallbackFields
+        : [];
     if (!isCompatiblePayload(id, payload)) {
         console.warn(`[dashboardLiveDataService] Ignoring incompatible payload for ${id}`);
         _cache.set(id, fallback);
@@ -319,6 +291,9 @@ function applyDatasetSnapshot(id, snap) {
         validation,
         sourceEvidence: data.sourceEvidence || [],
         sourceUrls: data.sourceUrls || [],
+        fallbackFields,
+        fallbackFieldCount: fallbackFields.length,
+        usesFallbackCoverage: fallbackFields.length > 0,
     });
 }
 
@@ -410,7 +385,7 @@ function startDatasetListener(id) {
                 },
                 err => {
                     console.warn(`[dashboardLiveDataService] Firestore listener failed for ${id}:`, err?.message || err);
-                    _cache.set(id, FALLBACK_DATA[id]);
+                    _cache.set(id, fallbackDataset(id));
                     _liveCache.delete(id);
                     _meta.set(id, { id, sourceType: 'fallback', isLive: false, error: err?.message || String(err) });
                     _unsubscribe.delete(id);
@@ -421,7 +396,7 @@ function startDatasetListener(id) {
             _unsubscribe.set(id, unsub);
         } catch (err) {
             console.warn(`[dashboardLiveDataService] Listener setup failed for ${id}:`, err?.message || err);
-            _cache.set(id, FALLBACK_DATA[id]);
+            _cache.set(id, fallbackDataset(id));
             _liveCache.delete(id);
             _meta.set(id, { id, sourceType: 'fallback', isLive: false, error: err?.message || String(err) });
             settle();
