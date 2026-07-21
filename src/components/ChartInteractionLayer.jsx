@@ -693,7 +693,10 @@ export default function ChartInteractionLayer() {
             if (frame) cancelAnimationFrame(frame);
             timers.forEach(timer => window.clearTimeout(timer));
             window.clearInterval(interval);
-            ownedHosts.forEach(host => host.remove());
+            // The action buttons are React portals mounted into these hosts.
+            // Let React unmount the portals before their chart surface removes
+            // the hosts; removing them here races React's deletion pass and
+            // can throw `NotFoundError: removeChild` during route/HMR updates.
             ownedHosts.clear();
         };
     }, [location.pathname]);

@@ -119,7 +119,14 @@ class ErrorBoundary extends Component {
   }
 }
 
-createRoot(document.getElementById('root')).render(
+// Keep a single React root during Vite HMR. Recreating a root for the same
+// container produces a noisy runtime error in development and can leave the
+// error boundary in a half-reset state while testing the chat UI.
+const rootElement = document.getElementById('root');
+const appRoot = globalThis.__SCI_APP_ROOT__ ?? createRoot(rootElement);
+globalThis.__SCI_APP_ROOT__ = appRoot;
+
+appRoot.render(
   <StrictMode>
     <ErrorBoundary>
       <App />

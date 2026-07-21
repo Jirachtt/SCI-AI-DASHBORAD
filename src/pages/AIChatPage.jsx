@@ -950,8 +950,6 @@ function searchStudents(query) {
 // Everything else → Gemini AI (smarter, context-aware answers)
 export function tryLocalResponse(question, userContext = {}) {
     const q = question.toLowerCase();
-    if (isAnalyticalReasoningIntent(question)) return null;
-
     // Forecast has first priority so budget questions such as "พยากรณ์งบประมาณปี 70 71"
     // cannot be captured by course/grade chart heuristics.
     const forecastParsed = parseForecastRequest(question);
@@ -964,6 +962,11 @@ export function tryLocalResponse(question, userContext = {}) {
         if (result) return result;
         // If no datasets matched, fall through to AI
     }
+
+    // Forecasts are analytical, but this page already has a deterministic
+    // regression/scenario implementation with explicit source caveats. Let it
+    // answer locally before falling back to Gemini (which may be unavailable).
+    if (isAnalyticalReasoningIntent(question)) return null;
 
     if (isExecutiveRecommendationIntent(question)) return null;
 
@@ -3373,7 +3376,7 @@ function AIChatPageContent() {
         const plannedChartResult = reasoningMode ? createPlannedChartAnswer(userMsg, user) : null;
         try {
             // Try local response first (forecast, student search)
-            const localResult = reasoningMode ? null : tryLocalResponse(userMsg, user);
+            const localResult = tryLocalResponse(userMsg, user);
             if (localResult) {
                 const tokenUsage = recordLocalAnswerUsage();
                 setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart, tokenUsage }]);
@@ -3423,7 +3426,7 @@ function AIChatPageContent() {
         const plannedChartResult = reasoningMode ? createPlannedChartAnswer(query, user) : null;
         try {
             // Try local response first (forecast, student search)
-            const localResult = reasoningMode ? null : tryLocalResponse(query, user);
+            const localResult = tryLocalResponse(query, user);
             if (localResult) {
                 const tokenUsage = recordLocalAnswerUsage();
                 setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart, tokenUsage }]);

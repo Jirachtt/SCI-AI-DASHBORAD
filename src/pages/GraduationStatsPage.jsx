@@ -61,6 +61,20 @@ function finiteNumber(...values) {
     return null;
 }
 
+function finiteGraduationRate(...values) {
+    for (const value of values) {
+        if (value == null || value === '') continue;
+        const raw = typeof value === 'string'
+            ? value.replace(/,/g, '').replace(/%/g, '').trim()
+            : value;
+        const number = Number(raw);
+        if (!Number.isFinite(number)) continue;
+        if (number > 0 && number <= 1) return number * 100;
+        if (number > 1 && number <= 100) return number;
+    }
+    return null;
+}
+
 function usableArray(value, fallback, isUsable = item => Boolean(item)) {
     if (Array.isArray(value) && value.length > 0 && value.some(isUsable)) return value;
     return fallback;
@@ -98,7 +112,7 @@ function normalizeGraduationHistoryRows(rows, fallbackRows = graduationHistory) 
                 fallback.graduated,
             );
             const calculatedRate = candidates && graduated != null ? (graduated / candidates) * 100 : null;
-            const rate = finiteNumber(
+            const rate = finiteGraduationRate(
                 row?.rate,
                 row?.graduationRate,
                 row?.successRate,
@@ -122,11 +136,15 @@ function normalizeGraduationHistoryRows(rows, fallbackRows = graduationHistory) 
         })
         .filter(row => row.year != null);
 
-    const hasUsableRate = normalized.some(row => Number.isFinite(Number(row.rate)));
-    // A history payload with candidate counts but no usable rate would render
-    // an empty line. Fall back to the MJU-referenced presentation series until
-    // the source provides either a rate or enough counts to calculate one.
-    if (!hasUsableRate) return fallbackRows;
+    const hasCompleteRateSeries = normalized.length > 0 && normalized.every(row => {
+        const rate = Number(row.rate);
+        return Number.isFinite(rate) && rate > 0 && rate <= 100;
+    });
+    // A history payload with even one zero/blank rate is incomplete and would
+    // render a misleading gap (or fall below the chart's presentation range).
+    // Use the complete MJU-referenced presentation series until every source
+    // row contains a validated positive rate.
+    if (!hasCompleteRateSeries) return fallbackRows;
     return normalized;
 }
 
@@ -268,10 +286,25 @@ export default function GraduationStatsPage() {
             backgroundColor: 'color-mix(in srgb, var(--accent-warning) 15%, transparent)',
             fill: true,
             tension: 0.4,
+            borderWidth: 3,
             pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBorderWidth: 2,
+            pointBorderColor: 'var(--bg-card)',
             pointBackgroundColor: 'var(--accent-warning)',
+            spanGaps: true,
         }]
     };
+
+    const rateValues = graduationHistoryData
+        .map(row => Number(row.rate))
+        .filter(value => Number.isFinite(value) && value > 0 && value <= 100);
+    const rateAxisMin = rateValues.length
+        ? Math.max(0, Math.floor((Math.min(...rateValues) - 5) / 5) * 5)
+        : 75;
+    const rateAxisMax = rateValues.length
+        ? Math.min(100, Math.ceil((Math.max(...rateValues) + 5) / 5) * 5)
+        : 100;
 
     const rateChartOptions = {
         responsive: true,
@@ -286,7 +319,7 @@ export default function GraduationStatsPage() {
         },
         scales: {
             x: { ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } },
-            y: { min: 75, max: 100, ticks: { color: 'var(--text-muted)', callback: v => v + '%' }, grid: { color: 'var(--border-color)' } }
+            y: { min: rateAxisMin, max: Math.max(rateAxisMin + 10, rateAxisMax), ticks: { color: 'var(--text-muted)', callback: v => v + '%' }, grid: { color: 'var(--border-color)' } }
         }
     };
 

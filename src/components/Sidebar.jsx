@@ -222,18 +222,21 @@ export default function Sidebar({ isOpen, onClose }) {
                         aria-label="เมนูบัญชีและการตั้งค่า"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <button
-                            type="button"
-                            className="settings-popover-close"
-                            onClick={() => setSettingsOpen(false)}
-                            aria-label="ปิด Settings"
-                        >
-                            <X size={15} />
-                        </button>
                         <div className="settings-popover-section">
-                            <div className="settings-popover-label">
-                                <UserRound size={13} />
-                                <span>Personal account</span>
+                            <div className="settings-popover-header">
+                                <div className="settings-popover-label">
+                                    <UserRound size={13} />
+                                    <span>Personal account</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="settings-popover-close"
+                                    onClick={() => setSettingsOpen(false)}
+                                    aria-label="ปิด Settings"
+                                    title="ปิด"
+                                >
+                                    <X size={18} strokeWidth={2.25} aria-hidden="true" />
+                                </button>
                             </div>
                             <div className="settings-account-card">
                                 <div className="sidebar-avatar settings-account-avatar">
