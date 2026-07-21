@@ -101,8 +101,8 @@
   .ai-page-chart-wrapper canvas,
   .chat-chart-container canvas
 ) {
-  filter: saturate(1.08) contrast(1.025) !important;
-  transition: filter 180ms ease, opacity 180ms ease;
+  filter: none !important;
+  transition: opacity 180ms ease;
 }
 
 [data-theme="dark"] .app-layout :is(
@@ -113,7 +113,7 @@
   .ai-page-chart-wrapper canvas,
   .chat-chart-container canvas
 ) {
-  filter: saturate(1.12) brightness(1.04) contrast(1.035) !important;
+  filter: none !important;
 }
 
 @media (hover: hover) {
@@ -122,11 +122,11 @@
   }
 
   .app-layout :is(.chart-card:has(canvas), .ai-page-chart-container):hover canvas {
-    filter: saturate(1.13) contrast(1.035) !important;
+    filter: none !important;
   }
 
   [data-theme="dark"] .app-layout :is(.chart-card:has(canvas), .ai-page-chart-container):hover canvas {
-    filter: saturate(1.17) brightness(1.055) contrast(1.04) !important;
+    filter: none !important;
   }
 }
 

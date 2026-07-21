@@ -164,13 +164,6 @@ function chartLinearGradient(context, fallbackHex, topAlpha, bottomAlpha, horizo
     return gradient;
 }
 
-function chartBarGradient(context, fallbackColor, theme, horizontal = false, hover = false) {
-    const isDark = theme === 'dark';
-    const startAlpha = hover ? 1 : (isDark ? 0.98 : 0.94);
-    const endAlpha = hover ? 0.90 : (isDark ? 0.72 : 0.66);
-    return chartLinearGradient(context, fallbackColor, startAlpha, endAlpha, horizontal);
-}
-
 function isNearBlackColor(value) {
     const color = String(value || '').trim().toLowerCase();
     if (!color) return false;
@@ -355,6 +348,12 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
         const originalBackground = originalColor(dataset, 'backgroundColor');
         const originalBorder = originalColor(dataset, 'borderColor');
         const originalPointBackground = originalColor(dataset, 'pointBackgroundColor');
+        const semanticBackground = !Array.isArray(originalBackground) && !isUnsafeColor(originalBackground, themeConfig, 2.2)
+            ? resolveCssColor(originalBackground)
+            : fallback;
+        const semanticBorder = !Array.isArray(originalBorder) && !isUnsafeColor(originalBorder, themeConfig, 2.2)
+            ? resolveCssColor(originalBorder)
+            : semanticBackground;
 
         dataset.backgroundColor = adaptColorValue(originalBackground, fallback, themeConfig, fillAlpha, count, 3);
         dataset.borderColor = adaptColorValue(originalBorder, fallback, themeConfig, 0.98, Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor.length : 0, 2.8);
@@ -371,9 +370,13 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
                     dataset.hoverBorderColor = 'transparent';
                     dataset.borderRadius = stackedBarBorderRadius;
                 } else if (!Array.isArray(originalBackground)) {
-                    const horizontal = chart?.config?.options?.indexAxis === 'y';
-                    dataset.backgroundColor = context => chartBarGradient(context, fallback, themeConfig.theme, horizontal, false);
-                    dataset.hoverBackgroundColor = context => chartBarGradient(context, fallback, themeConfig.theme, horizontal, true);
+                    dataset.backgroundColor = rgbaFromColor(
+                        semanticBackground,
+                        fallback,
+                        themeConfig.theme === 'dark' ? 0.88 : 0.82,
+                    );
+                    dataset.hoverBackgroundColor = rgbaFromColor(semanticBackground, fallback, 0.98);
+                    dataset.borderColor = rgbaFromColor(semanticBorder, fallback, 1);
                 }
                 if (dataset.borderRadius == null) dataset.borderRadius = 8;
                 if (dataset.borderSkipped == null) dataset.borderSkipped = false;
@@ -396,8 +399,8 @@ export function sanitizeChartDatasetColors(chart, theme = activeThemeName()) {
             if (isLine && dataset.fill && !Array.isArray(dataset.backgroundColor)) {
                 dataset.backgroundColor = (context) => chartLinearGradient(
                     context,
-                    fallback,
-                    themeConfig.theme === 'dark' ? 0.28 : 0.20,
+                    semanticBorder,
+                    themeConfig.theme === 'dark' ? 0.20 : 0.14,
                     themeConfig.theme === 'dark' ? 0.015 : 0.008,
                 );
             }

@@ -72,8 +72,14 @@ export default function BudgetForecastPage() {
 
     if (!canAccess(user?.role, 'budget_forecast')) return <AccessDenied />;
 
-    const yearly = [...(scienceFacultyBudgetData?.yearly || [])]
+    const officialYearly = [...(scienceFacultyBudgetData?.yearly || [])]
         .filter(row => Number.isFinite(Number(row.year)) && Number.isFinite(Number(row.revenue)) && Number.isFinite(Number(row.expense)))
+        .sort((a, b) => Number(a.year) - Number(b.year));
+    const officialYears = new Set(officialYearly.map(row => String(row.year)));
+    const historicalRows = [...(scienceFacultyBudgetData?.historicalSample || [])]
+        .filter(row => Number.isFinite(Number(row.year)) && Number.isFinite(Number(row.revenue)) && Number.isFinite(Number(row.expense)))
+        .filter(row => !officialYears.has(String(row.year)));
+    const yearly = [...historicalRows, ...officialYearly]
         .sort((a, b) => Number(a.year) - Number(b.year));
     const summary = scienceFacultyBudgetData?.summary || {};
     const actualRows = yearly.filter(row => row.type === 'actual');
