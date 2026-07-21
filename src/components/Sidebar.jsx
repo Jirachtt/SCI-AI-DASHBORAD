@@ -3,9 +3,17 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
-import { getAIModelRuntimeStatus, getAITokenBudgetSnapshot, getAITokenUsageSessionSummary, refreshAITokenBudgetSnapshot } from '../services/geminiService';
+import {
+    getAIModelCatalog,
+    getAIModelRuntimeStatus,
+    getAIModelSettings,
+    getAITokenBudgetSnapshot,
+    getAITokenUsageSessionSummary,
+    refreshAITokenBudgetSnapshot,
+    saveAIModelSettings,
+} from '../services/geminiService';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
-import { LogOut, Clock, Bot, Settings, UserRound, Activity, ShieldCheck, X, ChevronDown, Gauge } from 'lucide-react';
+import { LogOut, Clock, Bot, Settings, UserRound, ShieldCheck, X, ChevronDown, Gauge } from 'lucide-react';
 import {
     getFeaturedNavigationItem,
     getVisibleNavigationCategories,
@@ -17,6 +25,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [tokenBudget, setTokenBudget] = useState(() => getAITokenBudgetSnapshot());
     const [modelRuntime, setModelRuntime] = useState(() => getAIModelRuntimeStatus());
+    const [modelSettings, setModelSettings] = useState(() => getAIModelSettings());
     const [tokenSession, setTokenSession] = useState(() => getAITokenUsageSessionSummary());
 
     const handleLogout = async () => {
@@ -25,11 +34,18 @@ export default function Sidebar({ isOpen, onClose }) {
         if (!result?.redirecting) navigate('/');
     };
 
+    const handleModelChange = (event) => {
+        const nextSettings = saveAIModelSettings({ modelMode: event.target.value });
+        setModelSettings(nextSettings);
+        setModelRuntime(getAIModelRuntimeStatus());
+    };
+
     useEffect(() => {
         if (!settingsOpen) return undefined;
         const refresh = () => {
             setTokenBudget(getAITokenBudgetSnapshot());
             setModelRuntime(getAIModelRuntimeStatus());
+            setModelSettings(getAIModelSettings());
             setTokenSession(getAITokenUsageSessionSummary());
             refreshAITokenBudgetSnapshot()
                 .then(setTokenBudget)
@@ -72,9 +88,9 @@ export default function Sidebar({ isOpen, onClose }) {
             items: group.items.filter(item => item.action !== 'settings'),
         }))
         .filter(group => group.items.length > 0);
-    const latestUsage = tokenSession.last || tokenBudget.lastRequest || null;
-    const aiReady = tokenBudget.aiReady === true;
-    const modelModeLabel = modelRuntime.mode === 'auto' ? 'Auto routing' : 'Manual';
+    const modelCatalog = getAIModelCatalog();
+    const selectedModel = modelSettings.modelMode || 'auto';
+    const selectedModelMeta = modelCatalog.find(model => model.id === selectedModel) || null;
     const modelLastLabel = modelRuntime.lastModelLabel || modelRuntime.lastModel || '-';
     const numericValue = (value) => value === null || value === undefined || value === '' ? null : Number(value);
     const tokenNumber = (value) => Number.isFinite(numericValue(value))
@@ -238,12 +254,12 @@ export default function Sidebar({ isOpen, onClose }) {
                                 <Gauge size={13} />
                                 <span>Usage remaining</span>
                             </div>
-                            <div className="settings-usage-card" aria-label="การใช้งาน AI ของบัญชีนี้" aria-live="polite">
+                            <div className="settings-usage-card" aria-label="โควตา AI ของระบบและการใช้งานเซสชันนี้" aria-live="polite">
                                 <div className="settings-usage-head">
                                     <span className="settings-menu-icon"><Gauge size={15} /></span>
                                     <span className="settings-menu-main">
-                                        <span>AI usage ของบัญชีนี้</span>
-                                        <small>{tokenBudget.budgetPolicyAvailable ? `รีเซ็ต ${usageResetLabel}` : 'โควตาจะอัปเดตเมื่อระบบส่งข้อมูล'}</small>
+                                        <span>โควตา AI ของระบบ</span>
+                                        <small>{tokenBudget.budgetPolicyAvailable ? `รีเซ็ต ${usageResetLabel} · อัปเดตทุก 15 วินาที` : 'ระบบยังไม่ส่งโควตาที่เหลือ'}</small>
                                     </span>
                                     <strong className="settings-usage-percent">
                                         {remainingPercent === null ? '—' : `${remainingPercent}%`}
@@ -253,7 +269,7 @@ export default function Sidebar({ isOpen, onClose }) {
                                     <span style={{ width: `${remainingPercent ?? 0}%` }} />
                                 </div>
                                 <div className="settings-usage-meta">
-                                    <span>เหลือ {tokenNumber(tokenBudget.remainingTokens)} tokens</span>
+                                    <span>ระบบเหลือ {tokenNumber(tokenBudget.remainingTokens)} tokens</span>
                                     <span>เซสชันนี้ใช้ {tokenNumber(sessionTokens)} tokens</span>
                                 </div>
                                 {tokenBudget.providerQuota?.available && (
@@ -269,37 +285,36 @@ export default function Sidebar({ isOpen, onClose }) {
                                 <Settings size={13} />
                                 <span>Settings</span>
                             </div>
-                            <div className="settings-token-card" aria-label="สถานะ AI" aria-live="polite">
-                                <div className="settings-token-head">
-                                    <span className="settings-menu-icon"><Activity size={15} /></span>
-                                    <span className="settings-menu-main">
-                                        <span>สถานะ AI</span>
-                                        <small>ระบบผู้ช่วยวิเคราะห์ข้อมูล</small>
-                                    </span>
-                                </div>
-                                <div className={`settings-ai-readiness ${aiReady ? 'is-ready' : 'is-unavailable'}`}>
-                                    {aiReady ? 'AI พร้อมใช้งาน' : 'AI ยังไม่พร้อมใช้งาน'}
-                                </div>
-                            </div>
-                            <div className="settings-token-card settings-model-card" aria-label={`AI model ล่าสุด ${modelLastLabel}`}>
+                            <div
+                                className="settings-token-card settings-model-card"
+                                aria-label={`ตั้งค่า AI model ปัจจุบัน ${selectedModel === 'auto' ? 'Auto routing' : selectedModelMeta?.label || selectedModel}`}
+                            >
                                 <div className="settings-token-head">
                                     <span className="settings-menu-icon"><Bot size={15} /></span>
                                     <span className="settings-menu-main">
-                                        <span>AI model / RAG</span>
-                                        <small>{modelModeLabel} · {modelRuntime.contextMode}</small>
+                                        <span>AI model</span>
+                                        <small>RAG: {modelRuntime.contextMode}</small>
                                     </span>
                                 </div>
-                                <div className="settings-token-value-row compact">
-                                    <strong>{modelLastLabel}</strong>
-                                    <span>{latestUsage?.source === 'provider' ? 'Actual' : latestUsage?.isEstimated ? 'Estimated' : 'พร้อมใช้งาน'}</span>
-                                </div>
+                                <label className="settings-model-field">
+                                    <span>โมเดลที่ใช้ตอบ</span>
+                                    <select value={selectedModel} onChange={handleModelChange} aria-label="เลือก AI model">
+                                        <option value="auto">Auto routing (แนะนำ)</option>
+                                        {modelCatalog.map(model => (
+                                            <option key={model.id} value={model.id}>{model.label}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <p className="settings-model-help">
+                                    {selectedModel === 'auto'
+                                        ? 'ระบบเลือกโมเดลตามประเภทคำถามและสลับ fallback อัตโนมัติ'
+                                        : selectedModelMeta?.bestFor || 'ใช้โมเดลนี้เป็นลำดับแรกและ fallback เมื่อจำเป็น'}
+                                </p>
                                 <div className="settings-token-meta">
+                                    <span>ใช้ล่าสุด {modelLastLabel}</span>
                                     <span>{modelRuntime.lastContextCount > 0
-                                        ? `contexts ล่าสุด ${modelRuntime.lastContextCount.toLocaleString('th-TH')}`
+                                        ? `${modelRuntime.lastContextCount.toLocaleString('th-TH')} contexts`
                                         : 'เลือก context อัตโนมัติ'}</span>
-                                    {latestUsage?.contextTokens != null && (
-                                        <span>{Number(latestUsage.contextTokens).toLocaleString('th-TH')} tokens</span>
-                                    )}
                                 </div>
                             </div>
                             <button type="button" className="settings-logout-row" onClick={handleLogout}>
