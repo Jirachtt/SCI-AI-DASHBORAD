@@ -27,7 +27,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import ExportPDFButton from '../components/ExportPDFButton';
-import DatasetImportButton from '../components/DatasetImportButton';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import MjuConnectedPagePanel from '../components/MjuConnectedPagePanel';
@@ -108,15 +107,7 @@ export default function CourseAnalyticsPage() {
                 subtitle="แผนเรียนปี 1-4 การกระจายเกรด วิชาข้ามสาขา และความเชี่ยวชาญของแต่ละหลักสูตร"
                 tone="cyan"
                 className="course-page-header"
-                actions={(
-                    <>
-                        <DatasetImportButton
-                            importTypes={['course_grades']}
-                            currentData={data}
-                        />
-                        <ExportPDFButton title="รายวิชาและกราฟกระจายเกรด" />
-                    </>
-                )}
+                actions={<ExportPDFButton title="รายวิชาและกราฟกระจายเกรด" />}
             />
 
             {user?.mjuVerified && (

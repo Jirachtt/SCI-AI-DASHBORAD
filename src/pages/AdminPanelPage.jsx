@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
@@ -148,9 +148,27 @@ export default function AdminPanelPage() {
     const [confirmAction, setConfirmAction] = useState(null); // { type: 'approve'|'reject'|'role', user, nextRole? }
     const [toast, setToast] = useState(null); // { type, message }
     const [savingUid, setSavingUid] = useState(null);
+    const confirmPrimaryButtonRef = useRef(null);
 
     const canViewPanel = canManageUsers(user);
     const isAdminBypass = user?.uid?.startsWith('admin-bypass-');
+
+    useEffect(() => {
+        if (!confirmAction) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        const previousPaddingRight = document.body.style.paddingRight;
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        document.body.style.overflow = 'hidden';
+        if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
+
+        const focusTimer = window.setTimeout(() => confirmPrimaryButtonRef.current?.focus(), 0);
+        return () => {
+            window.clearTimeout(focusTimer);
+            document.body.style.overflow = previousOverflow;
+            document.body.style.paddingRight = previousPaddingRight;
+        };
+    }, [confirmAction]);
 
     const showToast = useCallback((type, message) => {
         setToast({ type, message });
@@ -856,6 +874,7 @@ export default function AdminPanelPage() {
                                 ยกเลิก
                             </button>
                             <button
+                                ref={confirmPrimaryButtonRef}
                                 className={confirmAction.type === 'reject' ? 'admin-btn-reject' : 'admin-btn-approve'}
                                 onClick={() => confirmAction.type === 'approve'
                                     ? handleApprove(confirmAction.user)

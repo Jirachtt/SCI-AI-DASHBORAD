@@ -12,7 +12,6 @@ import {
 import { themeAdaptorPlugin } from '../utils/chartTheme';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ProductPageHeader from '../components/ProductPageHeader';
-import DatasetImportButton from '../components/DatasetImportButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
@@ -100,16 +99,7 @@ export default function FinancialPage() {
                 title="การเงินและงานทะเบียน"
                 subtitle="ภาพรวมรายรับ ภาระการชำระ และข้อมูลประกอบการบริหาร"
                 tone="amber"
-                actions={(
-                    <>
-                        <DatasetImportButton
-                            importTypes={['student_payments']}
-                            currentData={financialData}
-                            buttonLabel="นำเข้ารายการชำระ"
-                        />
-                        <ExportPDFButton title="การเงินและงานทะเบียน" />
-                    </>
-                )}
+                actions={<ExportPDFButton title="การเงินและงานทะเบียน" />}
             />
 
             {/* Current Status */}

@@ -11,7 +11,6 @@ import { themeAdaptorPlugin } from '../utils/chartTheme';
 import { Users, UserCheck, Award, TrendingUp, Building2, GraduationCap, DollarSign } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
 import ProductPageHeader from '../components/ProductPageHeader';
-import DatasetImportButton from '../components/DatasetImportButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { normalizeThaiText, withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
@@ -681,16 +680,7 @@ export default function HRDashboardPage() {
                 title="บุคลากรและโครงสร้างองค์กร"
                 subtitle="กำลังคน ตำแหน่งทางวิชาการ และโครงสร้างบุคลากรคณะวิทยาศาสตร์"
                 tone="blue"
-                actions={(
-                    <>
-                        <DatasetImportButton
-                            importTypes={['executive_compensation']}
-                            currentData={hrData}
-                            buttonLabel="นำเข้าค่าตอบแทน"
-                        />
-                        <ExportPDFButton title="บุคลากรและโครงสร้างองค์กร" />
-                    </>
-                )}
+                actions={<ExportPDFButton title="บุคลากรและโครงสร้างองค์กร" />}
             />
 
             {/* Scorecards */}

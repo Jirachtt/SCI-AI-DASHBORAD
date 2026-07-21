@@ -17,7 +17,6 @@ import {
     Users,
 } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
-import DatasetImportButton from '../components/DatasetImportButton';
 import ProductPageHeader from '../components/ProductPageHeader';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import {
@@ -144,15 +143,7 @@ export default function StudentLifePage() {
                 title="กิจกรรมคณะวิทยาศาสตร์"
                 subtitle="ติดตามชั่วโมงกิจกรรม การมีส่วนร่วม และกิจกรรมแนะนำของคณะ"
                 tone="cyan"
-                actions={(
-                    <>
-                        <DatasetImportButton
-                            importTypes={['student_activities']}
-                            currentData={studentLifeData}
-                        />
-                        <ExportPDFButton title="กิจกรรมคณะวิทยาศาสตร์" />
-                    </>
-                )}
+                actions={<ExportPDFButton title="กิจกรรมคณะวิทยาศาสตร์" />}
             />
 
             {linkedProfile.isMjuLinked && (

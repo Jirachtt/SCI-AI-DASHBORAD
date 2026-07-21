@@ -6,7 +6,6 @@ import AccessDenied from '../components/AccessDenied';
 import { ensureStudentList, getStudentListSync, onStudentDataChange } from '../services/studentDataService';
 import { ArrowLeft, Filter, RotateCcw, GraduationCap, BookOpen, Award, FileText, BarChart3, Microscope, MousePointerClick } from 'lucide-react';
 import ExportPDFButton from '../components/ExportPDFButton';
-import DatasetImportButton from '../components/DatasetImportButton';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import CompositionBreakdown from '../components/CompositionBreakdown';
 import ProductPageHeader from '../components/ProductPageHeader';
@@ -674,15 +673,7 @@ export default function StudentStatsPage() {
                 title="สถิตินิสิตปัจจุบัน"
                 subtitle="ภาพรวมนักศึกษาคณะวิทยาศาสตร์ ระดับการศึกษา สาขา และแนวโน้มล่าสุด"
                 tone="violet"
-                actions={(
-                    <>
-                        <DatasetImportButton
-                            importTypes={['student_awards', 'population_forecast']}
-                            currentData={studentStatsData}
-                        />
-                        <ExportPDFButton title="สถิตินิสิตปัจจุบัน" />
-                    </>
-                )}
+                actions={<ExportPDFButton title="สถิตินิสิตปัจจุบัน" />}
             />
 
             {/* Knowledge Dynamic Dashboard — Filter Bar */}
