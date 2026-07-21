@@ -50,7 +50,9 @@
     .dot.yes { background: var(--blue); }
     .dot.no { color: #77809b; background: #edf0f8; }
     .dot.write { background: var(--amber); }
-    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 18px; align-items: start; }
+    .grid { display: block; }
+    /* The published view is intentionally table-only; the matrix is the single source of truth. */
+    .side { display: none !important; }
     .panel { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
     .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 20px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, rgba(235,239,255,.85), rgba(255,255,255,.95)); }
     .panel-head h2 { margin: 0; color: var(--navy); font-size: 19px; }
