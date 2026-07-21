@@ -6575,10 +6575,12 @@ button.composition-metric-card:focus-visible {
   display: grid;
   place-items: center;
   width: min(100%, 206px);
+  aspect-ratio: 1;
 }
 
 .composition-pie {
-  width: min(100%, 206px);
+  width: 100% !important;
+  height: 100% !important;
   max-width: 206px;
   filter: drop-shadow(0 14px 24px color-mix(in srgb, var(--shadow-color) 12%, transparent));
 }
@@ -19725,7 +19727,7 @@ html.analytics-fallback-fullscreen-open body {
 [data-theme="dark"] :where(.composition-pie) {
   filter:
     drop-shadow(0 18px 34px rgba(0, 0, 0, 0.44))
-    drop-shadow(0 0 18px color-mix(in srgb, var(--student-level-bachelor) 10%, transparent));
+    drop-shadow(0 0 18px color-mix(in srgb, var(--chart-1) 10%, transparent));
 }
 
 [data-theme="dark"] :where(.composition-pie-slice) {

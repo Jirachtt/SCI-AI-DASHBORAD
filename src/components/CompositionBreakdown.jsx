@@ -1,4 +1,5 @@
 import { legacyColorToVar } from '../utils/themeTokens';
+import { Doughnut } from 'react-chartjs-2';
 
 function toNumber(value) {
     const numeric = Number(value);
@@ -22,52 +23,30 @@ function segmentAccent(item) {
     return item.color ? legacyColorToVar(item.color, fallbackToken) : item.palette.accent;
 }
 
-function pointOnCircle(cx, cy, radius, angleInDegrees) {
-    const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
-    return {
-        x: cx + (radius * Math.cos(angleInRadians)),
-        y: cy + (radius * Math.sin(angleInRadians)),
-    };
-}
+const compositionCenterTextPlugin = {
+    id: 'compositionCenterText',
+    afterDraw(chart, _args, options) {
+        const firstArc = chart.getDatasetMeta(0)?.data?.[0];
+        if (!firstArc || !options?.value) return;
 
-function describeDonutSlice(cx, cy, outerRadius, innerRadius, startAngle, endAngle) {
-    const outerStart = pointOnCircle(cx, cy, outerRadius, endAngle);
-    const outerEnd = pointOnCircle(cx, cy, outerRadius, startAngle);
-    const innerStart = pointOnCircle(cx, cy, innerRadius, startAngle);
-    const innerEnd = pointOnCircle(cx, cy, innerRadius, endAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+        const styles = getComputedStyle(document.documentElement);
+        const muted = styles.getPropertyValue('--text-muted').trim() || '#64748b';
+        const primary = styles.getPropertyValue('--text-primary').trim() || '#111827';
+        const family = styles.getPropertyValue('--font-sans').trim() || 'sans-serif';
+        const { ctx } = chart;
 
-    return [
-        `M ${outerStart.x} ${outerStart.y}`,
-        `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 0 ${outerEnd.x} ${outerEnd.y}`,
-        `L ${innerStart.x} ${innerStart.y}`,
-        `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${innerEnd.x} ${innerEnd.y}`,
-        'Z',
-    ].join(' ');
-}
-
-function buildVisibleSegments(items, total) {
-    const minAngle = 3.25;
-    const rawAngles = items.map(item => (item.value / total) * 360);
-    const fixedAngles = rawAngles.map(angle => (angle > 0 && angle < minAngle ? minAngle : null));
-    const fixedTotal = fixedAngles.reduce((sum, angle) => sum + (angle || 0), 0);
-    const flexibleRawTotal = rawAngles.reduce((sum, angle, index) => sum + (fixedAngles[index] ? 0 : angle), 0);
-    const flexibleTarget = Math.max(0, 360 - fixedTotal);
-    let cursor = 0;
-
-    return items.map((item, index) => {
-        const visualAngle = fixedAngles[index] || (flexibleRawTotal ? (rawAngles[index] / flexibleRawTotal) * flexibleTarget : 0);
-        const startAngle = cursor;
-        const endAngle = cursor + visualAngle;
-        cursor = endAngle;
-        return {
-            ...item,
-            startAngle,
-            endAngle,
-            visualAngle,
-        };
-    });
-}
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = muted;
+        ctx.font = `700 12px ${family}`;
+        ctx.fillText(options.label || 'รวม', firstArc.x, firstArc.y - 10);
+        ctx.fillStyle = primary;
+        ctx.font = `900 18px ${family}`;
+        ctx.fillText(options.value, firstArc.x, firstArc.y + 12);
+        ctx.restore();
+    },
+};
 
 export default function CompositionBreakdown({
     items = [],
@@ -87,7 +66,7 @@ export default function CompositionBreakdown({
         .filter(item => item.value > 0)
         .sort((a, b) => b.value - a.value || a.index - b.index);
     const chartTotal = toNumber(total) || normalizedItems.reduce((sum, item) => sum + item.value, 0);
-    const segments = buildVisibleSegments(normalizedItems, chartTotal);
+    const segments = normalizedItems;
     const leadingItem = normalizedItems[0];
     const leadingPct = leadingItem ? (leadingItem.value / chartTotal) * 100 : 0;
 
@@ -95,40 +74,66 @@ export default function CompositionBreakdown({
         return <div className="composition-breakdown-empty">No chartable composition data</div>;
     }
 
+    const chartData = {
+        labels: segments.map(item => item.label),
+        datasets: [{
+            label: 'จำนวนนิสิต',
+            data: segments.map(item => item.value),
+            backgroundColor: segments.map(segmentAccent),
+            borderColor: 'var(--chart-surface)',
+            borderWidth: 2.75,
+            hoverBorderWidth: 3,
+            hoverOffset: 5,
+            spacing: 1,
+        }],
+    };
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '62%',
+        layout: { padding: 6 },
+        plugins: {
+            legend: { display: false },
+            compositionCenterText: {
+                label: 'รวม',
+                value: formatValue(chartTotal),
+            },
+            tooltip: {
+                displayColors: true,
+                callbacks: {
+                    label: context => {
+                        const value = toNumber(context.raw);
+                        const pct = chartTotal ? (value / chartTotal) * 100 : 0;
+                        return `${formatValue(value)} คน (${pct.toFixed(1)}%)`;
+                    },
+                },
+            },
+        },
+        onClick: onItemClick ? (_event, activeElements) => {
+            const selectedIndex = activeElements?.[0]?.index;
+            const item = segments[selectedIndex];
+            if (!item) return;
+            onItemClick({ ...item, color: segmentAccent(item) }, item.index);
+        } : undefined,
+        onHover: (event, activeElements) => {
+            if (event?.native?.target) {
+                event.native.target.style.cursor = onItemClick && activeElements.length ? 'pointer' : 'default';
+            }
+        },
+    };
+
     return (
         <div className="composition-breakdown composition-pie-panel" role="group" aria-label={ariaLabel}>
             <div className="composition-pie-wrap">
                 <div className="composition-pie-figure">
-                    <svg className="composition-pie" viewBox="0 0 220 220" role="img">
-                        <circle className="composition-pie-bg" cx="110" cy="110" r="100" />
-                        {segments.map(item => {
-                            const pct = (item.value / chartTotal) * 100;
-                            const accent = segmentAccent(item);
-                            const title = `${item.label}: ${formatValue(item.value)} (${pct.toFixed(1)}%)`;
-                            return (
-                                <path
-                                    key={`${item.label}-${item.index}`}
-                                    d={describeDonutSlice(110, 110, 100, 62, item.startAngle, item.endAngle)}
-                                    fill={accent}
-                                    className="composition-pie-slice"
-                                    role={onItemClick ? 'button' : 'img'}
-                                    tabIndex={onItemClick ? 0 : undefined}
-                                    aria-label={title}
-                                    onClick={onItemClick ? () => onItemClick({ ...item, color: accent }, item.index) : undefined}
-                                    onKeyDown={onItemClick ? (event) => {
-                                        if (event.key === 'Enter' || event.key === ' ') {
-                                            event.preventDefault();
-                                            onItemClick({ ...item, color: accent }, item.index);
-                                        }
-                                    } : undefined}
-                                />
-                            );
-                        })}
-                    </svg>
-                    <div className="composition-pie-center">
-                        <span>รวม</span>
-                        <strong>{formatValue(chartTotal)}</strong>
-                    </div>
+                    <Doughnut
+                        className="composition-pie"
+                        data={chartData}
+                        options={chartOptions}
+                        plugins={[compositionCenterTextPlugin]}
+                        role="img"
+                        aria-label={ariaLabel}
+                    />
                 </div>
                 {leadingItem && (
                     <div className="composition-pie-primary">

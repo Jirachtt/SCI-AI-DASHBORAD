@@ -243,7 +243,7 @@ export default function StudentStatsPage() {
     const levelCompositionItems = current.byLevel.map((item, i) => ({
         label: item.level,
         value: item.count,
-        color: getStudentLevelColor(item.level, i),
+        color: `var(--chart-${(i % 5) + 1})`,
     }));
 
     // MJU exposes the current headcount split by entry year. This is a cohort
@@ -309,7 +309,7 @@ export default function StudentStatsPage() {
         .map((item, i) => ({
             label: item.level,
             value: item.count,
-            color: getStudentLevelColor(item.level, i),
+            color: `var(--chart-${(i % 5) + 1})`,
         }));
 
     const majorBarData = {
