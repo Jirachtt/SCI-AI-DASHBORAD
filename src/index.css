@@ -18609,6 +18609,522 @@ body {
   max-width: 100% !important;
 }
 
+/* Shared analytics controls for every Chart.js visualization */
+.analytics-chart-surface {
+  position: relative !important;
+  isolation: isolate;
+}
+
+.analytics-chart-surface > :where(h2, h3, h4, .chart-card-header):first-child {
+  padding-inline-end: 52px;
+}
+
+.analytics-chart-actions-host {
+  position: absolute;
+  z-index: 12;
+  inset-block-start: 12px;
+  inset-inline-end: 12px;
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+}
+
+.analytics-more-button,
+.analytics-icon-button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
+  border-radius: 11px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--bg-card) 94%, transparent);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--shadow-color) 11%, transparent);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.analytics-more-button:hover,
+.analytics-more-button.active,
+.analytics-icon-button:hover {
+  color: var(--accent-purple);
+  border-color: color-mix(in srgb, var(--accent-purple) 42%, var(--border-color));
+  background: color-mix(in srgb, var(--accent-purple) 9%, var(--bg-card));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent-purple) 16%, transparent);
+}
+
+.analytics-more-button:focus-visible,
+.analytics-icon-button:focus-visible,
+.analytics-chart-menu button:focus-visible,
+.analytics-drill-dialog :is(input, select, button):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent-info) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.analytics-chart-menu {
+  position: fixed;
+  z-index: 10020;
+  width: min(268px, calc(100vw - 24px));
+  max-height: min(560px, calc(100dvh - 24px));
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+  border-radius: 16px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-card) 97%, transparent);
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--shadow-color) 26%, transparent);
+  backdrop-filter: blur(20px);
+  animation: analytics-menu-in 160ms ease-out both;
+}
+
+.analytics-menu-heading {
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 5px;
+}
+
+.analytics-menu-heading > span {
+  display: block;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.analytics-menu-heading > small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-chart-menu > button {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  text-align: start;
+  background: transparent;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.analytics-chart-menu > button:hover {
+  color: var(--accent-purple);
+  background: color-mix(in srgb, var(--accent-purple) 9%, transparent);
+}
+
+.analytics-chart-menu > button > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.analytics-chart-menu > button b {
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.analytics-chart-menu > button small {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+
+.analytics-menu-divider {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--border-color);
+}
+
+.analytics-menu-subheading,
+.analytics-filter-label {
+  padding: 7px 10px 5px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.analytics-image-actions,
+.analytics-filter-segments,
+.analytics-filter-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  padding: 3px 7px 7px;
+}
+
+.analytics-image-actions button,
+.analytics-filter-segments button,
+.analytics-filter-actions button {
+  min-height: 40px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.analytics-image-actions button:hover,
+.analytics-filter-segments button:hover,
+.analytics-filter-segments button.active,
+.analytics-filter-actions button:hover,
+.analytics-filter-actions button.primary {
+  border-color: color-mix(in srgb, var(--accent-purple) 45%, var(--border-color));
+  color: var(--accent-purple);
+  background: color-mix(in srgb, var(--accent-purple) 9%, var(--bg-secondary));
+}
+
+.analytics-filter-segments {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.analytics-dataset-filter-list {
+  max-height: 172px;
+  overflow-y: auto;
+  padding: 2px 7px 7px;
+  display: grid;
+  gap: 3px;
+}
+
+.analytics-dataset-filter-list button {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  border-radius: 9px;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  text-align: start;
+  background: transparent;
+  cursor: pointer;
+}
+
+.analytics-dataset-filter-list button:hover {
+  background: var(--bg-secondary);
+}
+
+.analytics-filter-check {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+}
+
+.analytics-filter-check.checked {
+  color: var(--text-on-accent);
+  border-color: var(--accent-purple);
+  background: var(--accent-purple);
+}
+
+.analytics-action-toast {
+  position: fixed;
+  z-index: 10040;
+  inset-inline-end: 18px;
+  inset-block-end: 18px;
+  max-width: min(420px, calc(100vw - 36px));
+  min-height: 48px;
+  padding: 11px 15px;
+  border: 1px solid color-mix(in srgb, var(--accent-success) 38%, var(--border-color));
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent-success) 9%, var(--bg-card));
+  box-shadow: 0 18px 54px color-mix(in srgb, var(--shadow-color) 22%, transparent);
+  font-size: 0.82rem;
+  font-weight: 650;
+  animation: analytics-toast-in 200ms ease-out both;
+}
+
+.analytics-drill-overlay {
+  position: fixed;
+  z-index: 10030;
+  inset: 0;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, #020617 65%, transparent);
+  backdrop-filter: blur(7px);
+}
+
+.analytics-drill-dialog {
+  width: min(1050px, 100%);
+  max-height: calc(100dvh - 48px);
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 25%, var(--border-color));
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  box-shadow: 0 32px 100px rgba(2, 6, 23, 0.42);
+  animation: analytics-dialog-in 190ms ease-out both;
+}
+
+.analytics-drill-header {
+  padding: 20px 22px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-purple) 9%, transparent), transparent 55%);
+}
+
+.analytics-drill-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-purple);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.analytics-drill-header h2 {
+  margin: 6px 0 3px;
+  color: var(--text-primary);
+  font-size: clamp(1rem, 2.4vw, 1.35rem);
+  line-height: 1.35;
+}
+
+.analytics-drill-header p,
+.analytics-drill-limit {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.analytics-drill-filters {
+  padding: 14px 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr);
+  gap: 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.analytics-search-field,
+.analytics-select-field {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.analytics-search-field > div {
+  min-width: 0;
+  height: 42px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding-inline: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  background: var(--bg-card);
+}
+
+.analytics-search-field input,
+.analytics-select-field select {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0 11px;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.analytics-search-field input {
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  outline: 0;
+}
+
+.analytics-drill-table-wrap {
+  min-height: 220px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.analytics-drill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.analytics-drill-table th,
+.analytics-drill-table td {
+  min-width: 120px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.analytics-drill-table th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  font-weight: 750;
+}
+
+.analytics-drill-table tbody tr:hover td {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent-info) 6%, transparent);
+}
+
+.analytics-drill-empty {
+  min-height: 230px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.analytics-drill-limit {
+  padding: 10px 20px;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.analytics-chart-surface:fullscreen,
+.analytics-chart-surface.analytics-fallback-fullscreen {
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: clamp(58px, 7vw, 88px) clamp(16px, 4vw, 52px) clamp(18px, 4vw, 40px) !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  color: var(--text-primary);
+  background: var(--bg-card) !important;
+}
+
+.analytics-chart-surface:fullscreen > :where(div:not(.analytics-chart-actions-host)),
+.analytics-chart-surface.analytics-fallback-fullscreen > :where(div:not(.analytics-chart-actions-host)) {
+  max-height: calc(100dvh - 130px) !important;
+}
+
+.analytics-chart-surface:fullscreen > div:has(> canvas),
+.analytics-chart-surface:fullscreen :where(.chart-container, .ai-page-chart-wrapper),
+.analytics-chart-surface.analytics-fallback-fullscreen > div:has(> canvas),
+.analytics-chart-surface.analytics-fallback-fullscreen :where(.chart-container, .ai-page-chart-wrapper) {
+  width: 100% !important;
+  height: calc(100dvh - 150px) !important;
+  min-height: 0 !important;
+}
+
+.analytics-chart-surface:fullscreen canvas,
+.analytics-chart-surface.analytics-fallback-fullscreen canvas {
+  max-height: calc(100dvh - 150px) !important;
+}
+
+.analytics-fallback-fullscreen {
+  position: fixed !important;
+  z-index: 10000 !important;
+  inset: 0 !important;
+}
+
+html.analytics-fallback-fullscreen-open,
+html.analytics-fallback-fullscreen-open body {
+  overflow: hidden !important;
+}
+
+.analytics-spin {
+  animation: analytics-spin 800ms linear infinite;
+}
+
+@keyframes analytics-spin { to { transform: rotate(360deg); } }
+@keyframes analytics-menu-in { from { opacity: 0; transform: translateY(-5px); } }
+@keyframes analytics-toast-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes analytics-dialog-in { from { opacity: 0; transform: translateY(8px) scale(0.985); } }
+
+@media (max-width: 640px) {
+  .analytics-chart-actions-host {
+    inset-block-start: 8px;
+    inset-inline-end: 8px;
+  }
+
+  .analytics-drill-overlay {
+    padding: 0;
+    align-items: end;
+  }
+
+  .analytics-drill-dialog {
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .analytics-drill-header {
+    padding: 16px;
+  }
+
+  .analytics-drill-filters {
+    padding: 12px 14px;
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-drill-table th,
+  .analytics-drill-table td {
+    padding: 10px 12px;
+  }
+
+  .analytics-action-toast {
+    inset-inline: 12px;
+    inset-block-end: 12px;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analytics-chart-menu,
+  .analytics-action-toast,
+  .analytics-drill-dialog {
+    animation: none;
+  }
+}
+
 .data-table-container {
   max-width: 100%;
   overflow-x: auto !important;

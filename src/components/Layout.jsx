@@ -16,6 +16,7 @@ import {
 } from '../services/dashboardLiveDataService';
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 import useDashboardMotion from '../hooks/useDashboardMotion';
+import ChartInteractionLayer from './ChartInteractionLayer';
 
 export default function Layout() {
     const { theme, toggleTheme } = useTheme();
@@ -167,6 +168,7 @@ export default function Layout() {
                         <Outlet />
                     </div>
                 </main>
+                <ChartInteractionLayer />
             </div>
             <AIChat />
         </div>
