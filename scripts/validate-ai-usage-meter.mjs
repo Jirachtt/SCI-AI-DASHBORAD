@@ -5,6 +5,7 @@ import {
   usageHasTokenValues,
 } from '../shared/aiUsageSchema.js';
 import { parseGeminiStreamPayloads } from '../api/gemini-chat.js';
+import { getAIReadiness } from '../api/ai-usage.js';
 
 class MemoryStorage {
   constructor() {
@@ -155,6 +156,27 @@ check('Session totals are idempotent and persist across reload-style reads', () 
 check('Invalid component totals carry a sanity warning', () => {
   const usage = normalizeAIUsage({ promptTokenCount: 10, candidatesTokenCount: 8, totalTokenCount: 12 }, { provider: 'gemini' });
   assert.equal(usage.sanityWarning, 'input_output_exceeds_total');
+});
+
+check('AI readiness requires provider configuration and available app capacity', () => {
+  const baseSnapshot = {
+    limits: { dailyTokenBudget: 1_000, globalRpd: 10, globalRpm: 5, clientRpm: 2 },
+    policy: { dailyTokenBudgetEnforced: true },
+    remaining: { dailyTokenBudget: 800, globalRpd: 9, globalRpm: 4, clientRpm: 1 },
+  };
+  assert.deepEqual(getAIReadiness(baseSnapshot, { providerConfigured: true }), {
+    aiReady: true,
+    readinessReason: 'ready',
+  });
+  assert.equal(getAIReadiness(baseSnapshot, { providerConfigured: false }).aiReady, false);
+  assert.equal(getAIReadiness({
+    ...baseSnapshot,
+    remaining: { ...baseSnapshot.remaining, dailyTokenBudget: 0 },
+  }, { providerConfigured: true }).readinessReason, 'daily_budget_exhausted');
+  assert.equal(getAIReadiness({
+    ...baseSnapshot,
+    remaining: { ...baseSnapshot.remaining, clientRpm: 0 },
+  }, { providerConfigured: true }).readinessReason, 'rate_limit_reached');
 });
 
 function parseUsageEvent(raw) {

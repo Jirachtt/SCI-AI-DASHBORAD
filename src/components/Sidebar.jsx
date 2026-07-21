@@ -5,7 +5,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { getRoleBadgeColor } from '../utils/accessControl';
 import { prefetchRoute } from '../utils/routePrefetch';
 import { getAIModelRuntimeStatus, getAITokenBudgetSnapshot, getAITokenUsageSessionSummary, refreshAITokenBudgetSnapshot } from '../services/geminiService';
-import { usageKindLabel } from '../utils/aiTokenUsage';
 import { APP_NAME_FULL, APP_NAME_SHORT_EN, APP_NAME_SHORT_TH } from '../config/appBrand';
 import { LogOut, Clock, Bot, Settings, UserRound, Palette, Activity, X } from 'lucide-react';
 import {
@@ -71,19 +70,7 @@ export default function Sidebar({ isOpen, onClose }) {
         .some(group => group.items.some(item => item.id === featuredItem.id)));
     const visibleMenuGroups = getVisibleNavigationCategories(user);
     const latestUsage = tokenSession.last || tokenBudget.lastRequest || null;
-    const latestUsageLabel = latestUsage?.totalTokens == null
-        ? `${tokenSession.requestCount.toLocaleString('th-TH')} คำขอ`
-        : `${Number(latestUsage.totalTokens).toLocaleString('th-TH')} tokens`;
-    const latestUsageKind = latestUsage ? usageKindLabel(latestUsage) : 'พร้อมใช้งาน';
-    const sessionUsageLabel = tokenSession.requestCount
-        ? `รวมในแชทนี้ ${tokenSession.totalTokens.toLocaleString('th-TH')} tokens · ${tokenSession.requestCount.toLocaleString('th-TH')} คำขอ`
-        : tokenSession.localAnswers
-            ? `Local answer ${tokenSession.localAnswers} ครั้ง · ไม่ใช้ token`
-            : 'ยังไม่มีการใช้งานในแชทนี้';
-    const budgetAvailable = tokenBudget.budgetPolicyAvailable === true
-        && tokenBudget.remainingPercent != null
-        && tokenBudget.remainingTokens != null;
-    const tokenBarWidth = budgetAvailable ? tokenBudget.remainingPercent : 0;
+    const aiReady = tokenBudget.aiReady === true;
     const modelModeLabel = modelRuntime.mode === 'auto' ? 'Auto routing' : 'Manual';
     const modelLastLabel = modelRuntime.lastModelLabel || modelRuntime.lastModel || '-';
 
@@ -249,43 +236,17 @@ export default function Sidebar({ isOpen, onClose }) {
                         </div>
 
                         <div className="settings-popover-section">
-                            <div className="settings-token-card" aria-label="สถานะการใช้งาน AI">
+                            <div className="settings-token-card" aria-label="สถานะ AI" aria-live="polite">
                                 <div className="settings-token-head">
-                                    <span className="settings-menu-icon" title="สถิติการใช้งาน AI ในแชทนี้"><Activity size={15} /></span>
+                                    <span className="settings-menu-icon"><Activity size={15} /></span>
                                     <span className="settings-menu-main">
-                                        <span>การใช้งาน AI</span>
-                                        <small>ข้อมูลต่อคำตอบและในแชทนี้</small>
+                                        <span>สถานะ AI</span>
+                                        <small>ระบบผู้ช่วยวิเคราะห์ข้อมูล</small>
                                     </span>
                                 </div>
-                                <div className="settings-token-value-row">
-                                    <strong>{latestUsageLabel}</strong>
-                                    <span className={latestUsage?.isEstimated ? 'is-estimated' : ''}>{latestUsageKind}</span>
+                                <div className={`settings-ai-readiness ${aiReady ? 'is-ready' : 'is-unavailable'}`}>
+                                    {aiReady ? 'AI พร้อมใช้งาน' : 'AI ยังไม่พร้อมใช้งาน'}
                                 </div>
-                                <div className="settings-token-meta">
-                                    <span>{sessionUsageLabel}</span>
-                                </div>
-                                {latestUsage && latestUsage.source !== 'local' && latestUsage.source !== 'cache' && (
-                                    <div className="settings-usage-components">
-                                        <span>Input {latestUsage.inputTokens == null ? '-' : Number(latestUsage.inputTokens).toLocaleString('th-TH')}</span>
-                                        <span>Output {latestUsage.outputTokens == null ? '-' : Number(latestUsage.outputTokens).toLocaleString('th-TH')}</span>
-                                        <span>Thinking {latestUsage.thinkingTokens == null ? '-' : Number(latestUsage.thinkingTokens).toLocaleString('th-TH')}</span>
-                                    </div>
-                                )}
-                                {budgetAvailable && (
-                                    <div className="settings-budget-policy" title="งบ token ที่ระบบ SCI AI บังคับใช้ ไม่ใช่ quota คงเหลือของผู้ให้บริการ">
-                                        <div className="settings-token-meta">
-                                            <span>งบระบบรายวันเหลือ {tokenBudget.remainingTokens.toLocaleString('th-TH')}</span>
-                                            <span>{tokenBudget.remainingPercent}%</span>
-                                        </div>
-                                        <div className="settings-rate-bar settings-token-bar" aria-hidden="true">
-                                            <span style={{ width: `${tokenBarWidth}%` }} />
-                                        </div>
-                                        <div className="settings-token-meta">
-                                            <span>ใช้แล้ว {Number(tokenBudget.usedTokens || 0).toLocaleString('th-TH')}</span>
-                                            <span>{tokenBudget.resetLabel ? `รีเซ็ต ${tokenBudget.resetLabel}` : 'เวลารอข้อมูลจากระบบ'}</span>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                             <div className="settings-token-card settings-model-card" aria-label={`AI model ล่าสุด ${modelLastLabel}`}>
                                 <div className="settings-token-head">

@@ -16,6 +16,31 @@ function sendJson(res, status, body, headers = {}) {
   res.end(JSON.stringify(body));
 }
 
+function hasConfiguredAIProvider() {
+  const env = globalThis.process?.env || {};
+  return Boolean(
+    env.GEMINI_API_KEY
+    || env.GOOGLE_GEMINI_API_KEY
+    || env.GOOGLE_API_KEY
+  );
+}
+
+export function getAIReadiness(snapshot = {}, { providerConfigured = hasConfiguredAIProvider() } = {}) {
+  const limits = snapshot.limits || AI_USAGE_LIMITS;
+  const remaining = snapshot.remaining || {};
+  const hasDailyBudget = snapshot.policy?.dailyTokenBudgetEnforced === true
+    && Number.isFinite(Number(limits.dailyTokenBudget))
+    && Number(limits.dailyTokenBudget) > 0;
+  const dailyBudgetAvailable = !hasDailyBudget || Number(remaining.dailyTokenBudget) > 0;
+  const requestCapacityAvailable = [remaining.globalRpd, remaining.globalRpm, remaining.clientRpm]
+    .every(value => value === null || value === undefined || Number(value) > 0);
+
+  if (!providerConfigured) return { aiReady: false, readinessReason: 'provider_not_configured' };
+  if (!dailyBudgetAvailable) return { aiReady: false, readinessReason: 'daily_budget_exhausted' };
+  if (!requestCapacityAvailable) return { aiReady: false, readinessReason: 'rate_limit_reached' };
+  return { aiReady: true, readinessReason: 'ready' };
+}
+
 function publicSnapshot(snapshot) {
   const limits = snapshot.limits || AI_USAGE_LIMITS;
   const used = snapshot.used || {};
@@ -23,6 +48,7 @@ function publicSnapshot(snapshot) {
   const hasDailyBudget = snapshot.policy?.dailyTokenBudgetEnforced === true
     && Number.isFinite(Number(limits.dailyTokenBudget))
     && Number(limits.dailyTokenBudget) > 0;
+  const readiness = getAIReadiness(snapshot);
   return {
     source: snapshot.source || 'firestore',
     serverBacked: snapshot.serverBacked !== false,
@@ -49,6 +75,7 @@ function publicSnapshot(snapshot) {
     remainingRequests: Number(remaining.globalRpd || 0),
     limits,
     policy: snapshot.policy || null,
+    ...readiness,
     providerQuota: snapshot.providerQuota || {
       available: false,
       message: 'ผู้ให้บริการไม่ได้ส่งข้อมูล quota หรือ reset time ผ่าน usage metadata',
@@ -98,6 +125,8 @@ export default async function handler(req, res) {
       resetLabel: null,
       limits: null,
       policy: null,
+      aiReady: hasConfiguredAIProvider(),
+      readinessReason: hasConfiguredAIProvider() ? 'ready_without_usage_store' : 'provider_not_configured',
       providerQuota: {
         available: false,
         message: 'ผู้ให้บริการไม่ได้ส่งข้อมูล quota หรือ reset time ผ่าน usage metadata',

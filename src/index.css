@@ -4420,6 +4420,28 @@ html {
   color: var(--accent-warning);
 }
 
+.settings-ai-readiness {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+    border-radius: 7px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.settings-ai-readiness.is-ready {
+    color: var(--accent-success);
+    background: color-mix(in srgb, var(--accent-success) 10%, var(--card-bg));
+    border-color: color-mix(in srgb, var(--accent-success) 34%, var(--border-color));
+}
+
+.settings-ai-readiness.is-unavailable {
+    color: var(--accent-danger);
+    background: color-mix(in srgb, var(--accent-danger) 8%, var(--card-bg));
+    border-color: color-mix(in srgb, var(--accent-danger) 30%, var(--border-color));
+}
+
 .settings-token-bar {
   margin: 0 0 8px;
 }
