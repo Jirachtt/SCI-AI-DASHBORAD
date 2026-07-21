@@ -1,7 +1,7 @@
 // Mock data for the MJU Dashboard
 // อ้างอิงข้อมูลจากมหาวิทยาลัยแม่โจ้ (mju.ac.th)
-import { SCIENCE_ACTIVITY_REQUIREMENT, getScienceActivityEventsForDate } from './scienceActivitiesData';
-import { officialFinancialData, officialScienceBudgetData, officialTuitionData } from './officialPlanningData';
+import { SCIENCE_ACTIVITY_REQUIREMENT, getScienceActivityEventsForDate } from './scienceActivitiesData.js';
+import { officialFinancialData, officialScienceBudgetData, officialTuitionData } from './officialPlanningData.js';
 import {
     OFFICIAL_SCIENCE_ENROLLMENT_ROWS,
     OFFICIAL_SCIENCE_STUDENT_LEVELS,
