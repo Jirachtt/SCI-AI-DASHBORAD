@@ -1,0 +1,137 @@
+.budget-trend-card {
+    margin-bottom: 24px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+}
+
+.budget-trend-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 20px 24px 17px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.budget-trend-card__eyebrow {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--accent-info);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+}
+
+.budget-trend-card__header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.16rem;
+    font-weight: 750;
+    letter-spacing: 0;
+}
+
+.budget-trend-card__header p {
+    margin: 5px 0 0;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.budget-trend-card__status {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-right: 42px;
+}
+
+.budget-trend-card__status > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 0.73rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.budget-status-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
+}
+
+.budget-status-dot--actual {
+    background: var(--accent-success);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-success) 14%, transparent);
+}
+
+.budget-status-dot--forecast {
+    border: 1.5px solid var(--accent-warning);
+    background: transparent;
+}
+
+.budget-trend-card__canvas {
+    height: clamp(340px, 31vw, 430px);
+    padding: 20px 20px 10px;
+}
+
+.budget-trend-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 11px 24px 13px;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 768px) {
+    .budget-trend-card__header,
+    .budget-trend-card__footer {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .budget-trend-card__status {
+        justify-content: flex-start;
+        margin-right: 0;
+    }
+
+    .budget-trend-card__canvas {
+        height: 330px;
+        padding: 14px 8px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .budget-trend-card__header {
+        padding: 16px;
+    }
+
+    .budget-trend-card__status > span {
+        min-height: 32px;
+        font-size: 0.68rem;
+    }
+
+    .budget-trend-card__canvas {
+        height: 300px;
+    }
+
+    .budget-trend-card__footer {
+        padding: 10px 16px 13px;
+    }
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { canAccess } from '../utils/accessControl';
 import AccessDenied from '../components/AccessDenied';
 import { ArrowLeft, TrendingUp, TrendingDown, ArrowUpRight, Sparkles, BarChart3, Wallet, DollarSign } from 'lucide-react';
@@ -15,8 +16,43 @@ import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
 import ProductPageHeader from '../components/ProductPageHeader';
+import './BudgetForecastPage.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler, themeAdaptorPlugin);
+
+const budgetForecastZonePlugin = {
+    id: 'budgetForecastZone',
+    beforeDatasetsDraw(chart, _args, options = {}) {
+        const startIndex = Number(options.startIndex);
+        const xScale = chart?.scales?.x;
+        const area = chart?.chartArea;
+        if (!Number.isInteger(startIndex) || startIndex < 0 || !xScale || !area) return;
+
+        const startCenter = xScale.getPixelForValue(startIndex);
+        const previousCenter = startIndex > 0 ? xScale.getPixelForValue(startIndex - 1) : area.left;
+        const startX = startIndex > 0 ? (previousCenter + startCenter) / 2 : area.left;
+        const width = Math.max(0, area.right - startX);
+        if (!Number.isFinite(startX) || width <= 0) return;
+
+        const { ctx } = chart;
+        ctx.save();
+        ctx.fillStyle = options.backgroundColor || 'rgba(245, 158, 11, 0.05)';
+        ctx.fillRect(startX, area.top, width, area.bottom - area.top);
+        ctx.beginPath();
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = options.borderColor || 'rgba(217, 119, 6, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.moveTo(startX, area.top);
+        ctx.lineTo(startX, area.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = options.labelColor || '#92400e';
+        ctx.font = "600 11px 'Noto Sans Thai', system-ui, sans-serif";
+        ctx.textAlign = 'left';
+        ctx.fillText(options.label || 'ช่วงประมาณการ', Math.min(startX + 10, area.right - 72), area.top + 16);
+        ctx.restore();
+    },
+};
 
 /* ────────────── Shared Styles (matching Student List theme) ────────────── */
 const card = {
@@ -30,19 +66,44 @@ const thStyle = {
 
 export default function BudgetForecastPage() {
     const { user } = useAuth();
+    const { theme } = useTheme();
     const [drillDetail, setDrillDetail] = useState(null);
-    const { data: scienceFacultyBudgetData } = useDashboardDataset('science_budget');
+    const { data: scienceFacultyBudgetData, meta: budgetMeta } = useDashboardDataset('science_budget');
 
     if (!canAccess(user?.role, 'budget_forecast')) return <AccessDenied />;
 
-    const { yearly, summary } = scienceFacultyBudgetData;
-    const latestActual = yearly.filter(y => y.type === 'actual');
-    const latestYear = latestActual[latestActual.length - 1];
-    const prevYear = latestActual[latestActual.length - 2];
-
-    const revenueGrowth = (((latestYear.revenue - prevYear.revenue) / prevYear.revenue) * 100).toFixed(1);
-    const expenseGrowth = (((latestYear.expense - prevYear.expense) / prevYear.expense) * 100).toFixed(1);
-    const usagePercent = ((latestYear.expense / latestYear.revenue) * 100).toFixed(1);
+    const yearly = [...(scienceFacultyBudgetData?.yearly || [])]
+        .filter(row => Number.isFinite(Number(row.year)) && Number.isFinite(Number(row.revenue)) && Number.isFinite(Number(row.expense)))
+        .sort((a, b) => Number(a.year) - Number(b.year));
+    const summary = scienceFacultyBudgetData?.summary || {};
+    const actualRows = yearly.filter(row => row.type === 'actual');
+    const forecastRows = yearly.filter(row => row.type === 'forecast');
+    const primaryYear = actualRows.at(-1) || forecastRows[0] || yearly[0];
+    const latestForecast = forecastRows.at(-1) || yearly.at(-1);
+    const comparableRows = primaryYear?.type === 'actual' ? actualRows : forecastRows;
+    const primaryIndex = comparableRows.findIndex(row => row === primaryYear);
+    const prevYear = primaryIndex > 0 ? comparableRows[primaryIndex - 1] : null;
+    const revenueGrowth = prevYear?.revenue
+        ? (((Number(primaryYear.revenue) - Number(prevYear.revenue)) / Number(prevYear.revenue)) * 100).toFixed(1)
+        : null;
+    const usagePercent = primaryYear?.revenue
+        ? ((Number(primaryYear.expense) / Number(primaryYear.revenue)) * 100).toFixed(1)
+        : null;
+    const primaryIsForecast = primaryYear?.type === 'forecast';
+    const firstForecastIndex = yearly.findIndex(y => y.type === 'forecast');
+    const breakdownYear = [...actualRows].reverse().find(row => (
+        Array.isArray(row.revenueBreakdown) || Array.isArray(row.expenseBreakdown)
+    )) || primaryYear;
+    const revenueBreakdown = Array.isArray(breakdownYear?.revenueBreakdown) ? breakdownYear.revenueBreakdown : [];
+    const expenseBreakdown = Array.isArray(breakdownYear?.expenseBreakdown) ? breakdownYear.expenseBreakdown : [];
+    const sourceName = scienceFacultyBudgetData?.source
+        || budgetMeta?.sourceUrl
+        || 'ชุดข้อมูลงบประมาณคณะวิทยาศาสตร์';
+    const updatedLabel = budgetMeta?.updatedAt
+        ? budgetMeta.updatedAt.toLocaleString('th-TH')
+        : null;
+    const formatMillion = value => `${Number(value || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ล้านบาท`;
+    const formatBaht = value => `ประมาณ ${Math.round(Number(value || 0) * 1_000_000).toLocaleString('th-TH')} บาท`;
 
     /* ── Chart ── */
     const combinedChartData = {
@@ -50,32 +111,52 @@ export default function BudgetForecastPage() {
         datasets: [
             {
                 type: 'bar',
-                label: 'ใช้จ่ายจริง',
+                label: 'รายจ่าย',
                 data: yearly.map(y => y.expense),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'color-mix(in srgb, var(--accent-success) 70%, transparent)' : 'color-mix(in srgb, var(--accent-success) 35%, transparent)'),
-                borderColor: 'var(--accent-success)',
-                borderWidth: 1.5, borderRadius: 6, order: 2,
+                backgroundColor: 'var(--accent-cyan)',
+                borderColor: 'var(--accent-cyan)',
+                hoverBackgroundColor: 'var(--accent-cyan)',
+                borderWidth: 0,
+                borderRadius: 7,
+                borderSkipped: false,
+                categoryPercentage: 0.72,
+                barPercentage: 0.78,
+                maxBarThickness: 42,
+                order: 2,
             },
             {
                 type: 'bar',
-                label: 'ได้รับจัดสรร',
+                label: 'รายรับ',
                 data: yearly.map(y => y.revenue),
-                backgroundColor: yearly.map(y => y.type === 'actual' ? 'color-mix(in srgb, var(--accent-blue) 70%, transparent)' : 'color-mix(in srgb, var(--accent-blue) 35%, transparent)'),
+                backgroundColor: 'var(--accent-blue)',
                 borderColor: 'var(--accent-blue)',
-                borderWidth: 1.5, borderRadius: 6, order: 2,
+                hoverBackgroundColor: 'var(--accent-blue)',
+                borderWidth: 0,
+                borderRadius: 7,
+                borderSkipped: false,
+                categoryPercentage: 0.72,
+                barPercentage: 0.78,
+                maxBarThickness: 42,
+                order: 2,
             },
             {
                 type: 'line',
-                label: 'คงเหลือ',
+                label: 'ส่วนต่างรายรับ-รายจ่าย',
                 data: yearly.map(y => y.surplus),
                 borderColor: 'var(--accent-warning)',
                 backgroundColor: 'color-mix(in srgb, var(--accent-warning) 12%, transparent)',
-                borderWidth: 2.5,
-                fill: true, tension: 0.4,
+                borderWidth: 2.75,
+                fill: true,
+                tension: 0.38,
+                segment: {
+                    borderDash: (ctx) => yearly[ctx.p1DataIndex]?.type === 'forecast' ? [7, 5] : undefined,
+                },
                 pointBackgroundColor: yearly.map(y => y.type === 'actual' ? 'var(--accent-warning)' : 'var(--accent-warning)'),
                 pointBorderColor: 'var(--bg-card)',
                 pointBorderWidth: 2,
-                pointRadius: 6, pointHoverRadius: 8,
+                pointRadius: yearly.map(y => y.type === 'forecast' ? 4.5 : 4),
+                pointHoverRadius: 7,
+                pointHitRadius: 14,
                 pointStyle: yearly.map(y => y.type === 'forecast' ? 'triangle' : 'circle'),
                 yAxisID: 'y1', order: 1,
             }
@@ -89,36 +170,59 @@ export default function BudgetForecastPage() {
             legend: {
                 position: 'bottom',
                 labels: {
-                    color: 'var(--text-secondary)', padding: 18, usePointStyle: true, pointStyleWidth: 12,
+                    color: 'var(--text-secondary)', padding: 22, usePointStyle: true, pointStyleWidth: 10,
                     font: { size: 13, weight: '600', family: "'Noto Sans Thai', system-ui, sans-serif" }
                 }
+            },
+            budgetForecastZone: {
+                startIndex: firstForecastIndex,
+                label: 'ช่วงประมาณการ',
+                backgroundColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.065)' : 'rgba(245, 158, 11, 0.045)',
+                borderColor: theme === 'dark' ? 'rgba(251, 191, 36, 0.42)' : 'rgba(180, 83, 9, 0.34)',
+                labelColor: theme === 'dark' ? '#fbbf24' : '#92400e',
             },
             tooltip: {
                 backgroundColor: 'var(--bg-card)', titleColor: 'var(--text-primary)', bodyColor: 'var(--text-secondary)',
                 borderColor: 'var(--border-color)', borderWidth: 1,
                 padding: 12, titleFont: { size: 13, weight: 'bold' }, bodyFont: { size: 12 }, displayColors: true,
                 callbacks: {
-                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() || '-'} ล้านบาท`,
+                    title: (items) => {
+                        const idx = items[0]?.dataIndex;
+                        const year = yearly[idx];
+                        return year ? `ปีงบประมาณ ${year.year}${year.type === 'forecast' ? ' · ประมาณการ' : ''}` : '';
+                    },
+                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString('th-TH') || '-'} ล้านบาท`,
                     afterBody: (items) => {
                         const idx = items[0]?.dataIndex;
-                        return idx !== undefined && yearly[idx]?.type === 'forecast' ? '\n* ข้อมูลพยากรณ์' : '';
+                        return idx !== undefined && yearly[idx]?.type === 'forecast' ? '\nเส้นประและพื้นสีอ่อน = ค่าประมาณการ' : '';
                     }
                 }
             }
         },
         scales: {
-            x: { ticks: { color: 'var(--text-muted)', font: { size: 12, weight: '500' } }, grid: { display: false } },
+            x: {
+                offset: true,
+                ticks: { color: 'var(--text-muted)', font: { size: 12, weight: '600' }, padding: 7 },
+                grid: { display: false },
+                border: { display: false },
+            },
             y: {
                 position: 'left',
+                beginAtZero: true,
+                grace: '10%',
                 ticks: { color: 'var(--text-muted)', font: { size: 12 }, callback: (v) => (v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : v.toLocaleString()) },
                 grid: { color: 'var(--border-color)' },
+                border: { display: false },
                 title: { display: true, text: 'ล้านบาท', color: 'var(--text-muted)', font: { size: 12, weight: '600' } }
             },
             y1: {
                 position: 'right',
+                beginAtZero: true,
+                grace: '10%',
                 ticks: { color: 'var(--text-muted)', font: { size: 12 }, callback: (v) => v.toLocaleString() },
                 grid: { display: false },
-                title: { display: true, text: 'คงเหลือ', color: 'var(--accent-warning)', font: { size: 12, weight: '600' } }
+                border: { display: false },
+                title: { display: true, text: 'ส่วนต่าง', color: 'var(--accent-warning)', font: { size: 12, weight: '600' } }
             }
         }
     };
@@ -135,7 +239,7 @@ export default function BudgetForecastPage() {
         { key: 'status', label: 'สถานะ' },
         { key: 'revenue', label: 'รายรับ (ล้านบาท)', align: 'right' },
         { key: 'expense', label: 'รายจ่าย (ล้านบาท)', align: 'right' },
-        { key: 'surplus', label: 'คงเหลือ (ล้านบาท)', align: 'right' },
+        { key: 'surplus', label: 'ส่วนต่าง (ล้านบาท)', align: 'right' },
         { key: 'usagePercent', label: 'ใช้จ่าย', align: 'right' },
     ];
 
@@ -159,7 +263,7 @@ export default function BudgetForecastPage() {
             ? [...revenueRows, ...expenseRows]
             : [{
                 year: year.year,
-                status: year.type === 'actual' ? 'ข้อมูลจริง' : 'พยากรณ์',
+                status: year.type === 'actual' ? 'ข้อมูลจริง' : 'ประมาณการ',
                 revenue: year.revenue,
                 expense: year.expense,
                 surplus: year.surplus,
@@ -173,37 +277,46 @@ export default function BudgetForecastPage() {
             value: point.value,
             unit: 'ล้านบาท',
             accentColor: point.color,
-            summary: `${year.type === 'actual' ? 'ข้อมูลจริง' : 'ข้อมูลพยากรณ์'} รายรับ ${year.revenue.toLocaleString('th-TH')} ล้านบาท รายจ่าย ${year.expense.toLocaleString('th-TH')} ล้านบาท คงเหลือ ${year.surplus.toLocaleString('th-TH')} ล้านบาท`,
+            summary: `${year.type === 'actual' ? 'ข้อมูลจริง' : 'ข้อมูลประมาณการ'} รายรับ ${year.revenue.toLocaleString('th-TH')} ล้านบาท รายจ่าย ${year.expense.toLocaleString('th-TH')} ล้านบาท ส่วนต่าง ${year.surplus.toLocaleString('th-TH')} ล้านบาท`,
             rows,
             columns: revenueRows.length || expenseRows.length ? budgetDetailColumns : yearlyDetailColumns,
-            note: year.type === 'forecast' ? 'จุดนี้เป็นข้อมูลพยากรณ์ จึงควรใช้ประกอบการวางแผน ไม่ใช่ยอดปิดบัญชีจริง' : 'จุดนี้มาจากข้อมูลจริงในชุดข้อมูลงบประมาณของระบบ',
+            note: year.type === 'forecast' ? 'จุดนี้เป็นข้อมูลประมาณการจากไฟล์แผน จึงควรใช้ประกอบการวางแผน ไม่ใช่ยอดปิดบัญชีจริง' : 'จุดนี้มาจากข้อมูลจริงในชุดข้อมูลงบประมาณของระบบ',
         };
     });
 
     /* ── Summary Cards Data ── */
     const statCards = [
         {
-            Icon: Wallet, label: `งบประมาณปี ${latestYear.year}`,
-            value: `฿${(latestYear.revenue).toLocaleString()}`, sub: `↗ ${revenueGrowth > 0 ? '+' : ''}${revenueGrowth}% จากปีก่อน`,
+            Icon: Wallet,
+            label: `${primaryIsForecast ? 'ประมาณการรายรับ' : 'รายรับ'} ปี ${primaryYear.year}`,
+            value: formatMillion(primaryYear.revenue),
+            sub: revenueGrowth == null
+                ? formatBaht(primaryYear.revenue)
+                : `${revenueGrowth > 0 ? '+' : ''}${revenueGrowth}% จากปีก่อน · ${formatBaht(primaryYear.revenue)}`,
             gradient: 'linear-gradient(135deg, var(--accent-info), var(--accent-info))',
             valueColor: 'var(--text-primary)',
         },
         {
-            Icon: TrendingDown, label: 'ใช้จ่ายจริง (ถึงปัจจุบัน)',
-            value: `฿${latestYear.expense.toLocaleString()}`, sub: `${usagePercent}% ของงบประมาณ · ${expenseGrowth > 0 ? '+' : ''}${expenseGrowth}% จากปีก่อน`,
+            Icon: TrendingDown,
+            label: `${primaryIsForecast ? 'ประมาณการรายจ่าย' : 'รายจ่ายจริง'} ปี ${primaryYear.year}`,
+            value: formatMillion(primaryYear.expense),
+            sub: `${usagePercent ?? '-'}% ของรายรับ · ${formatBaht(primaryYear.expense)}`,
             gradient: 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))',
             valueColor: 'var(--text-primary)',
         },
         {
-            Icon: DollarSign, label: 'คงเหลือ',
-            value: `฿${latestYear.surplus.toLocaleString()}`, sub: 'เพียงพอสำหรับไตรมาสที่เหลือ',
+            Icon: DollarSign,
+            label: primaryIsForecast ? 'ส่วนต่างตามประมาณการ' : 'คงเหลือ',
+            value: formatMillion(primaryYear.surplus),
+            sub: `รายรับ - รายจ่าย · ${formatBaht(primaryYear.surplus)}`,
             gradient: 'linear-gradient(135deg, var(--accent-success-deep), var(--accent-success-deep))',
             valueColor: 'var(--accent-success)',
         },
         {
-            Icon: TrendingUp, label: `พยากรณ์รายรับ ${yearly[yearly.length - 1].year}`,
-            value: `฿${yearly[yearly.length - 1].revenue.toLocaleString()}`,
-            sub: 'คาดการณ์ Linear Regression',
+            Icon: TrendingUp,
+            label: `ประมาณการรายรับ ${latestForecast.year}`,
+            value: formatMillion(latestForecast.revenue),
+            sub: `${formatBaht(latestForecast.revenue)} · จากไฟล์แผนประมาณการ`,
             gradient: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold))',
             valueColor: 'var(--accent-gold)',
         },
@@ -218,7 +331,7 @@ export default function BudgetForecastPage() {
                 icon={BarChart3}
                 eyebrow="FINANCIAL PLANNING"
                 title="งบประมาณคณะวิทยาศาสตร์"
-                subtitle="รายรับ รายจ่าย และแนวโน้มงบประมาณตั้งแต่ปี 2560 ถึงปัจจุบัน"
+                subtitle={`ประมาณการรายรับ รายจ่าย และส่วนต่าง ปี ${yearly[0]?.year || '-'}-${yearly.at(-1)?.year || '-'}`}
                 tone="amber"
                 actions={<ExportPDFButton title="งบประมาณคณะวิทยาศาสตร์" label="PDF" />}
             />
@@ -239,20 +352,38 @@ export default function BudgetForecastPage() {
                 ))}
             </div>
 
-            {/* ── Main Chart ── */}
-            <div style={{ ...card, marginBottom: '24px', padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color)' }}>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                        แนวโน้มงบประมาณและการใช้จ่าย (2560 – ปัจจุบัน)
-                    </h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '4px 0 0' }}>
-                        ย้อนหลัง + พยากรณ์ 2 ปี (* = พยากรณ์ด้วย Linear Regression)
-                    </p>
-                </div>
-                <div style={{ height: 380, padding: '14px 18px 18px' }}>
-                    <Bar data={combinedChartData} options={chartDrilldownOptions} />
-                </div>
+            <div style={{
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
+                gap: 8, padding: '12px 16px', marginBottom: 24, borderRadius: 10,
+                border: '1px solid color-mix(in srgb, var(--accent-gold) 35%, var(--border-color))',
+                background: 'color-mix(in srgb, var(--accent-gold) 7%, var(--bg-card))',
+                color: 'var(--text-secondary)', fontSize: '0.88rem',
+            }}>
+                <span><strong>แหล่งข้อมูล:</strong> {sourceName}</span>
+                <span>{updatedLabel ? `อัปเดต ${updatedLabel}` : 'หน่วย: ล้านบาท (ตัวเลขหลัก) และบาท (บรรทัดอธิบาย)'}</span>
             </div>
+
+            {/* ── Main Chart ── */}
+            <section className="budget-trend-card">
+                <header className="budget-trend-card__header">
+                    <div>
+                        <span className="budget-trend-card__eyebrow">BUDGET PERFORMANCE</span>
+                        <h3>ประมาณการรายรับ รายจ่าย และส่วนต่าง</h3>
+                        <p>ค่าทั้งหมดในกราฟมีหน่วยเป็นล้านบาท และเป็นประมาณการจากไฟล์แผน</p>
+                    </div>
+                    <div className="budget-trend-card__status" aria-label="สถานะชุดข้อมูล">
+                        {actualRows.length > 0 && <span><i className="budget-status-dot budget-status-dot--actual" />ข้อมูลจริงถึงปี {actualRows.at(-1).year}</span>}
+                        <span><i className="budget-status-dot budget-status-dot--forecast" />ประมาณการ {forecastRows.length} ปี</span>
+                    </div>
+                </header>
+                <div className="budget-trend-card__canvas">
+                    <Bar data={combinedChartData} options={chartDrilldownOptions} plugins={[budgetForecastZonePlugin]} />
+                </div>
+                <footer className="budget-trend-card__footer">
+                    <span>คลิกแท่งหรือจุดข้อมูลเพื่อดูรายละเอียดรายปี</span>
+                    <span>* พื้นหลังสีอ่อนและเส้นประเป็นค่าประมาณการ ไม่ใช่ยอดปิดบัญชีจริง</span>
+                </footer>
+            </section>
 
             {/* ── Yearly Detail Table ── */}
             <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: '24px' }}>
@@ -264,9 +395,9 @@ export default function BudgetForecastPage() {
                         <thead>
                             <tr style={{ background: 'var(--bg-secondary)' }}>
                                 <th style={thStyle}>ปีงบประมาณ</th>
-                                <th style={{ ...thStyle, textAlign: 'right' }}>ได้รับจัดสรร (บาท)</th>
-                                <th style={{ ...thStyle, textAlign: 'right' }}>ใช้จ่ายจริง (บาท)</th>
-                                <th style={{ ...thStyle, textAlign: 'right' }}>คงเหลือ (บาท)</th>
+                                <th style={{ ...thStyle, textAlign: 'right' }}>รายรับ (บาท)</th>
+                                <th style={{ ...thStyle, textAlign: 'right' }}>รายจ่าย (บาท)</th>
+                                <th style={{ ...thStyle, textAlign: 'right' }}>ส่วนต่าง (บาท)</th>
                                 <th style={{ ...thStyle, textAlign: 'center' }}>% การใช้จ่าย</th>
                                 <th style={{ ...thStyle, textAlign: 'center' }}>สถานะ</th>
                             </tr>
@@ -310,7 +441,7 @@ export default function BudgetForecastPage() {
                                                 background: statusColor(y.type) + '22',
                                                 border: `1px solid ${statusColor(y.type)}55`,
                                             }}>
-                                                {y.type === 'actual' ? 'ข้อมูลจริง' : '* พยากรณ์'}
+                                                {y.type === 'actual' ? 'ข้อมูลจริง' : '* ประมาณการ'}
                                             </span>
                                         </td>
                                     </tr>
@@ -326,11 +457,11 @@ export default function BudgetForecastPage() {
                 {/* Revenue */}
                 <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
                     <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color)' }}>
-                        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>โครงสร้างรายรับ ปี {latestYear.year}</h3>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>โครงสร้างรายรับ ปี {breakdownYear?.year || '-'}</h3>
                     </div>
                     <div style={{ padding: '14px 0' }}>
-                        {latestYear.revenueBreakdown.map((item, i) => {
-                            const pct = ((item.amount / latestYear.revenue) * 100).toFixed(1);
+                        {revenueBreakdown.map((item, i) => {
+                            const pct = ((item.amount / breakdownYear.revenue) * 100).toFixed(1);
                             const colors = ['var(--accent-success-deep)', 'var(--accent-info)', 'var(--accent-gold)', 'var(--accent-pink)'];
                             return (
                                 <div key={i} style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -354,11 +485,11 @@ export default function BudgetForecastPage() {
                 {/* Expense */}
                 <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
                     <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color)' }}>
-                        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>โครงสร้างรายจ่าย ปี {latestYear.year}</h3>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>โครงสร้างรายจ่าย ปี {breakdownYear?.year || '-'}</h3>
                     </div>
                     <div style={{ padding: '14px 0' }}>
-                        {latestYear.expenseBreakdown.map((item, i) => {
-                            const pct = ((item.amount / latestYear.expense) * 100).toFixed(1);
+                        {expenseBreakdown.map((item, i) => {
+                            const pct = ((item.amount / breakdownYear.expense) * 100).toFixed(1);
                             const colors = ['var(--accent-danger)', 'var(--accent-warning)', 'var(--accent-blue)', 'var(--accent-purple)'];
                             return (
                                 <div key={i} style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -387,11 +518,17 @@ export default function BudgetForecastPage() {
             }}>
                 <Sparkles size={18} style={{ color: 'var(--accent-gold)', flexShrink: 0, marginTop: 2 }} />
                 <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.6 }}>
-                    <strong style={{ color: 'var(--accent-gold)' }}>หมายเหตุ:</strong> {summary.forecastNote}
+                    <strong style={{ color: 'var(--accent-gold)' }}>การตีความ:</strong>{' '}
+                    {primaryIsForecast
+                        ? `ตัวเลขปี ${yearly[0]?.year}-${yearly.at(-1)?.year} เป็นประมาณการจาก ${sourceName} ไม่ใช่ยอดรับจริงหรือยอดเงินสดคงเหลือปัจจุบัน`
+                        : (summary.forecastNote || 'ใช้ข้อมูลจริงล่าสุดจากชุดข้อมูลงบประมาณของระบบ')}
                     <br />
-                    อัตราเติบโตรายรับเฉลี่ย <strong style={{ color: 'var(--accent-info)' }}>{summary.avgGrowthRevenue}%</strong>/ปี
-                    {' • '}
-                    อัตราเติบโตรายจ่ายเฉลี่ย <strong style={{ color: 'var(--accent-pink)' }}>{summary.avgGrowthExpense}%</strong>/ปี
+                    ส่วนต่างคำนวณจาก <strong>รายรับ - รายจ่าย</strong> และแสดงหน่วยหลักเป็นล้านบาท
+                    {Number.isFinite(Number(summary.avgGrowthExpense)) && (
+                        <>
+                            {' • '}อัตราเพิ่มรายจ่ายตามแผนเฉลี่ย <strong style={{ color: 'var(--accent-pink)' }}>{summary.avgGrowthExpense}%</strong>/ปี
+                        </>
+                    )}
                 </div>
             </div>
         </div>
