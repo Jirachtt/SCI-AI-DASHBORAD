@@ -1,7 +1,7 @@
 // Mock data for the MJU Dashboard
 // อ้างอิงข้อมูลจากมหาวิทยาลัยแม่โจ้ (mju.ac.th)
-import { SCIENCE_ACTIVITY_REQUIREMENT, scienceActivityEvents } from './scienceActivitiesData.js';
-import { officialFinancialData, officialScienceBudgetData, officialTuitionData } from './officialPlanningData.js';
+import { SCIENCE_ACTIVITY_REQUIREMENT, getScienceActivityEventsForDate } from './scienceActivitiesData';
+import { officialFinancialData, officialScienceBudgetData, officialTuitionData } from './officialPlanningData';
 import {
     OFFICIAL_SCIENCE_ENROLLMENT_ROWS,
     OFFICIAL_SCIENCE_STUDENT_LEVELS,
@@ -126,7 +126,7 @@ export const studentLifeData = {
             color: item.color,
         }))
     },
-    scienceActivities: scienceActivityEvents,
+    scienceActivities: getScienceActivityEventsForDate(),
     library: [
         { title: 'Introduction to Algorithms', borrowDate: '2568-01-10', dueDate: '2568-02-10', status: 'ใกล้กำหนด', fine: 0 },
         { title: 'Clean Code', borrowDate: '2568-01-15', dueDate: '2568-02-15', status: 'ปกติ', fine: 0 },

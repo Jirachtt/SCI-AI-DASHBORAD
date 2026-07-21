@@ -82,11 +82,12 @@ export default function StudentLifePage() {
     const completedHours = linkedProfile.isMjuLinked
         ? (hasPersonalActivity ? Number(activityHours.completedHours) : null)
         : Number(activityHours.completedHours ?? activityHours.completed ?? requirement.completedHours);
-    const events = (Array.isArray(studentLifeData?.scienceActivities) && studentLifeData.scienceActivities.length
-        ? studentLifeData.scienceActivities
-        : summary.all)
+    const datasetEvents = Array.isArray(studentLifeData?.scienceActivities) ? studentLifeData.scienceActivities : [];
+    const datasetHasCurrentWindow = datasetEvents.some(event => [summary.currentKey, summary.nextKey].includes(eventMonthKey(event)));
+    const events = ((datasetEvents.length && datasetHasCurrentWindow) ? datasetEvents : summary.all)
         .filter(event => event.facultyHours)
         .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    const hasMockActivities = events.some(event => event.isMock || /mock|sample|demo/i.test(String(event.source || '')));
     const missingHours = completedHours != null && targetHours != null
         ? Math.max(0, targetHours - completedHours)
         : null;
@@ -205,7 +206,10 @@ export default function StudentLifePage() {
                     <div className="chart-card-header">
                         <div>
                             <div className="chart-card-title">ปฏิทินกิจกรรมคณะวิทยาศาสตร์</div>
-                            <div className="chart-card-subtitle">เฉพาะกิจกรรมที่นับชั่วโมงคณะวิทยาศาสตร์</div>
+                            <div className="chart-card-subtitle">
+                                เฉพาะกิจกรรมที่นับชั่วโมงคณะวิทยาศาสตร์
+                                {hasMockActivities && <span className="science-activity-source-badge">ข้อมูลตัวอย่าง MJU · รอ sync ปฏิทินจริง</span>}
+                            </div>
                         </div>
                         <div className="science-activity-tabs" aria-label="ตัวกรองกิจกรรม">
                             {[

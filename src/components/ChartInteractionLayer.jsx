@@ -64,6 +64,13 @@ function chartTitle(chart, surface) {
 }
 
 function findChartSurface(canvas) {
+    // A chart is often rendered inside a `.chart-container` within its
+    // `.chart-card`.  The action host belongs to the card, not the inner
+    // plotting wrapper; otherwise More options appears beside the plot or
+    // an inline KPI panel instead of at the card's top-right corner.
+    const card = canvas.closest('.chart-card');
+    if (card) return card;
+
     const known = canvas.closest(KNOWN_CHART_SURFACES);
     if (known && known !== canvas.parentElement) return known;
 

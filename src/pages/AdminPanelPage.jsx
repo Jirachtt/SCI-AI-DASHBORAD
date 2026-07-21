@@ -6,7 +6,7 @@ import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import {
     Shield, Users, Clock, Briefcase, Building, Check, X, Search, Filter,
     RefreshCw, CheckCircle, AlertTriangle, UserCog, Mail, IdCard, CalendarDays,
-    ScrollText, ShieldCheck, DatabaseZap, Activity
+    ScrollText, ShieldCheck, DatabaseZap, Activity, GraduationCap
 } from 'lucide-react';
 import { canManageUsers, getRoleBadgeColor, getRoleInfo, isPendingRole } from '../utils/accessControl';
 import { MANAGEABLE_ROLES, ROLE_LABELS_WITH_EN, getRoleInitial, normalizeRole } from '../constants/roles';
@@ -100,6 +100,14 @@ const getDisplayStatus = (u = {}) => {
     return 'approved';
 };
 
+const getSafeUserMeta = (u = {}) => {
+    const isAdminCodeIdentity = String(u.authProvider || '').toLowerCase().startsWith('admin_code');
+    return [
+        isAdminCodeIdentity ? null : u.employeeId,
+        u.department,
+    ].filter(Boolean).join(' · ');
+};
+
 const hasManageableRoleTerm = (u = {}) =>
     MANAGEABLE_ROLES.includes(normalizeRole(u.role)) && getDisplayStatus(u) === 'approved';
 
@@ -137,7 +145,7 @@ export default function AdminPanelPage() {
     const [activeTab, setActiveTab] = useState('pending');
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('all');
-    const [confirmAction, setConfirmAction] = useState(null); // { type: 'approve'|'reject', user }
+    const [confirmAction, setConfirmAction] = useState(null); // { type: 'approve'|'reject'|'role', user, nextRole? }
     const [toast, setToast] = useState(null); // { type, message }
     const [savingUid, setSavingUid] = useState(null);
 
@@ -355,18 +363,30 @@ export default function AdminPanelPage() {
         };
         if (u.uid?.startsWith('demo-')) {
             setUsers(prev => prev.map(x => x.uid === u.uid ? { ...x, ...patch } : x));
+            setConfirmAction(null);
             showToast('success', `เปลี่ยน role ของ ${u.name || u.email} เป็น ${ROLE_LABELS[normalizedNewRole] || normalizedNewRole}`);
             return;
         }
         setSavingUid(u.uid);
         const result = await updateUserDoc(u.uid, patch);
         setSavingUid(null);
+        setConfirmAction(null);
         if (result.success) {
             setUsers(prev => prev.map(x => x.uid === u.uid ? { ...x, ...patch } : x));
             showToast('success', `เปลี่ยน role ของ ${u.name || u.email} เป็น ${ROLE_LABELS[normalizedNewRole] || normalizedNewRole}`);
         } else {
             showToast('error', 'เปลี่ยน role ไม่สำเร็จ: ' + result.error);
         }
+    };
+
+    const requestRoleChange = (u, newRole) => {
+        const normalizedNewRole = normalizeRole(newRole);
+        if (u.uid === user?.uid) {
+            showToast('error', 'ไม่สามารถเปลี่ยน role ของตัวเองได้');
+            return;
+        }
+        if (!MANAGEABLE_ROLES.includes(normalizedNewRole) || normalizedNewRole === normalizeRole(u.role)) return;
+        setConfirmAction({ type: 'role', user: u, nextRole: normalizedNewRole });
     };
 
     if (!canViewPanel) {
@@ -456,6 +476,24 @@ export default function AdminPanelPage() {
                     <div>
                         <p className="admin-stat-label">หัวหน้าสาขา (Chair)</p>
                         <h2 className="admin-stat-value">{stats.chair}</h2>
+                    </div>
+                </div>
+                <div className="admin-stat-card">
+                    <div className="admin-stat-icon" style={{ background: 'color-mix(in srgb, var(--accent-blue) 15%, transparent)', color: 'var(--accent-blue)' }}>
+                        <GraduationCap size={22} />
+                    </div>
+                    <div>
+                        <p className="admin-stat-label">นักศึกษา (Student)</p>
+                        <h2 className="admin-stat-value">{stats.student}</h2>
+                    </div>
+                </div>
+                <div className="admin-stat-card">
+                    <div className="admin-stat-icon" style={{ background: 'color-mix(in srgb, var(--accent-danger) 15%, transparent)', color: 'var(--accent-danger)' }}>
+                        <UserCog size={22} />
+                    </div>
+                    <div>
+                        <p className="admin-stat-label">ผู้ดูแลผู้ใช้ (Admin)</p>
+                        <h2 className="admin-stat-value">{stats.admin}</h2>
                     </div>
                 </div>
                 <div className={`admin-stat-card ${stats.expiring > 0 ? 'pulse' : ''}`}>
@@ -603,13 +641,14 @@ export default function AdminPanelPage() {
                             <input
                                 type="text"
                                 placeholder="ค้นหาชื่อหรืออีเมล..."
+                                aria-label="ค้นหาผู้ใช้ด้วยชื่อหรืออีเมล"
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                             />
                         </div>
                         <div className="admin-filter-wrapper">
                             <Filter size={16} />
-                            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+                            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} aria-label="กรองผู้ใช้ตามตำแหน่ง">
                                 <option value="all">ทุกตำแหน่ง</option>
                                 {MANAGEABLE_ROLES.map(role => (
                                     <option key={role} value={role}>{ROLE_LABELS[role]}</option>
@@ -668,7 +707,7 @@ export default function AdminPanelPage() {
                                                         </div>
                                                         <div style={{ minWidth: 0 }}>
                                                             <div className="admin-user-name">{u.name || '(ไม่ระบุ)'}{isSelf && <span className="admin-user-self"> (คุณ)</span>}</div>
-                                                            {u.employeeId && <div className="admin-user-meta">{u.employeeId}{u.department ? ` · ${u.department}` : ''}</div>}
+                                                            {getSafeUserMeta(u) && <div className="admin-user-meta">{getSafeUserMeta(u)}</div>}
                                                         </div>
                                                     </div>
                                                 </td>
@@ -682,10 +721,11 @@ export default function AdminPanelPage() {
                                                     <select
                                                         className="admin-role-select"
                                                         value={MANAGEABLE_ROLES.includes(normalizedUserRole) ? normalizedUserRole : ''}
-                                                        onChange={(e) => handleChangeRole(u, e.target.value)}
+                                                        onChange={(e) => requestRoleChange(u, e.target.value)}
                                                         disabled={isSelf || savingUid === u.uid}
                                                         style={{ borderColor: getRoleBadgeColor(normalizedUserRole) }}
                                                         title={ROLE_LABELS[normalizedUserRole] || normalizedUserRole}
+                                                        aria-label={`กำหนดตำแหน่งของ ${u.name || u.email || 'user'}`}
                                                     >
                                                         {!MANAGEABLE_ROLES.includes(normalizedUserRole) && (
                                                             <option value="" disabled>{ROLE_LABELS[normalizedUserRole] || normalizedUserRole}</option>
@@ -727,14 +767,14 @@ export default function AdminPanelPage() {
                                                                 type="date"
                                                                 value={toRoleDateInput(validity.expiresAt)}
                                                                 onChange={(e) => handleRoleExpiryDateChange(u, e.target.value)}
-                                                                disabled={savingUid === u.uid}
+                                                                disabled={isSelf || savingUid === u.uid}
                                                                 aria-label={`กำหนดวันหมดอายุ role ของ ${u.name || u.email || 'user'}`}
                                                             />
                                                             <div className="admin-role-time-shortcuts">
-                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, -12)} disabled={savingUid === u.uid}>-1 ปี</button>
-                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, -6)} disabled={savingUid === u.uid}>-6 ด.</button>
-                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, 6)} disabled={savingUid === u.uid}>+6 ด.</button>
-                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, 12)} disabled={savingUid === u.uid}>+1 ปี</button>
+                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, -12)} disabled={isSelf || savingUid === u.uid}>-1 ปี</button>
+                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, -6)} disabled={isSelf || savingUid === u.uid}>-6 ด.</button>
+                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, 6)} disabled={isSelf || savingUid === u.uid}>+6 ด.</button>
+                                                                <button type="button" onClick={() => handleAdjustRoleTime(u, 12)} disabled={isSelf || savingUid === u.uid}>+1 ปี</button>
                                                             </div>
                                                         </div>
                                                     ) : (
@@ -787,11 +827,19 @@ export default function AdminPanelPage() {
                         aria-labelledby="admin-confirm-title"
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className={`admin-modal-icon ${confirmAction.type}`}>
-                            {confirmAction.type === 'approve' ? <CheckCircle size={32} /> : <AlertTriangle size={32} />}
+                        <div className={`admin-modal-icon ${confirmAction.type === 'role' ? 'pending' : confirmAction.type}`}>
+                            {confirmAction.type === 'approve'
+                                ? <CheckCircle size={32} />
+                                : confirmAction.type === 'role'
+                                    ? <UserCog size={32} />
+                                    : <AlertTriangle size={32} />}
                         </div>
                         <h2 id="admin-confirm-title">
-                            {confirmAction.type === 'approve' ? 'ยืนยันการอนุมัติ?' : 'ยืนยันการปฏิเสธคำขอ?'}
+                            {confirmAction.type === 'approve'
+                                ? 'ยืนยันการอนุมัติ?'
+                                : confirmAction.type === 'role'
+                                    ? 'ยืนยันการเปลี่ยนตำแหน่ง?'
+                                    : 'ยืนยันการปฏิเสธคำขอ?'}
                         </h2>
                         <p>
                             {confirmAction.type === 'approve'
@@ -799,19 +847,25 @@ export default function AdminPanelPage() {
                                     const requested = normalizeRole(confirmAction.user.requestedRole || (confirmAction.user.role === 'pending_staff' ? 'staff' : 'chair'));
                                     return <>จะให้สิทธิ์ <strong>{ROLE_LABELS[requested] || requested}</strong> แก่ <strong>{confirmAction.user.name}</strong> โดยเริ่มวันนี้และหมดอายุใน {getRoleDurationLabel(requested)}</>;
                                 })()
-                                : <>คำขอของ <strong>{confirmAction.user.name}</strong> จะถูกปฏิเสธ และถูกลดสิทธิ์เป็นผู้ใช้ทั่วไป</>}
+                                : confirmAction.type === 'role'
+                                    ? <>เปลี่ยน <strong>{confirmAction.user.name || confirmAction.user.email}</strong> จาก <strong>{ROLE_LABELS[normalizeRole(confirmAction.user.role)] || confirmAction.user.role}</strong> เป็น <strong>{ROLE_LABELS[confirmAction.nextRole] || confirmAction.nextRole}</strong> และเริ่มระยะสิทธิ์ใหม่ตั้งแต่วันนี้</>
+                                    : <>คำขอของ <strong>{confirmAction.user.name}</strong> จะถูกปฏิเสธ และถูกลดสิทธิ์เป็นผู้ใช้ทั่วไป</>}
                         </p>
                         <div className="admin-modal-actions">
                             <button className="admin-btn-ghost" onClick={() => setConfirmAction(null)} disabled={!!savingUid}>
                                 ยกเลิก
                             </button>
                             <button
-                                className={confirmAction.type === 'approve' ? 'admin-btn-approve' : 'admin-btn-reject'}
-                                onClick={() => confirmAction.type === 'approve' ? handleApprove(confirmAction.user) : handleReject(confirmAction.user)}
+                                className={confirmAction.type === 'reject' ? 'admin-btn-reject' : 'admin-btn-approve'}
+                                onClick={() => confirmAction.type === 'approve'
+                                    ? handleApprove(confirmAction.user)
+                                    : confirmAction.type === 'role'
+                                        ? handleChangeRole(confirmAction.user, confirmAction.nextRole)
+                                        : handleReject(confirmAction.user)}
                                 disabled={!!savingUid}
                                 aria-busy={!!savingUid}
                             >
-                                {savingUid ? 'กำลังบันทึก...' : (confirmAction.type === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ')}
+                                {savingUid ? 'กำลังบันทึก...' : (confirmAction.type === 'approve' ? 'อนุมัติ' : confirmAction.type === 'role' ? 'ยืนยันการเปลี่ยน' : 'ปฏิเสธ')}
                             </button>
                         </div>
                     </div>

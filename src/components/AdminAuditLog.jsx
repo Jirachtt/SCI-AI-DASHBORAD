@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollText, RefreshCw, Upload, Info, FileSpreadsheet } from 'lucide-react';
+import { ScrollText, RefreshCw, Upload, Info, FileSpreadsheet, UserCog, DatabaseZap } from 'lucide-react';
 import { listRecentAuditLogs } from '../services/auditLogService';
 import { legacyColorToVar, themeAlpha } from '../utils/themeTokens';
 
 const ACTION_LABEL = {
     upload_students: { label: 'อัพโหลดรายชื่อนักศึกษา', Icon: Upload, color: 'var(--accent-success)' },
+    admin_user_update: { label: 'จัดการผู้ใช้/สิทธิ์', Icon: UserCog, color: 'var(--accent-blue)' },
+    dashboard_sync: { label: 'Sync Dashboard', Icon: DatabaseZap, color: 'var(--accent-purple)' },
+    dashboard_cron: { label: 'Auto Sync Dashboard', Icon: DatabaseZap, color: 'var(--accent-purple)' },
 };
+
+function getLogDetail(log) {
+    if (log.meta?.summary) {
+        const target = log.meta?.targetName ? ` · ${log.meta.targetName}` : '';
+        return `${log.meta.summary}${target}`;
+    }
+    const duplicateCount = Number(log.meta?.skippedDuplicates || 0);
+    return duplicateCount > 0 ? `ข้ามซ้ำ ${duplicateCount} แถว` : '-';
+}
 
 function formatDate(d) {
     if (!d) return '-';
@@ -47,7 +59,7 @@ export default function AdminAuditLog() {
                     <div className="admin-data-status-icon"><ScrollText size={22} /></div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <h3>บันทึกการเปลี่ยนแปลงข้อมูล (Audit Log)</h3>
-                        <p>ประวัติการอัพโหลด/แก้ไขข้อมูลหลัก — append-only ใน Firestore</p>
+                        <p>ประวัติการจัดการสิทธิ์ อัพโหลด และ Sync ข้อมูล — append-only ใน Firestore</p>
                     </div>
                     <button className="admin-refresh-btn" onClick={load} disabled={loading}>
                         <RefreshCw size={14} className={loading ? 'spin-animation' : ''} /> รีเฟรช
@@ -64,7 +76,7 @@ export default function AdminAuditLog() {
                 <div className="admin-empty-state">
                     <Info size={44} color="var(--text-muted)" />
                     <h3>ยังไม่มีบันทึก</h3>
-                    <p>บันทึกจะถูกสร้างอัตโนมัติเมื่อมีการอัพโหลดข้อมูลใหม่</p>
+                    <p>บันทึกจะถูกสร้างอัตโนมัติเมื่อมีการเปลี่ยนสิทธิ์ อัพโหลด หรือ Sync ข้อมูลใหม่</p>
                 </div>
             ) : (
                 <div className="admin-users-table-wrapper" style={{ marginTop: 12 }}>
@@ -76,14 +88,13 @@ export default function AdminAuditLog() {
                                 <th>ผู้กระทำ</th>
                                 <th>ไฟล์</th>
                                 <th style={{ textAlign: 'right' }}>จำนวนแถว</th>
-                                <th>หมายเหตุ</th>
+                                <th>รายละเอียด</th>
                             </tr>
                         </thead>
                         <tbody>
                             {logs.map(log => {
                                 const meta = ACTION_LABEL[log.action] || { label: log.action, Icon: Info, color: 'var(--accent-purple)' };
                                 const M = meta.Icon;
-                                const dup = log.meta?.skippedDuplicates;
                                 return (
                                     <tr key={log.id}>
                                         <td className="admin-cell-date">{formatDate(log.at)}</td>
@@ -109,7 +120,7 @@ export default function AdminAuditLog() {
                                             {log.rowCount != null ? log.rowCount.toLocaleString('th-TH') : '-'}
                                         </td>
                                         <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                            {dup > 0 ? `ข้ามซ้ำ ${dup} แถว` : '-'}
+                                            {getLogDetail(log)}
                                         </td>
                                     </tr>
                                 );

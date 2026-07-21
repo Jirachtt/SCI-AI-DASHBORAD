@@ -224,8 +224,37 @@ export default async function handler(req, res) {
     }
 
     const sanitized = sanitizePatch(body.patch);
-    await runTransaction([`users/${targetUid}`], () => [
+    const beforeRole = normalizeRole(targetDoc.data?.role);
+    const afterRole = normalizeRole(sanitized.role || beforeRole);
+    const changedFields = Object.keys(sanitized).filter(key => key !== 'updatedAt');
+    const auditId = `admin-user-update-${Date.now()}-${targetUid}`;
+    const auditPath = `auditLogs/${auditId}`;
+    const summary = beforeRole !== afterRole
+      ? `role: ${beforeRole} → ${afterRole}`
+      : sanitized.status && sanitized.status !== targetDoc.data?.status
+        ? `status: ${targetDoc.data?.status || '-'} → ${sanitized.status}`
+        : changedFields.includes('roleExpiresAt')
+          ? 'ปรับวันหมดอายุสิทธิ์'
+          : `แก้ไข ${changedFields.join(', ')}`;
+
+    await runTransaction([`users/${targetUid}`, auditPath], () => [
       updateWrite(`users/${targetUid}`, sanitized),
+      updateWrite(auditPath, {
+        action: 'admin_user_update',
+        who: authUser.email || authUser.uid,
+        fileName: null,
+        rowCount: null,
+        version: 1,
+        at: sanitized.updatedAt,
+        meta: {
+          targetUid,
+          targetName: cleanString(targetDoc.data?.name || targetDoc.data?.email || 'user', 160),
+          beforeRole,
+          afterRole,
+          changedFields,
+          summary,
+        },
+      }),
     ]);
 
     sendJson(res, 200, {

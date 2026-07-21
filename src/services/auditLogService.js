@@ -17,6 +17,16 @@ import { db } from '../firebase';
 const COLLECTION = 'auditLogs';
 const LOCAL_AUDIT_KEY = 'sci_dashboard_local_audit_logs';
 
+function normalizeAuditDate(value) {
+    if (!value) return null;
+    if (value?.toDate) {
+        const converted = value.toDate();
+        return Number.isNaN(converted?.getTime?.()) ? null : converted;
+    }
+    const converted = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(converted.getTime()) ? null : converted;
+}
+
 function readLocalLogs() {
     try {
         const raw = localStorage.getItem(LOCAL_AUDIT_KEY);
@@ -81,7 +91,7 @@ export async function listRecentAuditLogs(maxEntries = 50) {
                 rowCount: data.rowCount ?? null,
                 version: data.version ?? 1,
                 meta: data.meta || {},
-                at: data.at?.toDate ? data.at.toDate() : null,
+                at: normalizeAuditDate(data.at),
             };
         });
     } catch (err) {

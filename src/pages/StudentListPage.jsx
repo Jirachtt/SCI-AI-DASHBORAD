@@ -367,19 +367,7 @@ export default function StudentListPage() {
                                 }}>
                                     <td style={{ padding: '12px 18px', fontVariantNumeric: 'tabular-nums', fontSize: '0.88rem', color: 'var(--text-muted)' }}>{s.id}</td>
                                     <td style={{ padding: '12px 18px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div style={{
-                                                width: 32, height: 32, borderRadius: '50%',
-                                                background: s.prefix?.includes('นาย') ? 'linear-gradient(135deg, var(--accent-info), var(--accent-info))' : 'linear-gradient(135deg, var(--accent-pink), var(--accent-pink))',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-on-accent)', flexShrink: 0
-                                            }}>
-                                                {s.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <span style={{ fontWeight: 600 }}>{s.prefix ? `${s.prefix} ` : ''}{s.name}</span>
-                                            </div>
-                                        </div>
+                                        <span style={{ fontWeight: 600 }}>{s.prefix ? `${s.prefix} ` : ''}{s.name}</span>
                                     </td>
                                     <td style={{ padding: '12px 18px', fontSize: '0.88rem' }}>{s.major}</td>
                                     <td style={{ padding: '12px 18px', textAlign: 'center' }}>

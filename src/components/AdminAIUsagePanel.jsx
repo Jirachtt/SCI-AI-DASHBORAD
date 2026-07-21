@@ -75,6 +75,12 @@ export default function AdminAIUsagePanel({ onToast }) {
     const usedPercent = budgetAvailable
         ? Math.max(0, Math.min(100, 100 - Number(usage.remainingPercent)))
         : null;
+    const componentTokenTotal = serverReady
+        ? Number(usage?.inputTokens || 0) + Number(usage?.outputTokens || 0)
+        : null;
+    const tokenTotalsMismatch = serverReady
+        && Number.isFinite(Number(usage?.usedTokens))
+        && componentTokenTotal > Number(usage.usedTokens);
     const status = useMemo(() => {
         if (loading && !usage) return { tone: 'warning', label: 'กำลังเชื่อมข้อมูล', icon: RefreshCw };
         if (!serverReady) return { tone: 'warning', label: 'รอ Firestore usage', icon: AlertTriangle };
@@ -128,6 +134,16 @@ export default function AdminAIUsagePanel({ onToast }) {
                         <small>{usage?.source || 'รอข้อมูล'} · {usage?.dayKey || '-'}</small>
                     </div>
                 </div>
+
+                {tokenTotalsMismatch && (
+                    <div className="data-accuracy-reconcile-note warning" role="status">
+                        <AlertTriangle size={16} />
+                        <span>
+                            ยอด input + output ({formatNumber(componentTokenTotal)}) สูงกว่ายอดรวม ({formatNumber(usage.usedTokens)})
+                            {' '}จึงควรตรวจสอบ usage metadata/ข้อมูลสะสมเดิมก่อนใช้ตัวเลขนี้อ้างอิง
+                        </span>
+                    </div>
+                )}
 
                 {budgetAvailable ? (
                     <div className="admin-ai-policy-block">

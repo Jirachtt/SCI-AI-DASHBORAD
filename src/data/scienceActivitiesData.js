@@ -169,6 +169,71 @@ export const scienceActivityEvents = [
     },
 ];
 
+// The bundled calendar is a historical fixture. When it no longer overlaps
+// the current or next month, create a small, clearly marked MJU-style demo
+// calendar so the dashboard never renders an empty activity view between
+// official calendar synchronisations.
+export function createRollingScienceActivityEvents(referenceDate = new Date()) {
+    const current = new Date(referenceDate);
+    current.setHours(0, 0, 0, 0);
+    const monthDate = (offset, day) => {
+        const month = new Date(current.getFullYear(), current.getMonth() + offset, 1);
+        const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+        const date = new Date(month.getFullYear(), month.getMonth(), Math.min(day, lastDay));
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+    const templates = [
+        {
+            key: 'ai-clinic', offset: 0, day: 6, title: 'Data & AI Clinic for Science Students', type: 'วิชาการ', hours: 3,
+            time: '13:00-16:00', location: 'ห้องคอมพิวเตอร์ SCI-IT', organizer: 'คณะวิทยาศาสตร์', capacity: 80, registeredCount: 46,
+            audience: 'นักศึกษาที่สนใจทักษะข้อมูลและ AI', description: 'เวิร์กช็อปใช้ข้อมูลและ AI เพื่อทำรายงานและโครงงานวิทยาศาสตร์', status: 'open',
+        },
+        {
+            key: 'volunteer', offset: 0, day: 15, title: 'Science Volunteer: ห้องแล็บปลอดภัยและพื้นที่สีเขียว', type: 'จิตอาสา', hours: 6,
+            time: '09:00-15:00', location: 'อาคารปฏิบัติการรวม คณะวิทยาศาสตร์', organizer: 'สโมสรนักศึกษาคณะวิทยาศาสตร์', capacity: 120, registeredCount: 71,
+            audience: 'นักศึกษาคณะวิทยาศาสตร์ทุกชั้นปี', description: 'กิจกรรมจิตอาสาดูแลพื้นที่คณะและเตรียมความพร้อมพื้นที่ปฏิบัติการ', status: 'open',
+        },
+        {
+            key: 'sci-sport', offset: 0, day: 24, title: 'กีฬา SCI สัมพันธ์ ประจำเดือน', type: 'กีฬา', hours: 5,
+            time: '15:00-18:00', location: 'สนามกีฬาในร่ม มหาวิทยาลัยแม่โจ้', organizer: 'สโมสรนักศึกษาคณะวิทยาศาสตร์', capacity: 240, registeredCount: 132,
+            audience: 'นักศึกษาคณะวิทยาศาสตร์ทุกชั้นปี', description: 'กิจกรรมเสริมสร้างความสัมพันธ์ระหว่างสาขาวิชาและชั้นปี', status: 'open',
+        },
+        {
+            key: 'lab-safety', offset: 1, day: 5, title: 'Science Lab Safety Orientation', type: 'วิชาการ', hours: 4,
+            time: '13:00-16:30', location: 'อาคารปฏิบัติการเคมี คณะวิทยาศาสตร์', organizer: 'คณะกรรมการความปลอดภัยห้องปฏิบัติการ', capacity: 140, registeredCount: 83,
+            audience: 'นักศึกษาที่ลงเรียนรายวิชาปฏิบัติการ', description: 'ปฐมนิเทศความปลอดภัยในห้องปฏิบัติการและการจัดการสารเคมีเบื้องต้น', status: 'open',
+        },
+        {
+            key: 'community', offset: 1, day: 15, title: 'ค่ายอาสาวิทย์บริการชุมชน', type: 'จิตอาสา', hours: 10,
+            time: '08:00-16:00', location: 'พื้นที่บริการวิชาการจังหวัดเชียงใหม่', organizer: 'คณะวิทยาศาสตร์', capacity: 90, registeredCount: 39,
+            audience: 'นักศึกษาที่ต้องการเก็บชั่วโมงจิตอาสา', description: 'กิจกรรมบริการวิชาการและวิทยาศาสตร์สู่ชุมชน พร้อมบันทึกชั่วโมงคณะ', status: 'open',
+        },
+        {
+            key: 'culture', offset: 1, day: 24, title: 'กิจกรรมศิลปวัฒนธรรม SCI', type: 'ศิลปวัฒนธรรม', hours: 3,
+            time: '09:00-12:00', location: 'ห้องประชุมใหญ่ คณะวิทยาศาสตร์', organizer: 'งานกิจการนักศึกษา คณะวิทยาศาสตร์', capacity: 180, registeredCount: 64,
+            audience: 'นักศึกษาคณะวิทยาศาสตร์ทุกชั้นปี', description: 'กิจกรรมส่งเสริมอัตลักษณ์และความสัมพันธ์ระหว่างครูกับศิษย์', status: 'open',
+        },
+    ];
+
+    return templates.map(item => {
+        const startDate = monthDate(item.offset, item.day);
+        const key = item.key;
+        const event = { ...item };
+        delete event.key;
+        delete event.offset;
+        delete event.day;
+        return {
+            ...event,
+            id: `sci-mock-${startDate}-${key}`,
+            startDate,
+            endDate: startDate,
+            facultyHours: true,
+            isMock: true,
+            source: 'mock_rolling_mju',
+        };
+    });
+}
+
 function asDate(value) {
     return new Date(`${value}T00:00:00+07:00`);
 }
@@ -193,13 +258,26 @@ export function formatScienceActivityDate(activity) {
     return startText;
 }
 
+export function getScienceActivityEventsForDate(referenceDate = new Date()) {
+    const currentKey = monthKeyFromDate(referenceDate);
+    const next = new Date(referenceDate);
+    next.setMonth(next.getMonth() + 1);
+    const nextKey = monthKeyFromDate(next);
+    const staticEvents = scienceActivityEvents.filter(event => event.facultyHours);
+    const hasCurrentWindow = staticEvents.some(event => {
+        const key = monthKeyFromDate(event.startDate);
+        return key === currentKey || key === nextKey;
+    });
+    return hasCurrentWindow ? staticEvents : [...staticEvents, ...createRollingScienceActivityEvents(referenceDate)];
+}
+
 export function getScienceActivityWindow(referenceDate = new Date()) {
     const current = new Date(referenceDate);
     const next = new Date(current);
     next.setMonth(current.getMonth() + 1);
     const currentKey = monthKeyFromDate(current);
     const nextKey = monthKeyFromDate(next);
-    const events = scienceActivityEvents.filter(event => event.facultyHours);
+    const events = getScienceActivityEventsForDate(referenceDate);
     const thisMonth = events.filter(event => monthKeyFromDate(event.startDate) === currentKey);
     const nextMonth = events.filter(event => monthKeyFromDate(event.startDate) === nextKey);
     const upcoming = events
@@ -265,6 +343,6 @@ export function getScienceActivitySummary(referenceDate = new Date()) {
         thisMonthHours: sumScienceActivityHours(window.thisMonth),
         nextMonthHours: sumScienceActivityHours(window.nextMonth),
         upcomingHours: sumScienceActivityHours(window.upcoming),
-        recommendation: getRecommendedScienceActivities(missingHours, referenceDate),
+        recommendation: getRecommendedScienceActivities(missingHours, referenceDate, window.all),
     };
 }

@@ -14,6 +14,7 @@ import ProductPageHeader from '../components/ProductPageHeader';
 import ChartDrilldownModal from '../components/ChartDrilldownModal';
 import { withChartDrilldown } from '../utils/chartDrilldown';
 import useDashboardDataset from '../hooks/useDashboardDataset';
+import { researchData as bundledResearchData } from '../data/researchData';
 import {
     buildSmartRows,
     percentOf,
@@ -69,16 +70,50 @@ export default function ResearchDashboardPage() {
     const publicationSummary = summarizeSmartRows(publicationRows);
     const chartablePublicationRows = publicationRows.filter(row => row.isChartable);
     const notChartedPublicationRows = publicationRows.filter(row => !row.isChartable);
+    const bundledDepartments = Array.isArray(bundledResearchData.byDepartment) ? bundledResearchData.byDepartment : [];
+    const normalizeDepartment = value => String(value || '').replace(/\s+/g, '').replace(/^ภาควิชา/, '');
+    const reportedPatentTotal = Number(overview.totalPatents);
+    const bundledPatentTotal = Number(bundledResearchData.overview?.totalPatents);
+    const rowsWithPatentFallback = byDepartment.map(row => ({
+        row,
+        fallbackRow: bundledDepartments.find(item => normalizeDepartment(item.dept) === normalizeDepartment(row?.dept)),
+        hasSourceValue: row?.patents !== null && row?.patents !== undefined && row?.patents !== '',
+    }));
+    const knownPatentTotal = rowsWithPatentFallback.reduce((sum, item) => (
+        item.hasSourceValue ? sum + Math.max(0, Number(item.row.patents) || 0) : sum
+    ), 0);
+    const missingPatentRows = rowsWithPatentFallback.filter(item => !item.hasSourceValue);
+    const fallbackWeightTotal = missingPatentRows.reduce((sum, item) => sum + Math.max(1, Number(item.fallbackRow?.patents) || 1), 0);
+    const missingPatentTarget = Number.isFinite(reportedPatentTotal) || Number.isFinite(bundledPatentTotal)
+        ? Math.max(0, (Number.isFinite(reportedPatentTotal) ? reportedPatentTotal : bundledPatentTotal) - knownPatentTotal)
+        : missingPatentRows.reduce((sum, item) => sum + Math.max(0, Number(item.fallbackRow?.patents) || 0), 0);
+    const missingPatentAllocation = new Map(missingPatentRows.map((item, index) => {
+        const weight = Math.max(1, Number(item.fallbackRow?.patents) || 1);
+        const allocatedBefore = missingPatentRows.slice(0, index).reduce((sum, previous) => (
+            sum + Math.floor((missingPatentTarget * Math.max(1, Number(previous.fallbackRow?.patents) || 1)) / fallbackWeightTotal)
+        ), 0);
+        const value = index === missingPatentRows.length - 1
+            ? Math.max(0, missingPatentTarget - allocatedBefore)
+            : Math.floor((missingPatentTarget * weight) / fallbackWeightTotal);
+        return [item.row, value];
+    }));
     const patentDeptRows = buildSmartRows(
-        byDepartment.map(row => ({
-            ...row,
-            label: String(row.dept || '').replace('ภาควิชา', '').trim() || row.dept,
-            value: row.patents,
-        })),
+        rowsWithPatentFallback.map(({ row, hasSourceValue }) => {
+            return {
+                ...row,
+                label: String(row.dept || '').replace('ภาควิชา', '').trim() || row.dept,
+                value: hasSourceValue ? row.patents : missingPatentAllocation.get(row),
+                patentValueIsMock: !hasSourceValue && missingPatentAllocation.has(row),
+            };
+        }),
         { meta: researchMeta }
+    ).map(row => row.patentValueIsMock
+        ? { ...row, valueStatus: 'fallback', isFallback: true, isMissing: false, isChartable: row.value != null && row.value > 0 }
+        : row
     ).sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
     const patentPositiveRows = patentDeptRows.filter(row => row.isChartable);
     const patentTotal = patentDeptRows.reduce((sum, row) => sum + Number(row.value || 0), 0);
+    const hasMockPatentBreakdown = patentDeptRows.some(row => row.patentValueIsMock);
 
     // Research publications by department bar. Patents are shown separately because
     // their scale is much smaller than publication counts.
@@ -340,7 +375,11 @@ export default function ResearchDashboardPage() {
             {/* Row 4: Patents table + Community impact */}
             <div className="research-dashboard-grid no-bottom-gap">
                 <div style={cardStyle}>
-                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 16 }}>สิทธิบัตรและนวัตกรรม</h3>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: 8 }}>
+                        สิทธิบัตรและนวัตกรรม
+                        {hasMockPatentBreakdown && <span className="research-data-source-badge">แยกภาควิชา: ข้อมูลตัวอย่าง</span>}
+                    </h3>
+                    {hasMockPatentBreakdown && <p className="research-data-source-note">ยอดรวมเป็นข้อมูลล่าสุดจากชุดวิจัย ส่วนการกระจายรายภาควิชาใช้ข้อมูลตัวอย่างเพื่อแสดงรูปแบบกราฟจนกว่าจะ sync รายละเอียดจริง</p>}
                     <div className="smart-patent-summary">
                         <div className="smart-patent-total">
                             <span>สิทธิบัตรรวม</span>

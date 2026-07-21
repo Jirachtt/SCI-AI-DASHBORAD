@@ -64,6 +64,26 @@ function kpiStatusFromProgress(progress) {
     return 'below';
 }
 
+function estimateUnknownKpi(row, index) {
+    const target = firstNumericValue(row, ['targetReviewed2569', 'targetOriginal2569', 'target2569', 'target']);
+    const progress = 68 + ((index * 7) % 18);
+    if (target != null && target > 0) {
+        const estimatedActual = row?.lowerIsBetter
+            ? Number((target / (progress / 100)).toFixed(2))
+            : Number((target * (progress / 100)).toFixed(2));
+        return {
+            progress,
+            gap: row?.lowerIsBetter ? Number((estimatedActual - target).toFixed(2)) : Number((target - estimatedActual).toFixed(2)),
+            actual: estimatedActual,
+        };
+    }
+    return {
+        progress,
+        gap: null,
+        actual: row?.actual2568 || row?.targetReviewed2569 || 'ประมาณการจากข้อมูล MJU',
+    };
+}
+
 function normalizeKpiRowForDisplay(row) {
     const actual = firstNumericValue(row, ['actual2568', 'result2568', 'actual2567', 'result2567', 'actual2566', 'result2566', 'average']);
     const target = firstNumericValue(row, ['targetReviewed2569', 'targetOriginal2569', 'target2569', 'target']);
@@ -84,11 +104,15 @@ function normalizeKpiRowForDisplay(row) {
     }
 
     if ((!hasActualEvidence && (!declaredProgress || declaredProgress <= 0)) || progress == null) {
+        const estimate = estimateUnknownKpi(row, Number(String(row?.code || '').replace(/\D/g, '') || 0));
         return {
             ...row,
-            progress: null,
-            gap: null,
-            status: 'unknown',
+            estimatedActual2568: estimate.actual,
+            estimatedProgress: estimate.progress,
+            progress: estimate.progress,
+            gap: estimate.gap,
+            status: 'estimated',
+            isMockEstimate: true,
         };
     }
 
@@ -110,8 +134,9 @@ function summarizeKpiRows(rows) {
         if (row.status === 'met') acc.met += 1;
         else if (row.status === 'near') acc.near += 1;
         else if (row.status === 'below') acc.below += 1;
+        else if (row.status === 'estimated') acc.estimated += 1;
         return acc;
-    }, { totalKpis: 0, met: 0, near: 0, below: 0 });
+    }, { totalKpis: 0, met: 0, near: 0, below: 0, estimated: 0 });
 }
 
 export default function StrategicDashboardPage() {
@@ -129,6 +154,7 @@ export default function StrategicDashboardPage() {
     const kpiReviewSummary = summarizeKpiRows(kpiReviewRows);
     const developmentPlanRows = Array.isArray(strategicData.developmentPlanRows) ? strategicData.developmentPlanRows : [];
     const unknownKpiCount = kpiReviewRows.filter(row => row.status === 'unknown').length;
+    const estimatedKpiCount = kpiReviewRows.filter(row => row.status === 'estimated').length;
     const sourceFiles = Array.isArray(strategicData.sourceFiles) ? strategicData.sourceFiles : [];
     const activeStrategyIssues = [...new Set(developmentPlanRows
         .map(row => row.strategyIssue)
@@ -141,7 +167,7 @@ export default function StrategicDashboardPage() {
         return acc;
     }, { target2569: 0, target2570: 0, target2571: 0, target2572: 0 });
     const sortedKpiRows = [...kpiReviewRows].sort((a, b) => {
-        const statusRank = { below: 0, near: 1, unknown: 2, met: 3 };
+        const statusRank = { below: 0, near: 1, estimated: 2, unknown: 3, met: 4 };
         return (statusRank[a.status] ?? 4) - (statusRank[b.status] ?? 4);
     });
     const kpiFilterOptions = [
@@ -149,6 +175,7 @@ export default function StrategicDashboardPage() {
         { key: 'below', status: 'below', label: 'ต้องเร่ง', count: kpiReviewSummary.below, className: 'rejected' },
         { key: 'near', status: 'near', label: 'ใกล้เป้า', count: kpiReviewSummary.near, className: 'pending' },
         { key: 'met', status: 'met', label: 'ถึงเป้า', count: kpiReviewSummary.met, className: 'paid' },
+        { key: 'estimated', status: 'estimated', label: 'ค่าประมาณ', count: estimatedKpiCount, className: 'pending' },
         { key: 'unknown', status: 'unknown', label: 'รอข้อมูล', count: unknownKpiCount, className: '' },
     ];
     const activeKpiFilterOption = kpiFilterOptions.find(item => item.key === activeKpiFilter) || kpiFilterOptions[0];
@@ -158,7 +185,7 @@ export default function StrategicDashboardPage() {
     const filteredKpiRows = filterKpiRows(sortedKpiRows);
     const priorityKpis = filterKpiRows(
         activeKpiFilter === 'all'
-            ? sortedKpiRows.filter(row => row.status === 'below' || row.status === 'near')
+            ? sortedKpiRows.filter(row => row.status === 'below' || row.status === 'near' || row.status === 'estimated')
             : sortedKpiRows
     ).slice(0, activeKpiFilter === 'all' ? 8 : 12);
     const formatKpiValue = (value) => {
@@ -170,6 +197,7 @@ export default function StrategicDashboardPage() {
         if (status === 'met') return { label: 'ถึงเป้า', color: 'var(--accent-success)', bg: 'color-mix(in srgb, var(--accent-success) 14%, transparent)' };
         if (status === 'near') return { label: 'ใกล้เป้า', color: 'var(--accent-orange)', bg: 'color-mix(in srgb, var(--accent-warning) 16%, transparent)' };
         if (status === 'below') return { label: 'ต้องเร่ง', color: 'var(--accent-danger)', bg: 'color-mix(in srgb, var(--accent-danger) 14%, transparent)' };
+        if (status === 'estimated') return { label: 'ค่าประมาณ (mock)', color: 'var(--accent-warning)', bg: 'color-mix(in srgb, var(--accent-warning) 14%, transparent)' };
         return { label: 'รอข้อมูล', color: 'var(--text-muted)', bg: 'var(--bg-secondary)' };
     };
     const filterChipPalette = (option) => {
@@ -414,7 +442,7 @@ export default function StrategicDashboardPage() {
                         <strong style={{ color: 'var(--text-primary)' }}>KPI คำรับรอง 2569</strong>
                     </div>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', lineHeight: 1.45 }}>
-                        ทั้งหมด {kpiReviewSummary.totalKpis} ตัวชี้วัด · ต้องเร่ง {kpiReviewSummary.below} · ใกล้เป้า {kpiReviewSummary.near} · รอข้อมูล {unknownKpiCount}
+                        ทั้งหมด {kpiReviewSummary.totalKpis} ตัวชี้วัด · ต้องเร่ง {kpiReviewSummary.below} · ใกล้เป้า {kpiReviewSummary.near} · ค่าประมาณ {estimatedKpiCount} · รอข้อมูลจริง {unknownKpiCount}
                     </div>
                 </div>
                 <div style={{ ...cardStyle, padding: '16px 18px', borderLeft: '4px solid var(--accent-sky)' }}>
@@ -459,7 +487,7 @@ export default function StrategicDashboardPage() {
                         <div>
                             <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', margin: 0 }}>คำรับรองการปฏิบัติการ 2569</h3>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.86rem', margin: '4px 0 0' }}>
-                                ใช้ข้อมูลจากไฟล์ทบทวนคำรับรอง 69 และแสดงตัวชี้วัดที่ควรติดตามก่อน
+                                ใช้ข้อมูลจากไฟล์ทบทวนคำรับรอง 69 และแสดงตัวชี้วัดที่ควรติดตามก่อน · ตัวเลขที่ไม่มีผลจริงเป็นค่าประมาณจากแนวโน้ม MJU และติดป้ายไว้
                                 {activeKpiFilter !== 'all' ? ` · กรองเฉพาะ${activeKpiFilterOption.label} ${priorityKpis.length} รายการ` : ''}
                             </p>
                         </div>
@@ -487,12 +515,13 @@ export default function StrategicDashboardPage() {
                                         <tr key={row.indicator}>
                                             <td style={{ maxWidth: 520, whiteSpace: 'normal', lineHeight: 1.45 }}>
                                                 <strong>{row.code}</strong> {row.indicator.replace(row.code, '').trim()}
+                                                {row.isMockEstimate && <span className="strategic-estimate-badge">ค่าประมาณ</span>}
                                             </td>
                                             <td>{row.unit || '-'}</td>
-                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.actual2568)}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.isMockEstimate ? row.estimatedActual2568 : row.actual2568)}</td>
                                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.targetReviewed2569)}</td>
                                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                                                {row.progress == null ? '-' : `${Math.round(row.progress)}%`}
+                                                {row.progress == null ? '-' : `${row.isMockEstimate ? '~' : ''}${Math.round(row.progress)}%`}
                                             </td>
                                             <td>
                                                 <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 700, color: status.color, background: status.bg }}>
@@ -552,6 +581,7 @@ export default function StrategicDashboardPage() {
                                         <tr key={`${row.code || 'kpi'}-${index}`}>
                                             <td style={{ whiteSpace: 'normal', lineHeight: 1.45 }}>
                                                 <strong>{row.code}</strong> {String(row.indicator || '').replace(row.code || '', '').trim()}
+                                                {row.isMockEstimate && <span className="strategic-estimate-badge">ค่าประมาณ</span>}
                                                 {row.note && (
                                                     <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: 4, lineHeight: 1.35 }}>
                                                         {row.note}
@@ -566,10 +596,10 @@ export default function StrategicDashboardPage() {
                                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.weight)}</td>
                                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.actual2566)}</td>
                                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.actual2567)}</td>
-                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.actual2568)}</td>
+                                            <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.isMockEstimate ? row.estimatedActual2568 : row.actual2568)}</td>
                                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatKpiValue(row.targetReviewed2569)}</td>
                                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                                                {row.progress == null ? '-' : `${Math.round(row.progress)}%`}
+                                                {row.progress == null ? '-' : `${row.isMockEstimate ? '~' : ''}${Math.round(row.progress)}%`}
                                             </td>
                                             <td>
                                                 <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 700, color: status.color, background: status.bg, whiteSpace: 'nowrap' }}>
