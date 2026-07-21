@@ -29,6 +29,7 @@ import {
 } from './sharedDashboardDataService';
 import { buildDataAccuracyContextForAI, getStudentReconciliationSnapshot } from './dataAccuracyService';
 import { AI_ASSISTANT_NAME, APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
+import { auth } from '../firebase';
 import {
     executiveAdviceDatasetStatus,
     getExecutiveAdviceTrustLevel,
@@ -240,6 +241,17 @@ function normalizeAIUsageSnapshot(value = {}) {
     const usedTokens = numberOrNull(value.usedTokens);
     const remainingTokens = numberOrNull(value.remainingTokens);
     const remainingPercent = numberOrNull(value.remainingPercent);
+    const rawUserQuota = value.userQuota || {};
+    const userQuota = {
+        available: rawUserQuota.available === true,
+        authenticated: rawUserQuota.authenticated === true,
+        budgetTokens: numberOrNull(rawUserQuota.budgetTokens),
+        usedTokens: numberOrNull(rawUserQuota.usedTokens),
+        inFlightInputTokens: numberOrNull(rawUserQuota.inFlightInputTokens),
+        remainingTokens: numberOrNull(rawUserQuota.remainingTokens),
+        remainingPercent: numberOrNull(rawUserQuota.remainingPercent),
+        resetAt: rawUserQuota.resetAt || null,
+    };
     const budgetPolicyAvailable = serverBacked
         && value.policy?.dailyTokenBudgetEnforced === true
         && budgetTokens !== null;
@@ -270,6 +282,8 @@ function normalizeAIUsageSnapshot(value = {}) {
         isServerBacked: serverBacked,
         policy: value.policy || null,
         budgetPolicyAvailable,
+        userQuota,
+        userBudgetPolicyAvailable: userQuota.available && userQuota.budgetTokens !== null,
         providerQuota: value.providerQuota || {
             available: false,
             message: 'ผู้ให้บริการไม่ได้ส่งข้อมูล quota หรือ reset time',
@@ -321,6 +335,17 @@ function syncingAIUsageSnapshot(status = 'syncing') {
         isServerBacked: false,
         policy: null,
         budgetPolicyAvailable: false,
+        userQuota: {
+            available: false,
+            authenticated: false,
+            budgetTokens: null,
+            usedTokens: null,
+            inFlightInputTokens: null,
+            remainingTokens: null,
+            remainingPercent: null,
+            resetAt: null,
+        },
+        userBudgetPolicyAvailable: false,
         providerQuota: {
             available: false,
             message: 'ผู้ให้บริการไม่ได้ส่งข้อมูล quota หรือ reset time',
@@ -338,14 +363,25 @@ function setAIUsageSnapshot(snapshot) {
     return aiUsageSnapshotCache;
 }
 
+async function firebaseAuthHeaders() {
+    if (!auth?.currentUser?.getIdToken) return {};
+    try {
+        const token = await auth.currentUser.getIdToken();
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    } catch {
+        return {};
+    }
+}
+
 export function getAITokenBudgetSnapshot() {
     return aiUsageSnapshotCache || syncingAIUsageSnapshot('loading');
 }
 
 export async function refreshAITokenBudgetSnapshot() {
+    const authHeaders = await firebaseAuthHeaders();
     const response = await fetch(AI_USAGE_ENDPOINT, {
         method: 'GET',
-        headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/json', ...authHeaders },
         cache: 'no-store',
     });
     const contentType = response.headers.get('content-type') || '';
@@ -1077,11 +1113,13 @@ async function postGeminiModel(model, requestBody, options = {}) {
     const requestId = options.requestId || createUsageId('req');
     const sessionId = options.sessionId || getAIUsageSessionId();
     const route = options.route || (typeof window !== 'undefined' ? window.location.pathname : '');
+    const authHeaders = await firebaseAuthHeaders();
     return fetchSmart(GEMINI_PROXY_ENDPOINT, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-AI-Request-Id': requestId,
+            ...authHeaders,
         },
         body: JSON.stringify({
             requestId,

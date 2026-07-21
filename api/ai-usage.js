@@ -3,8 +3,10 @@ import {
   clientHashFromRequest,
   getAIUsageSnapshot,
   isProductionUsageRequired,
+  userHashFromId,
   usageHeaders,
 } from './_ai-usage-store.js';
+import { verifyFirebaseIdToken } from './admin-user-update.js';
 
 function sendJson(res, status, body, headers = {}) {
   res.statusCode = status;
@@ -34,9 +36,12 @@ export function getAIReadiness(snapshot = {}, { providerConfigured = hasConfigur
   const dailyBudgetAvailable = !hasDailyBudget || Number(remaining.dailyTokenBudget) > 0;
   const requestCapacityAvailable = [remaining.globalRpd, remaining.globalRpm, remaining.clientRpm]
     .every(value => value === null || value === undefined || Number(value) > 0);
+  const userQuotaExhausted = snapshot.userQuota?.authenticated === true
+    && Number(snapshot.userQuota.remainingTokens) <= 0;
 
   if (!providerConfigured) return { aiReady: false, readinessReason: 'provider_not_configured' };
   if (!dailyBudgetAvailable) return { aiReady: false, readinessReason: 'daily_budget_exhausted' };
+  if (userQuotaExhausted) return { aiReady: false, readinessReason: 'user_daily_budget_exhausted' };
   if (!requestCapacityAvailable) return { aiReady: false, readinessReason: 'rate_limit_reached' };
   return { aiReady: true, readinessReason: 'ready' };
 }
@@ -68,6 +73,16 @@ function publicSnapshot(snapshot) {
     inFlightInputTokens: Number(used.inFlightInputTokens || 0),
     remainingTokens: hasDailyBudget ? Number(remaining.dailyTokenBudget) : null,
     remainingPercent: hasDailyBudget ? Number(snapshot.remainingPercent) : null,
+    userQuota: snapshot.userQuota || {
+      available: false,
+      authenticated: false,
+      budgetTokens: null,
+      usedTokens: null,
+      inFlightInputTokens: null,
+      remainingTokens: null,
+      remainingPercent: null,
+      resetAt: null,
+    },
     requests: Number(used.requestCount || 0),
     attempts: Number(used.attemptCount || 0),
     completedRequests: Number(used.completedRequests || 0),
@@ -97,8 +112,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    let authUser = null;
+    const authorization = String(req.headers?.authorization || req.headers?.Authorization || '');
+    if (authorization) authUser = await verifyFirebaseIdToken(req);
     const snapshot = await getAIUsageSnapshot({
       clientHash: clientHashFromRequest(req),
+      userHash: authUser ? userHashFromId(authUser.uid) : '',
       limits: AI_USAGE_LIMITS,
     });
     sendJson(res, 200, publicSnapshot(snapshot), usageHeaders(snapshot));

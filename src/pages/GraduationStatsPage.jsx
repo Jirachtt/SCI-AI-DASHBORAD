@@ -76,13 +76,39 @@ function normalizeGraduationHistoryRows(rows, fallbackRows = graduationHistory) 
 
     const normalized = sourceRows
         .map(row => {
-            const year = finiteNumber(row?.year, row?.academicYear);
+            const rawYear = row?.year ?? row?.academicYear ?? row?.['ปีการศึกษา'] ?? row?.['ปี'];
+            const year = finiteNumber(rawYear, String(rawYear || '').match(/25\d{2}/)?.[0]);
             const fallback = fallbackByYear.get(Number(year)) || {};
-            const candidates = finiteNumber(row?.candidates, row?.candidateCount, row?.totalCandidates, row?.total, fallback.candidates);
-            const graduated = finiteNumber(row?.graduated, row?.graduateCount, row?.expectedGraduates, row?.expected, fallback.graduated);
+            const candidates = finiteNumber(
+                row?.candidates,
+                row?.candidateCount,
+                row?.totalCandidates,
+                row?.total,
+                row?.['ผู้มีสิทธิ์จบ'],
+                row?.['ผู้มีสิทธิ์'],
+                fallback.candidates,
+            );
+            const graduated = finiteNumber(
+                row?.graduated,
+                row?.graduateCount,
+                row?.expectedGraduates,
+                row?.expected,
+                row?.['สำเร็จการศึกษา'],
+                row?.['ผู้สำเร็จ'],
+                fallback.graduated,
+            );
             const calculatedRate = candidates && graduated != null ? (graduated / candidates) * 100 : null;
-            const rate = finiteNumber(row?.rate, row?.graduationRate, row?.successRate, row?.completionRate, calculatedRate, fallback.rate);
-            const avgGPA = finiteNumber(row?.avgGPA, row?.avgGpa, row?.gpa, fallback.avgGPA);
+            const rate = finiteNumber(
+                row?.rate,
+                row?.graduationRate,
+                row?.successRate,
+                row?.completionRate,
+                row?.['อัตราสำเร็จ'],
+                row?.['อัตราสำเร็จการศึกษา'],
+                calculatedRate,
+                fallback.rate,
+            );
+            const avgGPA = finiteNumber(row?.avgGPA, row?.avgGpa, row?.gpa, row?.['GPA เฉลี่ย'], fallback.avgGPA);
 
             return {
                 ...fallback,
@@ -97,11 +123,10 @@ function normalizeGraduationHistoryRows(rows, fallbackRows = graduationHistory) 
         .filter(row => row.year != null);
 
     const hasUsableRate = normalized.some(row => Number.isFinite(Number(row.rate)));
-    const hasUsableVolume = normalized.some(row =>
-        Number(row.candidates) > 0 || Number(row.graduated) > 0
-    );
-
-    if (!hasUsableRate && !hasUsableVolume) return fallbackRows;
+    // A history payload with candidate counts but no usable rate would render
+    // an empty line. Fall back to the MJU-referenced presentation series until
+    // the source provides either a rate or enough counts to calculate one.
+    if (!hasUsableRate) return fallbackRows;
     return normalized;
 }
 
