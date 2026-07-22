@@ -14,6 +14,7 @@ import {
   AI_ALLOWED_MODEL_IDS,
   getAIModelRateDefaults,
 } from '../shared/aiModelConfig.js';
+import { detectDirectPromptInjection } from '../shared/aiPromptSecurity.js';
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS || 35000);
@@ -97,6 +98,12 @@ function responseOutputTokens(body) {
     ?.map(part => part?.text || '')
     .join('\n') || '';
   return estimateTokens(text);
+}
+
+function latestUserContent(requestBody) {
+  const contents = Array.isArray(requestBody?.contents) ? requestBody.contents : [];
+  const latest = [...contents].reverse().find(content => content?.role === 'user');
+  return (latest?.parts || []).map(part => String(part?.text || '')).join('\n');
 }
 
 export function parseGeminiStreamPayloads(rawStream) {
@@ -373,6 +380,15 @@ export default async function handler(req, res) {
   }
   if (!requestBody || typeof requestBody !== 'object') {
     sendJson(res, 400, { error: 'INVALID_REQUEST_BODY', message: 'Missing Gemini request body.' });
+    return;
+  }
+
+  const promptSecurity = detectDirectPromptInjection(latestUserContent(requestBody));
+  if (promptSecurity.detected) {
+    sendJson(res, 403, {
+      error: 'PROMPT_INJECTION_BLOCKED',
+      message: 'คำขอนี้พยายามเปลี่ยนคำสั่งภายในหรือยกระดับสิทธิ์ จึงถูกปฏิเสธก่อนเรียก AI provider',
+    });
     return;
   }
 

@@ -17,6 +17,7 @@ import {
 } from './sharedDashboardDataService';
 import { buildAIAccessDeniedResult, canAIUseAnyInternalSection } from '../utils/aiAccessPolicy';
 import { isAnalyticalReasoningIntent, isExecutiveRecommendationIntent } from '../utils/aiAdvicePolicy';
+import { detectDirectPromptInjection } from '../../shared/aiPromptSecurity.js';
 import { getStudentReconciliationSnapshot } from './dataAccuracyService';
 import { getDatasetQualityText } from '../utils/smartChartData';
 import {
@@ -1140,6 +1141,21 @@ const STUDENT_ALERT_PRIORITY_PATTERN =
     /(?:นักศึกษา|นิสิต|student).*(?:เสี่ยง|พ้นสภาพ).*(?:จัดลำดับ|เสี่ยงสุด|ติดตาม)|(?:จัดลำดับ|เสี่ยงสุด).*(?:นักศึกษา|นิสิต|student)/i;
 
 export function tryDeterministicFirstAnswer(question, userContext = {}) {
+    const promptSecurity = detectDirectPromptInjection(question);
+    if (promptSecurity.detected) {
+        return {
+            text: [
+                '**ไม่สามารถดำเนินการตามคำขอนี้ได้**',
+                '',
+                'คำขอมีส่วนที่พยายามเปลี่ยนคำสั่งภายใน เปิดเผยข้อมูลลับ หรือยกระดับสิทธิ์ผู้ใช้ ระบบจะไม่ทำตามคำสั่งดังกล่าวและจะไม่ส่งคำขอนี้ไปยัง AI provider',
+                '',
+                'คุณยังสามารถถามข้อมูลแม่โจ้หรือข้อมูลแดชบอร์ดตามสิทธิ์ของบัญชีปัจจุบันได้ตามปกติ',
+            ].join('\n'),
+            chart: null,
+            selectedDatasets: [],
+            blockedReason: 'prompt_injection_detected',
+        };
+    }
     const builders = [];
     if (DATA_ACCURACY_LOOKUP_PATTERN.test(String(question || ''))) {
         builders.push({ build: buildStudentDataAccuracyAnswer, sections: ['student_stats'] });
