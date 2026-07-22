@@ -346,6 +346,19 @@
   min-width: 0;
 }
 
+.science-activity-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent-success);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.science-activity-source-link:hover {
+  text-decoration: underline;
+}
+
 .science-activity-status {
   flex: 0 0 auto;
   padding: 5px 9px;

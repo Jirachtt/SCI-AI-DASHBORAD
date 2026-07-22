@@ -19,6 +19,7 @@ import {
 } from '../src/data/tcasAdmissionsData.js';
 import { gradeDistributions, coursePlanByYear } from '../src/data/courseAnalyticsData.js';
 import {
+    getScienceActivitySummary,
     SCIENCE_ACTIVITY_REQUIREMENT,
     scienceActivityEvents,
 } from '../src/data/scienceActivitiesData.js';
@@ -203,6 +204,17 @@ assert(
         && event.registeredCount >= 0
         && event.registeredCount <= event.capacity),
     'Activity hours and registration counts are valid',
+);
+const presentationActivityWindow = getScienceActivitySummary(new Date('2026-07-22T12:00:00+07:00'));
+assert(
+    presentationActivityWindow.thisMonth.length >= 3
+        && presentationActivityWindow.nextMonth.length >= 3,
+    'Activity calendar includes July and August 2569 presentation data',
+);
+assert(
+    [...presentationActivityWindow.thisMonth, ...presentationActivityWindow.nextMonth]
+        .every(event => event.isMock === true && /^https:\/\//u.test(event.sourceUrl || '')),
+    'Presentation activity mocks retain official MJU source URLs',
 );
 assert(
     SCIENCE_ACTIVITY_REQUIREMENT.completedHours <= SCIENCE_ACTIVITY_REQUIREMENT.targetHours

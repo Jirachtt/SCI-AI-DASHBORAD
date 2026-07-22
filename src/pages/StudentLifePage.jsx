@@ -248,6 +248,11 @@ export default function StudentLifePage() {
                                             <span><CalendarDays size={14} /> {formatScienceActivityDate(event)} · {event.time}</span>
                                             <span><MapPin size={14} /> {event.location}</span>
                                             <span><Users size={14} /> {event.registeredCount}/{event.capacity} คน</span>
+                                            {event.sourceUrl && (
+                                                <a href={event.sourceUrl} target="_blank" rel="noreferrer" className="science-activity-source-link">
+                                                    <ExternalLink size={13} /> {event.sourceLabel || 'อ้างอิงประกาศ MJU'}
+                                                </a>
+                                            )}
                                         </div>
                                         <div className="science-activity-capacity">
                                             <span style={{ width: `${capacity}%`, background: typeColor }} />
