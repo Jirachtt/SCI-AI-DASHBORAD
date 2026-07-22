@@ -1772,6 +1772,11 @@ function shouldEscalateAnswerQuality(text, model, candidateModels = [], { blocke
     if (blockedReason || /ไม่มีสิทธิ์|สิทธิ์ของ role|permission|access denied/i.test(answer)) return false;
     if (/```json_chart|chartJson|แหล่งข้อมูลที่ใช้/i.test(answer) && answer.length > 450) return false;
 
+    // A well-supported answer may honestly state that one field is missing.
+    // Do not discard the whole response merely because it contains a caveat.
+    const hasDecisionStructure = /ข้อมูลที่ใช้|หลักฐาน|ข้อเสนอแนะ|คำแนะนำ|ความเสี่ยง|ความเชื่อมั่น|แหล่งข้อมูล|ข้อจำกัด/i.test(answer);
+    if (answer.length >= 420 && hasDecisionStructure) return false;
+
     const weakPatterns = [
         /ไม่พบข้อมูล(?:ที่เกี่ยวข้อง|ในระบบ|ในบริบท|ใน context)?/i,
         /ไม่มีข้อมูล(?:เพียงพอ|ในระบบ|ในบริบท|ที่เกี่ยวข้อง)?/i,
@@ -2202,6 +2207,7 @@ function maejoStudentFaqContext(userMessage) {
 
 const BUDGET_PRIORITY_PATTERN = /งบ|งบประมาณ|รายรับ|รายจ่าย|การเงิน|ค่าเทอม|ค่าธรรมเนียม|budget|finance|revenue|expense/i;
 const COURSE_EXPLICIT_PATTERN = /รายวิชา|วิชาไหน|เกรดรายวิชา|กระจายเกรด|course|grade distribution/i;
+const HR_PRIORITY_PATTERN = /บุคลากร|อาจารย์|staff|\bhr\b|เกษียณ|สายวิชาการ|สายสนับสนุน|อัตรากำลัง/i;
 
 function buildUploadedFileEvidenceContext(fileData) {
     if (!fileData?.rowCount && !fileData?.rows?.length) return null;
@@ -2281,6 +2287,7 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const adviceMode = isExecutiveRecommendationIntent(userMessage);
     const contextOptions = { adviceMode, question: userMessage };
     const isBudgetFinanceQuery = BUDGET_PRIORITY_PATTERN.test(q) && !COURSE_EXPLICIT_PATTERN.test(q);
+    const isHrQuery = HR_PRIORITY_PATTERN.test(q);
     const isTcasPlanningQuery = /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|portfolio|quota|funnel|ผ่านคัดเลือก|รายงานตัว|ยืนยันสิทธิ์|คงอยู่หลังปี\s*1/.test(q);
     const isStudentRecordQuery = /gpa|เกรด|รายชื่อ|รหัส|student\s*id|ชั้นปี|พ้นสภาพ|รอพินิจ|คงอยู่|ลาออก|หายไป|จำนวนนักศึกษาปัจจุบัน/.test(q);
     const comparisonMode = isAIComparisonIntent(userMessage);
@@ -2288,10 +2295,10 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
     const strategicPriority = /(?:จัดลำดับ|ลำดับความสำคัญ|prioriti[sz]e|priority|เร่งด่วน).*(?:kpi|ตัวชี้วัด|ยุทธศาสตร์)|(?:kpi|ตัวชี้วัด|ยุทธศาสตร์).*(?:จัดลำดับ|ลำดับความสำคัญ|prioriti[sz]e|priority|เร่งด่วน)/i.test(q);
     const candidates = [
         { id: 'dashboard', sections: ['dashboard'], keywords: /ภาพรวม|dashboard|overview|ทั้งหมด|สรุปคณะ/i, text: () => dashboardContext(contextOptions) },
-        { id: 'maejo_student_faq', sections: [], keywords: /แม่โจ้|maejo|mju|สมัคร|tcas|ลงทะเบียน|ค่าเทอม|ค่าธรรมเนียม|เกียรตินิยม|กฎ|ระเบียบ|กิจกรรม|ชั่วโมง|รายวิชา|วิชา|ที่ตั้ง|ติดต่อ|เบอร์|โทร|คณะวิทย์|คณะวิทยาศาสตร์|เรียนอะไร|เรียนที่ไหน|หอพัก|ปฏิทิน|ประกาศ/i, text: () => maejoStudentFaqContext(userMessage) },
+        { id: 'maejo_student_faq', sections: [], keywords: /แม่โจ้|maejo|mju|สมัคร|tcas|ลงทะเบียน|ค่าเทอม|ค่าธรรมเนียม|เกียรตินิยม|กฎ|ระเบียบ|กิจกรรม|ชั่วโมง|รายวิชา|วิชา(?!การ)|ที่ตั้ง|ติดต่อ|เบอร์|โทร|คณะวิทย์|คณะวิทยาศาสตร์|เรียนอะไร|เรียนที่ไหน|หอพัก|ปฏิทิน|ประกาศ/i, text: () => maejoStudentFaqContext(userMessage) },
         { id: 'students', sections: ['student_stats', 'student_list'], keywords: /นักศึกษา|นิสิต|นศ\.?|student|gpa|เกรด|สาขา|major|รายชื่อ|รหัส|ชั้นปี|tcas|admission|รับสมัคร|รับเข้า|รอบ|คงอยู่|retention|ลาออก|dropout|เสี่ยง|risk|funnel/, text: () => studentAggregateContext(includeStudentRows, contextOptions) },
         { id: 'tcas', sections: ['tcas_admissions'], keywords: /tcas|admission|รับสมัคร|รับเข้า|แผนรับ|รอบ\s*tcas|portfolio|quota|ผลกระทบ|ออกกี่คน|ค่าเทอมรวม|funnel|ผ่านคัดเลือก|รายงานตัว|ยืนยันสิทธิ์|คงอยู่หลังปี\s*1/i, text: () => tcasContext(contextOptions) },
-        { id: 'course_analytics', sections: ['course_analytics'], keywords: /รายวิชา|วิชา|course|เกรดรายวิชา|กระจายเกรด|แผนเรียน|ข้ามสาขา|จุดเด่นสาขา|เชี่ยวชาญ|expertise/i, text: () => courseAnalyticsContext(contextOptions) },
+        { id: 'course_analytics', sections: ['course_analytics'], keywords: /รายวิชา|วิชา(?!การ)|course|เกรดรายวิชา|กระจายเกรด|แผนเรียน|ข้ามสาขา|จุดเด่นสาขา|เชี่ยวชาญ|expertise/i, text: () => courseAnalyticsContext(contextOptions) },
         { id: 'academic_rules', sections: ['academic_rules', 'graduation_check', 'graduation_stats'], keywords: /กฎ|กฏ|ระเบียบ|ข้อบังคับ|เกียรตินิยม|เรียนดี|สำเร็จการศึกษา|พ้นสภาพ|หน่วยกิต|คะแนนความประพฤติ|f\s*หรือ\s*u|gpa\s*3\./i, text: academicRulesContext },
         { id: 'tuition', sections: ['tuition'], keywords: /ค่าเทอม|ค่าเล่าเรียน|tuition|ค่าธรรมเนียม|ชำระ|ค้างจ่าย|ค้างชำระ|จ่ายล่าช้า|วันที่ชำระ/, text: () => tuitionContext(contextOptions) },
         { id: 'graduation', sections: ['graduation_check', 'graduation_stats'], keywords: /สำเร็จ|จบ|graduation|เกียรติ|pending|รอพินิจ/, text: () => graduationContext(contextOptions) },
@@ -2311,6 +2318,11 @@ function retrieveRelevantContexts(userMessage, userContext = {}, settings = {}) 
             if (isBudgetFinanceQuery) {
                 if (c.id === 'budget') score += 100;
                 if (c.id === 'course_analytics' || c.id === 'maejo_student_faq') score = 0;
+            }
+            if (isHrQuery) {
+                if (c.id === 'hr') score += 100;
+                if (c.id === 'course_analytics' && !COURSE_EXPLICIT_PATTERN.test(q)) score = 0;
+                if (c.id === 'maejo_student_faq') score = 0;
             }
             if (presentationBrief && ['dashboard', 'students', 'budget', 'strategic'].includes(c.id)) score += 90;
             if (strategicPriority && ['strategic', 'budget', 'students'].includes(c.id)) score += 90;

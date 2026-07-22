@@ -36,7 +36,7 @@ export const AI_DATASET_REGISTRY = [
         label: 'รายวิชาและการกระจายเกรด',
         domain: 'course_analytics',
         sections: ['course_analytics'],
-        keywords: /รายวิชา|วิชา|วิชาข้าม|course|เกรดรายวิชา|กระจายเกรด|วิชาไหน|แผนเรียน|ข้ามสาขา|จุดเด่น/i,
+        keywords: /รายวิชา|วิชา(?!การ)|วิชาข้าม|course|เกรดรายวิชา|กระจายเกรด|วิชาไหน|แผนเรียน|ข้ามสาขา|จุดเด่น/i,
         chartableFields: ['gradeDistributions', 'featuredCourses', 'coursePlanByYear', 'branchStrengths'],
     },
     {
@@ -183,6 +183,7 @@ function keywordScore(item, q) {
 // being treated as a request for restricted faculty finance data.
 const BUDGET_PRIORITY_PATTERN = /งบ|งบประมาณ|รายรับ|รายจ่าย|การเงิน|budget|finance|revenue|expense/i;
 const COURSE_EXPLICIT_PATTERN = /รายวิชา|วิชาไหน|เกรดรายวิชา|กระจายเกรด|course|grade distribution/i;
+const HR_PRIORITY_PATTERN = /บุคลากร|อาจารย์|staff|\bhr\b|เกษียณ|สายวิชาการ|สายสนับสนุน|อัตรากำลัง/i;
 
 export function datasetTrustSnapshot(id) {
     const meta = getSharedDashboardDatasetMetaSync(id);
@@ -214,6 +215,7 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
     const q = String(question || '').toLowerCase();
     const role = resolveAIRole(roleOrUser);
     const isBudgetFinanceQuery = BUDGET_PRIORITY_PATTERN.test(q) && !COURSE_EXPLICIT_PATTERN.test(q);
+    const isHrQuery = HR_PRIORITY_PATTERN.test(q);
     const presentationBrief = /(?:brief|สรุป|นำเสนอ|presentation).*(?:ภาพรวม|คณะ|ผู้บริหาร)|(?:ภาพรวม|คณะ).*(?:brief|นำเสนอ|presentation)/i.test(q);
     const strategicPriority = /(?:จัดลำดับ|ลำดับความสำคัญ|prioriti[sz]e|priority|เร่งด่วน).*(?:kpi|ตัวชี้วัด|ยุทธศาสตร์)|(?:kpi|ตัวชี้วัด|ยุทธศาสตร์).*(?:จัดลำดับ|ลำดับความสำคัญ|prioriti[sz]e|priority|เร่งด่วน)/i.test(q);
     const matched = [];
@@ -231,6 +233,10 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
         if (isBudgetFinanceQuery) {
             if (item.domain === 'budget' || item.id === 'science_budget' || item.id === 'university_budget') score += 100;
             if (item.id === 'course_analytics') score = 0;
+        }
+        if (isHrQuery) {
+            if (item.id === 'hr') score += 100;
+            if (item.id === 'course_analytics' && !COURSE_EXPLICIT_PATTERN.test(q)) score = 0;
         }
         if (presentationBrief && ['dashboard_summary', 'student_stats', 'science_budget', 'strategic'].includes(item.id)) {
             score += 90;
