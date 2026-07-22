@@ -963,7 +963,6 @@ export function tryLocalResponse(question, userContext = {}) {
         return buildAIAccessDeniedResult(userContext, accessPlan.blockedSections || []);
     }
     if (isAnalyticalReasoningIntent(question)) return null;
-
     // Forecast has first priority so budget questions such as "พยากรณ์งบประมาณปี 70 71"
     // cannot be captured by course/grade chart heuristics.
     const forecastParsed = parseForecastRequest(question);
@@ -976,6 +975,11 @@ export function tryLocalResponse(question, userContext = {}) {
         if (result) return result;
         // If no datasets matched, fall through to AI
     }
+
+    // Forecasts are analytical, but this page already has a deterministic
+    // regression/scenario implementation with explicit source caveats. Let it
+    // answer locally before falling back to Gemini (which may be unavailable).
+    if (isAnalyticalReasoningIntent(question)) return null;
 
     if (isExecutiveRecommendationIntent(question)) return null;
 

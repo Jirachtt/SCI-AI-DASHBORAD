@@ -1036,7 +1036,7 @@ export default function StudentStatsPage() {
                                                 <div style={{
                                                     width: `${pct}%`,
                                                     height: '100%',
-                                                    background: `linear-gradient(90deg, ${colors[i]}, ${colors[i]}aa)`,
+                                                    background: themeGradient(colors[i], '--accent-success', '90deg'),
                                                     borderRadius: 3,
                                                     transition: 'width 1s ease-out'
                                                 }} />
@@ -1124,7 +1124,7 @@ export default function StudentStatsPage() {
                                             <div style={{
                                                 width: `${pct}%`,
                                                 height: '100%',
-                                                background: `linear-gradient(90deg, ${color}, ${color}88)`,
+                                                background: themeGradient(color, '--accent-success', '90deg'),
                                                 borderRadius: 4,
                                                 transition: 'width 1.2s ease-out'
                                             }} />

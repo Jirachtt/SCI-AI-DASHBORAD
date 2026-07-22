@@ -16,11 +16,16 @@ export const AI_USAGE_LIMITS = {
   // client RPM, global RPM and TPM still protect the shared project quota.
   globalRpd: readPositiveInt('AI_GLOBAL_RPD_LIMIT', 1_000),
   dailyTokenBudget: readOptionalPositiveInt('AI_DAILY_TOKEN_BUDGET'),
+  // Application safeguard for authenticated users. Google does not publish a
+  // single daily token allowance for every free-tier model, so the dashboard
+  // defaults to 100k tokens/user/day and allows Vercel to tune it.
+  userDailyTokenBudget: readPositiveInt('AI_USER_DAILY_TOKEN_BUDGET', 100_000),
   clientRpm: readPositiveInt('AI_CLIENT_RPM_LIMIT', 6),
 };
 
 export const AI_USAGE_POLICY = {
   dailyTokenBudgetConfigured: hasPositiveEnv('AI_DAILY_TOKEN_BUDGET'),
+  userDailyTokenBudgetConfigured: hasPositiveEnv('AI_USER_DAILY_TOKEN_BUDGET'),
   globalRpdConfigured: hasPositiveEnv('AI_GLOBAL_RPD_LIMIT'),
   globalRpmConfigured: hasPositiveEnv('AI_GLOBAL_RPM_LIMIT'),
   globalTpmConfigured: hasPositiveEnv('AI_GLOBAL_TPM_LIMIT'),
@@ -89,6 +94,10 @@ function hashText(value) {
   return text ? createHash('sha256').update(text).digest('hex').slice(0, 32) : '';
 }
 
+export function userHashFromId(uid) {
+  return hashText(uid);
+}
+
 function usageUser(payload = {}) {
   return {
     uidHash: hashText(payload.uid),
@@ -128,7 +137,27 @@ function numberValue(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function limitSnapshotFromDocs({ daily = {}, minute = {}, clientMinute = {}, limits = AI_USAGE_LIMITS, keys = usageKeys() }) {
+function userQuotaSnapshot(userDaily = {}, limits = AI_USAGE_LIMITS) {
+  const budgetTokens = Number(limits.userDailyTokenBudget);
+  const hasBudget = Number.isFinite(budgetTokens) && budgetTokens > 0;
+  const usedTokens = numberValue(userDaily.usedTokens);
+  const inFlightInputTokens = numberValue(userDaily.inFlightInputTokens);
+  const remainingTokens = hasBudget
+    ? Math.max(0, budgetTokens - usedTokens - inFlightInputTokens)
+    : null;
+  return {
+    available: Boolean(userDaily && Object.keys(userDaily).length),
+    authenticated: Boolean(userDaily && Object.keys(userDaily).length),
+    budgetTokens: hasBudget ? budgetTokens : null,
+    usedTokens,
+    inFlightInputTokens,
+    remainingTokens,
+    remainingPercent: hasBudget ? Math.max(0, Math.min(100, Math.round((remainingTokens / budgetTokens) * 100))) : null,
+    resetAt: userDaily.resetAt || null,
+  };
+}
+
+function limitSnapshotFromDocs({ daily = {}, minute = {}, clientMinute = {}, userDaily = {}, limits = AI_USAGE_LIMITS, keys = usageKeys() }) {
   const usedTokens = numberValue(daily.usedTokens);
   const inFlightInputTokens = numberValue(daily.inFlightInputTokens);
   const requestCount = numberValue(daily.requestCount);
@@ -158,8 +187,10 @@ function limitSnapshotFromDocs({ daily = {}, minute = {}, clientMinute = {}, lim
       source: AI_USAGE_POLICY.dailyTokenBudgetConfigured ? 'environment' : 'application_safeguards',
       configured: AI_USAGE_POLICY,
       dailyTokenBudgetEnforced: hasDailyBudget,
+      userDailyTokenBudgetEnforced: Number(limits.userDailyTokenBudget) > 0,
       requestLimitsEnforced: true,
     },
+    userQuota: userQuotaSnapshot(userDaily, limits),
     providerQuota: {
       available: false,
       message: 'ผู้ให้บริการไม่ได้ส่งข้อมูล quota หรือ reset time ผ่าน usage metadata',
@@ -253,7 +284,7 @@ function defaultUsageAggregate(periodKey, nowIso) {
   };
 }
 
-function addCompletedUsage(aggregate, usage, periodKey, nowIso) {
+function addCompletedUsage(aggregate, usage, periodKey, nowIso, reservedInputTokens = 0) {
   const source = usage.source === 'provider' ? 'provider' : 'estimated';
   return {
     ...addNumbers({ ...defaultUsageAggregate(periodKey, nowIso), ...aggregate }, {
@@ -266,13 +297,15 @@ function addCompletedUsage(aggregate, usage, periodKey, nowIso) {
       toolTokens: numberValue(usage.toolTokens),
       providerTokens: source === 'provider' ? numberValue(usage.totalTokens) : 0,
       estimatedTokens: source === 'estimated' ? numberValue(usage.totalTokens) : 0,
+      inFlightInputTokens: -numberValue(reservedInputTokens),
     }),
     updatedAt: nowIso,
   };
 }
 
-function limitFailure({ daily, minute, clientMinute, limits, inputTokens, modelLimit }) {
+function limitFailure({ daily, minute, clientMinute, userDaily, userHash = '', limits, inputTokens, modelLimit }) {
   const projectedTokens = numberValue(daily.usedTokens) + numberValue(daily.inFlightInputTokens) + inputTokens;
+  const projectedUserTokens = numberValue(userDaily?.usedTokens) + numberValue(userDaily?.inFlightInputTokens) + inputTokens;
   const checks = [
     ['client_rpm', numberValue(clientMinute.requestCount) + 1 > limits.clientRpm],
     ['global_rpm', numberValue(minute.requestCount) + 1 > limits.globalRpm],
@@ -284,6 +317,10 @@ function limitFailure({ daily, minute, clientMinute, limits, inputTokens, modelL
     ['daily_token_budget', Number.isFinite(Number(limits.dailyTokenBudget))
       && Number(limits.dailyTokenBudget) > 0
       && projectedTokens > Number(limits.dailyTokenBudget)],
+    ['user_daily_token_budget', Number.isFinite(Number(limits.userDailyTokenBudget))
+      && Number(limits.userDailyTokenBudget) > 0
+      && userHash
+      && projectedUserTokens > Number(limits.userDailyTokenBudget)],
   ];
   return checks.find(([, failed]) => failed)?.[0] || null;
 }
@@ -292,23 +329,29 @@ function modelKey(model) {
   return String(model || 'unknown').replace(/[^A-Za-z0-9_]/g, '_').slice(0, 80);
 }
 
-export async function getAIUsageSnapshot({ clientHash = '', now = new Date(), limits = AI_USAGE_LIMITS } = {}) {
+export async function getAIUsageSnapshot({ clientHash = '', userHash = '', now = new Date(), limits = AI_USAGE_LIMITS } = {}) {
   const keys = usageKeys(now);
   const dailyPath = `ai_usage/daily_${keys.dayKey}`;
   const minutePath = `ai_usage/minute_${keys.minuteKey}`;
   const clientPath = clientHash ? `ai_usage_clients/${keys.dayKey}_${keys.minuteKey}_${clientHash}` : '';
+  const userPath = userHash ? `ai_usage_users/${keys.dayKey}_${userHash}` : '';
 
-  const [dailyDoc, minuteDoc, clientDoc] = await Promise.all([
+  const [dailyDoc, minuteDoc, clientDoc, userDoc] = await Promise.all([
     getDocument(dailyPath),
     getDocument(minutePath),
     clientPath ? getDocument(clientPath) : Promise.resolve(null),
+    userPath ? getDocument(userPath) : Promise.resolve(null),
   ]);
 
   const daily = { ...defaultDailyDoc(keys, limits), ...(dailyDoc?.data || {}) };
+  const userDaily = userHash
+    ? { uidHash: userHash, resetAt: keys.resetAt, ...(userDoc?.data || {}) }
+    : {};
   return limitSnapshotFromDocs({
     daily,
     minute: minuteDoc?.data || {},
     clientMinute: clientDoc?.data || {},
+    userDaily,
     limits,
     keys,
   });
@@ -330,13 +373,15 @@ export async function reserveAIUsage({ req, model, inputTokens, limits = AI_USAG
   const eventPath = `ai_usage_events/${keys.dayKey}_${reservationId}`;
   const nowIso = new Date().toISOString();
   const user = usageUser(usagePayload);
+  const userPath = user.uidHash ? `ai_usage_users/${keys.dayKey}_${user.uidHash}` : '';
   const safeUsageMeta = sanitizeUsageMeta(usageMeta);
 
   let result;
-  await runTransaction([dailyPath, minutePath, clientPath, eventPath], docs => {
+  await runTransaction([dailyPath, minutePath, clientPath, eventPath, userPath].filter(Boolean), docs => {
     const daily = { ...defaultDailyDoc(keys, limits), ...(docs[dailyPath]?.data || {}) };
     const minute = docs[minutePath]?.data || {};
     const clientMinute = docs[clientPath]?.data || {};
+    const userDaily = userPath ? { uidHash: user.uidHash, resetAt: keys.resetAt, ...(docs[userPath]?.data || {}) } : {};
     const existingEvent = docs[eventPath]?.data || null;
     if (existingEvent?.status === 'completed' || existingEvent?.status === 'in_progress') {
       result = {
@@ -344,12 +389,12 @@ export async function reserveAIUsage({ req, model, inputTokens, limits = AI_USAG
         duplicate: true,
         duplicateStatus: existingEvent.status,
         reservationId,
-        snapshot: limitSnapshotFromDocs({ daily, minute, clientMinute, limits, keys }),
+        snapshot: limitSnapshotFromDocs({ daily, minute, clientMinute, userDaily, limits, keys }),
       };
       return [];
     }
-    const reason = limitFailure({ daily, minute, clientMinute, limits, inputTokens, modelLimit });
-    const snapshot = limitSnapshotFromDocs({ daily, minute, clientMinute, limits, keys });
+    const reason = limitFailure({ daily, minute, clientMinute, userDaily, userHash: user.uidHash, limits, inputTokens, modelLimit });
+    const snapshot = limitSnapshotFromDocs({ daily, minute, clientMinute, userDaily, limits, keys });
     if (reason) {
       result = {
         limited: true,
@@ -406,6 +451,17 @@ export async function reserveAIUsage({ req, model, inputTokens, limits = AI_USAG
       lastUserRole: user.role,
       lastUserId: user.uidHash,
     };
+    const baseUser = userPath
+      ? {
+        ...defaultUsageAggregate(keys.dayKey, nowIso),
+        ...userDaily,
+        uidHash: user.uidHash,
+        resetAt: keys.resetAt,
+        budgetTokens: limits.userDailyTokenBudget,
+        inFlightInputTokens: numberValue(userDaily.inFlightInputTokens) + inputTokens,
+        updatedAt: nowIso,
+      }
+      : null;
 
     result = {
       limited: false,
@@ -418,20 +474,22 @@ export async function reserveAIUsage({ req, model, inputTokens, limits = AI_USAG
       minutePath,
       clientPath,
       eventPath,
+      userPath,
       keys,
       user,
       usageMeta: safeUsageMeta,
       startedAtMs: Date.now(),
       snapshot: limitSnapshotFromDocs({
-        daily: baseDaily,
-        minute: baseMinute,
-        clientMinute: baseClient,
-        limits,
-        keys,
+      daily: baseDaily,
+      minute: baseMinute,
+      clientMinute: baseClient,
+      userDaily: baseUser || {},
+      limits,
+      keys,
       }),
     };
 
-    return [
+    const writes = [
       updateWrite(dailyPath, baseDaily),
       updateWrite(minutePath, baseMinute),
       updateWrite(clientPath, baseClient),
@@ -454,6 +512,8 @@ export async function reserveAIUsage({ req, model, inputTokens, limits = AI_USAG
         selectedDatasets: safeUsageMeta.selectedDatasets,
       }),
     ];
+    if (userPath) writes.push(updateWrite(userPath, baseUser));
+    return writes;
   });
 
   return result;
@@ -478,12 +538,16 @@ export async function completeAIUsage({ reservation, ok, totalTokens, outputToke
       ...defaultDailyDoc(reservation.keys, AI_USAGE_LIMITS),
       ...(docs[reservation.dailyPath]?.data || {}),
     };
+    const userDaily = userPath
+      ? { uidHash: reservation.user.uidHash, resetAt: reservation.keys.resetAt, ...(docs[userPath]?.data || {}) }
+      : {};
     const existingEvent = docs[eventPath]?.data || {};
     if (existingEvent.status === 'completed') {
       result = limitSnapshotFromDocs({
         daily,
         minute: {},
         clientMinute: {},
+        userDaily,
         limits: AI_USAGE_LIMITS,
         keys: reservation.keys,
       });
@@ -618,14 +682,27 @@ export async function completeAIUsage({ reservation, ok, totalTokens, outputToke
       if (userPath) {
         writes.push(updateWrite(
           userPath,
-          addCompletedUsage(docs[userPath]?.data || {}, normalizedUsage, reservation.keys.dayKey, nowIso)
+          ok
+            ? addCompletedUsage(userDaily, normalizedUsage, reservation.keys.dayKey, nowIso, reservedInputTokens)
+            : {
+              ...userDaily,
+              inFlightInputTokens: Math.max(0, numberValue(userDaily.inFlightInputTokens) - reservedInputTokens),
+              updatedAt: nowIso,
+            }
         ));
       }
+    } else if (userPath) {
+      writes.push(updateWrite(userPath, {
+        ...userDaily,
+        inFlightInputTokens: Math.max(0, numberValue(userDaily.inFlightInputTokens) - reservedInputTokens),
+        updatedAt: nowIso,
+      }));
     }
     result = limitSnapshotFromDocs({
       daily: clamped,
       minute: {},
       clientMinute: {},
+      userDaily,
       limits: AI_USAGE_LIMITS,
       keys: reservation.keys,
     });

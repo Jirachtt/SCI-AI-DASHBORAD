@@ -13541,21 +13541,38 @@ button,
   scrollbar-gutter: stable;
 }
 
+.settings-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  margin-bottom: 8px;
+}
+
+.settings-popover-header .settings-popover-label {
+  min-width: 0;
+  padding: 0;
+}
+
 .settings-popover-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  width: 34px;
-  height: 34px;
+  position: static;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   border: 1px solid var(--surface-border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--surface-panel-soft);
   color: var(--text-secondary);
   cursor: pointer;
+  line-height: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
 }
 
 .settings-popover-close:hover {
@@ -13566,10 +13583,6 @@ button,
 
 .settings-popover-section:first-of-type {
   padding-top: 4px;
-}
-
-.settings-popover-section:first-of-type .settings-popover-label {
-  padding-right: 42px;
 }
 
 .sidebar-settings-button[aria-expanded="true"] svg:last-child {

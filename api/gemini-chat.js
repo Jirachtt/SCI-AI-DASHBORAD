@@ -9,6 +9,7 @@ import {
   usageHeaders,
 } from './_ai-usage-store.js';
 import { normalizeTokenUsage, tokenUsageHeaders } from './_token-usage.js';
+import { verifyFirebaseIdToken } from './admin-user-update.js';
 import {
   AI_ALLOWED_MODEL_IDS,
   getAIModelRateDefaults,
@@ -377,6 +378,25 @@ export default async function handler(req, res) {
 
   const inputTokens = requestInputTokens(requestBody);
   const requestId = String(payload?.requestId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 96);
+  let authUser = null;
+  const authorization = String(req.headers?.authorization || req.headers?.Authorization || '');
+  if (authorization) {
+    try {
+      authUser = await verifyFirebaseIdToken(req);
+    } catch (error) {
+      sendJson(res, error.statusCode || 401, {
+        error: error.code || 'INVALID_ID_TOKEN',
+        message: error.message || 'Firebase authentication is required for this AI request.',
+      });
+      return;
+    }
+  }
+  const usageUser = authUser
+    ? {
+      uid: authUser.uid,
+      role: authUser.claims?.role || authUser.claims?.mjuRole || payload?.usageUser?.role || 'general',
+    }
+    : {};
   let reservation = null;
   let memoryEvent = null;
   try {
@@ -386,7 +406,7 @@ export default async function handler(req, res) {
       inputTokens,
       limits: LIMITS,
       modelDefaults: MODEL_DEFAULTS,
-      usagePayload: payload?.usageUser || {},
+      usagePayload: usageUser,
       usageMeta: {
         ...(payload?.usageMeta || {}),
         requestId,
@@ -405,10 +425,14 @@ export default async function handler(req, res) {
   }
 
   if (reservation?.limited) {
+    const isUserBudget = reservation.reason === 'user_daily_token_budget';
     sendJson(res, 429, {
       error: 'AI_RATE_LIMITED',
-      message: 'AI usage is temporarily limited to protect the shared project quota.',
-      global: true,
+      message: isUserBudget
+        ? `โควตา AI ฟรีของบัญชีนี้ครบ ${Number(LIMITS.userDailyTokenBudget).toLocaleString('th-TH')} tokens/วันแล้ว โควตาจะรีเซ็ตเวลา 00:00 น. (เวลาไทย)`
+        : 'AI usage is temporarily limited to protect the shared project quota.',
+      global: !isUserBudget,
+      user: isUserBudget,
       reason: reservation.reason,
       retryAfterSeconds: reservation.retryAfterSeconds,
       quota: reservation.snapshot,

@@ -61,6 +61,20 @@ function finiteNumber(...values) {
     return null;
 }
 
+function finiteGraduationRate(...values) {
+    for (const value of values) {
+        if (value == null || value === '') continue;
+        const raw = typeof value === 'string'
+            ? value.replace(/,/g, '').replace(/%/g, '').trim()
+            : value;
+        const number = Number(raw);
+        if (!Number.isFinite(number)) continue;
+        if (number > 0 && number <= 1) return number * 100;
+        if (number > 1 && number <= 100) return number;
+    }
+    return null;
+}
+
 function usableArray(value, fallback, isUsable = item => Boolean(item)) {
     if (Array.isArray(value) && value.length > 0 && value.some(isUsable)) return value;
     return fallback;
@@ -76,13 +90,39 @@ function normalizeGraduationHistoryRows(rows, fallbackRows = graduationHistory) 
 
     const normalized = sourceRows
         .map(row => {
-            const year = finiteNumber(row?.year, row?.academicYear);
+            const rawYear = row?.year ?? row?.academicYear ?? row?.['ปีการศึกษา'] ?? row?.['ปี'];
+            const year = finiteNumber(rawYear, String(rawYear || '').match(/25\d{2}/)?.[0]);
             const fallback = fallbackByYear.get(Number(year)) || {};
-            const candidates = finiteNumber(row?.candidates, row?.candidateCount, row?.totalCandidates, row?.total, fallback.candidates);
-            const graduated = finiteNumber(row?.graduated, row?.graduateCount, row?.expectedGraduates, row?.expected, fallback.graduated);
+            const candidates = finiteNumber(
+                row?.candidates,
+                row?.candidateCount,
+                row?.totalCandidates,
+                row?.total,
+                row?.['ผู้มีสิทธิ์จบ'],
+                row?.['ผู้มีสิทธิ์'],
+                fallback.candidates,
+            );
+            const graduated = finiteNumber(
+                row?.graduated,
+                row?.graduateCount,
+                row?.expectedGraduates,
+                row?.expected,
+                row?.['สำเร็จการศึกษา'],
+                row?.['ผู้สำเร็จ'],
+                fallback.graduated,
+            );
             const calculatedRate = candidates && graduated != null ? (graduated / candidates) * 100 : null;
-            const rate = finiteNumber(row?.rate, row?.graduationRate, row?.successRate, row?.completionRate, calculatedRate, fallback.rate);
-            const avgGPA = finiteNumber(row?.avgGPA, row?.avgGpa, row?.gpa, fallback.avgGPA);
+            const rate = finiteGraduationRate(
+                row?.rate,
+                row?.graduationRate,
+                row?.successRate,
+                row?.completionRate,
+                row?.['อัตราสำเร็จ'],
+                row?.['อัตราสำเร็จการศึกษา'],
+                calculatedRate,
+                fallback.rate,
+            );
+            const avgGPA = finiteNumber(row?.avgGPA, row?.avgGpa, row?.gpa, row?.['GPA เฉลี่ย'], fallback.avgGPA);
 
             return {
                 ...fallback,
@@ -96,12 +136,15 @@ function normalizeGraduationHistoryRows(rows, fallbackRows = graduationHistory) 
         })
         .filter(row => row.year != null);
 
-    const hasUsableRate = normalized.some(row => Number.isFinite(Number(row.rate)));
-    const hasUsableVolume = normalized.some(row =>
-        Number(row.candidates) > 0 || Number(row.graduated) > 0
-    );
-
-    if (!hasUsableRate && !hasUsableVolume) return fallbackRows;
+    const hasCompleteRateSeries = normalized.length > 0 && normalized.every(row => {
+        const rate = Number(row.rate);
+        return Number.isFinite(rate) && rate > 0 && rate <= 100;
+    });
+    // A history payload with even one zero/blank rate is incomplete and would
+    // render a misleading gap (or fall below the chart's presentation range).
+    // Use the complete MJU-referenced presentation series until every source
+    // row contains a validated positive rate.
+    if (!hasCompleteRateSeries) return fallbackRows;
     return normalized;
 }
 
@@ -243,10 +286,25 @@ export default function GraduationStatsPage() {
             backgroundColor: 'color-mix(in srgb, var(--accent-warning) 15%, transparent)',
             fill: true,
             tension: 0.4,
+            borderWidth: 3,
             pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBorderWidth: 2,
+            pointBorderColor: 'var(--bg-card)',
             pointBackgroundColor: 'var(--accent-warning)',
+            spanGaps: true,
         }]
     };
+
+    const rateValues = graduationHistoryData
+        .map(row => Number(row.rate))
+        .filter(value => Number.isFinite(value) && value > 0 && value <= 100);
+    const rateAxisMin = rateValues.length
+        ? Math.max(0, Math.floor((Math.min(...rateValues) - 5) / 5) * 5)
+        : 75;
+    const rateAxisMax = rateValues.length
+        ? Math.min(100, Math.ceil((Math.max(...rateValues) + 5) / 5) * 5)
+        : 100;
 
     const rateChartOptions = {
         responsive: true,
@@ -261,7 +319,7 @@ export default function GraduationStatsPage() {
         },
         scales: {
             x: { ticks: { color: 'var(--text-muted)' }, grid: { color: 'var(--border-color)' } },
-            y: { min: 75, max: 100, ticks: { color: 'var(--text-muted)', callback: v => v + '%' }, grid: { color: 'var(--border-color)' } }
+            y: { min: rateAxisMin, max: Math.max(rateAxisMin + 10, rateAxisMax), ticks: { color: 'var(--text-muted)', callback: v => v + '%' }, grid: { color: 'var(--border-color)' } }
         }
     };
 

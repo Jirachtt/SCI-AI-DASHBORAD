@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>สิทธิ์การเข้าถึงระบบ SCI-AI-DASHBOARD</title>
+  <style>
+    :root {
+      --navy: #0b1b4a;
+      --ink: #18264f;
+      --muted: #5d6b8d;
+      --line: #dbe4ff;
+      --blue: #3456e8;
+      --blue-2: #5a72ff;
+      --lavender: #eef1ff;
+      --purple: #7959ee;
+      --green: #087f74;
+      --green-soft: #e9faf6;
+      --amber: #a75b00;
+      --amber-soft: #fff5df;
+      --red: #b4233c;
+      --red-soft: #fff0f3;
+      --surface: rgba(255,255,255,.94);
+      --shadow: 0 18px 45px rgba(37, 58, 150, .12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Noto Sans Thai", "Leelawadee UI", Tahoma, Arial, sans-serif;
+      background:
+        radial-gradient(circle at 9% 3%, rgba(94, 102, 255, .17), transparent 25rem),
+        radial-gradient(circle at 92% 5%, rgba(245, 166, 255, .2), transparent 24rem),
+        linear-gradient(135deg, #fbfcff 0%, #f6f7ff 54%, #fffaff 100%);
+      min-height: 100vh;
+    }
+    .page { max-width: 1800px; margin: 0 auto; padding: 34px 42px 48px; }
+    .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+    h1 { margin: 0; color: var(--navy); font-size: clamp(28px, 3vw, 54px); line-height: 1.08; letter-spacing: -.035em; }
+    .subtitle { margin: 10px 0 0; color: var(--muted); font-size: clamp(14px, 1.25vw, 20px); }
+    .accent { width: 88px; height: 6px; margin-top: 15px; border-radius: 99px; background: linear-gradient(90deg, var(--blue), #9a73ff); }
+    .verified { flex: 0 0 auto; padding: 11px 15px; border: 1px solid #cdd8ff; border-radius: 14px; color: #364a99; background: rgba(255,255,255,.74); font-size: 13px; text-align: right; box-shadow: 0 8px 20px rgba(43,58,151,.06); }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0; padding: 13px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
+    .toolbar label { color: var(--muted); font-size: 13px; font-weight: 700; }
+    input, select { border: 1px solid #cbd6ff; border-radius: 10px; color: var(--ink); background: #fff; padding: 10px 12px; font: inherit; font-size: 14px; }
+    input { min-width: min(360px, 70vw); }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-left: auto; color: var(--muted); font-size: 12px; }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .dot { display: inline-grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; color: white; font-size: 13px; font-weight: 900; }
+    .dot.yes { background: var(--blue); }
+    .dot.no { color: #77809b; background: #edf0f8; }
+    .dot.write { background: var(--amber); }
+    .grid { display: block; }
+    /* The published view is intentionally table-only; the matrix is the single source of truth. */
+    .side { display: none !important; }
+    .panel { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 20px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, rgba(235,239,255,.85), rgba(255,255,255,.95)); }
+    .panel-head h2 { margin: 0; color: var(--navy); font-size: 19px; }
+    .panel-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; min-width: 1020px; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    th, td { border-right: 1px solid #edf0fb; border-bottom: 1px solid #edf0fb; padding: 8px 7px; text-align: center; white-space: nowrap; }
+    th { position: sticky; top: 0; z-index: 2; color: #fff; background: linear-gradient(135deg, #304de0, #6a62ef); font-size: 12px; }
+    th:first-child { left: 0; z-index: 3; min-width: 235px; text-align: left; background: linear-gradient(135deg, #203aaf, #5364e9); }
+    td:first-child { position: sticky; left: 0; z-index: 1; min-width: 235px; text-align: left; color: var(--ink); background: #fff; font-weight: 700; }
+    tr:hover td { background: #f7f8ff; }
+    tr:hover td:first-child { background: #eef1ff; }
+    .group-row td { padding: 7px 10px; color: #33479e; background: #eef1ff !important; border-top: 1px solid #d6ddff; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    .group-row td:not(:first-child) { color: transparent; }
+    .access { display: inline-grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; font-size: 15px; font-weight: 900; }
+    .access.yes { color: #fff; background: var(--blue); box-shadow: 0 4px 9px rgba(52,86,232,.25); }
+    .access.no { color: #858da5; background: #f0f2f8; }
+    .role-head { display: grid; justify-items: center; gap: 3px; }
+    .role-head b { font-size: 12px; }
+    .role-head small { color: #dce3ff; font-size: 10px; font-weight: 500; }
+    .side { display: grid; gap: 14px; }
+    .card { padding: 17px 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 8px; color: var(--navy); font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.58; }
+    .role-card { border-left: 5px solid var(--blue); }
+    .role-card.dean { border-left-color: #bb7a00; }
+    .role-card.chair { border-left-color: #2e7bd7; }
+    .role-card.staff { border-left-color: #0b8a76; }
+    .role-card.student { border-left-color: #d54d86; }
+    .role-card.general { border-left-color: #845be6; }
+    .role-card.admin { border-left-color: var(--red); }
+    .role-card .count { float: right; color: var(--blue); font-size: 12px; font-weight: 800; }
+    .role-card ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink); font-size: 12px; line-height: 1.6; }
+    .role-card li::marker { color: var(--blue); }
+    .write { background: linear-gradient(135deg, #fffaf0, #fff); border-color: #f4d79c; }
+    .write h3 { color: var(--amber); }
+    .security { background: linear-gradient(135deg, #f5f2ff, #fff); border-color: #d8ceff; }
+    .security h3 { color: #5c40c3; }
+    .warning { background: linear-gradient(135deg, #fff7f8, #fff); border-color: #f2c7d0; }
+    .warning h3 { color: var(--red); }
+    .warning strong { color: var(--red); }
+    .footer-note { margin-top: 18px; padding: 13px 16px; border: 1px solid #cdd8ff; border-radius: 14px; color: #46547b; background: rgba(241,244,255,.84); font-size: 12px; line-height: 1.65; }
+    .footer-note code { padding: 2px 5px; border-radius: 5px; color: #263b98; background: #e6eaff; }
+    .hidden { display: none !important; }
+    @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } .side { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 720px) { .page { padding: 22px 14px 34px; } .hero { display: block; } .verified { display: inline-block; margin-top: 14px; text-align: left; } .legend { margin-left: 0; } input { min-width: 100%; } .side { grid-template-columns: 1fr; } }
+    @media print { body { background: #fff; } .page { max-width: none; padding: 10mm; } .toolbar { display: none; } .panel, .card { box-shadow: none; } .table-wrap { overflow: visible; } table { min-width: 0; font-size: 9px; } th, td { padding: 4px; } th:first-child, td:first-child { min-width: 150px; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <h1>สิทธิ์การเข้าถึงระบบ SCI-AI-DASHBOARD</h1>
+        <p class="subtitle">Role-Based Access Control • สิทธิ์หน้าเว็บ, AI และเขียนข้อมูลแยกกันอย่างชัดเจน</p>
+        <div class="accent"></div>
+      </div>
+      <div class="verified">ตรวจจาก accessControl.js<br />aiAccessPolicy.js • firestore.rules<br /><b>อัปเดต 22 กรกฎาคม 2026</b></div>
+    </header>
+
+    <section class="toolbar" aria-label="ตัวกรองตารางสิทธิ์">
+      <label for="search">ค้นหาโมดูล</label>
+      <input id="search" type="search" placeholder="เช่น รายชื่อนักศึกษา, งบประมาณ, AI" />
+      <label for="roleFilter">ดูเฉพาะ role</label>
+      <select id="roleFilter"><option value="all">ทุก role</option></select>
+      <div class="legend" aria-label="คำอธิบายสัญลักษณ์">
+        <span><i class="dot yes">✓</i> เข้าถึงหน้าเว็บได้</span>
+        <span><i class="dot no">—</i> ไม่ได้รับสิทธิ์</span>
+        <span><i class="dot write">W</i> มีสิทธิ์เขียน dataset ตามขอบเขต</span>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="panel" aria-labelledby="matrix-title">
+        <div class="panel-head">
+          <div><h2 id="matrix-title">สิทธิ์การเข้าถึงหน้าเว็บ (18 routes)</h2><p>เครื่องหมายในตารางมาจาก navigationConfig.js และ accessControl.js</p></div>
+          <strong id="visibleCount" aria-live="polite">18 โมดูล</strong>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>โมดูล / ข้อมูล</th><th data-role="dean"><div class="role-head"><b>Dean</b><small>ผู้บริหาร</small></div></th><th data-role="chair"><div class="role-head"><b>Chair</b><small>หัวหน้าสาขา</small></div></th><th data-role="staff"><div class="role-head"><b>Staff</b><small>เจ้าหน้าที่</small></div></th><th data-role="student"><div class="role-head"><b>Student</b><small>นักศึกษา</small></div></th><th data-role="general"><div class="role-head"><b>General</b><small>ทั่วไป</small></div></th><th data-role="admin"><div class="role-head"><b>Admin</b><small>ผู้ดูแล</small></div></th></tr></thead>
+            <tbody id="matrixBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="side" aria-label="สรุปสิทธิ์ราย role">
+        <div id="roleCards"></div>
+        <section class="card write"><h3>สิทธิ์เขียนข้อมูล (Firestore)</h3><p><b>Dean:</b> dashboard datasets ทั้งหมด<br /><b>Staff:</b> dashboard datasets ทั้งหมด<br /><b>Chair:</b> students, student_stats, TCAS, course_analytics, student_life, graduation<br /><b>Student / General:</b> อ่านอย่างเดียว<br /><b>Admin:</b> users / roles / approval เท่านั้น</p></section>
+        <section class="card security"><h3>AI DATA SCOPE</h3><p><b>Dean:</b> internal data ทุก domain<br /><b>Chair / Staff:</b> ตาม section ที่ได้รับสิทธิ์<br /><b>Student:</b> academic-safe / aggregate<br /><b>General:</b> public + low-risk<br /><b>Admin:</b> ไม่มี internal dashboard AI</p></section>
+        <section class="card warning"><h3>ข้อควรรู้ด้านความปลอดภัย</h3><p><strong>UI/AI permission กับ Firestore read rule เป็นคนละชั้น</strong> ปัจจุบัน firestore.rules อนุญาตให้ผู้ใช้ที่ sign-in อ่าน shared dataset documents ได้ แต่หน้าเว็บและ AI ยังบังคับสิทธิ์ตาม role หากต้องการแยกข้อมูลระดับ field/PDPA อย่างเข้มงวด ควรเพิ่มกฎ backend ให้ละเอียดขึ้น</p></section>
+      </aside>
+    </div>
+
+    <div class="footer-note"><b>Security flow:</b> Login → Normalize Role → Filter Routes → AI Context Guard → Data Trust Check → Write → Audit Log &nbsp;|&nbsp; Settings / profile ใช้ได้กับผู้ใช้ที่ sign-in แล้ว</div>
+  </main>
+  <script>
+    const roles = [
+      { id: 'dean', label: 'Dean', th: 'คณบดี / ผู้บริหาร', count: 17, desc: 'เห็นข้อมูลภายในและ dashboard กว้างที่สุด แต่ไม่ใช่ผู้จัดการบัญชีผู้ใช้โดยอัตโนมัติ' },
+      { id: 'chair', label: 'Chair', th: 'หัวหน้าสาขา', count: 15, desc: 'ดูข้อมูลนักศึกษา หลักสูตร แผนรับ และการวางแผนสาขา; เขียนได้เฉพาะ dataset ที่กำหนด' },
+      { id: 'staff', label: 'Staff', th: 'เจ้าหน้าที่', count: 16, desc: 'ดูและดูแลข้อมูลปฏิบัติการ นักศึกษา การเงิน HR วิจัย และนำเข้า dataset ได้' },
+      { id: 'student', label: 'Student', th: 'นักศึกษา', count: 9, desc: 'ใช้ข้อมูลวิชาการ/บริการตนเองแบบปลอดภัย ไม่เห็น roster หรือข้อมูลบริหารภายใน' },
+      { id: 'general', label: 'General', th: 'ผู้ใช้ทั่วไป', count: 5, desc: 'เห็นเฉพาะภาพรวมและข้อมูลสาธารณะ/ความเสี่ยงต่ำ' },
+      { id: 'admin', label: 'Admin', th: 'ผู้ดูแลผู้ใช้', count: 1, desc: 'จัดการผู้ใช้ role approval ระยะสิทธิ์ audit และ AI usage; ไม่เปิด dashboard ภายใน' },
+    ];
+    const groups = [
+      { label: 'Overview & AI', rows: [
+        ['ภาพรวม Dashboard', ['dean','chair','staff','student','general']],
+        ['AI Chat', ['dean','chair','staff','student','general']],
+        ['ศูนย์แจ้งเตือน', ['dean','chair','staff']],
+        ['Strategic / OKR', ['dean','chair']],
+      ]},
+      { label: 'Students & Learning', rows: [
+        ['สถิตินักศึกษา', ['dean','chair','staff','student']],
+        ['รายชื่อนักศึกษา (PII)', ['dean','chair','staff']],
+        ['รายวิชา / เกรด', ['dean','chair','staff','student']],
+        ['สถิติสำเร็จการศึกษา', ['dean','chair','staff']],
+        ['ตรวจสอบการจบ', ['dean','chair','staff','student']],
+        ['กิจกรรมนักศึกษา', ['dean','chair','staff','student']],
+      ]},
+      { label: 'Admissions & Rules', rows: [
+        ['แผนรับ TCAS', ['dean','chair','staff','student','general']],
+        ['กฎระเบียบ / เกียรตินิยม', ['dean','chair','staff','student','general']],
+      ]},
+      { label: 'Operations', rows: [
+        ['HR Dashboard', ['dean','staff']],
+        ['รายรับ - รายจ่าย', ['dean','staff']],
+        ['ค่าธรรมเนียมการศึกษา', ['dean','chair','staff','student','general']],
+        ['พยากรณ์งบประมาณ', ['dean','chair','staff']],
+        ['ภาพรวมงานวิจัย', ['dean','chair','staff']],
+      ]},
+      { label: 'Administration', rows: [
+        ['Admin Panel', ['admin']],
+      ]},
+    ];
+    const allRows = groups.flatMap(group => group.rows.map(row => ({ group: group.label, label: row[0], allowed: row[1] })));
+    const matrixBody = document.getElementById('matrixBody');
+    const roleFilter = document.getElementById('roleFilter');
+    const search = document.getElementById('search');
+    const visibleCount = document.getElementById('visibleCount');
+    roles.forEach(role => roleFilter.add(new Option(`${role.label} — ${role.th}`, role.id)));
+    function renderRoleCards() {
+      const host = document.getElementById('roleCards');
+      host.innerHTML = roles.map(role => `<section class="card role-card ${role.id}" data-role-card="${role.id}"><h3>${role.th}<span class="count">${role.count} routes</span></h3><p>${role.desc}</p></section>`).join('');
+    }
+    function renderMatrix() {
+      const query = search.value.trim().toLowerCase();
+      const selected = roleFilter.value;
+      matrixBody.innerHTML = '';
+      let count = 0;
+      groups.forEach(group => {
+        const rows = group.rows.filter(([label]) => !query || label.toLowerCase().includes(query));
+        if (!rows.length) return;
+        const groupRow = document.createElement('tr');
+        groupRow.className = 'group-row';
+        groupRow.innerHTML = `<td colspan="7">${group.label}</td>`;
+        matrixBody.appendChild(groupRow);
+        rows.forEach(([label, allowed]) => {
+          count += 1;
+          const tr = document.createElement('tr');
+          tr.dataset.label = label.toLowerCase();
+          tr.innerHTML = `<td>${label}</td>` + roles.map(role => {
+            const hidden = selected !== 'all' && selected !== role.id ? ' style="display:none"' : '';
+            const ok = allowed.includes(role.id);
+            return `<td data-role-cell="${role.id}"${hidden}><span class="access ${ok ? 'yes' : 'no'}" aria-label="${role.label}: ${ok ? 'เข้าถึงได้' : 'ไม่ได้รับสิทธิ์'}">${ok ? '✓' : '—'}</span></td>`;
+          }).join('');
+          matrixBody.appendChild(tr);
+        });
+      });
+      visibleCount.textContent = `${count} โมดูล`;
+      document.querySelectorAll('th[data-role]').forEach(th => { th.style.display = selected !== 'all' && selected !== th.dataset.role ? 'none' : ''; });
+    }
+    renderRoleCards(); renderMatrix();
+    search.addEventListener('input', renderMatrix);
+    roleFilter.addEventListener('change', renderMatrix);
+  </script>
+</body>
+</html>

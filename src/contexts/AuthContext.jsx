@@ -30,6 +30,11 @@ const AuthContext = createContext(null);
 
 const ROLE_LABELS_BY_ROLE = ROLE_LABELS_WITH_EN;
 const LOCAL_ADMIN_ACCESS_CODE = String(import.meta.env.VITE_ADMIN_ACCESS_CODE || '').trim();
+// Development-only role switch for local usability testing. It is ignored in
+// production builds and keeps the normal admin bypass behavior unchanged.
+const LOCAL_DEMO_ROLE = import.meta.env.DEV
+    ? String(import.meta.env.VITE_DEMO_ROLE || '').trim().toLowerCase()
+    : '';
 
 const normalizeRoleLabel = (role, roleLabel, fallback = 'นักศึกษา (Student)') => {
     const normalizedRole = normalizeRole(role);
@@ -208,16 +213,18 @@ const firebaseUnavailable = () => ({
 });
 
 const buildAdminBypassUser = () => {
-    const validity = buildRoleValidityPatch('admin', new Date());
+    const allowedDemoRoles = ['dean', 'chair', 'staff', 'general', 'student'];
+    const role = allowedDemoRoles.includes(LOCAL_DEMO_ROLE) ? LOCAL_DEMO_ROLE : 'admin';
+    const validity = buildRoleValidityPatch(role, new Date());
     return {
         uid: 'admin-bypass-' + Date.now(),
-        email: 'admin@mju.ac.th',
-        name: 'Admin',
-        avatar: getRoleInitial('admin'),
-        role: 'admin',
-        assignedRole: 'admin',
-        roleLabel: ROLE_LABELS_BY_ROLE.admin,
-        assignedRoleLabel: ROLE_LABELS_BY_ROLE.admin,
+        email: role === 'admin' ? 'admin@mju.ac.th' : `${role}.demo@mju.ac.th`,
+        name: role === 'admin' ? 'Admin' : `Demo ${getRoleLabel(role, { withEnglish: false })}`,
+        avatar: getRoleInitial(role),
+        role,
+        assignedRole: role,
+        roleLabel: ROLE_LABELS_BY_ROLE[role] || ROLE_LABELS_BY_ROLE.admin,
+        assignedRoleLabel: ROLE_LABELS_BY_ROLE[role] || ROLE_LABELS_BY_ROLE.admin,
         status: 'approved',
         authProvider: 'admin_code_fallback',
         isAdminCodeSession: true,
@@ -249,6 +256,21 @@ export function AuthProvider({ children }) {
             }
             return false;
         };
+
+        // Development-only demo sessions let QA exercise role-specific pages
+        // when Firebase credentials are intentionally absent from local runs.
+        if (LOCAL_DEMO_ROLE && !isFirebaseConfigured) {
+            console.log(`[Auth] Restoring local demo role: ${LOCAL_DEMO_ROLE}`);
+            const restoreId = setTimeout(() => {
+                if (!mounted) return;
+                setUser(buildAdminBypassUser());
+                setLoading(false);
+            }, 0);
+            return () => {
+                mounted = false;
+                clearTimeout(restoreId);
+            };
+        }
 
         if (checkBypass()) return;
 

@@ -983,6 +983,65 @@ function buildScienceMajorStudentChartAnswer(question, userContext) {
     });
 }
 
+function wantsStudentTrendChart(question) {
+    const text = q(question);
+    const hasChart = /กราฟ|chart|plot|แผนภูมิ|แผนภาพ|สร้าง|แสดง|เปรียบเทียบ|วิเคราะห์/.test(text);
+    const hasStudent = /นักศึกษา|นิสิต|student|students/.test(text);
+    const hasTrend = /ย้อนหลัง|แนวโน้ม|รายปี|ตามปี|ต่อปี|trend|historical|history/.test(text);
+    const isForecast = /พยากรณ์|คาดการณ์|ประมาณการ|ทำนาย|predict|forecast/.test(text);
+    const wantsIndividualRows = /รายชื่อ|รายคน|รหัส\s*6|\b6\d{9}\b/.test(text);
+    return hasChart && hasStudent && hasTrend && !isForecast && !wantsIndividualRows;
+}
+
+function buildScienceStudentTrendChartAnswer(question, userContext) {
+    const accessDenied = denyIfNoAccess(userContext, ['student_stats']);
+    if (accessDenied) return accessDenied;
+
+    const stats = sharedDataset('student_stats', studentStatsData);
+    const rows = Array.isArray(stats?.scienceFaculty?.newStudentIntake)
+        ? stats.scienceFaculty.newStudentIntake
+            .map(row => ({ year: String(row.year), total: number(row.total ?? row.count, null) }))
+            .filter(row => row.year && Number.isFinite(row.total))
+            .sort((a, b) => Number(a.year) - Number(b.year))
+        : [];
+    if (rows.length < 2) return null;
+
+    const latest = rows[rows.length - 1];
+    return asResult({
+        text: `สร้างกราฟเส้นแนวโน้ม **จำนวนนักศึกษาใหม่คณะวิทยาศาสตร์รายปี** ย้อนหลัง ${rows.length} ปีให้แล้วครับ\n\nปีล่าสุด ${latest.year} มีนักศึกษาใหม่ ${format(latest.total)} คน`,
+        chart: {
+            chartType: 'line',
+            data: {
+                labels: rows.map(row => row.year),
+                datasets: [{
+                    label: 'นักศึกษาใหม่ (คน)',
+                    data: rows.map(row => row.total),
+                    borderColor: 'var(--accent-blue)',
+                    backgroundColor: 'color-mix(in srgb, var(--accent-blue) 14%, transparent)',
+                    pointBackgroundColor: 'var(--accent-blue)',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true,
+                }],
+            },
+            options: {
+                plugins: {
+                    title: { display: true, text: 'แนวโน้มนักศึกษาใหม่คณะวิทยาศาสตร์รายปี' },
+                    legend: { position: 'bottom' },
+                },
+                scales: {
+                    x: { title: { display: true, text: 'ปีการศึกษา' } },
+                    y: { beginAtZero: true, title: { display: true, text: 'นักศึกษาใหม่ (คน)' } },
+                },
+            },
+        },
+        sources: [sourceLabel('student_stats', 'Student statistics dataset')],
+        trustWarnings: ['ชุดข้อมูลนี้เป็นนักศึกษาใหม่ (intake) รายปี ไม่ใช่ยอดนักศึกษาคงอยู่ทั้งหมด ณ ปัจจุบัน; หากต้องการยอดคงอยู่ควร Sync ข้อมูลทะเบียนรายปีเพิ่มเติม'],
+    });
+}
+
 function buildPopulationForecastChartAnswer(question, userContext) {
     const accessDenied = denyIfNoAccess(userContext, ['student_stats']);
     if (accessDenied) return accessDenied;
@@ -1121,6 +1180,10 @@ export function createPlannedChartAnswer(question, userContext = {}, options = {
     }
     if (/ยุทธศาสตร์|okr|kpi|ตัวชี้วัด|คำรับรอง/.test(text)) {
         return buildStrategicChartAnswer(question, userContext);
+    }
+    if (wantsStudentTrendChart(question)) {
+        const studentTrendChart = buildScienceStudentTrendChartAnswer(question, userContext);
+        if (studentTrendChart) return studentTrendChart;
     }
     if (/งบ|budget|รายรับ|รายจ่าย/.test(text) && /นักศึกษา|นิสิต|นศ\.?|student/.test(text)) {
         return buildBudgetStudentCompareAnswer(question, userContext);
