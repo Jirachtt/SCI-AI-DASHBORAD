@@ -88,10 +88,10 @@ async function postModel(baseUrl, requestBody, suffix, model = PRIMARY_AI_MODEL)
 }
 
 async function runOffline() {
-  assert.equal(PRIMARY_AI_MODEL, 'gemini-3.5-flash');
-  assert.equal(FALLBACK_AI_MODEL, 'gemini-3.1-flash-lite');
+  assert.equal(PRIMARY_AI_MODEL, 'gemini-3.1-flash-lite');
+  assert.equal(FALLBACK_AI_MODEL, 'gemini-3.5-flash');
   assert.deepEqual([...AI_MODEL_ORDER], [PRIMARY_AI_MODEL, FALLBACK_AI_MODEL]);
-  assert.deepEqual([...AI_SEARCH_MODEL_ORDER], [PRIMARY_AI_MODEL, LEGACY_SEARCH_FALLBACK_AI_MODEL, FALLBACK_AI_MODEL]);
+  assert.deepEqual([...AI_SEARCH_MODEL_ORDER], [LEGACY_SEARCH_FALLBACK_AI_MODEL, PRIMARY_AI_MODEL, FALLBACK_AI_MODEL]);
   assert.deepEqual([...AI_ALLOWED_MODEL_IDS], [PRIMARY_AI_MODEL, FALLBACK_AI_MODEL, LEGACY_SEARCH_FALLBACK_AI_MODEL]);
   assert.ok(AI_ALLOWED_MODEL_IDS.every(model => !model.endsWith('-latest')), 'Hot-swapped aliases are not allowed');
   assert.equal(AI_MODEL_ORDER.includes(LEGACY_SEARCH_FALLBACK_AI_MODEL), false, 'Legacy search fallback must never become a normal default');
@@ -105,7 +105,7 @@ async function runOffline() {
   assert.match(clientSource, /AI_MODEL_ORDER/);
   assert.match(proxySource, /AI_ALLOWED_MODEL_IDS/);
   assert.doesNotMatch(`${clientSource}\n${proxySource}`, /gemini-2\.0|gemini-(?:flash|flash-lite)-latest/);
-  console.log('PASS shared model routing: Gemini 3.5 Flash -> Gemini 3.1 Flash-Lite');
+  console.log('PASS shared model routing: Gemini 3.1 Flash-Lite -> Gemini 3.5 Flash escalation');
   console.log('PASS retired/hot-swapped IDs are absent; Gemini 2.5 is search-only compatibility');
 }
 

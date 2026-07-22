@@ -3,7 +3,7 @@ import {
     isAnalyticalReasoningIntent,
     isExecutiveRecommendationIntent,
 } from '../utils/aiAdvicePolicy';
-import { canAIUseAnyInternalSection, resolveAIRole } from '../utils/aiAccessPolicy';
+import { canAIUseAnyInternalSection, canRoleUseAI, resolveAIRole } from '../utils/aiAccessPolicy';
 import { getAIContextBundle } from './aiContextRegistry';
 
 const CHART_PATTERN = /กราฟ|chart|plot|แผนภูมิ|แผนภาพ|visual|เปรียบเทียบ|เทียบ(?:กับ|กัน|ระหว่าง)?|ต่างกัน|แนวโน้ม|trend|กระจาย|distribution|compare|comparison|versus|\bvs\.?\b/i;
@@ -51,10 +51,19 @@ function sensitiveRequiredSections(question) {
 export function createAIOrchestrationPlan(question, userContext = {}, options = {}) {
     const intent = classifyAIQuestionIntent(question, options);
     const role = resolveAIRole(userContext);
+    const aiAccessAllowed = canRoleUseAI(role);
     const comparisonMode = isAIComparisonIntent(question);
     const contextBundle = getAIContextBundle(question, role, { intent, comparisonMode });
     const hasDeniedContext = contextBundle.deniedContexts.length > 0;
     const hasAllowedContext = contextBundle.contexts.length > 0;
+    const priorityDeniedContexts = contextBundle.deniedContexts
+        .filter(item => Number(item.score || 0) >= 100);
+    const priorityDeniedDomains = new Set(priorityDeniedContexts.map(item => item.domain));
+    const hasAllowedPriorityDomain = contextBundle.contexts.some(item =>
+        Number(item.score || 0) >= 100 && priorityDeniedDomains.has(item.domain)
+    );
+    const requestedPriorityDomainDenied = priorityDeniedContexts.length > 0 && !hasAllowedPriorityDomain;
+    const priorityDeniedSections = [...new Set(priorityDeniedContexts.flatMap(item => item.sections || []))];
     const adviceMode = intent === 'executive_advice';
     const reasoningMode = isAnalyticalReasoningIntent(question);
     const shouldDisableCache = adviceMode || reasoningMode || intent === 'uploaded_file';
@@ -70,16 +79,26 @@ export function createAIOrchestrationPlan(question, userContext = {}, options = 
     return {
         intent,
         role,
+        aiAccessAllowed,
         adviceMode,
         reasoningMode,
         comparisonMode,
         shouldDisableCache,
         shouldUseWebFallback,
         hasDeniedContext,
-        blockedReason: intent === 'blocked_sensitive' && !sensitiveButAllowed
-            ? 'sensitive_or_row_level_data_requires_allowed_internal_context'
-            : '',
+        blockedReason: !aiAccessAllowed
+            ? 'role_not_allowed_to_use_ai'
+            : intent === 'blocked_sensitive' && !sensitiveButAllowed
+                ? 'sensitive_or_row_level_data_requires_allowed_internal_context'
+                : requestedPriorityDomainDenied
+                    ? 'requested_domain_requires_allowed_internal_context'
+                : '',
         sensitiveSections: intent === 'blocked_sensitive' ? sensitiveSections : [],
+        blockedSections: intent === 'blocked_sensitive'
+            ? sensitiveSections
+            : requestedPriorityDomainDenied
+                ? priorityDeniedSections
+                : [],
         contextBundle,
         selectedDatasets: contextBundle.contexts.map(item => item.id),
         deniedDatasets: contextBundle.deniedContexts.map(item => item.id),

@@ -454,6 +454,14 @@ studentStatsData.sourceCoverage = {
     },
     unavailable: ['historical total time series', 'overall nationality breakdown', 'science gender breakdown'],
 };
+dashboardSummary.sourceCoverage = {
+    officialSnapshot: {
+        checkedAt: OFFICIAL_STUDENT_SNAPSHOT_DATE,
+        sourceUrl: OFFICIAL_STUDENT_SOURCE_URL,
+        fields: ['totalStudents', 'faculties'],
+    },
+    unavailable: ['course total', 'GPA', 'graduation rate'],
+};
 
 // ==================== ข้อมูลพยากรณ์งบประมาณมหาวิทยาลัย ====================
 // อ้างอิง: รายงานงบประมาณประจำปี มหาวิทยาลัยแม่โจ้ (mju.ac.th)

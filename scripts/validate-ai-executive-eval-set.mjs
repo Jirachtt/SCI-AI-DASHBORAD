@@ -56,9 +56,7 @@ const REQUIRED_CATEGORIES = new Set([
 
 const ALLOWED_ROLES = new Set([
   'dean',
-  'executive',
   'chair',
-  'instructor',
   'staff',
   'student',
   'general',
@@ -66,7 +64,6 @@ const ALLOWED_ROLES = new Set([
 
 const REQUIRED_ROLES = new Set([
   'dean',
-  'executive',
   'chair',
   'staff',
   'student',

@@ -50,6 +50,9 @@ export function getExecutiveAdviceTrustLevel(meta = {}, options = {}) {
         return 'approved_reference';
     }
 
+    if (REFERENCE_SOURCE_PATTERN.test(sourceType) && TRUSTED_SOURCE_PATTERN.test(sourceType)) {
+        return 'approved_reference';
+    }
     if (REFERENCE_SOURCE_PATTERN.test(sourceType)) return 'untrusted_demo';
     return TRUSTED_SOURCE_PATTERN.test(sourceType) ? 'approved_reference' : 'untrusted_demo';
 }

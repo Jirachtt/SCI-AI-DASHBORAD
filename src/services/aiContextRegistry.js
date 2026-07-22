@@ -20,7 +20,7 @@ export const AI_DATASET_REGISTRY = [
         label: 'สถิตินักศึกษา',
         domain: 'students',
         sections: ['student_stats'],
-        keywords: /นักศึกษา|นิสิต|student|gpa|เกรด|สาขา|ชั้นปี|คงอยู่|retention|ลดลง|ลาออก|พ้นสภาพ|รอพินิจ|เสี่ยง|อัตราสำเร็จ|สำเร็จการศึกษา|ความพร้อมจบ/i,
+        keywords: /นักศึกษา|นิสิต|นศ\.?|student|gpa|เกรด|สาขา|major|ชั้นปี|คงอยู่|retention|ลดลง|ลาออก|พ้นสภาพ|รอพินิจ|เสี่ยง|risk|อัตราสำเร็จ|สำเร็จการศึกษา|ความพร้อมจบ/i,
         chartableFields: ['total', 'byLevel', 'byEnrollmentYear', 'byMajor', 'newStudentIntake', 'trend', 'studentAwards', 'populationForecast'],
     },
     {
@@ -178,7 +178,10 @@ function keywordScore(item, q) {
     return score;
 }
 
-const BUDGET_PRIORITY_PATTERN = /งบ|งบประมาณ|รายรับ|รายจ่าย|การเงิน|ค่าเทอม|ค่าธรรมเนียม|budget|finance|revenue|expense/i;
+// Tuition/fee questions have their own public-facing dataset. Keeping them out
+// of the strict budget priority prevents a student asking about tuition from
+// being treated as a request for restricted faculty finance data.
+const BUDGET_PRIORITY_PATTERN = /งบ|งบประมาณ|รายรับ|รายจ่าย|การเงิน|budget|finance|revenue|expense/i;
 const COURSE_EXPLICIT_PATTERN = /รายวิชา|วิชาไหน|เกรดรายวิชา|กระจายเกรด|course|grade distribution/i;
 
 export function datasetTrustSnapshot(id) {
@@ -211,6 +214,8 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
     const q = String(question || '').toLowerCase();
     const role = resolveAIRole(roleOrUser);
     const isBudgetFinanceQuery = BUDGET_PRIORITY_PATTERN.test(q) && !COURSE_EXPLICIT_PATTERN.test(q);
+    const presentationBrief = /(?:brief|สรุป|นำเสนอ|presentation).*(?:ภาพรวม|คณะ|ผู้บริหาร)|(?:ภาพรวม|คณะ).*(?:brief|นำเสนอ|presentation)/i.test(q);
+    const strategicPriority = /(?:จัดลำดับ|ลำดับความสำคัญ|prioriti[sz]e|priority|เร่งด่วน).*(?:kpi|ตัวชี้วัด|ยุทธศาสตร์)|(?:kpi|ตัวชี้วัด|ยุทธศาสตร์).*(?:จัดลำดับ|ลำดับความสำคัญ|prioriti[sz]e|priority|เร่งด่วน)/i.test(q);
     const matched = [];
     const denied = [];
     const comparisonMode = Boolean(options.comparisonMode) || isAIComparisonIntent(question);
@@ -226,6 +231,12 @@ export function getAIContextBundle(question, roleOrUser, options = {}) {
         if (isBudgetFinanceQuery) {
             if (item.domain === 'budget' || item.id === 'science_budget' || item.id === 'university_budget') score += 100;
             if (item.id === 'course_analytics') score = 0;
+        }
+        if (presentationBrief && ['dashboard_summary', 'student_stats', 'science_budget', 'strategic'].includes(item.id)) {
+            score += 90;
+        }
+        if (strategicPriority && ['strategic', 'science_budget', 'student_stats'].includes(item.id)) {
+            score += 90;
         }
         const keywordMatch = score > 0;
         if (!keywordMatch && !options.includeAll) continue;

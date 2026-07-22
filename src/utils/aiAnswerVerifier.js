@@ -37,7 +37,10 @@ export function normalizeNumericToken(value) {
 }
 
 export function extractNumericEvidence(text) {
-    const cleaned = stripNonEvidenceText(text);
+    // A hyphen between two numbers is a range separator, not a negative sign
+    // (for example 2570-2573 or 10-20). Preserve genuine negatives such as -2.25.
+    const cleaned = stripNonEvidenceText(text)
+        .replace(/(\d)\s*[-–—]\s*(?=\d)/g, '$1 ');
     const matches = cleaned.match(/[+-]?(?:\d[\d,]*)(?:\.\d+)?%?/g) || [];
     return [...new Set(matches.map(normalizeNumericToken).filter(Boolean))];
 }
@@ -59,6 +62,53 @@ function shouldIgnoreNumber(value) {
     return false;
 }
 
+function hasEquivalentYearEvidence(value, contextNumbers) {
+    const number = Number(value);
+    if (!Number.isInteger(number) || number < 0 || number > 99) return false;
+
+    const suffix = String(number).padStart(2, '0');
+    return [...contextNumbers].some(contextValue => {
+        const contextNumber = Number(contextValue);
+        if (!Number.isInteger(contextNumber)) return false;
+        const isCalendarYear = (contextNumber >= 1900 && contextNumber <= 2199)
+            || (contextNumber >= 2400 && contextNumber <= 2699);
+        return isCalendarYear && String(contextNumber).endsWith(suffix);
+    });
+}
+
+function approximatelyEqual(left, right) {
+    const a = Number(left);
+    const b = Number(right);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+    const tolerance = Math.max(0.06, Math.abs(a) * 0.0025);
+    return Math.abs(a - b) <= tolerance;
+}
+
+function isDerivedFromEvidence(value, answer, contextNumbers) {
+    const target = Number(value);
+    if (!Number.isFinite(target)) return false;
+    const values = [...contextNumbers]
+        .map(Number)
+        .filter(Number.isFinite)
+        .filter(number => Math.abs(number) < 1_000_000_000)
+        .slice(0, 180);
+    const text = String(answer || '').toLowerCase();
+    const mayBePercent = /%|ร้อยละ|เปอร์เซ็นต์|อัตรา|rate/.test(text);
+    const mayBeDifference = /เฉลี่ย|average|ส่วนต่าง|ต่างกัน|เพิ่ม|ลด|gap|คงเหลือ|ขาด|เกิน|surplus|deficit/.test(text);
+
+    for (let leftIndex = 0; leftIndex < values.length; leftIndex += 1) {
+        const left = values[leftIndex];
+        for (let rightIndex = 0; rightIndex < values.length; rightIndex += 1) {
+            if (leftIndex === rightIndex) continue;
+            const right = values[rightIndex];
+            if (mayBePercent && right !== 0 && approximatelyEqual(target, (left / right) * 100)) return true;
+            if (mayBeDifference && approximatelyEqual(target, left - right)) return true;
+            if (mayBeDifference && approximatelyEqual(target, (left + right) / 2)) return true;
+        }
+    }
+    return false;
+}
+
 function warningText(unsupportedNumbers) {
     const listed = unsupportedNumbers.slice(0, 6).join(', ');
     return `> ${DEFAULT_WARNING_TEXT}${listed ? `: ${listed}` : ''}`;
@@ -69,6 +119,7 @@ export function verifyAIAnswerAgainstContext(answerText, options = {}) {
         contextText = '',
         question = '',
         allowExternalNumbers = false,
+        externalEvidenceText = '',
         maxUnsupported = 6,
     } = options;
     const answer = String(answerText || '').trim();
@@ -83,29 +134,32 @@ export function verifyAIAnswerAgainstContext(answerText, options = {}) {
 
     if (!answer) return { text: answer, metadata };
 
-    if (allowExternalNumbers) {
-        return {
-            text: answer,
-            metadata: {
-                ...metadata,
-                status: 'skipped_external_grounding',
-                reason: 'web_search_or_external_grounding_enabled',
-            },
-        };
-    }
-
     const answerNumbers = extractNumericEvidence(answer);
-    const contextNumbers = new Set(extractNumericEvidence(`${question || ''}\n${contextText || ''}`));
+    const contextNumbers = new Set(extractNumericEvidence(`${question || ''}\n${contextText || ''}\n${externalEvidenceText || ''}`));
+    const derivedNumbers = [];
     const unsupportedNumbers = answerNumbers
         .filter(value => !shouldIgnoreNumber(value))
-        .filter(value => !contextNumbers.has(value))
+        .filter(value => !contextNumbers.has(value) && !hasEquivalentYearEvidence(value, contextNumbers))
+        .filter(value => {
+            const derived = isDerivedFromEvidence(value, answer, contextNumbers);
+            if (derived) derivedNumbers.push(value);
+            return !derived;
+        })
         .slice(0, maxUnsupported);
 
     metadata.answerNumberCount = answerNumbers.length;
     metadata.contextNumberCount = contextNumbers.size;
     metadata.unsupportedNumbers = unsupportedNumbers;
+    metadata.derivedNumbers = derivedNumbers;
     metadata.warningCount = unsupportedNumbers.length ? 1 : 0;
-    metadata.status = unsupportedNumbers.length ? 'warning' : 'verified';
+    metadata.status = unsupportedNumbers.length
+        ? 'warning'
+        : allowExternalNumbers && String(externalEvidenceText || '').trim()
+            ? 'verified_with_external_grounding'
+            : 'verified';
+    if (metadata.status === 'verified_with_external_grounding') {
+        metadata.reason = 'numbers_matched_local_or_grounded_evidence';
+    }
 
     if (!unsupportedNumbers.length) {
         return { text: answer, metadata };

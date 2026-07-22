@@ -643,7 +643,6 @@ const DISABLED_ROSTER_AGGREGATE_PATCHERS = {
 function shouldOverlayStudentRowsOnAggregate() {
     const trust = getStudentRosterTrustStatus();
     return Boolean(
-        trust.isGeneratedMock ||
         trust.mode === 'manual_adjusted_mock' ||
         trust.mode === 'manual_adjusted_roster'
     );
@@ -682,8 +681,22 @@ export function getSharedDashboardDatasetMetaSync(id) {
     if (id === 'student_stats' || id === 'dashboard_summary') {
         const studentRows = getStudentListSync();
         const overlayActive = shouldOverlayStudentRowsOnAggregate();
+        const officialSnapshot = payload?.sourceCoverage?.officialSnapshot;
+        const checkedAt = officialSnapshot?.checkedAt ? new Date(officialSnapshot.checkedAt) : null;
+        const hasVerifiedOfficialSnapshot = Boolean(
+            !overlayActive
+            && officialSnapshot?.sourceUrl
+            && checkedAt
+            && !Number.isNaN(checkedAt.getTime())
+        );
         return {
             ...meta,
+            ...(hasVerifiedOfficialSnapshot ? {
+                sourceType: 'official_public_reference',
+                sourceUrl: officialSnapshot.sourceUrl,
+                updatedAt: checkedAt,
+                officialReferenceFields: officialSnapshot.fields || [],
+            } : {}),
             rowCount: getPayloadRowCount(payload),
             usesSharedDataHub: overlayActive,
             linkedStudentRows: Array.isArray(studentRows) ? studentRows.length : 0,

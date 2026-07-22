@@ -46,7 +46,7 @@ export const aiExecutiveEvaluationSet = [
   {
     id: 'exec-student-retention-revenue-004',
     category: 'students',
-    role: 'executive',
+    role: 'dean',
     question: 'อัตราการคงอยู่ของนักศึกษาส่งผลต่อรายได้ค่าเทอมของคณะอย่างไร',
     intent: 'executive_advice',
     expectedDatasets: ['student_stats', 'tuition', 'science_budget'],
@@ -111,7 +111,7 @@ export const aiExecutiveEvaluationSet = [
   {
     id: 'exec-tcas-funnel-009',
     category: 'tcas',
-    role: 'executive',
+    role: 'dean',
     question: 'จุดหลุดใน funnel สมัคร ผ่านคัดเลือก รายงานตัว และคงอยู่หลังปี 1 อยู่ตรงไหน',
     intent: 'executive_advice',
     expectedDatasets: ['tcas_admissions', 'student_stats'],
@@ -228,7 +228,7 @@ export const aiExecutiveEvaluationSet = [
   {
     id: 'exec-budget-risk-018',
     category: 'budget',
-    role: 'executive',
+    role: 'dean',
     question: 'งบประมาณคณะวิทยาศาสตร์ปี 2570 ควรระวังจุดไหน',
     intent: 'executive_advice',
     expectedDatasets: ['science_budget', 'university_budget'],
@@ -280,7 +280,7 @@ export const aiExecutiveEvaluationSet = [
   {
     id: 'exec-hr-overview-022',
     category: 'hr',
-    role: 'executive',
+    role: 'dean',
     question: 'ภาพรวมบุคลากรคณะวิทยาศาสตร์ตอนนี้เป็นอย่างไร แยกสายวิชาการและสายสนับสนุน',
     intent: 'internal_lookup',
     expectedDatasets: ['hr'],
@@ -319,7 +319,7 @@ export const aiExecutiveEvaluationSet = [
   {
     id: 'exec-research-overview-025',
     category: 'research',
-    role: 'executive',
+    role: 'dean',
     question: 'ภาพรวมงานวิจัยของคณะวิทยาศาสตร์มีจุดแข็งและช่องว่างอะไร',
     intent: 'executive_advice',
     expectedDatasets: ['research', 'hr'],
@@ -332,7 +332,7 @@ export const aiExecutiveEvaluationSet = [
   {
     id: 'exec-strategic-kpi-026',
     category: 'strategic',
-    role: 'executive',
+    role: 'dean',
     question: 'KPI ไหนต่ำกว่าเป้าหมายมากที่สุด และผู้บริหารควรทำอะไรต่อ',
     intent: 'executive_advice',
     expectedDatasets: ['strategic'],
@@ -358,7 +358,7 @@ export const aiExecutiveEvaluationSet = [
   {
     id: 'exec-strategic-plan-file-028',
     category: 'strategic',
-    role: 'executive',
+    role: 'dean',
     question: 'จากแผนกลยุทธ์ที่อัปโหลดมา คณะควรโฟกัสโครงการไหนก่อน',
     intent: 'executive_advice',
     expectedDatasets: ['strategic'],
@@ -410,7 +410,7 @@ export const aiExecutiveEvaluationSet = [
   {
     id: 'exec-chart-hr-students-032',
     category: 'chart',
-    role: 'executive',
+    role: 'dean',
     question: 'สร้างกราฟเปรียบเทียบจำนวนนักศึกษาและบุคลากรของคณะวิทยาศาสตร์',
     intent: 'chart',
     expectedDatasets: ['student_stats', 'hr'],
@@ -592,7 +592,7 @@ export const aiExecutiveEvaluationSet = [
   {
     id: 'exec-hr-retirement-046',
     category: 'hr',
-    role: 'executive',
+    role: 'dean',
     question: 'บุคลากรสายวิชาการใกล้เกษียณมีผลต่อแผนอัตรากำลังอย่างไร',
     intent: 'executive_advice',
     expectedDatasets: ['hr'],
@@ -644,7 +644,7 @@ export const aiExecutiveEvaluationSet = [
   {
     id: 'exec-strategic-priority-050',
     category: 'strategic',
-    role: 'executive',
+    role: 'dean',
     question: 'ปี 2570 ผู้บริหารควรจัดลำดับ KPI คณะวิทยาศาสตร์เรื่องไหนก่อน',
     intent: 'executive_advice',
     expectedDatasets: ['strategic', 'science_budget', 'student_stats'],

@@ -23,6 +23,11 @@ import {
     findMaejoStudentFaqAnswer,
     formatMaejoFaqSources,
 } from '../data/maejoStudentFaqData';
+import {
+    buildStudentPaymentLedgerDemo,
+    summarizeStudentPaymentLedgerDemo,
+} from '../data/featureCompletionFallbackData';
+import { getAllAlerts } from '../utils/alerts';
 
 const CHART_COLORS = ['var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-success)', 'var(--accent-orange)', 'var(--accent-danger)', 'var(--accent-cyan)'];
 
@@ -101,6 +106,124 @@ function buildStudentRowsUnavailableAnswer(topic = 'รายชื่อหร�
     return {
         text: `ตอนนี้ยังตอบ${topic}ไม่ได้ เพราะยังไม่มี roster ที่อ่านได้ในระบบ\n\n${officialText}\n\nให้อัปโหลดไฟล์ CSV/XLSX จาก Reg/คณะ หรือกด Sync เพื่อสร้าง generated mock สำหรับสาธิตก่อน\n\n_แหล่งข้อมูล: ยอดรวมใช้ MJU Dashboard; roster ตอนนี้ = ${rec.studentSourceLabel} (${rec.studentRosterAccuracyLabel}); ${rec.studentRowsSummary}_`,
         chart: null,
+    };
+}
+
+function buildStudentDataAccuracyAnswer(question) {
+    const q = normalizeText(question);
+    if (!/(ข้อมูล|ยอด|จำนวน).*(มาจาก|แหล่ง|ตรงกับ|ตรงไหม|ไม่ตรง|ต่าง|เชื่อเลข|accuracy)|official\s*total|roster\s*rows/.test(q)) return null;
+    if (!/นักศึกษา|นิสิต|student|roster|mju dashboard/.test(q)) return null;
+
+    const rec = getStudentReconciliationSnapshot();
+    const officialTotal = Number(rec.officialTotal ?? rec.currentDashboardTotal);
+    const rosterRows = Number(rec.rosterRows ?? rec.studentRows ?? getStudentListSync().length);
+    const hasOfficial = Number.isFinite(officialTotal);
+    const hasRoster = Number.isFinite(rosterRows);
+    const difference = hasOfficial && hasRoster ? rosterRows - officialTotal : null;
+    const meta = getSharedDashboardDatasetMetaSync('student_stats');
+    const sourceUrl = meta?.sourceUrl || 'https://dashboard.mju.ac.th/student';
+
+    let text = '**ตรวจสอบความตรงกันของข้อมูลนักศึกษา**\n\n';
+    text += `- Official total: **${hasOfficial ? formatNumber(officialTotal) : 'ยังไม่พบ'} คน** จาก MJU Dashboard\n`;
+    text += `- Roster rows: **${hasRoster ? formatNumber(rosterRows) : 'ยังไม่พบ'} แถว** (${rec.studentSourceLabel || 'ไม่ทราบแหล่งรายชื่อ'})\n`;
+    text += `- Difference: **${difference == null ? 'คำนวณไม่ได้' : `${difference >= 0 ? '+' : ''}${formatNumber(difference)} คน`}**\n`;
+    text += `- สถานะ roster: ${rec.studentRosterAccuracyLabel || 'ยังไม่ยืนยัน'}; ${rec.studentRowsSummary || ''}\n\n`;
+    text += `ยอดรวมสำหรับ Overview และ AI aggregate ยึด Official total เป็นหลัก ส่วนรายชื่อ/GPA รายคนยึด roster ตามสถานะความน่าเชื่อถือของไฟล์เท่านั้น\n\n`;
+    text += `**แหล่งข้อมูล:** [MJU Dashboard](${sourceUrl})`;
+    return {
+        text,
+        chart: null,
+        selectedDatasets: ['data_accuracy', 'student_stats'],
+    };
+}
+
+function buildTuitionOverviewAnswer(question) {
+    const q = normalizeText(question);
+    if (!/ค่าเทอม|ค่าเล่าเรียน|ค่าธรรมเนียม|tuition|ค้างชำระ|จ่ายล่าช้า/.test(q)) return null;
+    if (!/ภาพรวม|รายปี|รายเทอม|เท่าไหร่|ค้างชำระ|จ่ายล่าช้า|ชำระ/.test(q)) return null;
+
+    const tuition = getSharedDashboardDatasetSync('tuition') || {};
+    const financial = getSharedDashboardDatasetSync('financial') || {};
+    const uploadedLedger = Array.isArray(financial.studentPayments)
+        ? financial.studentPayments.filter(Boolean)
+        : [];
+    const ledger = uploadedLedger.length > 0
+        ? uploadedLedger
+        : buildStudentPaymentLedgerDemo(getStudentListSync(), { limit: 80 });
+    const paymentSummary = summarizeStudentPaymentLedgerDemo(ledger);
+    const feeMin = Number(tuition?.flatRate?.min);
+    const feeMax = Number(tuition?.flatRate?.max);
+    const feeRange = Number.isFinite(feeMin) && Number.isFinite(feeMax)
+        ? `${formatNumber(feeMin)}-${formatNumber(feeMax)} บาท/คน/เทอม`
+        : 'ยังไม่พบช่วงค่าธรรมเนียมที่ยืนยันได้';
+    const semesters = Array.isArray(tuition.semesterHistory) ? tuition.semesterHistory : [];
+    const semesterLines = semesters.slice(-4).map(item =>
+        `- ${item.semester || '-'}: ${formatNumber(item.paid)} บาท${item.students ? `, แผนนักศึกษา ${formatNumber(item.students)} คน` : ''}`
+    );
+    const ledgerIsOfficial = paymentSummary.sourceTrust === 'uploaded_file';
+    const ledgerLabel = ledgerIsOfficial
+        ? 'ไฟล์ Finance/Reg ที่ได้รับอนุญาตและอัปโหลดเข้าระบบ'
+        : 'ข้อมูลสาธิตที่ระบบสร้างเพื่อแสดง workflow จนกว่าจะเชื่อม Finance/Reg จริง';
+
+    const text = [
+        '**ภาพรวมค่าธรรมเนียมนักศึกษาคณะวิทยาศาสตร์**',
+        '',
+        `- ช่วงค่าธรรมเนียมตามแผนในระบบ: **${feeRange}**`,
+        ...(semesterLines.length ? ['- ประมาณการรายเทอม:', ...semesterLines] : []),
+        '',
+        '**สถานะการชำระที่ระบบมีอยู่**',
+        `- ตรวจสอบ ${formatNumber(paymentSummary.totalRows)} รายการ: ชำระแล้ว ${formatNumber(paymentSummary.paid)} รายการ, จ่ายล่าช้า ${formatNumber(paymentSummary.late)} รายการ, ค้างชำระ ${formatNumber(paymentSummary.overdue)} รายการ`,
+        `- ยอดคงค้างรวมในชุดข้อมูลนี้: ${formatNumber(paymentSummary.totalRemaining)} บาท`,
+        '',
+        `**ข้อจำกัด:** สถานะรายคนในรอบนี้มาจาก${ledgerLabel} จึงแสดงเฉพาะยอดรวมเพื่อคุ้มครองข้อมูลส่วนบุคคล และไม่ยืนยันว่าเป็นรายชื่อผู้ค้างชำระจริง`,
+        '',
+        `**แหล่งข้อมูล:** ${tuition.source || 'Tuition dataset ในระบบ'}; ${paymentSummary.sourceLabel}`,
+    ].join('\n');
+
+    return {
+        text,
+        chart: null,
+        selectedDatasets: ['tuition'],
+    };
+}
+
+function buildStudentAlertPriorityAnswer(question) {
+    const q = normalizeText(question);
+    if (!/(?:นักศึกษา|นิสิต|student).*(?:เสี่ยง|พ้นสภาพ).*(?:จัดลำดับ|เสี่ยงสุด|ติดตาม)|(?:จัดลำดับ|เสี่ยงสุด).*(?:นักศึกษา|นิสิต|student)/.test(q)) return null;
+
+    const studentAlerts = getAllAlerts()
+        .filter(alert => /นักศึกษา|student/i.test(String(alert.domain || '')))
+        .slice(0, 6);
+    if (!studentAlerts.length) return null;
+    const roster = getStudentRosterTrustStatus();
+    const rows = studentAlerts.map((alert, index) => {
+        const action = alert.suggestedAction || 'มอบหมายอาจารย์ที่ปรึกษาตรวจสอบและบันทึกผลการติดตาม';
+        return `${index + 1}. **${alert.title}**\n   - สถานะ: ${alert.severity === 'critical' ? 'วิกฤต' : alert.severity === 'warning' ? 'เฝ้าระวัง' : 'ติดตาม'}\n   - แนวทาง: ${action}`;
+    });
+    const sourceDisclosure = roster.canAnswerDemoIndividual
+        ? 'ข้อมูล GPA/รายชื่อนักศึกษาเป็น generated mock สำหรับสาธิต Alert Center ไม่ใช่ข้อมูล Reg จริง จึงใช้แสดง logic การจัดลำดับเท่านั้น'
+        : roster.isUserUploadedRoster
+            ? 'คำนวณจาก roster ที่ผู้มีสิทธิ์อัปโหลดล่าสุด โดยคำตอบนี้แสดงเฉพาะกลุ่มและไม่เปิดเผยรายชื่อรายคน'
+            : 'คำนวณจากข้อมูลนักศึกษาที่ระบบเข้าถึงได้ล่าสุด โดยคำตอบนี้แสดงเฉพาะ aggregate';
+    return {
+        text: [
+            '**ลำดับติดตามนักศึกษาเสี่ยงพ้นสภาพ**',
+            '',
+            'จัดเรียงจากระดับวิกฤตไปเฝ้าระวังตามเกณฑ์ GPA ของ Alert Center และไม่เปิดเผยชื่อหรือรหัสนักศึกษาในคำตอบสรุป',
+            '',
+            ...rows,
+            '',
+            '**หลักการดำเนินงาน**',
+            '- เริ่มจากกลุ่ม GPA ต่ำกว่าเกณฑ์วิกฤต แล้วจึงกลุ่มเฝ้าระวัง',
+            '- บันทึกผู้รับผิดชอบ วันที่นัด และผลติดตาม เพื่อให้เห็นเคสที่ยังไม่ดำเนินการก่อน',
+            '- ส่งต่อเฉพาะเคสที่ต้องช่วยเหลือด้านการเรียน การเงิน หรือสุขภาวะตามสิทธิ์และ PDPA',
+            '',
+            `**ข้อจำกัด:** ${sourceDisclosure}`,
+            '',
+            '**แหล่งข้อมูล:** Alert Center rules, Student Statistics และกฎระเบียบการศึกษาในระบบ',
+        ].join('\n'),
+        chart: null,
+        selectedDatasets: ['student_stats', 'academic_rules', 'alerts'],
     };
 }
 
@@ -509,7 +632,7 @@ function buildStudentSummaryAnswer(question) {
         text += '\n';
     }
 
-    if (/ชั้นปี|ปี\s*[1-4]|year|แยก/.test(q)) {
+    if (/ชั้นปี|ปี\s*[1-4](?!\d)|year|แยก/.test(q)) {
         text += `\n**แยกตามชั้นปี**\n`;
         text += yearRows.map(([year, count]) => `- ปี ${year}: ${formatNumber(count)} คน`).join('\n');
         text += '\n';
@@ -573,6 +696,7 @@ function buildActivityAnswer(question) {
     }
 
     text += '\n\n_แหล่งข้อมูล: ตารางกิจกรรมคณะวิทยาศาสตร์ในระบบ_';
+    text += '\n_ข้อจำกัด: รายการและชั่วโมงชุดนี้เป็นข้อมูลตัวอย่าง/ข้อมูลตั้งต้นสำหรับสาธิต จนกว่าจะ Sync จาก MJU Activity หรือปฏิทินกิจกรรมคณะ_';
     return { text, chart: null };
 }
 
@@ -694,7 +818,7 @@ function chartForCourseDifficulty(rows = [], mode = 'hard') {
 
 function buildCoursePlanAnswer(courseAnalytics, question) {
     const q = normalizeText(question);
-    const yearMatch = q.match(/ปี\s*([1-4])/);
+    const yearMatch = q.match(/ปี\s*([1-4])(?!\d)/);
     const targetYear = yearMatch ? Number(yearMatch[1]) : 1;
     const plan = (courseAnalytics.coursePlanByYear || []).find(item => Number(item.year) === targetYear);
     if (!plan) return null;
@@ -865,10 +989,34 @@ function buildMaejoStudentFaqAnswer(question) {
         `${match.answer}\n\n` +
         `**แหล่งข้อมูลที่ใช้:**\n${formatMaejoFaqSources(match.sources || [])}`;
 
+    const selectedDatasets = ['maejo_student_faq'];
+    if (match.id === 'admissions_howto') selectedDatasets.push('tcas_admissions');
     return {
         text,
         chart: null,
+        selectedDatasets,
         requiredSections: match.requiredSections || [],
+    };
+}
+
+function buildSourceClarificationAnswer(question) {
+    const q = normalizeText(question);
+    const asksSource = /(?:ข้อมูลนี้|ข้อมูลดังกล่าว).*(?:แหล่ง|ที่มา|อัปเดต)|(?:แหล่ง|ที่มา).*(?:ข้อมูลนี้|ข้อมูลดังกล่าว)|อัปเดตล่าสุดเมื่อไหร่/.test(q);
+    if (!asksSource) return null;
+    return {
+        text: '**ต้องการตรวจแหล่งข้อมูลของส่วนใดครับ?**\n\nระบุหัวข้อหรือชื่อหน้าที่ต้องการ เช่น นักศึกษา, TCAS, งบประมาณ, บุคลากร หรือ KPI แล้วผมจะแสดงแหล่งข้อมูล วันที่อัปเดต และสถานะความครบถ้วนของชุดนั้นให้ตรงจุด โดยจะไม่อ้างชุดข้อมูลที่ไม่ได้ใช้',
+        chart: null,
+        selectedDatasets: ['data_accuracy'],
+    };
+}
+
+function buildAmbiguousClarificationAnswer(question) {
+    const q = normalizeText(question).replace(/[?.!]+$/g, '').trim();
+    if (!/^(?:อันไหน|ตัวไหน|แบบไหน|อะไร)ดีที่สุด$/.test(q)) return null;
+    return {
+        text: '**ต้องการเปรียบเทียบเรื่องใดครับ?**\n\nช่วยระบุหัวข้อและเกณฑ์สั้น ๆ เช่น สาขาที่เหมาะกับโอกาสงาน, แผน TCAS ที่คุ้มค่า, รายวิชาที่ผลการเรียนดีที่สุด หรือตัวเลือกที่เสี่ยงน้อยที่สุด แล้วผมจะเลือกข้อมูลที่เกี่ยวข้องมาเปรียบเทียบโดยไม่เดาคำตอบ',
+        chart: null,
+        selectedDatasets: [],
     };
 }
 
@@ -943,24 +1091,31 @@ function buildTcasAnswer(question) {
     } : null;
 
     text += '\n\n_แหล่งข้อมูล: tcasAdmissionsData ในระบบ, ไฟล์คำนวณประมาณการปี 70 และประกาศรอบ 3 ปี 2569_';
-    return { text, chart };
+    return {
+        text,
+        chart,
+        selectedDatasets: ['tcas_admissions'],
+    };
 }
 
-export function tryInstantAnswer(question, userContext = {}) {
-    if (isAnalyticalReasoningIntent(question) || isExecutiveRecommendationIntent(question)) return null;
+const STANDARD_BUILDERS = [
+    { build: buildAmbiguousClarificationAnswer, sections: [] },
+    { build: buildSourceClarificationAnswer, sections: [] },
+    { build: buildStudentDataAccuracyAnswer, sections: ['student_stats'] },
+    { build: buildCourseDifficultyAnswer, sections: ['course_analytics'] },
+    { build: buildCourseGradeAnswer, sections: ['course_analytics'] },
+    { build: buildActivityAnswer, sections: ['student_life'] },
+    { build: buildBudgetCautionAnswer, sections: ['budget_forecast', 'financial', 'faculty_budget'] },
+    { build: buildTuitionOverviewAnswer, sections: ['tuition'] },
+    { build: buildStudentAlertPriorityAnswer, sections: ['alert_center', 'student_stats'] },
+    { build: buildStudentRiskTrendAnswer, sections: ['student_stats'] },
+    { build: buildStudentMajorDeclineAnswer, sections: ['student_stats'] },
+    { build: buildMaejoStudentFaqAnswer, sections: [] },
+    { build: buildTcasAnswer, sections: ['tcas_admissions'] },
+    { build: buildStudentSummaryAnswer, sections: ['student_stats'] },
+];
 
-    const builders = [
-        { build: buildCourseDifficultyAnswer, sections: ['course_analytics'] },
-        { build: buildCourseGradeAnswer, sections: ['course_analytics'] },
-        { build: buildActivityAnswer, sections: ['student_life'] },
-        { build: buildBudgetCautionAnswer, sections: ['budget_forecast', 'financial', 'faculty_budget'] },
-        { build: buildStudentRiskTrendAnswer, sections: ['student_stats'] },
-        { build: buildStudentMajorDeclineAnswer, sections: ['student_stats'] },
-        { build: buildMaejoStudentFaqAnswer, sections: [] },
-        { build: buildTcasAnswer, sections: ['tcas_admissions'] },
-        { build: buildStudentSummaryAnswer, sections: ['student_stats'] },
-    ];
-
+function runAllowedBuilders(question, userContext, builders) {
     for (const { build, sections } of builders) {
         const result = build(question);
         if (!result) continue;
@@ -970,6 +1125,68 @@ export function tryInstantAnswer(question, userContext = {}) {
         }
         return result;
     }
-
     return null;
+}
+
+const DATA_ACCURACY_LOOKUP_PATTERN =
+    /(?:ยอด|จำนวน).*(?:รายชื่อ|roster).*(?:ไม่ตรง|ต่าง)|(?:official\s*total|roster\s*rows)|ควรเชื่อเลขไหน/i;
+const TCAS_QUANT_LOOKUP_PATTERN =
+    /tcas.*(?:แต่ละรอบ|รับกี่คน|รอบไหน.*(?:เสี่ยง|ไม่เต็ม))|(?:แต่ละรอบ|รับกี่คน).*(?:tcas|รับสมัคร)/i;
+const ADMISSIONS_GUIDE_PATTERN =
+    /(?:สมัคร|tcas|admission).*(?:เว็บ|เว็บไซต์|ติดตาม|เตรียม|เอกสาร)|(?:เว็บ|เว็บไซต์).*(?:สมัคร|tcas|admission)/i;
+const TUITION_OVERVIEW_PATTERN =
+    /(?:ค่าเทอม|ค่าเล่าเรียน|ค่าธรรมเนียม).*(?:ภาพรวม|รายปี|รายเทอม|ค้างชำระ|จ่ายล่าช้า)|(?:ค้างชำระ|จ่ายล่าช้า).*(?:ค่าเทอม|ค่าเล่าเรียน|ค่าธรรมเนียม)/i;
+const STUDENT_ALERT_PRIORITY_PATTERN =
+    /(?:นักศึกษา|นิสิต|student).*(?:เสี่ยง|พ้นสภาพ).*(?:จัดลำดับ|เสี่ยงสุด|ติดตาม)|(?:จัดลำดับ|เสี่ยงสุด).*(?:นักศึกษา|นิสิต|student)/i;
+
+export function tryDeterministicFirstAnswer(question, userContext = {}) {
+    const builders = [];
+    if (DATA_ACCURACY_LOOKUP_PATTERN.test(String(question || ''))) {
+        builders.push({ build: buildStudentDataAccuracyAnswer, sections: ['student_stats'] });
+    }
+    if (TCAS_QUANT_LOOKUP_PATTERN.test(String(question || ''))) {
+        builders.push({ build: buildTcasAnswer, sections: ['tcas_admissions'] });
+    }
+    if (ADMISSIONS_GUIDE_PATTERN.test(String(question || ''))) {
+        builders.push({ build: buildMaejoStudentFaqAnswer, sections: [] });
+    }
+    if (TUITION_OVERVIEW_PATTERN.test(String(question || ''))) {
+        builders.push({ build: buildTuitionOverviewAnswer, sections: ['tuition'] });
+    }
+    if (STUDENT_ALERT_PRIORITY_PATTERN.test(String(question || ''))) {
+        builders.push({ build: buildStudentAlertPriorityAnswer, sections: ['alert_center', 'student_stats'] });
+    }
+    return runAllowedBuilders(question, userContext, builders);
+}
+
+function buildSafePublicProviderFallback(question) {
+    if (!/แม่โจ้|maejo|mju|มหาวิทยาลัย/.test(normalizeText(question))) return null;
+    return {
+        text: [
+            '**ยังยืนยันคำตอบจากแหล่งทางการไม่ได้ในรอบนี้**',
+            '',
+            'ระบบไม่พบหลักฐานที่ยืนยันชื่อผลิตภัณฑ์ สถานที่จำหน่าย หรือราคาในคลังข้อมูลภายใน และการค้นเว็บทางการไม่สำเร็จ จึงไม่ควรระบุรายละเอียดโดยคาดเดา',
+            '',
+            '**แนวทางตรวจสอบต่อ**',
+            '- ค้นจากเว็บไซต์หลักมหาวิทยาลัยแม่โจ้และเว็บไซต์หน่วยงานเจ้าของผลิตภัณฑ์',
+            '- ยืนยันราคาและช่องทางจำหน่ายจากประกาศทางการที่มีวันที่เผยแพร่ล่าสุด',
+            '',
+            '**แหล่งข้อมูลสำหรับตรวจสอบ:** [มหาวิทยาลัยแม่โจ้](https://www.mju.ac.th/) และโดเมนหน่วยงานภายใต้ `mju.ac.th`',
+            '',
+            '_ความเชื่อมั่น: ต่ำ เนื่องจากยังไม่มีหลักฐานตรงสำหรับข้อเท็จจริงที่ถาม และระบบจงใจไม่แต่งข้อมูลแทน_',
+        ].join('\n'),
+        chart: null,
+        selectedDatasets: ['maejo_student_faq'],
+    };
+}
+
+export function tryProviderFailureFallback(question, userContext = {}) {
+    return tryDeterministicFirstAnswer(question, userContext)
+        || runAllowedBuilders(question, userContext, STANDARD_BUILDERS)
+        || buildSafePublicProviderFallback(question);
+}
+
+export function tryInstantAnswer(question, userContext = {}) {
+    if (isAnalyticalReasoningIntent(question) || isExecutiveRecommendationIntent(question)) return null;
+    return runAllowedBuilders(question, userContext, STANDARD_BUILDERS);
 }

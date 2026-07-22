@@ -7,7 +7,11 @@ import { ensureStudentList, onStudentDataChange } from '../services/studentDataS
 import { getAIModelSettings, getAITokenStats, getWaitSeconds, recordLocalAnswerUsage, resetConversation, sendMessageToGemini } from '../services/geminiService';
 import { parseCSVContent, parseXLSXContent } from '../utils/fileParsers';
 import { AI_ASSISTANT_NAME, APP_NAME_TH } from '../config/appBrand';
-import { tryInstantAnswer } from '../services/aiInstantAnswerService';
+import {
+    tryDeterministicFirstAnswer,
+    tryInstantAnswer,
+    tryProviderFailureFallback,
+} from '../services/aiInstantAnswerService';
 import { canAIUseAction } from '../utils/aiAccessPolicy';
 import { isAnalyticalReasoningIntent } from '../utils/aiAdvicePolicy';
 import { usageKindLabel } from '../utils/aiTokenUsage';
@@ -250,25 +254,29 @@ export default function AIChat() {
                     disableCache: isAnalyticalReasoningIntent(sourceQuestion),
                 });
                 const parsedAI = tools.parseAIResponse(aiText, sourceQuestion);
-                const plannedRetryChart = isAnalyticalReasoningIntent(sourceQuestion)
-                    ? tools.planLocalChartResponse?.(sourceQuestion, user)?.chart || null
-                    : null;
+                const plannedRetryResult = tools.planLocalChartResponse?.(sourceQuestion, user, { uploadedFileData });
                 setMessages(prev => prev.map(message =>
                     message._retryId === retryId
-                        ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart || plannedRetryChart }
+                        ? { role: 'bot', text: `_ลองใหม่สำเร็จ_\n\n${parsedAI.text}`, chart: parsedAI.chart || plannedRetryResult?.chart || null }
                         : message
                 ));
                 return;
             } catch (error) {
                 if (!isQuotaError(error) || attempt === maxRetries) {
+                    const plannedFallback = tools.planLocalChartResponse?.(sourceQuestion, user, { uploadedFileData });
+                    const fallback = plannedFallback?.chart
+                        ? plannedFallback
+                        : tools.getProviderFailureFallback?.(sourceQuestion, user) || tryProviderFailureFallback(sourceQuestion, user);
                     setMessages(prev => prev.map(message =>
                         message._retryId === retryId
                             ? {
                                 role: 'bot',
-                                text: isQuotaError(error)
+                                text: fallback
+                                    ? `**AI provider ยังไม่พร้อมใช้งาน** ระบบจึงแสดงผลวิเคราะห์เชิงกำหนดจากข้อมูลในระบบแทน\n\n${fallback.text}`
+                                    : isQuotaError(error)
                                     ? '**ยังเชื่อมต่อ AI ไม่สำเร็จหลังลองใหม่หลายครั้ง**\n\nกรุณารอ 3-5 นาทีแล้วลองอีกครั้ง ระหว่างนี้ฟีเจอร์พยากรณ์/ค้นหานักศึกษายังใช้ได้โดยไม่ต้องเรียก AI'
                                     : `${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\nลองถามใหม่อีกครั้ง`,
-                                chart: null,
+                                chart: fallback?.chart || null,
                             }
                             : message
                     ));
@@ -280,7 +288,8 @@ export default function AIChat() {
 
     const runQuestion = async (question) => {
         const reasoningMode = isAnalyticalReasoningIntent(question);
-        const instantResult = reasoningMode ? null : tryInstantAnswer(question, user);
+        const deterministicResult = tryDeterministicFirstAnswer(question, user);
+        const instantResult = deterministicResult || (reasoningMode ? null : tryInstantAnswer(question, user));
         if (instantResult) {
             const tokenUsage = recordLocalAnswerUsage();
             setMessages(prev => [...prev, { role: 'bot', text: instantResult.text, chart: instantResult.chart, tokenUsage }]);
@@ -288,10 +297,11 @@ export default function AIChat() {
         }
 
         const tools = await ensureAiModule();
-        const plannedChartResult = reasoningMode
-            ? tools.planLocalChartResponse?.(question, user)
+        const plannedChartResult = tools.planLocalChartResponse?.(question, user, { uploadedFileData });
+        const deterministicChart = plannedChartResult && tools.shouldUseDeterministicChartFirst?.(question)
+            ? plannedChartResult
             : null;
-        const localResult = reasoningMode ? null : tools.tryLocalResponse(question, user);
+        const localResult = deterministicChart || (reasoningMode ? null : tools.tryLocalResponse(question, user));
         if (localResult) {
             const tokenUsage = recordLocalAnswerUsage();
             setMessages(prev => [...prev, { role: 'bot', text: localResult.text, chart: localResult.chart, tokenUsage }]);
@@ -322,7 +332,18 @@ export default function AIChat() {
         try {
             await runQuestion(userMsg);
         } catch (error) {
-            if (isQuotaError(error)) {
+            const tools = await ensureAiModule();
+            const plannedFallback = tools.planLocalChartResponse?.(userMsg, user, { uploadedFileData });
+            const fallback = plannedFallback?.chart
+                ? plannedFallback
+                : tools.getProviderFailureFallback?.(userMsg, user) || tryProviderFailureFallback(userMsg, user);
+            if (isQuotaError(error) && fallback?.chart) {
+                setMessages(prev => [...prev, {
+                    role: 'bot',
+                    text: `**AI provider ยังไม่พร้อมใช้งาน** ระบบจึงแสดงผลวิเคราะห์เชิงกำหนดจากข้อมูลในระบบแทน\n\n${fallback.text}`,
+                    chart: fallback.chart,
+                }]);
+            } else if (isQuotaError(error)) {
                 const retryId = `retry_${Date.now()}`;
                 setMessages(prev => [...prev, {
                     role: 'bot',
@@ -335,8 +356,10 @@ export default function AIChat() {
             } else {
                 setMessages(prev => [...prev, {
                     role: 'bot',
-                    text: `${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\nลองถามใหม่อีกครั้ง`,
-                    chart: null,
+                    text: fallback
+                        ? `**AI provider ยังไม่พร้อมใช้งาน** ระบบจึงแสดงผลวิเคราะห์เชิงกำหนดจากข้อมูลในระบบแทน\n\n${fallback.text}`
+                        : `${error.message || 'ไม่สามารถเชื่อมต่อ AI ได้'}\n\nลองถามใหม่อีกครั้ง`,
+                    chart: fallback?.chart || null,
                 }]);
             }
         } finally {

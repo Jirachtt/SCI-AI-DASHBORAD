@@ -12,7 +12,9 @@ const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
 export const AI_USAGE_LIMITS = {
   globalRpm: readPositiveInt('AI_GLOBAL_RPM_LIMIT', 45),
   globalTpm: readPositiveInt('AI_GLOBAL_TPM_LIMIT', 750_000),
-  globalRpd: readPositiveInt('AI_GLOBAL_RPD_LIMIT', 500),
+  // Match the working primary model's daily allowance. Per-user token budgets,
+  // client RPM, global RPM and TPM still protect the shared project quota.
+  globalRpd: readPositiveInt('AI_GLOBAL_RPD_LIMIT', 1_000),
   dailyTokenBudget: readOptionalPositiveInt('AI_DAILY_TOKEN_BUDGET'),
   clientRpm: readPositiveInt('AI_CLIENT_RPM_LIMIT', 6),
 };

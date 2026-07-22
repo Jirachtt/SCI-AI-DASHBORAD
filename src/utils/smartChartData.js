@@ -1,4 +1,5 @@
 const FALLBACK_SOURCE_PATTERN = /fallback|mock|static|demo|sample/i;
+const OFFICIAL_REFERENCE_SOURCE_PATTERN = /official_public_reference|official[_-]?public|approved_reference/i;
 
 export function smartNumber(value) {
     if (value === null || value === undefined || value === '') return null;
@@ -63,6 +64,7 @@ export function getDatasetQuality(meta = {}, { calculated = false } = {}) {
     const sourceType = String(meta?.sourceType || 'fallback');
     if (calculated) return 'calculated';
     if (meta?.isLive) return 'actual';
+    if (OFFICIAL_REFERENCE_SOURCE_PATTERN.test(sourceType)) return 'official_reference';
     if (FALLBACK_SOURCE_PATTERN.test(sourceType)) return 'fallback';
     return 'missing';
 }
@@ -71,6 +73,7 @@ export function getDatasetQualityText(meta = {}, { calculated = false } = {}) {
     const quality = getDatasetQuality(meta, { calculated });
     if (quality === 'calculated') return 'คำนวณจากข้อมูลนักศึกษาปัจจุบัน';
     if (quality === 'actual') return 'อิงข้อมูล live/realtime ที่ sync เข้าระบบ';
+    if (quality === 'official_reference') return 'อิงข้อมูลอ้างอิงสาธารณะทางการที่ Sync ล่าสุด';
     if (quality === 'fallback') return 'ข้อมูลสำรอง รอ sync หรืออัปโหลดข้อมูลจริง';
     return 'ยังไม่มีข้อมูลจริงในระบบ';
 }

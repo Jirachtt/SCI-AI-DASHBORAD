@@ -1,5 +1,8 @@
 import { courseAnalyticsData } from '../data/courseAnalyticsData';
-import { graduationHistory } from '../data/graduationData';
+import { currentGraduationStats, graduationByMajor, graduationHistory } from '../data/graduationData';
+import { getScienceActivitySummary } from '../data/scienceActivitiesData';
+import { hrData } from '../data/hrData';
+import { strategicData } from '../data/strategicData';
 import { scienceFacultyBudgetData, studentStatsData, dashboardSummary } from '../data/mockData';
 import { tcasPlanningData } from '../data/tcasAdmissionsData';
 import {
@@ -13,9 +16,11 @@ import {
     getSharedDashboardDatasetMetaSync,
     getSharedDashboardDatasetSync,
 } from './sharedDashboardDataService';
+import { getStudentListSync, getStudentRosterTrustStatus } from './studentDataService';
 
 const PALETTE = ['var(--accent-success)', 'var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-orange)', 'var(--accent-danger)', 'var(--accent-cyan)'];
-const CHART_PATTERN = /กราฟ|chart|plot|แผนภูมิ|แผนภาพ|visual|เปรียบเทียบ|แนวโน้ม|trend|กระจาย|distribution/i;
+const CHART_PATTERN = /กราฟ|chart|plot|แผนภูมิ|แผนภาพ|visual|เปรียบเทียบ|compare|comparison|แนวโน้ม|trend|กระจาย|distribution/i;
+const SOURCE_DATASET_IDS = new Map();
 
 function q(value) {
     return String(value || '').toLowerCase();
@@ -44,14 +49,27 @@ function sourceLabel(id, fallbackLabel) {
     const meta = getSharedDashboardDatasetMetaSync(id);
     const status = getDatasetQualityText(meta);
     const updated = meta?.updatedAt ? `, อัปเดต ${meta.updatedAt.toLocaleString('th-TH')}` : '';
-    return `${fallbackLabel} (${status}${updated})`;
+    const trust = String(meta?.sourceType || meta?.lastWriteSource || '').toLowerCase();
+    const sampleNotice = /mock|demo|sample|generated|fallback|static|seed/.test(trust)
+        ? ', ข้อมูลตัวอย่าง/ข้อมูลตั้งต้น ไม่ใช่ข้อมูลจริงจาก API'
+        : '';
+    const label = `${fallbackLabel} (${status}${updated}${sampleNotice})`;
+    SOURCE_DATASET_IDS.set(label, id);
+    return label;
 }
 
 function hasChartIntent(question) {
     return CHART_PATTERN.test(String(question || ''));
 }
 
-function asResult({ text, chart, sources = [], trustWarnings = [], usageMode = 'deterministic_chart' }) {
+function asResult({
+    text,
+    chart,
+    sources = [],
+    trustWarnings = [],
+    usageMode = 'deterministic_chart',
+    selectedDatasets = [],
+}) {
     if (!chart || !isValidChartConfig(chart)) return null;
     const nextChart = {
         ...chart,
@@ -80,10 +98,15 @@ function asResult({ text, chart, sources = [], trustWarnings = [], usageMode = '
     };
     const sourceText = sources.length ? `\n\n**แหล่งข้อมูลที่ใช้:**\n${sources.map(item => `- ${item}`).join('\n')}` : '';
     const warningText = trustWarnings.length ? `\n\n${trustWarnings.map(item => `_หมายเหตุ: ${item}_`).join('\n')}` : '';
+    const inferredDatasets = sources.map(source => {
+        if (/^Uploaded file:/i.test(source)) return 'uploaded_file';
+        return SOURCE_DATASET_IDS.get(source) || '';
+    }).filter(Boolean);
     return {
         text: `${text}${sourceText}${warningText}`.trim(),
         chart: nextChart,
         sources,
+        selectedDatasets: [...new Set([...selectedDatasets, ...inferredDatasets])],
         trustWarnings,
         blockedReason: '',
         usageMode,
@@ -104,6 +127,7 @@ function denyIfMissingAll(userContext, sections = []) {
 
 function tcasRows(data) {
     const round3 = Array.isArray(data?.round3Plan2569) ? data.round3Plan2569 : [];
+    const roundPlan = Array.isArray(data?.roundPlan2569) ? data.roundPlan2569 : [];
     const target = Array.isArray(data?.intakeTarget2570) ? data.intakeTarget2570 : [];
     const labels = [...new Set([
         ...round3.map(row => row.major),
@@ -111,6 +135,7 @@ function tcasRows(data) {
     ].filter(Boolean))];
     return {
         round3,
+        roundPlan,
         target,
         labels,
         round3Total: round3.reduce((sum, row) => sum + number(row.plan), 0),
@@ -127,6 +152,49 @@ function buildTcasChartAnswer(question, userContext) {
     if (!rows.labels.length) return null;
 
     const questionText = q(question);
+    const wantsAllRounds = /แต่ละรอบ|ทุกรอบ|รอบไหน|portfolio|quota|direct/.test(questionText)
+        && rows.roundPlan.length > 0;
+    if (wantsAllRounds) {
+        const hasSampleRows = rows.roundPlan.some(row => /mock|sample|presentation/i.test(String(row?.sourceStatus || '')));
+        return asResult({
+            text: `สร้างกราฟเปรียบเทียบแผนรับและจำนวนลงทะเบียน TCAS ปี 2569 แยกตามรอบให้แล้วครับ${hasSampleRows ? ' ตัวเลขรายรอบชุดนี้เป็นข้อมูลตัวอย่าง/ข้อมูลตั้งต้นสำหรับสาธิต จึงยังไม่ใช่ข้อมูลจริงจาก Admissions/Reg' : ''}`,
+            chart: {
+                chartType: 'bar',
+                data: {
+                    labels: rows.roundPlan.map(row => row.round),
+                    datasets: [
+                        {
+                            label: 'แผนรับ (คน)',
+                            data: rows.roundPlan.map(row => number(row.plan)),
+                            backgroundColor: 'color-mix(in srgb, var(--accent-blue) 73%, transparent)',
+                            borderColor: 'var(--accent-blue)',
+                            borderRadius: 8,
+                        },
+                        {
+                            label: 'ลงทะเบียน (คน)',
+                            data: rows.roundPlan.map(row => number(row.enrolled)),
+                            backgroundColor: 'color-mix(in srgb, var(--accent-success) 73%, transparent)',
+                            borderColor: 'var(--accent-success)',
+                            borderRadius: 8,
+                        },
+                    ],
+                },
+                options: {
+                    plugins: {
+                        title: { display: true, text: 'แผนรับและลงทะเบียน TCAS ปี 2569 แยกตามรอบ' },
+                        legend: { position: 'bottom' },
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'จำนวน (คน)' } },
+                    },
+                },
+            },
+            sources: [sourceLabel('tcas_admissions', 'TCAS admissions dataset')],
+            trustWarnings: hasSampleRows
+                ? ['ข้อมูลรายรอบเป็นข้อมูลตัวอย่าง/ข้อมูลตั้งต้น ต้อง Sync Admissions/Reg ก่อนใช้เป็นตัวเลขทางการ']
+                : [],
+        });
+    }
     const compare = /เปรียบเทียบ|เพิ่ม|ลด|ควร|2570|แผนรับ/.test(questionText);
     const useRound3Only = /รอบ\s*3|admission|2569/.test(questionText) && !compare;
     const labels = useRound3Only ? rows.round3.map(row => row.major) : rows.labels;
@@ -379,6 +447,265 @@ function buildBudgetStudentCompareAnswer(question, userContext) {
     });
 }
 
+function buildGraduationChartAnswer(question, userContext) {
+    const accessDenied = denyIfNoAccess(userContext, ['graduation_check', 'graduation_stats']);
+    if (accessDenied) return accessDenied;
+
+    const data = sharedDataset('graduation', {
+        current: currentGraduationStats,
+        byMajor: graduationByMajor,
+        history: graduationHistory,
+    });
+    const text = q(question);
+    const current = data?.current || data?.currentGraduationStats || currentGraduationStats;
+    const byMajor = Array.isArray(data?.byMajor) ? data.byMajor : graduationByMajor;
+    const history = Array.isArray(data?.history) ? data.history : graduationHistory;
+    const wantsTrend = /ย้อนหลัง|แนวโน้ม|trend|ปี/.test(text) && history.length > 1;
+
+    if (wantsTrend) {
+        return asResult({
+            text: 'สร้างกราฟแนวโน้มผู้มีสิทธิ์และผู้สำเร็จการศึกษาให้แล้วครับ',
+            chart: {
+                chartType: 'line',
+                data: {
+                    labels: history.map(row => String(row.year)),
+                    datasets: [
+                        { label: 'ผู้มีสิทธิ์ (คน)', data: history.map(row => number(row.candidates)), borderColor: 'var(--accent-blue)', tension: 0.3 },
+                        { label: 'สำเร็จการศึกษา (คน)', data: history.map(row => number(row.graduated)), borderColor: 'var(--accent-success)', tension: 0.3 },
+                    ],
+                },
+                options: {
+                    plugins: { title: { display: true, text: 'แนวโน้มการสำเร็จการศึกษา' }, legend: { position: 'bottom' } },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'จำนวน (คน)' } } },
+                },
+            },
+            sources: [sourceLabel('graduation', 'Graduation dataset')],
+        });
+    }
+
+    const statusValues = [
+        number(current?.expectedGraduates),
+        number(current?.pending),
+        number(current?.notPassed),
+    ];
+    if (statusValues.some(value => value > 0)) {
+        return asResult({
+            text: `สร้างกราฟสถานะความพร้อมจบให้แล้วครับ จากผู้มีสิทธิ์ ${format(current?.totalCandidates)} คน คาดว่าสำเร็จ ${format(current?.expectedGraduates)} คน`,
+            chart: {
+                chartType: 'bar',
+                data: {
+                    labels: ['คาดว่าสำเร็จ', 'รอพินิจ', 'ไม่ผ่านเกณฑ์'],
+                    datasets: [{
+                        label: 'จำนวน (คน)',
+                        data: statusValues,
+                        backgroundColor: ['var(--accent-success)', 'var(--accent-orange)', 'var(--accent-danger)'],
+                        borderRadius: 8,
+                    }],
+                },
+                options: {
+                    plugins: { title: { display: true, text: 'สถานะความพร้อมสำเร็จการศึกษา' }, legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                },
+            },
+            sources: [sourceLabel('graduation', 'Graduation dataset')],
+        });
+    }
+
+    if (!byMajor.length) return null;
+    return asResult({
+        text: 'สร้างกราฟความพร้อมจบแยกตามสาขาให้แล้วครับ',
+        chart: {
+            chartType: 'bar',
+            data: {
+                labels: byMajor.map(row => row.major),
+                datasets: [
+                    { label: 'คาดว่าสำเร็จ', data: byMajor.map(row => number(row.expected)), backgroundColor: 'var(--accent-success)' },
+                    { label: 'รอพินิจ', data: byMajor.map(row => number(row.pending)), backgroundColor: 'var(--accent-orange)' },
+                    { label: 'ไม่ผ่านเกณฑ์', data: byMajor.map(row => number(row.notPassed)), backgroundColor: 'var(--accent-danger)' },
+                ],
+            },
+            options: { plugins: { title: { display: true, text: 'ความพร้อมจบแยกตามสาขา' }, legend: { position: 'bottom' } } },
+        },
+        sources: [sourceLabel('graduation', 'Graduation dataset')],
+    });
+}
+
+function buildStudentLifeChartAnswer(question, userContext) {
+    const accessDenied = denyIfNoAccess(userContext, ['student_life']);
+    if (accessDenied) return accessDenied;
+
+    const data = sharedDataset('student_life', null);
+    const fallback = getScienceActivitySummary();
+    const activity = data?.activityHours || fallback.requirement;
+    const events = Array.isArray(data?.scienceActivities) ? data.scienceActivities : fallback.all;
+    const text = q(question);
+    const wantsMonthly = /เดือนนี้|เดือนหน้า|รายเดือน|monthly|กิจกรรม.*เดือน/.test(text);
+
+    if (wantsMonthly && events.length) {
+        const currentKey = fallback.currentKey;
+        const nextKey = fallback.nextKey;
+        const eventMonth = event => String(event?.startDate || '').slice(0, 7);
+        const currentRows = events.filter(event => eventMonth(event) === currentKey);
+        const nextRows = events.filter(event => eventMonth(event) === nextKey);
+        return asResult({
+            text: 'สร้างกราฟเปรียบเทียบจำนวนกิจกรรมและชั่วโมงที่เปิดให้เก็บของเดือนนี้กับเดือนหน้าให้แล้วครับ',
+            chart: {
+                chartType: 'bar',
+                data: {
+                    labels: [fallback.currentMonthLabel, fallback.nextMonthLabel],
+                    datasets: [
+                        { label: 'จำนวนกิจกรรม', data: [currentRows.length, nextRows.length], backgroundColor: 'var(--accent-blue)', borderRadius: 8, yAxisID: 'y' },
+                        { label: 'ชั่วโมงกิจกรรม', data: [currentRows.reduce((sum, row) => sum + number(row.hours), 0), nextRows.reduce((sum, row) => sum + number(row.hours), 0)], backgroundColor: 'var(--accent-purple)', borderRadius: 8, yAxisID: 'y1' },
+                    ],
+                },
+                options: {
+                    plugins: { title: { display: true, text: 'กิจกรรมคณะวิทยาศาสตร์เดือนนี้และเดือนหน้า' }, legend: { position: 'bottom' } },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'จำนวนกิจกรรม' }, ticks: { precision: 0 } },
+                        y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'ชั่วโมง' }, grid: { drawOnChartArea: false } },
+                    },
+                },
+            },
+            sources: [sourceLabel('student_life', 'Student life dataset')],
+        });
+    }
+
+    const completed = number(activity?.completedHours ?? activity?.completed);
+    const target = number(activity?.targetHours ?? activity?.target);
+    if (!target) return null;
+    const remaining = Math.max(0, target - completed);
+    return asResult({
+        text: `สร้างกราฟความคืบหน้าชั่วโมงกิจกรรมให้แล้วครับ ทำแล้ว ${format(completed)} ชั่วโมง เหลือ ${format(remaining)} ชั่วโมงจากเป้าหมาย ${format(target)} ชั่วโมง`,
+        chart: {
+            chartType: 'doughnut',
+            data: {
+                labels: ['ทำแล้ว', 'ยังขาด'],
+                datasets: [{ data: [completed, remaining], backgroundColor: ['var(--accent-success)', 'var(--accent-orange)'], borderWidth: 0 }],
+            },
+            options: { plugins: { title: { display: true, text: 'ความคืบหน้าชั่วโมงกิจกรรม' }, legend: { position: 'bottom' } } },
+        },
+        sources: [sourceLabel('student_life', 'Student life dataset')],
+    });
+}
+
+function buildHrChartAnswer(question, userContext) {
+    const accessDenied = denyIfNoAccess(userContext, ['hr_overview']);
+    if (accessDenied) return accessDenied;
+
+    const data = sharedDataset('hr', hrData);
+    const science = data?.scienceFaculty || data?.summary || hrData.scienceFaculty;
+    const text = q(question);
+    const ageRows = Array.isArray(science?.diversity?.ageGroup) ? science.diversity.ageGroup : [];
+    if (/เกษียณ|อายุ|retire/.test(text) && ageRows.length) {
+        return asResult({
+            text: `สร้างกราฟโครงสร้างช่วงอายุบุคลากรให้แล้วครับ โดยมีผู้ใกล้เกษียณใน 5 ปี ${format(science?.diversity?.retirementIn5Years)} คน`,
+            chart: {
+                chartType: 'bar',
+                data: { labels: ageRows.map(row => row.group), datasets: [{ label: 'บุคลากร (คน)', data: ageRows.map(row => number(row.count)), backgroundColor: ageRows.map((_, index) => PALETTE[index % PALETTE.length]), borderRadius: 8 }] },
+                options: { plugins: { title: { display: true, text: 'โครงสร้างช่วงอายุบุคลากร' }, legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+            },
+            sources: [sourceLabel('hr', 'HR dataset')],
+        });
+    }
+
+    const academic = number(science?.academic);
+    const support = number(science?.support);
+    if (!academic && !support) return null;
+    return asResult({
+        text: `สร้างกราฟภาพรวมบุคลากรคณะวิทยาศาสตร์ให้แล้วครับ สายวิชาการ ${format(academic)} คน และสายสนับสนุน ${format(support)} คน`,
+        chart: {
+            chartType: 'doughnut',
+            data: { labels: ['สายวิชาการ', 'สายสนับสนุน'], datasets: [{ data: [academic, support], backgroundColor: ['var(--accent-blue)', 'var(--accent-success)'], borderWidth: 0 }] },
+            options: { plugins: { title: { display: true, text: 'สัดส่วนบุคลากรคณะวิทยาศาสตร์' }, legend: { position: 'bottom' } } },
+        },
+        sources: [sourceLabel('hr', 'HR dataset')],
+    });
+}
+
+function buildStrategicChartAnswer(question, userContext) {
+    const accessDenied = denyIfNoAccess(userContext, ['strategic_overview']);
+    if (accessDenied) return accessDenied;
+
+    const data = sharedDataset('strategic', strategicData);
+    const text = q(question);
+    const trend = Array.isArray(data?.efficiencyTrend) ? data.efficiencyTrend : [];
+    if (/ย้อนหลัง|3\s*ปี|แนวโน้ม|เฉลี่ย|คาดการณ์|forecast|trend/.test(text) && trend.length) {
+        return asResult({
+            text: 'สร้างกราฟแนวโน้มผลการดำเนินงานเชิงยุทธศาสตร์ย้อนหลังให้แล้วครับ',
+            chart: {
+                chartType: 'line',
+                data: {
+                    labels: trend.map(row => String(row.year)),
+                    datasets: [
+                        { label: 'คะแนนประสิทธิภาพ', data: trend.map(row => number(row.score)), borderColor: 'var(--accent-blue)', tension: 0.3, yAxisID: 'y' },
+                        { label: 'ประสิทธิภาพงบประมาณ (%)', data: trend.map(row => number(row.budgetEfficiency)), borderColor: 'var(--accent-success)', tension: 0.3, yAxisID: 'y' },
+                    ],
+                },
+                options: { plugins: { title: { display: true, text: 'แนวโน้มผลการดำเนินงานเชิงยุทธศาสตร์' }, legend: { position: 'bottom' } }, scales: { y: { beginAtZero: false, title: { display: true, text: 'คะแนน / ร้อยละ' } } } },
+            },
+            sources: [sourceLabel('strategic', 'Strategic KPI dataset')],
+        });
+    }
+
+    const goals = Array.isArray(data?.strategicGoals) ? data.strategicGoals : [];
+    if (!goals.length) return null;
+    return asResult({
+        text: 'สร้างกราฟเปรียบเทียบผลงานปัจจุบันกับเป้าหมาย KPI ให้แล้วครับ',
+        chart: {
+            chartType: 'bar',
+            data: {
+                labels: goals.map(row => row.title),
+                datasets: [
+                    { label: 'ผลปัจจุบัน', data: goals.map(row => number(row.current)), backgroundColor: 'var(--accent-blue)', borderRadius: 8 },
+                    { label: 'เป้าหมาย', data: goals.map(row => number(row.target)), backgroundColor: 'var(--accent-success)', borderRadius: 8 },
+                ],
+            },
+            options: { indexAxis: 'y', plugins: { title: { display: true, text: 'ผลปัจจุบันเทียบเป้าหมาย KPI' }, legend: { position: 'bottom' } }, scales: { x: { beginAtZero: true } } },
+        },
+        sources: [sourceLabel('strategic', 'Strategic KPI dataset')],
+    });
+}
+
+function buildUploadedFileChartAnswer(question, uploadedFileData) {
+    if (!uploadedFileData || !hasChartIntent(question)) return null;
+    const rows = Array.isArray(uploadedFileData.rows) ? uploadedFileData.rows.slice(0, 80) : [];
+    const numericColumns = Array.isArray(uploadedFileData.numericCols) ? uploadedFileData.numericCols.slice(0, 4) : [];
+    const labelColumn = uploadedFileData.labelCol || uploadedFileData.headers?.find(header => !numericColumns.includes(header));
+    if (!rows.length || !numericColumns.length || !labelColumn) return null;
+
+    const labels = rows.map((row, index) => String(row?.[labelColumn] ?? `แถว ${index + 1}`));
+    const datasets = numericColumns.map((column, index) => ({
+        label: column,
+        data: rows.map(row => number(String(row?.[column] ?? '').replace(/,/g, ''), 0)),
+        backgroundColor: PALETTE[index % PALETTE.length],
+        borderColor: PALETTE[index % PALETTE.length],
+        borderWidth: 2,
+        borderRadius: 7,
+    }));
+    const chartType = /แนวโน้ม|trend|เวลา|ปี|เดือน/.test(q(question)) ? 'line' : 'bar';
+    if (chartType === 'line') {
+        datasets.forEach(dataset => {
+            dataset.backgroundColor = 'transparent';
+            dataset.tension = 0.3;
+            dataset.pointRadius = 4;
+        });
+    }
+
+    return asResult({
+        text: `สร้างกราฟจากไฟล์ **${uploadedFileData.fileName || 'ไฟล์ที่อัปโหลด'}** โดยใช้ ${labelColumn} เป็นแกนหมวดหมู่ และ ${numericColumns.join(', ')} เป็นตัวชี้วัดให้แล้วครับ`,
+        chart: {
+            chartType,
+            data: { labels, datasets },
+            options: {
+                plugins: { title: { display: true, text: `กราฟจาก ${uploadedFileData.fileName || 'ไฟล์ที่อัปโหลด'}` }, legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: true } },
+            },
+        },
+        sources: [`Uploaded file: ${uploadedFileData.fileName || 'user-provided data'} (ข้อมูลที่ผู้ใช้อัปโหลด)`],
+        usageMode: 'deterministic_uploaded_chart',
+    });
+}
+
 function buildBudgetChartAnswer(question, userContext) {
     const accessDenied = denyIfNoAccess(userContext, ['budget_forecast', 'financial', 'faculty_budget']);
     if (accessDenied) return accessDenied;
@@ -556,7 +883,7 @@ function buildScienceMajorStudentChartAnswer(question, userContext) {
     if (accessDenied) return accessDenied;
 
     const stats = sharedDataset('student_stats', studentStatsData);
-    const rows = Array.isArray(stats?.scienceFaculty?.byMajor)
+    let rows = Array.isArray(stats?.scienceFaculty?.byMajor)
         ? stats.scienceFaculty.byMajor
             .map(row => ({
                 major: row.major || row.name,
@@ -565,10 +892,37 @@ function buildScienceMajorStudentChartAnswer(question, userContext) {
             }))
             .filter(row => row.major && row.total)
         : [];
-    if (!rows.length) return null;
 
     const wantsGpa = /gpa|เกรด|grade/.test(q(question));
-    const hasGpa = rows.some(row => Number.isFinite(Number(row.avgGPA)));
+    let hasGpa = rows.some(row => Number.isFinite(Number(row.avgGPA)));
+    const rosterTrust = getStudentRosterTrustStatus();
+    let usedRoster = false;
+    if ((!rows.length || (wantsGpa && !hasGpa)) && rosterTrust.canUseForChatRows) {
+        const byMajor = new Map();
+        getStudentListSync().forEach(student => {
+            const major = String(student?.major || '').trim();
+            if (!major) return;
+            const current = byMajor.get(major) || { major, total: 0, gpaSum: 0, gpaCount: 0 };
+            const gpa = Number(student?.gpa);
+            current.total += 1;
+            if (Number.isFinite(gpa)) {
+                current.gpaSum += gpa;
+                current.gpaCount += 1;
+            }
+            byMajor.set(major, current);
+        });
+        rows = [...byMajor.values()]
+            .map(row => ({
+                major: row.major,
+                total: row.total,
+                avgGPA: row.gpaCount ? Number((row.gpaSum / row.gpaCount).toFixed(2)) : null,
+            }))
+            .filter(row => row.total > 0)
+            .sort((a, b) => b.total - a.total || a.major.localeCompare(b.major, 'th'));
+        hasGpa = rows.some(row => Number.isFinite(Number(row.avgGPA)));
+        usedRoster = rows.length > 0;
+    }
+    if (!rows.length) return null;
     if (wantsGpa && !hasGpa) return null;
 
     const datasets = [
@@ -596,7 +950,7 @@ function buildScienceMajorStudentChartAnswer(question, userContext) {
 
     return asResult({
         text: wantsGpa
-            ? 'สร้างกราฟเปรียบเทียบ **จำนวนนักศึกษาและ GPA เฉลี่ยตามสาขาคณะวิทยาศาสตร์** ให้แล้วครับ'
+            ? `สร้างกราฟเปรียบเทียบ **จำนวนนักศึกษาและ GPA เฉลี่ยตามสาขาคณะวิทยาศาสตร์** ให้แล้วครับ${usedRoster && rosterTrust.canAnswerDemoIndividual ? ' โดยข้อมูลรายสาขาและ GPA เป็น generated mock/ข้อมูลจำลองสำหรับสาธิต ไม่ใช่ข้อมูลจริงจาก Reg' : ''}`
             : 'สร้างกราฟ **จำนวนนักศึกษาตามสาขาคณะวิทยาศาสตร์** ให้แล้วครับ',
         chart: {
             chartType: 'bar',
@@ -617,7 +971,15 @@ function buildScienceMajorStudentChartAnswer(question, userContext) {
                 },
             },
         },
-        sources: [sourceLabel('student_stats', 'Student statistics dataset')],
+        sources: [
+            sourceLabel('student_stats', 'Student statistics dataset'),
+            ...(usedRoster ? [`Student roster (${rosterTrust.accuracyLabel})`] : []),
+        ],
+        selectedDatasets: [
+            'student_stats',
+            ...(usedRoster ? [rosterTrust.canAnswerDemoIndividual ? 'student_roster_mock' : 'student_roster_uploaded'] : []),
+        ],
+        trustWarnings: usedRoster && rosterTrust.warning ? [rosterTrust.warning] : [],
     });
 }
 
@@ -730,9 +1092,14 @@ function buildStudentAwardsChartAnswer(question, userContext) {
     });
 }
 
-export function createPlannedChartAnswer(question, userContext = {}) {
-    if (!hasChartIntent(question)) return null;
+export function createPlannedChartAnswer(question, userContext = {}, options = {}) {
+    const uploadedChart = buildUploadedFileChartAnswer(question, options.uploadedFileData);
+    if (uploadedChart) return uploadedChart;
     const text = q(question);
+    const hasAnalyticalChartSignal = /แผนรับ|จำนวน|กี่คน|กี่ชั่วโมง|กี่เปอร์เซ็นต์|สัดส่วน|แยกตาม|รายปี|รายรอบ|แต่ละรอบ|ภาพรวม|สรุป|แนวโน้ม|คืบหน้า|ต่ำกว่าเป้าหมาย|ความเสี่ยง|เร่ง|วิเคราะห์|เปรียบเทียบ|เทียบ|มากน้อย|แค่ไหน|ติดเงื่อนไข|ขาดเงื่อนไข|compare|comparison/.test(text);
+    const hasChartableDomain = /tcas|admission|รับสมัคร|รับเข้า|สำเร็จ|พร้อมจบ|graduation|กิจกรรม|ชั่วโมงกิจกรรม|บุคลากร|อาจารย์|staff|hr|เกษียณ|ยุทธศาสตร์|okr|kpi|งบ|budget|รายรับ|รายจ่าย/.test(text);
+    const inferredChartIntent = hasAnalyticalChartSignal && hasChartableDomain;
+    if (!hasChartIntent(question) && !inferredChartIntent) return null;
 
     if (/tcas|admission|รับสมัคร|รับเข้า|แผนรับ|portfolio|quota/.test(text)) {
         return buildTcasChartAnswer(question, userContext);
@@ -743,20 +1110,32 @@ export function createPlannedChartAnswer(question, userContext = {}) {
     if (/รางวัล|award/.test(text)) {
         return buildStudentAwardsChartAnswer(question, userContext);
     }
-    if (/นักศึกษา|นิสิต|student/.test(text) && /ประชากร|population|พยากรณ์|forecast/.test(text)) {
+    if (/นักศึกษา|นิสิต|นศ\.?|student/.test(text) && /ประชากร|population|พยากรณ์|forecast/.test(text)) {
         return buildPopulationForecastChartAnswer(question, userContext);
     }
-    if (/งบ|budget|รายรับ|รายจ่าย/.test(text) && /นักศึกษา|นิสิต|student/.test(text)) {
+    if (/กิจกรรม|ชั่วโมงกิจกรรม|รับน้อง|ไหว้ครู|student life/.test(text)) {
+        return buildStudentLifeChartAnswer(question, userContext);
+    }
+    if (/บุคลากร|อาจารย์|staff|hr|เกษียณ/.test(text)) {
+        return buildHrChartAnswer(question, userContext);
+    }
+    if (/ยุทธศาสตร์|okr|kpi|ตัวชี้วัด|คำรับรอง/.test(text)) {
+        return buildStrategicChartAnswer(question, userContext);
+    }
+    if (/งบ|budget|รายรับ|รายจ่าย/.test(text) && /นักศึกษา|นิสิต|นศ\.?|student/.test(text)) {
         return buildBudgetStudentCompareAnswer(question, userContext);
     }
-    if (/สำเร็จ|จบ|graduation|ผู้สำเร็จ/.test(text) && /นักศึกษา|นิสิต|student/.test(text)) {
-        return buildStudentGraduationCompareAnswer(question, userContext);
+    if (/สำเร็จ|พร้อมจบ|เงื่อนไขจบ|graduation|ผู้สำเร็จ/.test(text)) {
+        const comparison = /นักศึกษา|นิสิต|นศ\.?|student/.test(text) && /เปรียบเทียบ|เทียบ|เทียบกับ|compare|comparison/.test(text)
+            ? buildStudentGraduationCompareAnswer(question, userContext)
+            : null;
+        return comparison || buildGraduationChartAnswer(question, userContext);
     }
-    if (/นักศึกษา|นิสิต|student/.test(text) && /สาขา|major|หลักสูตร|คณะวิทย|science/.test(text) && !/รายชื่อ|รายคน|รหัส\s*6|\b6\d{9}\b/.test(text)) {
+    if (/นักศึกษา|นิสิต|นศ\.?|student/.test(text) && /สาขา|major|หลักสูตร|คณะวิทย|science/.test(text) && !/รายชื่อ|รายคน|รหัส\s*6|\b6\d{9}\b/.test(text)) {
         const scienceMajorChart = buildScienceMajorStudentChartAnswer(question, userContext);
         if (scienceMajorChart) return scienceMajorChart;
     }
-    if (/นักศึกษา|นิสิต|student/.test(text) && !/รายชื่อ|รายคน|รหัส\s*6|\b6\d{9}\b/.test(text)) {
+    if (/นักศึกษา|นิสิต|นศ\.?|student/.test(text) && !/รายชื่อ|รายคน|รหัส\s*6|\b6\d{9}\b/.test(text)) {
         return buildDashboardFacultyCompareAnswer(question, userContext);
     }
     if (/งบ|budget|รายรับ|รายจ่าย/.test(text)) {
@@ -764,4 +1143,10 @@ export function createPlannedChartAnswer(question, userContext = {}) {
     }
 
     return null;
+}
+
+export function shouldPreferDeterministicChartAnswer(question) {
+    const text = q(question);
+    if (/กราฟ|chart|plot|แผนภูมิ|แผนภาพ/.test(text)) return true;
+    return /tcas.*(?:แต่ละรอบ|รับกี่คน|รอบไหน.*(?:เสี่ยง|ไม่เต็ม))|(?:แต่ละรอบ|รับกี่คน).*(?:tcas|รับสมัคร)|(?:kpi|ตัวชี้วัด).*(?:ต้องเร่ง|เร่งด่วน|จัดลำดับ)/.test(text);
 }

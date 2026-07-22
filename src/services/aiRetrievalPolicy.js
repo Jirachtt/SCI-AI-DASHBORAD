@@ -68,6 +68,16 @@ const USABLE_CONTEXT_PATTERNS = [
     /\bsource(?:s|label|trust)?\b/i,
 ];
 
+const DEFINITIVE_NO_DIRECT_CONTEXT_PATTERNS = [
+    /no direct local faq match/i,
+];
+
+// A manually synced official snapshot is still suitable for a "current"
+// dashboard question for a short window. Treating it as stale immediately
+// forces an unnecessary Google Search call and consumes grounding quota even
+// though the requested evidence is already present locally.
+const RECENT_OFFICIAL_REFERENCE_MAX_AGE_MS = 72 * 60 * 60 * 1000;
+
 function contextText(context) {
     return String(context?.text || '').trim();
 }
@@ -75,6 +85,8 @@ function contextText(context) {
 function looksMissingOnly(context) {
     const text = contextText(context);
     if (!text) return true;
+    if (context?.noDirectMatch || context?.meta?.noDirectMatch) return true;
+    if (DEFINITIVE_NO_DIRECT_CONTEXT_PATTERNS.some(pattern => pattern.test(text))) return true;
     const hasMissingSignal = MISSING_ONLY_PATTERNS.some(pattern => pattern.test(text));
     if (!hasMissingSignal) return false;
     return !USABLE_CONTEXT_PATTERNS.some(pattern => pattern.test(text));
@@ -91,6 +103,15 @@ function isTrustedRegistryContext(context) {
     if (context.trustLevel === 'untrusted_demo') return false;
     if (context.confidence === 'none') return false;
     return true;
+}
+
+function isRecentlyUpdatedOfficialReference(context) {
+    if (context?.trustLevel !== 'approved_reference') return false;
+    if (!/official|api|firestore|uploaded/i.test(String(context?.sourceType || ''))) return false;
+    const updatedAt = new Date(context?.updatedAt || context?.lastUpdated || 0).getTime();
+    if (!Number.isFinite(updatedAt) || updatedAt <= 0) return false;
+    const age = Date.now() - updatedAt;
+    return age >= 0 && age <= RECENT_OFFICIAL_REFERENCE_MAX_AGE_MS;
 }
 
 function hasIncompleteTcasEvidence(question, contexts = []) {
@@ -112,7 +133,9 @@ export function evaluateAILocalEvidence({ question = '', contexts = [], contextB
     const requiresFreshVerification = FRESHNESS_PATTERN.test(String(question || ''));
     const hasMissingTcasDetail = hasIncompleteTcasEvidence(question, contexts);
     const hasTrustedLiveContext = trustedRegistryContexts.some(context =>
-        context?.isLive || context?.trustLevel === 'live_official'
+        context?.isLive
+        || context?.trustLevel === 'live_official'
+        || isRecentlyUpdatedOfficialReference(context)
     );
     const comparisonMode = Boolean(contextBundle?.comparisonMode) || isAIComparisonIntent(question);
     const requestedComparisonTopicList = comparisonTopics(question);
