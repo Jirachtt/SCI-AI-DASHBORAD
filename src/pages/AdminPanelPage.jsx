@@ -510,7 +510,7 @@ export default function AdminPanelPage() {
                         <UserCog size={22} />
                     </div>
                     <div>
-                        <p className="admin-stat-label">ผู้ดูแลผู้ใช้ (Admin)</p>
+                        <p className="admin-stat-label">ผู้ดูแลระบบ (Admin)</p>
                         <h2 className="admin-stat-value">{stats.admin}</h2>
                     </div>
                 </div>

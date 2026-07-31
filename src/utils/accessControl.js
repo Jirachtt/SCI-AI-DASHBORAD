@@ -1,9 +1,7 @@
 import { ROLES, getRoleLabel, normalizeRole } from '../constants/roles.js';
 
-// Access control utility
-// Keep user-management permissions separate from dashboard/data permissions.
-
-const ADMIN_SECTIONS = ['admin_panel', 'user_management', 'role_management'];
+// Access control utility. The admin-code account is the system owner: it gets
+// the dean's complete data view plus user and role management.
 
 const DEAN_SECTIONS = [
     'dashboard', 'tuition', 'tuition_detail',
@@ -16,6 +14,13 @@ const DEAN_SECTIONS = [
     'graduation_stats',
     'alert_center',
     'academic_rules',
+];
+
+const ADMIN_SECTIONS = [
+    ...DEAN_SECTIONS,
+    'admin_panel',
+    'user_management',
+    'role_management',
 ];
 
 const CHAIR_SECTIONS = [
@@ -90,8 +95,8 @@ const ACCESS_LEVELS = {
     },
     [ROLES.ADMIN]: {
         label: getRoleLabel(ROLES.ADMIN),
-        level: 9,
-        dataRows: 0,
+        level: 0,
+        dataRows: 1000000,
         color: 'var(--accent-danger)',
         sections: ADMIN_SECTIONS,
     },
@@ -136,7 +141,7 @@ export function isPendingRole(role) {
 }
 
 export function hasStudentDataWriteAccess(role) {
-    return [ROLES.DEAN, ROLES.CHAIR, ROLES.STAFF].includes(normalizeRole(role));
+    return [ROLES.ADMIN, ROLES.DEAN, ROLES.CHAIR, ROLES.STAFF].includes(normalizeRole(role));
 }
 
 export { normalizeRole };

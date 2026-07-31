@@ -1404,7 +1404,7 @@ function buildBaseInstruction() {
 ═══════════════════════════════════════════
  SECTION 1 — ROLE & ACCESS
 ═══════════════════════════════════════════
-Access: Role-aware decision intelligence only. Use the current role policy and retrieved context registry; never assume super-admin access.
+Access: Role-aware decision intelligence only. Use the current role policy and retrieved context registry. The admin and dean roles have unrestricted internal data context; all other roles remain scoped by permission.
 Purpose: Statistical analysis & Data Visualization (charts/graphs) for strategic planning.
 Language: ตอบภาษาไทย กระชับ ใช้ emoji ยกเว้นผู้ใช้ถามเป็นภาษาอังกฤษ
 Data Freshness: ข้อมูลในระบบอัปเดตล่าสุด ณ ${dataTimestamp}
@@ -2689,7 +2689,7 @@ async function _sendMessageImpl(userMessage, options = {}) {
     const requestStartedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
     if (!canRoleUseAI(options.user || {})) {
         const role = resolveAIRole(options.user || {});
-        const text = 'บัญชีผู้ดูแลผู้ใช้มีสิทธิ์เฉพาะการจัดการบัญชีและบทบาท จึงไม่สามารถเรียกใช้ AI หรือเข้าถึงชุดข้อมูลของคณะได้';
+        const text = 'บัญชีนี้ยังไม่ได้รับสิทธิ์เรียกใช้ AI หรือเข้าถึงชุดข้อมูลที่คำถามต้องการ';
         emitAIDebugMetadata({
             blocked: true,
             blockedReason: 'role_not_allowed_to_use_ai',

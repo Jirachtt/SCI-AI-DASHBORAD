@@ -204,7 +204,7 @@ expect(
   /callerCanManageDashboardDataset/.test(rules)
     && /match \/datasets\/\{datasetId\}/.test(rules)
     && /allow write: if callerCanManageDashboardDataset\(datasetId\)/.test(rules)
-    && /callerHasApprovedRole\(\['dean', 'staff'\]\)/.test(rules)
+    && /callerHasApprovedRole\(\['admin', 'dean', 'staff'\]\)/.test(rules)
     && /callerHasApprovedRole\(\['chair'\]\)/.test(rules),
   'Shared dashboard data must be writable only by approved roles and dataset scope.'
 );

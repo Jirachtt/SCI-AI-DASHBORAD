@@ -1,7 +1,7 @@
 import { canAccess, getRoleInfo, normalizeRole } from './accessControl.js';
 
-const UNRESTRICTED_AI_ROLES = new Set(['dean']);
-const AI_ENABLED_ROLES = new Set(['dean', 'chair', 'staff', 'general', 'student']);
+const UNRESTRICTED_AI_ROLES = new Set(['admin', 'dean']);
+const AI_ENABLED_ROLES = new Set(['admin', 'dean', 'chair', 'staff', 'general', 'student']);
 
 const DOMAIN_SECTION_MAP = {
     students: ['student_stats', 'student_list'],
@@ -31,8 +31,6 @@ export function resolveAIRole(roleOrUser) {
     return getRoleInfo(role) ? role : 'general';
 }
 
-// Admin manages accounts and roles only. It must not become a data superuser
-// through a direct call to the AI service.
 export function canRoleUseAI(roleOrUser) {
     return AI_ENABLED_ROLES.has(resolveAIRole(roleOrUser));
 }

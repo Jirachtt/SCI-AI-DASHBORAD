@@ -35,7 +35,7 @@ async function ensureAdminProfile(claims) {
         name: claims.name,
         email: claims.email,
         role: 'admin',
-        roleLabel: 'ผู้ดูแลผู้ใช้ (Admin)',
+        roleLabel: 'ผู้ดูแลระบบ (Admin)',
         avatar: 'AD',
         status: 'approved',
         authProvider: 'admin_code',
@@ -53,6 +53,9 @@ async function ensureAdminProfile(claims) {
         employeeCode: null,
         mjuClaims: {},
         mjuIdentityStatus: 'not_applicable',
+        systemAdmin: true,
+        canManageUsers: true,
+        canSyncData: true,
       }),
     ];
   });
@@ -95,6 +98,9 @@ export default async function handler(req, res) {
     const claims = {
       role: 'admin',
       authProvider: 'admin_code',
+      systemAdmin: true,
+      canManageUsers: true,
+      canSyncData: true,
       email: process.env.ADMIN_LOGIN_EMAIL || 'admin@mju.ac.th',
       name: process.env.ADMIN_LOGIN_NAME || 'Admin',
       department: process.env.ADMIN_LOGIN_DEPARTMENT || 'Faculty of Science',

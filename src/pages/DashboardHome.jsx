@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccess } from '../utils/accessControl';
 import {
@@ -646,7 +646,7 @@ function DashboardHomeContent() {
 export default function DashboardHome() {
     const { user } = useAuth();
     if (!canAccess(user?.role, 'dashboard')) {
-        return user?.role === 'admin' ? <Navigate to="/dashboard/admin" replace /> : <AccessDenied />;
+        return <AccessDenied />;
     }
     return <DashboardHomeContent />;
 }

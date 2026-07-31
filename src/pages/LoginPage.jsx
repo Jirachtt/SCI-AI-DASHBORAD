@@ -313,7 +313,7 @@ export default function LoginPage() {
                         <div className="modal-header">
                             <ShieldCheck size={48} color="var(--accent-success)" />
                             <h2>เข้าสู่ระบบ Admin</h2>
-                            <p>กรุณากรอกรหัสผ่านสำหรับผู้ดูแลระบบเพื่อจัดการผู้ใช้และสิทธิ์</p>
+                            <p>กรุณากรอกรหัสผ่านผู้ดูแลระบบ เพื่อเข้าถึงข้อมูลทุกหมวดและจัดการผู้ใช้</p>
                         </div>
 
                         <form onSubmit={handleAdminCodeSubmit} className="admin-code-form">

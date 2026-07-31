@@ -43,8 +43,9 @@ for (const item of getNavigationRouteItems()) {
 
 const adminItems = visibleItemIds('admin');
 expect('admin sees admin panel', adminItems.has('admin_panel'));
-expect('admin does not see dashboard/data navigation by default', !adminItems.has('dashboard'));
-expect('admin sees only user-management route-backed navigation', [...adminItems].every(item => item === 'admin_panel' || item === 'settings'));
+expect('admin sees all route-backed navigation',
+  getNavigationRouteItems().every(item => adminItems.has(item.id)));
+expect('admin sees settings', adminItems.has('settings'));
 
 const deanItems = visibleItemIds('dean');
 expect('dean sees AI chat', deanItems.has('ai_chat'));

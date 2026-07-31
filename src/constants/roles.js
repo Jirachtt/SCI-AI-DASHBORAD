@@ -15,7 +15,7 @@ export const ROLE_LABELS = {
     [ROLES.STAFF]: 'เจ้าหน้าที่',
     [ROLES.GENERAL]: 'ทั่วไป',
     [ROLES.STUDENT]: 'นักศึกษา',
-    [ROLES.ADMIN]: 'ผู้ดูแลผู้ใช้',
+    [ROLES.ADMIN]: 'ผู้ดูแลระบบ',
 };
 
 export const ROLE_LABELS_WITH_EN = {
@@ -24,16 +24,16 @@ export const ROLE_LABELS_WITH_EN = {
     [ROLES.STAFF]: 'เจ้าหน้าที่ (Staff)',
     [ROLES.GENERAL]: 'ทั่วไป (General)',
     [ROLES.STUDENT]: 'นักศึกษา (Student)',
-    [ROLES.ADMIN]: 'ผู้ดูแลผู้ใช้ (Admin)',
+    [ROLES.ADMIN]: 'ผู้ดูแลระบบ (Admin)',
 };
 
 export const ROLE_ORDER = [
+    ROLES.ADMIN,
     ROLES.DEAN,
     ROLES.CHAIR,
     ROLES.STAFF,
     ROLES.GENERAL,
     ROLES.STUDENT,
-    ROLES.ADMIN,
 ];
 
 export const MANAGEABLE_ROLES = ROLE_ORDER;

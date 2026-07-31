@@ -17,7 +17,6 @@ import {
 import { APP_NAME_EN, APP_NAME_TH } from '../config/appBrand';
 import useDashboardMotion from '../hooks/useDashboardMotion';
 import ChartInteractionLayer from './ChartInteractionLayer';
-import { normalizeRole } from '../constants/roles';
 
 export default function Layout() {
     const { theme, toggleTheme } = useTheme();
@@ -33,13 +32,7 @@ export default function Layout() {
     // Gemini + page consumers read it synchronously after this resolves;
     // falls back to mock silently if Firestore doesn't have the doc.
     useEffect(() => {
-        // Admin is intentionally isolated to user-management/data-health views.
-        // Do not subscribe it to protected dashboard datasets that Firestore
-        // rules will reject; this also avoids noisy permission warnings.
-        const isAdminOnlySession = user?.uid === 'admin-313'
-            || user?.authProvider === 'admin_code'
-            || normalizeRole(user?.role) === 'admin';
-        if (!user?.uid || isAdminOnlySession) return undefined;
+        if (!user?.uid) return undefined;
 
         let cancelled = false;
         let alignmentInFlight = false;

@@ -4,7 +4,7 @@ rules_version = '2';
 // Security goal:
 // - Users can create/read their own profile safely.
 // - Users cannot promote themselves by editing role/status/role validity.
-// - Admin manages users and roles only; dashboard data access remains separate.
+// - Admin has the complete read view and manages users; dataset writes remain scoped.
 // - Dean/Staff can write operational datasets; everyone signed in can read shared dashboard data.
 
 service cloud.firestore {
@@ -40,11 +40,11 @@ service cloud.firestore {
     }
 
     function callerCanManageDashboardData() {
-      return callerHasApprovedRole(['dean', 'chair', 'staff']);
+      return callerHasApprovedRole(['admin', 'dean', 'chair', 'staff']);
     }
 
     function callerCanManageDashboardDataset(datasetId) {
-      return callerHasApprovedRole(['dean', 'staff'])
+      return callerHasApprovedRole(['admin', 'dean', 'staff'])
         || (
           callerHasApprovedRole(['chair'])
           && datasetId in [

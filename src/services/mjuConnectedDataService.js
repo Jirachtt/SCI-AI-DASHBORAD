@@ -326,7 +326,9 @@ function normalizeUserType(role, user = {}) {
 }
 
 function hasElevatedMjuDataScope(user = {}, role = user?.role) {
-    return normalizeRole(role) === 'dean' && user.mjuVerified === true;
+    const normalizedRole = normalizeRole(role);
+    return normalizedRole === 'admin'
+        || (normalizedRole === 'dean' && user.mjuVerified === true);
 }
 
 function getConsentKey(user = {}) {
@@ -385,17 +387,18 @@ export function normalizeMjuIdentity(user = {}) {
 }
 
 function isExecutiveLike(role) {
-    return ['dean', 'chair'].includes(normalizeRole(role));
+    return ['admin', 'dean', 'chair'].includes(normalizeRole(role));
 }
 
 function isStaffLike(role) {
-    return ['dean', 'chair', 'staff', 'general'].includes(normalizeRole(role));
+    return ['admin', 'dean', 'chair', 'staff', 'general'].includes(normalizeRole(role));
 }
 
 export function canUseMjuConnectedDomain(user = {}, domainId) {
     const domain = DOMAIN_BY_ID.get(domainId);
     if (!domain || !user) return false;
     const role = normalizeRole(user.role || 'general');
+    if (role === 'admin') return true;
     if (domain.id === 'profile') return Boolean(user.uid || user.email || user.mjuVerified);
     if (domain.scope === 'aggregate') return isExecutiveLike(role) || canAccess(role, domain.section);
     if (domain.scope === 'advisor') return ['dean', 'chair'].includes(role);

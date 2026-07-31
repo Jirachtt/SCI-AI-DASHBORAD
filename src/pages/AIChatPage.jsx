@@ -2696,7 +2696,7 @@ const ROLE_DISPLAY = {
     staff: 'เจ้าหน้าที่',
     student: 'นักศึกษา',
     general: 'ทั่วไป',
-    admin: 'ผู้ดูแลผู้ใช้',
+    admin: 'ผู้ดูแลระบบ',
 };
 
 const QUICK_ACTION_GROUPS = [

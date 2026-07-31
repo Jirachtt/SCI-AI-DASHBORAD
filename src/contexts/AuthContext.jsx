@@ -228,6 +228,9 @@ const buildAdminBypassUser = () => {
         status: 'approved',
         authProvider: 'admin_code_fallback',
         isAdminCodeSession: true,
+        systemAdmin: role === 'admin',
+        canManageUsers: role === 'admin',
+        canSyncData: role === 'admin',
         ...validity,
         roleValidity: getRoleValidity({ role: 'admin', ...validity })
     };
@@ -339,7 +342,15 @@ export function AuthProvider({ children }) {
                         const storedRole = userData.role || 'general';
                         const role = normalizeRole(storedRole);
                         const roleValidity = getRoleValidity({ ...userData, role });
-                        const roleExpired = roleValidity.status === 'expired' && role !== 'general' && !isPendingRole(role);
+                        const isAdminCodeAccount = role === 'admin' && (
+                            currentUser.uid === 'admin-313'
+                            || userData.authProvider === 'admin_code'
+                            || claims.authProvider === 'admin_code'
+                        );
+                        const roleExpired = roleValidity.status === 'expired'
+                            && role !== 'general'
+                            && !isPendingRole(role)
+                            && !isAdminCodeAccount;
                         const effectiveRole = roleExpired ? 'general' : role;
                         const normalizedRoleLabel = normalizeRoleLabel(role, userData.roleLabel);
                         const rolePatch = {};

@@ -237,6 +237,6 @@ export function normalizeMjuRoleFromClaims(claims = {}) {
 
 export function roleLabelForMjuRole(role) {
     const normalized = normalizeRole(role);
-    if (normalized === ROLES.ADMIN) return 'ผู้ดูแลผู้ใช้ (Admin)';
+    if (normalized === ROLES.ADMIN) return 'ผู้ดูแลระบบ (Admin)';
     return `${getRoleLabel(normalized)} (MJU SSO)`;
 }
